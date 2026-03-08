@@ -1,0 +1,11 @@
+.page {
+  min-height: 100vh;
+  padding: 3rem 1.25rem;
+}
+
+.layout {
+  width: min(88rem, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 1.5rem;
+}
