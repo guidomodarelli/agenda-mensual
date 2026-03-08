@@ -1,9 +1,13 @@
-import { normalizeFilePayload } from "@/lib/files/normalize-file-payload";
-
-import type { ApplicationSettingsDocument } from "../../domain/entities/application-settings-document";
-import type { StoredApplicationSettings } from "../../domain/entities/stored-application-settings";
+import {
+  createApplicationSettingsDocument,
+  type ApplicationSettingsDocument,
+} from "../../domain/value-objects/application-settings-document";
 import type { ApplicationSettingsRepository } from "../../domain/repositories/application-settings-repository";
 import type { SaveApplicationSettingsCommand } from "../commands/save-application-settings-command";
+import {
+  toStoredApplicationSettingsResult,
+  type StoredApplicationSettingsResult,
+} from "../results/stored-application-settings-result";
 
 interface SaveApplicationSettingsDependencies {
   command: SaveApplicationSettingsCommand;
@@ -13,11 +17,11 @@ interface SaveApplicationSettingsDependencies {
 export async function saveApplicationSettings({
   command,
   repository,
-}: SaveApplicationSettingsDependencies): Promise<StoredApplicationSettings> {
-  const validatedDocument: ApplicationSettingsDocument = normalizeFilePayload(
-    command,
-    "Saving application settings",
-  );
+}: SaveApplicationSettingsDependencies): Promise<StoredApplicationSettingsResult> {
+  const validatedDocument: ApplicationSettingsDocument =
+    createApplicationSettingsDocument(command, "Saving application settings");
 
-  return repository.save(validatedDocument);
+  return toStoredApplicationSettingsResult(
+    await repository.save(validatedDocument),
+  );
 }

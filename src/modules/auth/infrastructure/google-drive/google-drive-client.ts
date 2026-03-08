@@ -3,14 +3,14 @@ import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { getToken } from "next-auth/jwt";
 
-import { getGoogleOAuthServerConfig } from "./google-oauth-config";
+import { getGoogleOAuthServerConfig } from "../oauth/google-oauth-config";
 import {
   GoogleOAuthAuthenticationError,
   GoogleOAuthConfigurationError,
   hasExpiredGoogleAccessToken,
   refreshGoogleSessionToken,
   type GoogleSessionToken,
-} from "./google-oauth-token";
+} from "../oauth/google-oauth-token";
 
 type ServerAuthRequest = GetServerSidePropsContext["req"] | NextApiRequest;
 type GetJwtImplementation = typeof getToken;

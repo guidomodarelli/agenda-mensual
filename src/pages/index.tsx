@@ -3,18 +3,16 @@ import type {
   InferGetServerSidePropsType,
 } from "next";
 
+import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
+import { GOOGLE_OAUTH_SCOPES } from "@/modules/auth/infrastructure/oauth/google-oauth-scopes";
 import { StoragePlayground } from "@/components/storage-playground/storage-playground";
-import type {
-  StorageBootstrap,
-} from "@/server/storage/get-storage-bootstrap";
-import { getStorageBootstrap } from "@/server/storage/get-storage-bootstrap";
-import { GOOGLE_OAUTH_SCOPES } from "@/server/auth/google-oauth-scopes";
-import { isGoogleOAuthConfigured } from "@/server/auth/google-oauth-config";
+import { getStorageBootstrap } from "@/modules/storage/application/queries/get-storage-bootstrap";
+import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 
 import styles from "./index.module.scss";
 
 type HomePageProps = {
-  bootstrap: StorageBootstrap;
+  bootstrap: StorageBootstrapResult;
 };
 
 export default function HomePage({

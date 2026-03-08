@@ -1,10 +1,10 @@
 import type { drive_v3 } from "googleapis";
 
-import { mapGoogleDriveStorageError } from "@/server/storage/google-drive-storage-error";
+import { mapGoogleDriveStorageError } from "@/modules/storage/infrastructure/google-drive/google-drive-storage-error";
 
 import type { StoredUserFile } from "../../../domain/entities/stored-user-file";
-import type { UserFileUpload } from "../../../domain/entities/user-file-upload";
 import type { UserFilesRepository } from "../../../domain/repositories/user-files-repository";
+import type { UserFileUpload } from "../../../domain/value-objects/user-file-upload";
 import { mapGoogleDriveUserFileDtoToDomain } from "../dto/mapper";
 
 const DRIVE_FILE_FIELDS = "id,name,mimeType,webViewLink";

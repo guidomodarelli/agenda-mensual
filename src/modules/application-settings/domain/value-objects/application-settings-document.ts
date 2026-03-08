@@ -1,13 +1,13 @@
-export interface FilePayloadInput {
+export interface ApplicationSettingsDocument {
   content: string;
   mimeType: string;
   name: string;
 }
 
-export function normalizeFilePayload<T extends FilePayloadInput>(
-  payload: T,
+export function createApplicationSettingsDocument(
+  payload: ApplicationSettingsDocument,
   operationName: string,
-): T {
+): ApplicationSettingsDocument {
   const normalizedPayload = {
     ...payload,
     content: payload.content.trim(),

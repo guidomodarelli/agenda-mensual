@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { useSession } from "next-auth/react";
 
+import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 import HomePage from "@/pages/index";
-import type { StorageBootstrap } from "@/server/storage/get-storage-bootstrap";
 
 jest.mock("next-auth/react", () => ({
   useSession: jest.fn(),
@@ -10,7 +10,7 @@ jest.mock("next-auth/react", () => ({
 
 const mockedUseSession = jest.mocked(useSession);
 
-const bootstrap: StorageBootstrap = {
+const bootstrap: StorageBootstrapResult = {
   architecture: {
     dataStrategy: "ssr-first",
     middleendLocation: "src/modules",

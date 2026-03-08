@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthErrorMessage } from "@/lib/auth/get-auth-error-message";
+import { getAuthErrorMessage } from "@/modules/auth/application/queries/get-auth-error-message";
 
 import styles from "./auth-page.module.scss";
 

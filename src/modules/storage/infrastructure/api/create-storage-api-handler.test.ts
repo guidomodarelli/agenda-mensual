@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { drive_v3 } from "googleapis";
 
-import { GoogleOAuthAuthenticationError } from "@/server/auth/google-oauth-token";
-import { GoogleDriveStorageError } from "@/server/storage/google-drive-storage-error";
+import { GoogleOAuthAuthenticationError } from "@/modules/auth/infrastructure/oauth/google-oauth-token";
 
+import { GoogleDriveStorageError } from "../google-drive/google-drive-storage-error";
 import { createStorageApiHandler } from "./create-storage-api-handler";
 
 interface MockJsonResponse {
@@ -94,13 +94,11 @@ describe("createStorageApiHandler", () => {
 
   it("returns 401 when Google authentication is missing", async () => {
     const handler = createStorageApiHandler({
-      getDriveClient: jest
-        .fn()
-        .mockRejectedValue(
-          new GoogleOAuthAuthenticationError(
-            "google-drive-client:getGoogleSessionTokenFromRequest requires an authenticated NextAuth session.",
-          ),
+      getDriveClient: jest.fn().mockRejectedValue(
+        new GoogleOAuthAuthenticationError(
+          "google-drive-client:getGoogleSessionTokenFromRequest requires an authenticated NextAuth session.",
         ),
+      ),
       operationLabel: "application settings",
       save: jest.fn(),
     });
@@ -172,13 +170,11 @@ describe("createStorageApiHandler", () => {
     const handler = createStorageApiHandler({
       getDriveClient: jest.fn().mockResolvedValue({} as drive_v3.Drive),
       operationLabel: "application settings",
-      save: jest
-        .fn()
-        .mockRejectedValue(
-          new Error(
-            "storage:application settings could not persist the Google Drive file.",
-          ),
+      save: jest.fn().mockRejectedValue(
+        new Error(
+          "storage:application settings could not persist the Google Drive file.",
         ),
+      ),
     });
 
     const request = {

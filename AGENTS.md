@@ -32,20 +32,23 @@
 - Prioritize hexagonal architecture from the first commit and in every change.
 - Use `~/hexagonal-architecture` as the implementation reference when there is any doubt about structure, boundaries, ports, adapters, DTO placement, or testing strategy.
 - Organize the codebase by vertical slice, not by technical layer at the repository root.
+- Do not create or reintroduce a generic `src/server` layer. Server-only code must belong to a feature module or to a dedicated shared module under `src/modules`.
 - Keep all technical identifiers in English: folders, files, modules, symbols, DTOs, ports, adapters, tests, and comments.
 
 ### Dependency rule
 
 - Dependencies must always point inward.
 - Allowed directions:
-  - `pages` or UI entrypoints -> `application`
+  - `pages` or `pages/api` entrypoints -> `application`
+  - `pages` or `pages/api` entrypoints -> `infrastructure` only for framework wiring, adapter selection, and dependency composition
   - `application` -> `domain`
   - `infrastructure` -> `application`
   - `infrastructure` -> `domain`
 - Forbidden directions:
   - `domain` -> `application` or `infrastructure`
-  - `application` -> `infrastructure`
+  - `application` -> `infrastructure` or generic `lib`
   - UI or pages importing external DTOs directly
+  - Any layer importing from a generic `src/server` folder
 
 ### Target structure
 
@@ -68,8 +71,15 @@ src/
         api/
           dto/
           mapper.ts
+        google-drive/
+        next-auth/
+        oauth/
         auth/
         repositories/
+    shared/
+      domain/
+      application/
+      infrastructure/
   components/
   lib/
   styles/
@@ -78,8 +88,9 @@ src/
 ### Layer responsibilities
 
 - `src/pages/*`
-  - Route entrypoints only.
-  - Compose dependencies for SSR and page-level interactions.
+  - Route entrypoints and framework composition roots only.
+  - Compose dependencies for SSR, API handlers, and page-level interactions.
+  - They may import `application` and module-scoped `infrastructure` only to wire framework adapters to use cases.
   - Never host domain rules.
 - `domain`
   - Pure business rules, entities, value objects, and ports.
@@ -87,9 +98,15 @@ src/
 - `application`
   - Use cases and internal contracts (`commands`, `queries`, `results`).
   - Orchestrates domain behavior through ports.
+  - Validate and normalize inputs through domain value objects or application contracts, not through generic helpers in `lib`.
 - `infrastructure`
   - Adapters for Google APIs, authentication, HTTP clients, storage, and third-party SDKs.
   - Owns external DTOs and their mappers.
+  - Shared server-only helpers must still live under a module infrastructure folder, never under `src/server`.
+- `lib`
+  - Reserved for framework-safe helpers, UI utilities, and client-only adapters that are not business rules.
+  - `application` and `domain` must never import from `lib`.
+  - If a helper starts encoding use-case rules, provider details, or DTO mapping, move it into the owning module.
 
 ## 3. Bootstrap Standards
 
@@ -160,6 +177,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 ```
 
 - Never pass Google API DTOs directly to page components.
+- Never import bootstrap builders, OAuth config, Drive clients, or API error mappers from a generic `src/server` path.
 
 ### Client-side fetching
 
@@ -172,7 +190,8 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 - Prepare Google OAuth for user account connection through Pages Router.
 - The default authentication adapter for this project is `next-auth` v4 with `GoogleProvider`, because it is compatible with Pages Router.
-- Keep auth configuration in `src/pages/api/auth/[...nextauth].ts`.
+- Keep the NextAuth handler in `src/pages/api/auth/[...nextauth].ts`.
+- Keep `authOptions`, OAuth config, token refresh logic, and Google client factories inside `src/modules/auth/infrastructure/*`.
 - Wrap the application session boundary in `src/pages/_app.tsx`.
 
 ### OAuth behavior
@@ -194,6 +213,7 @@ parents: ['appDataFolder']
 - Do not attempt to share, move across spaces, or trash files stored in `appDataFolder`.
 - Use `drive.file` for user-visible files in My Drive.
 - Keep Google SDK calls isolated in infrastructure adapters.
+- Keep Google Drive error mapping and Drive client factories inside module infrastructure folders such as `src/modules/storage/infrastructure/*` and `src/modules/auth/infrastructure/*`.
 
 ## 6. Development Workflow
 
@@ -253,10 +273,12 @@ parents: ['appDataFolder']
 ## 7. Implementation Checklist
 
 - Does the change preserve hexagonal boundaries?
+- Is there any new or restored code under `src/server/`? If yes, move it into a module.
 - Is Pages Router still the routing mechanism?
 - Is SSR the default data-loading strategy for this use case?
 - Are external DTOs isolated in infrastructure?
 - Are UI-facing models isolated from vendor payloads?
+- Are domain input shapes modeled as value objects and application outputs modeled as `results/` contracts?
 - Was `shadcn/ui` added through the CLI only?
 - Are product styles implemented with `SCSS`?
 - Are Google tokens and secrets kept server-side only?

@@ -1,9 +1,13 @@
-import { normalizeFilePayload } from "@/lib/files/normalize-file-payload";
-
-import type { StoredUserFile } from "../../domain/entities/stored-user-file";
-import type { UserFileUpload } from "../../domain/entities/user-file-upload";
+import {
+  createUserFileUpload,
+  type UserFileUpload,
+} from "../../domain/value-objects/user-file-upload";
 import type { UserFilesRepository } from "../../domain/repositories/user-files-repository";
 import type { SaveUserFileCommand } from "../commands/save-user-file-command";
+import {
+  toStoredUserFileResult,
+  type StoredUserFileResult,
+} from "../results/stored-user-file-result";
 
 interface SaveUserFileDependencies {
   command: SaveUserFileCommand;
@@ -13,11 +17,11 @@ interface SaveUserFileDependencies {
 export async function saveUserFile({
   command,
   repository,
-}: SaveUserFileDependencies): Promise<StoredUserFile> {
-  const validatedFile: UserFileUpload = normalizeFilePayload(
+}: SaveUserFileDependencies): Promise<StoredUserFileResult> {
+  const validatedFile: UserFileUpload = createUserFileUpload(
     command,
     "Saving a user file",
   );
 
-  return repository.save(validatedFile);
+  return toStoredUserFileResult(await repository.save(validatedFile));
 }

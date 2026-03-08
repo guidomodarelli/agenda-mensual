@@ -5,8 +5,9 @@ import { z } from "zod";
 import {
   GoogleOAuthAuthenticationError,
   GoogleOAuthConfigurationError,
-} from "@/server/auth/google-oauth-token";
-import { GoogleDriveStorageError } from "@/server/storage/google-drive-storage-error";
+} from "@/modules/auth/infrastructure/oauth/google-oauth-token";
+
+import { GoogleDriveStorageError } from "../google-drive/google-drive-storage-error";
 
 const storageRequestBodySchema = z.object({
   content: z.string().trim().min(1),
@@ -22,7 +23,7 @@ export interface StorageApiCommand {
 
 async function getDefaultDriveClient(request: NextApiRequest) {
   const { getGoogleDriveClientFromRequest } = await import(
-    "../auth/google-drive-client"
+    "@/modules/auth/infrastructure/google-drive/google-drive-client"
   );
 
   return getGoogleDriveClientFromRequest(request);

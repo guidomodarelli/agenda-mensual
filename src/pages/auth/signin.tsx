@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { authOptions } from "@/server/auth/auth-options";
+import { authOptions } from "@/modules/auth/infrastructure/next-auth/auth-options";
 
 import styles from "./auth-page.module.scss";
 
@@ -47,15 +47,15 @@ export default function SignInPage({
         <CardHeader>
           <CardTitle>Conectar Google</CardTitle>
           <CardDescription>
-            Esta base usa Pages Router, SSR y una capa middleend para preparar la
-            integración con Google Drive.
+            Esta base usa Pages Router, SSR y adapters de infraestructura para
+            integrar servicios externos sin mezclar reglas de negocio.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {googleProvider ? (
             <p className={styles.warning}>
-              El login usa el proveedor oficial de Google y solicita acceso
-              mínimo para `appDataFolder` y archivos elegidos por el usuario.
+              El login usa el proveedor oficial de Google con permisos mínimos
+              para las operaciones de almacenamiento necesarias.
             </p>
           ) : (
             <p className={styles.warning}>

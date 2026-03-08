@@ -1,13 +1,13 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-import { getGoogleOAuthServerConfig } from "./google-oauth-config";
+import { getGoogleOAuthServerConfig } from "../oauth/google-oauth-config";
 import {
   buildGoogleSessionToken,
   hasExpiredGoogleAccessToken,
   refreshGoogleSessionToken,
   type GoogleSessionToken,
-} from "./google-oauth-token";
+} from "../oauth/google-oauth-token";
 
 const googleOAuthServerConfig = getGoogleOAuthServerConfig();
 

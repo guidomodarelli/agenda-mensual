@@ -24,21 +24,24 @@ const eslintConfig = defineConfig([
                 "infrastructure",
                 "lib",
                 "pages",
-                "server",
               ],
               from: "domain",
             },
             {
-              disallow: ["components", "infrastructure", "pages"],
+              disallow: ["components", "infrastructure", "lib", "pages"],
               from: "application",
             },
             {
-              disallow: ["domain", "infrastructure", "server"],
+              disallow: ["application", "domain", "infrastructure", "pages"],
               from: "components",
             },
             {
-              disallow: ["domain"],
+              disallow: ["domain", "lib"],
               from: "pages",
+            },
+            {
+              disallow: ["components", "lib", "pages"],
+              from: "infrastructure",
             },
           ],
         },
@@ -54,8 +57,6 @@ const eslintConfig = defineConfig([
         { mode: "full", pattern: "src/components/**/*", type: "components" },
         { mode: "full", pattern: "src/lib/*", type: "lib" },
         { mode: "full", pattern: "src/lib/**/*", type: "lib" },
-        { mode: "full", pattern: "src/server/*", type: "server" },
-        { mode: "full", pattern: "src/server/**/*", type: "server" },
         {
           mode: "full",
           pattern: "src/modules/*/application/*",

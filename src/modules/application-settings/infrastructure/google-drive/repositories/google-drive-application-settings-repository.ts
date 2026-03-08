@@ -1,10 +1,10 @@
 import type { drive_v3 } from "googleapis";
 
-import { mapGoogleDriveStorageError } from "@/server/storage/google-drive-storage-error";
+import { mapGoogleDriveStorageError } from "@/modules/storage/infrastructure/google-drive/google-drive-storage-error";
 
-import type { ApplicationSettingsDocument } from "../../../domain/entities/application-settings-document";
 import type { StoredApplicationSettings } from "../../../domain/entities/stored-application-settings";
 import type { ApplicationSettingsRepository } from "../../../domain/repositories/application-settings-repository";
+import type { ApplicationSettingsDocument } from "../../../domain/value-objects/application-settings-document";
 import { mapGoogleDriveSettingsFileDtoToDomain } from "../dto/mapper";
 
 const DRIVE_FILE_FIELDS = "id,name,mimeType";

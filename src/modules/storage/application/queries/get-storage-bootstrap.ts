@@ -1,21 +1,4 @@
-export type StorageTargetId = "applicationSettings" | "userFiles";
-
-export interface StorageTargetBootstrap {
-  id: StorageTargetId;
-  requiredScope: string;
-  writesUserVisibleFiles: boolean;
-}
-
-export interface StorageBootstrap {
-  architecture: {
-    dataStrategy: "ssr-first";
-    middleendLocation: "src/modules";
-    routing: "pages-router";
-  };
-  authStatus: "configured" | "pending";
-  requiredScopes: string[];
-  storageTargets: StorageTargetBootstrap[];
-}
+import type { StorageBootstrapResult } from "../results/storage-bootstrap";
 
 interface GetStorageBootstrapInput {
   isGoogleOAuthConfigured: boolean;
@@ -25,7 +8,7 @@ interface GetStorageBootstrapInput {
 export function getStorageBootstrap({
   isGoogleOAuthConfigured,
   requiredScopes,
-}: GetStorageBootstrapInput): StorageBootstrap {
+}: GetStorageBootstrapInput): StorageBootstrapResult {
   return {
     architecture: {
       dataStrategy: "ssr-first",
