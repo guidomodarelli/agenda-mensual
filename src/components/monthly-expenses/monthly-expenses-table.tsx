@@ -454,8 +454,8 @@ export function MonthlyExpensesTable({
                           <TableCell className={styles.actionsCell}>
                             <ConfirmDeleteButton
                               message="¿Querés eliminar este gasto?"
+                              menuAriaLabel={`Abrir acciones del gasto ${index + 1}`}
                               onConfirm={() => onRemoveExpense(row.id)}
-                              triggerAriaLabel={`Eliminar gasto ${index + 1}`}
                             />
                           </TableCell>
                         </TableRow>

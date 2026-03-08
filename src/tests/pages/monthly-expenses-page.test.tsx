@@ -259,7 +259,8 @@ describe("MonthlyExpensesPage", () => {
 
     expect(screen.getAllByLabelText("Descripción")).toHaveLength(2);
 
-    await user.click(screen.getByRole("button", { name: "Eliminar gasto 2" }));
+    await user.click(screen.getByRole("button", { name: "Abrir acciones del gasto 2" }));
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
 
     expect(screen.getAllByLabelText("Descripción")).toHaveLength(2);
     expect(
@@ -287,7 +288,8 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
-    await user.click(screen.getByRole("button", { name: "Eliminar gasto 2" }));
+    await user.click(screen.getByRole("button", { name: "Abrir acciones del gasto 2" }));
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
 
     expect(
       screen.getByText("¿Querés eliminar este gasto?"),
@@ -831,7 +833,8 @@ describe("MonthlyExpensesPage", () => {
 
     expect(screen.getAllByText("Papa")[0]).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Abrir acciones para Papa" }));
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
 
     expect(screen.getAllByText("Papa")[0]).toBeInTheDocument();
     expect(
@@ -923,7 +926,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
-    await user.click(screen.getByRole("button", { name: /Papa/i }));
+    await user.click(screen.getByRole("button", { name: "Papa Familiar" }));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "12");
     await user.type(screen.getByLabelText("Inicio de la deuda"), "2026-01");
     await user.click(screen.getByRole("button", { name: "Guardar gastos" }));

@@ -145,6 +145,7 @@ export function LendersPanel({
                 </div>
                 <ConfirmDeleteButton
                   message={`¿Querés eliminar a ${lender.name} del catálogo?`}
+                  menuAriaLabel={`Abrir acciones para ${lender.name}`}
                   onConfirm={() => onDelete(lender.id)}
                 />
               </div>

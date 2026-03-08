@@ -1,24 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { MoreVertical, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import styles from "./confirm-delete-button.module.scss";
 
 interface ConfirmDeleteButtonProps {
   confirmLabel?: string;
   message: string;
+  menuAriaLabel?: string;
   onConfirm: () => void;
-  triggerAriaLabel?: string;
-  triggerLabel?: string;
 }
 
 export function ConfirmDeleteButton({
   confirmLabel = "Confirmar",
   message,
+  menuAriaLabel = "Abrir acciones",
   onConfirm,
-  triggerAriaLabel,
-  triggerLabel = "Eliminar",
 }: ConfirmDeleteButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<{
@@ -100,25 +105,31 @@ export function ConfirmDeleteButton({
 
   return (
     <div className={styles.root}>
-      <Button
-        aria-expanded={isOpen}
-        aria-label={triggerAriaLabel}
-        onClick={() => {
-          if (isOpen) {
-            setIsOpen(false);
-            return;
-          }
-
-          updatePopoverPosition();
-          setIsOpen(true);
-        }}
-        ref={triggerRef}
-        size="sm"
-        type="button"
-        variant="ghost"
-      >
-        {triggerLabel}
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label={menuAriaLabel}
+            ref={triggerRef}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <MoreVertical />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => {
+              updatePopoverPosition();
+              setIsOpen(true);
+            }}
+            variant="destructive"
+          >
+            <Trash2 />
+            Eliminar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {isOpen && popoverStyle && typeof document !== "undefined"
         ? createPortal(
