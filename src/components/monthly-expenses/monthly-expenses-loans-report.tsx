@@ -1,11 +1,4 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -76,120 +69,114 @@ export function MonthlyExpensesLoansReport({
   onTypeFilterChange,
 }: MonthlyExpensesLoansReportProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Reporte de deudas</CardTitle>
-        <CardDescription>
-          Revisá cuánto debés por prestador y qué gastos están asociados.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className={styles.content}>
-        <div className={styles.summaryGrid}>
-          <div className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>Prestadores con deuda</p>
-            <p className={styles.summaryValue}>{summary.lenderCount}</p>
-          </div>
-          <div className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>Deudas activas</p>
-            <p className={styles.summaryValue}>{summary.activeLoanCount}</p>
-          </div>
-          <div className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>Monto pendiente estimado</p>
-            <p className={styles.summaryValue}>{summary.remainingAmount.toFixed(2)}</p>
-          </div>
+    <section className={styles.content}>
+      <p className={styles.description}>
+        Revisá cuánto debés por prestador y qué gastos están asociados.
+      </p>
+
+      <div className={styles.summaryGrid}>
+        <div className={styles.summaryCard}>
+          <p className={styles.summaryLabel}>Prestadores con deuda</p>
+          <p className={styles.summaryValue}>{summary.lenderCount}</p>
+        </div>
+        <div className={styles.summaryCard}>
+          <p className={styles.summaryLabel}>Deudas activas</p>
+          <p className={styles.summaryValue}>{summary.activeLoanCount}</p>
+        </div>
+        <div className={styles.summaryCard}>
+          <p className={styles.summaryLabel}>Monto pendiente estimado</p>
+          <p className={styles.summaryValue}>{summary.remainingAmount.toFixed(2)}</p>
+        </div>
+      </div>
+
+      <div className={styles.filters}>
+        <div className={styles.filterField}>
+          <Label htmlFor="loan-report-type-filter">Tipo</Label>
+          <Select onValueChange={onTypeFilterChange} value={selectedTypeFilter}>
+            <SelectTrigger
+              aria-label="Filtrar por tipo"
+              id="loan-report-type-filter"
+            >
+              <SelectValue placeholder="Todos los tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              <SelectItem value="bank">Bancos</SelectItem>
+              <SelectItem value="family">Familiares</SelectItem>
+              <SelectItem value="friend">Amigos</SelectItem>
+              <SelectItem value="other">Otros</SelectItem>
+              <SelectItem value="unassigned">Sin prestador</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className={styles.filters}>
-          <div className={styles.filterField}>
-            <Label htmlFor="loan-report-type-filter">Tipo</Label>
-            <Select
-              onValueChange={onTypeFilterChange}
-              value={selectedTypeFilter}
+        <div className={styles.filterField}>
+          <Label htmlFor="loan-report-lender-filter">Prestador</Label>
+          <Select
+            onValueChange={onLenderFilterChange}
+            value={selectedLenderFilter}
+          >
+            <SelectTrigger
+              aria-label="Filtrar por prestador"
+              id="loan-report-lender-filter"
             >
-              <SelectTrigger
-                aria-label="Filtrar por tipo"
-                id="loan-report-type-filter"
-              >
-                <SelectValue placeholder="Todos los tipos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                <SelectItem value="bank">Bancos</SelectItem>
-                <SelectItem value="family">Familiares</SelectItem>
-                <SelectItem value="friend">Amigos</SelectItem>
-                <SelectItem value="other">Otros</SelectItem>
-                <SelectItem value="unassigned">Sin prestador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className={styles.filterField}>
-            <Label htmlFor="loan-report-lender-filter">Prestador</Label>
-            <Select
-              onValueChange={onLenderFilterChange}
-              value={selectedLenderFilter}
-            >
-              <SelectTrigger
-                aria-label="Filtrar por prestador"
-                id="loan-report-lender-filter"
-              >
-                <SelectValue placeholder="Todos los prestadores" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los prestadores</SelectItem>
-                {providerFilterOptions.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button onClick={onResetFilters} type="button" variant="outline">
-            Limpiar filtros
-          </Button>
+              <SelectValue placeholder="Todos los prestadores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los prestadores</SelectItem>
+              {providerFilterOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {feedbackMessage ? (
-          <p className={styles.feedback}>{feedbackMessage}</p>
-        ) : null}
+        <Button onClick={onResetFilters} type="button" variant="outline">
+          Limpiar filtros
+        </Button>
+      </div>
 
-        <div className={styles.entries}>
-          {entries.length > 0 ? (
-            entries.map((entry) => (
-              <article className={styles.entry} key={`${entry.lenderId ?? entry.lenderName}-${entry.lenderType}`}>
-                <div className={styles.entryHeader}>
-                  <div>
-                    <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
-                    <p className={styles.entryMeta}>
-                      {getTypeLabel(entry.lenderType)}
-                    </p>
-                  </div>
-                  <p className={styles.entryAmount}>
-                    {entry.remainingAmount.toFixed(2)}
-                  </p>
+      {feedbackMessage ? (
+        <p className={styles.feedback}>{feedbackMessage}</p>
+      ) : null}
+
+      <div className={styles.entries}>
+        {entries.length > 0 ? (
+          entries.map((entry) => (
+            <article
+              className={styles.entry}
+              key={`${entry.lenderId ?? entry.lenderName}-${entry.lenderType}`}
+            >
+              <div className={styles.entryHeader}>
+                <div>
+                  <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
+                  <p className={styles.entryMeta}>{getTypeLabel(entry.lenderType)}</p>
                 </div>
-                <p className={styles.entryBody}>
-                  Inicio más antiguo: {entry.firstDebtMonth ?? "Sin dato"}.
-                  Último mes registrado: {entry.latestRecordedMonth ?? "Sin dato"}.
+                <p className={styles.entryAmount}>
+                  {entry.remainingAmount.toFixed(2)}
                 </p>
-                <p className={styles.entryBody}>
-                  Deudas activas: {entry.activeLoanCount}. Deudas registradas:{" "}
-                  {entry.trackedLoanCount}.
-                </p>
-                <p className={styles.entryBody}>
-                  Gastos asociados: {entry.expenseDescriptions.join(", ")}.
-                </p>
-              </article>
-            ))
-          ) : feedbackMessage ? null : (
-            <p className={styles.feedback}>
-              No hay deudas para los filtros seleccionados.
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              </div>
+              <p className={styles.entryBody}>
+                Inicio más antiguo: {entry.firstDebtMonth ?? "Sin dato"}. Último
+                mes registrado: {entry.latestRecordedMonth ?? "Sin dato"}.
+              </p>
+              <p className={styles.entryBody}>
+                Deudas activas: {entry.activeLoanCount}. Deudas registradas:{" "}
+                {entry.trackedLoanCount}.
+              </p>
+              <p className={styles.entryBody}>
+                Gastos asociados: {entry.expenseDescriptions.join(", ")}.
+              </p>
+            </article>
+          ))
+        ) : feedbackMessage ? null : (
+          <p className={styles.feedback}>
+            No hay deudas para los filtros seleccionados.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
