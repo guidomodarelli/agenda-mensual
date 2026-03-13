@@ -29,8 +29,8 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
+  InputGroupAddon,
   InputGroupInput,
-  InputGroupPrefix,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import {
@@ -455,9 +455,9 @@ function ExpenseSheetContent({
                             changedFields.has("subtotal") ? "true" : "false"
                           }
                         >
-                          <InputGroupPrefix aria-hidden="true">
+                          <InputGroupAddon align="inline-start" aria-hidden="true">
                             {currencyPrefix}
-                          </InputGroupPrefix>
+                          </InputGroupAddon>
                           <FormControl>
                             <InputGroupInput
                               aria-label="Subtotal"
@@ -529,9 +529,9 @@ function ExpenseSheetContent({
                 <div className={styles.fieldGroup}>
                   <Label htmlFor="expense-total">Total</Label>
                   <InputGroup>
-                    <InputGroupPrefix aria-hidden="true">
+                    <InputGroupAddon align="inline-start" aria-hidden="true">
                       {currencyPrefix}
-                    </InputGroupPrefix>
+                    </InputGroupAddon>
                     <InputGroupInput
                       aria-label="Total"
                       id="expense-total"
