@@ -1,0 +1,25 @@
+minimum_pre_commit_version: "3.6.0"
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+
+  - repo: local
+    hooks:
+      - id: eslint-staged
+        name: eslint (staged js/ts)
+        entry: npx eslint --max-warnings=0
+        language: system
+        types_or: [javascript, jsx, ts, tsx]
+
+      - id: typecheck
+        name: typecheck (pre-push)
+        entry: npm run typecheck
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import type { drive_v3 } from "googleapis";
+import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
 import { GoogleOAuthAuthenticationError } from "@/modules/auth/infrastructure/oauth/google-oauth-token";
-import { GoogleDriveStorageError } from "@/modules/storage/infrastructure/google-drive/google-drive-storage-error";
+import { TursoConfigurationError } from "@/modules/shared/infrastructure/database/turso-server-config";
 
 import { createMonthlyExpensesApiHandler } from "./create-monthly-expenses-api-handler";
 
@@ -41,7 +41,8 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 describe("createMonthlyExpensesApiHandler", () => {
   it("rejects methods other than POST", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      getDriveClient: jest.fn(),
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn(),
       save: jest.fn(),
     });
 
@@ -62,7 +63,8 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 400 when the request body is invalid", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      getDriveClient: jest.fn(),
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn(),
       save: jest.fn(),
     });
 
@@ -93,66 +95,7 @@ describe("createMonthlyExpensesApiHandler", () => {
   });
 
   it("returns 201 with the saved document when the request succeeds", async () => {
-    const driveClient = {} as drive_v3.Drive;
-    const save = jest.fn().mockResolvedValue({
-      id: "monthly-expenses-file-id",
-      month: "2026-03",
-      name: "gastos-mensuales-2026-marzo.json",
-      viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
-    });
-    const handler = createMonthlyExpensesApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue(driveClient),
-      save,
-    });
-
-    const request = {
-      body: {
-        items: [
-          {
-            currency: "ARS",
-            description: "Expensas",
-            id: "expense-1",
-            occurrencesPerMonth: 1,
-            subtotal: 55032.07,
-          },
-        ],
-        month: "2026-03",
-      },
-      method: "POST",
-    } as NextApiRequest;
-    const response = createMockResponse();
-
-    await handler(request, response);
-
-    expect(save).toHaveBeenCalledWith({
-      command: {
-        items: [
-          {
-            currency: "ARS",
-            description: "Expensas",
-            id: "expense-1",
-            occurrencesPerMonth: 1,
-            subtotal: 55032.07,
-          },
-        ],
-        month: "2026-03",
-      },
-      driveClient,
-      request,
-    });
-    expect(response.statusCode).toBe(201);
-    expect(response.body).toEqual({
-      data: {
-        id: "monthly-expenses-file-id",
-        month: "2026-03",
-        name: "gastos-mensuales-2026-marzo.json",
-        viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
-      },
-    });
-  });
-
-  it("passes loan metadata to the save use case when a debt is included", async () => {
-    const driveClient = {} as drive_v3.Drive;
+    const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
@@ -160,7 +103,69 @@ describe("createMonthlyExpensesApiHandler", () => {
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue(driveClient),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Expensas",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 55032.07,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(save).toHaveBeenCalledWith({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Expensas",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 55032.07,
+          },
+        ],
+        month: "2026-03",
+      },
+      database,
+      request,
+      userSubject: "google-user-123",
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.body).toEqual({
+      data: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      },
+    });
+  });
+
+  it("passes loan metadata to the save use case when a debt is included", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-03",
+      name: "gastos-mensuales-2026-marzo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -206,15 +211,17 @@ describe("createMonthlyExpensesApiHandler", () => {
         ],
         month: "2026-03",
       },
-      driveClient,
+      database,
       request,
+      userSubject: "google-user-123",
     });
     expect(response.statusCode).toBe(201);
   });
 
   it("returns 401 when Google authentication is missing", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      getDriveClient: jest.fn().mockRejectedValue(
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn().mockRejectedValue(
         new GoogleOAuthAuthenticationError(
           "google-drive-client:getGoogleSessionTokenFromRequest requires an authenticated NextAuth session.",
         ),
@@ -243,24 +250,20 @@ describe("createMonthlyExpensesApiHandler", () => {
 
     expect(response.statusCode).toBe(401);
     expect(response.body).toEqual({
-      error:
-        "Google authentication is required before saving monthly expenses to Drive.",
+      error: "Google authentication is required before saving monthly expenses.",
     });
   });
 
-  it("returns 400 when Google Drive rejects the payload", async () => {
+  it("returns 500 when database configuration is missing", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue({} as drive_v3.Drive),
+      getDatabase: jest.fn().mockImplementation(() => {
+        throw new TursoConfigurationError(
+          "turso-server-config:missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN server configuration.",
+        );
+      }),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
       save: jest.fn().mockRejectedValue(
-        new GoogleDriveStorageError(
-          "google-drive-monthly-expenses-repository:save failed while calling drive.files.create with httpStatus=400 and apiStatus=INVALID_ARGUMENT.",
-          {
-            code: "invalid_payload",
-            endpoint: "drive.files.create",
-            httpStatus: 400,
-            operation: "google-drive-monthly-expenses-repository:save",
-          },
-        ),
+        new Error("unexpected"),
       ),
     });
 
@@ -283,10 +286,10 @@ describe("createMonthlyExpensesApiHandler", () => {
 
     await handler(request, response);
 
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(500);
     expect(response.body).toEqual({
       error:
-        "Google Drive rejected the monthly expenses payload. Check the month, rows, and numeric values and try again.",
+        "Database server configuration is incomplete for monthly expenses storage.",
     });
   });
 });

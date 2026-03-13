@@ -1,4 +1,4 @@
-export type StorageTargetId = "applicationSettings" | "userFiles";
+export type StorageTargetId = "userFiles";
 
 export interface StorageTargetBootstrapResult {
   id: StorageTargetId;

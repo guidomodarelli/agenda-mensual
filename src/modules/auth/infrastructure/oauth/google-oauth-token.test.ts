@@ -55,7 +55,7 @@ describe("google-oauth-token", () => {
       googleAccessTokenExpiresAt: 1_700_000_000,
       googleRefreshToken: "stable-refresh-token",
       googleScope:
-        "openid email profile https://www.googleapis.com/auth/drive.appdata",
+        "openid email profile https://www.googleapis.com/auth/drive.file",
       googleTokenType: "Bearer",
     };
 
@@ -64,7 +64,7 @@ describe("google-oauth-token", () => {
         access_token: "fresh-access-token",
         expires_in: 3600,
         scope:
-          "openid email profile https://www.googleapis.com/auth/drive.appdata",
+          "openid email profile https://www.googleapis.com/auth/drive.file",
         token_type: "Bearer",
       }),
       ok: true,
@@ -91,7 +91,7 @@ describe("google-oauth-token", () => {
       googleAccessToken: "fresh-access-token",
       googleRefreshToken: "stable-refresh-token",
       googleScope:
-        "openid email profile https://www.googleapis.com/auth/drive.appdata",
+        "openid email profile https://www.googleapis.com/auth/drive.file",
       googleTokenType: "Bearer",
     });
     expect(result.googleAccessTokenExpiresAt).toBe(1_772_974_800);

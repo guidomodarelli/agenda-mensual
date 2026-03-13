@@ -1,18 +1,18 @@
 import { getLendersCatalog } from "@/modules/lenders/application/use-cases/get-lenders-catalog";
-import { GoogleDriveLendersRepository } from "@/modules/lenders/infrastructure/google-drive/repositories/google-drive-lenders-repository";
+import { DrizzleLendersRepository } from "@/modules/lenders/infrastructure/turso/repositories/drizzle-lenders-repository";
 import { getMonthlyExpensesLoansReport } from "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-loans-report";
 import { createMonthlyExpensesLoansReportApiHandler } from "@/modules/monthly-expenses/infrastructure/api/create-monthly-expenses-loans-report-api-handler";
-import { GoogleDriveMonthlyExpensesRepository } from "@/modules/monthly-expenses/infrastructure/google-drive/repositories/google-drive-monthly-expenses-repository";
+import { DrizzleMonthlyExpensesRepository } from "@/modules/monthly-expenses/infrastructure/turso/repositories/drizzle-monthly-expenses-repository";
 
 export default createMonthlyExpensesLoansReportApiHandler({
-  async load({ driveClient }) {
+  async load({ database, userSubject }) {
     const lendersCatalog = await getLendersCatalog({
-      repository: new GoogleDriveLendersRepository(driveClient),
+      repository: new DrizzleLendersRepository(database, userSubject),
     });
 
     return getMonthlyExpensesLoansReport({
       lenders: lendersCatalog.lenders,
-      repository: new GoogleDriveMonthlyExpensesRepository(driveClient),
+      repository: new DrizzleMonthlyExpensesRepository(database, userSubject),
     });
   },
 });

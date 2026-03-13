@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
-import { createLendersApiHandler } from "./create-lenders-api-handler";
+import { createApplicationSettingsApiHandler } from "./create-application-settings-api-handler";
 
 interface MockJsonResponse {
   body: unknown | undefined;
@@ -35,53 +36,15 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
   return response as unknown as NextApiResponse & MockJsonResponse;
 }
 
-describe("createLendersApiHandler", () => {
-  it("returns 200 with the lenders catalog when the request is GET", async () => {
-    const database = {} as TursoDatabase;
-    const handler = createLendersApiHandler({
-      get: jest.fn().mockResolvedValue({
-        lenders: [
-          {
-            id: "lender-1",
-            name: "Banco Galicia",
-            type: "bank",
-          },
-        ],
-      }),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn(),
-    });
-
-    const request = {
-      method: "GET",
-    } as NextApiRequest;
-    const response = createMockResponse();
-
-    await handler(request, response);
-
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toEqual({
-      data: {
-        lenders: [
-          {
-            id: "lender-1",
-            name: "Banco Galicia",
-            type: "bank",
-          },
-        ],
-      },
-    });
-  });
-
-  it("returns 201 when the catalog is saved", async () => {
+describe("createApplicationSettingsApiHandler", () => {
+  it("returns 201 when settings are saved", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({
-      id: "lenders-file-id",
-      name: "lenders-catalog.json",
+      id: "google-user-123:application-settings.json",
+      mimeType: "application/json",
+      name: "application-settings.json",
     });
-    const handler = createLendersApiHandler({
-      get: jest.fn(),
+    const handler = createApplicationSettingsApiHandler({
       getDatabase: jest.fn().mockReturnValue(database),
       getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
       save,
@@ -89,13 +52,9 @@ describe("createLendersApiHandler", () => {
 
     const request = {
       body: {
-        lenders: [
-          {
-            id: "lender-1",
-            name: "Banco Galicia",
-            type: "bank",
-          },
-        ],
+        content: '{"theme":"dark"}',
+        mimeType: "application/json",
+        name: "application-settings.json",
       },
       method: "POST",
     } as NextApiRequest;
@@ -105,13 +64,9 @@ describe("createLendersApiHandler", () => {
 
     expect(save).toHaveBeenCalledWith({
       command: {
-        lenders: [
-          {
-            id: "lender-1",
-            name: "Banco Galicia",
-            type: "bank",
-          },
-        ],
+        content: '{"theme":"dark"}',
+        mimeType: "application/json",
+        name: "application-settings.json",
       },
       database,
       request,

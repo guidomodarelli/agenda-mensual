@@ -19,11 +19,6 @@ export function getStorageBootstrap({
     requiredScopes: [...requiredScopes],
     storageTargets: [
       {
-        id: "applicationSettings",
-        requiredScope: "https://www.googleapis.com/auth/drive.appdata",
-        writesUserVisibleFiles: false,
-      },
-      {
         id: "userFiles",
         requiredScope: "https://www.googleapis.com/auth/drive.file",
         writesUserVisibleFiles: true,

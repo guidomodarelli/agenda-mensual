@@ -13,7 +13,6 @@ import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 
 import type { LenderOption } from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
@@ -226,8 +225,8 @@ export function MonthlyExpensesTable({
         <div className={styles.headerTopRow}>
           <div className={styles.header}>
             <p className={styles.pageDescription}>
-              Cargá, editá y guardá tus gastos mensuales en Google Drive dentro de
-              la carpeta `{VISIBLE_DRIVE_FOLDER_NAME}`.
+              Cargá, editá y guardá tus gastos mensuales en la base de datos de
+              la app.
             </p>
           </div>
           <Badge
@@ -324,18 +323,8 @@ export function MonthlyExpensesTable({
           {result ? (
             <div className={styles.result}>
               <p className={styles.resultLine}>Archivo: {result.name}</p>
-              <p className={styles.resultLine}>
-                Carpeta en Drive: {VISIBLE_DRIVE_FOLDER_NAME}
-              </p>
               <p className={styles.resultLine}>Mes: {result.month}</p>
               <p className={styles.resultLine}>Id: {result.id}</p>
-              {result.viewUrl ? (
-                <Button asChild className={styles.resultLink} variant="link">
-                  <a href={result.viewUrl} rel="noreferrer" target="_blank">
-                    Abrir archivo mensual en Drive
-                  </a>
-                </Button>
-              ) : null}
             </div>
           ) : null}
         </div>

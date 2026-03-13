@@ -99,8 +99,8 @@ export default function HomePage({
     : isSessionLoading
       ? "Estamos verificando tu sesión de Google."
       : isAuthenticated
-        ? "Sesión Google activa. Ya podés guardar en Drive."
-        : "Conectate con Google para habilitar el guardado en Drive.";
+        ? "Sesión Google activa. Ya podés guardar datos internos en la base y adjuntos en Drive."
+        : "Conectate con Google para habilitar el guardado.";
 
   const applicationSettingsValidationMessage = getFieldValidationMessage(
     applicationSettingsForm.values,
@@ -173,7 +173,7 @@ export default function HomePage({
         ...currentState,
         isSubmitting: false,
         result,
-        successMessage: `Configuración guardada en Drive con id ${result.id}.`,
+        successMessage: `Configuración guardada en la base de datos con id ${result.id}.`,
       }));
     } catch (error) {
       setApplicationSettingsForm((currentState) => ({
@@ -181,7 +181,7 @@ export default function HomePage({
         error:
           error instanceof Error
             ? error.message
-            : "No pudimos guardar la configuración en Google Drive.",
+            : "No pudimos guardar la configuración en la base de datos.",
         isSubmitting: false,
       }));
     }
@@ -239,7 +239,7 @@ export default function HomePage({
           applicationSettingsForm={applicationSettingsForm}
           applicationSettingsHint={
             applicationSettingsValidationMessage ??
-            "Usá este guardado para probar la persistencia de la configuración."
+            "Usá este guardado para probar la persistencia interna en la base de datos."
           }
           isAuthenticated={isAuthenticated}
           onApplicationSettingsFieldChange={updateApplicationSettingsField}

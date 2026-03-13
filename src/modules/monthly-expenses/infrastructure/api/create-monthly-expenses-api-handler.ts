@@ -1,12 +1,12 @@
 import type { NextApiHandler, NextApiRequest } from "next";
-import type { drive_v3 } from "googleapis";
 import { z } from "zod";
 
 import {
   GoogleOAuthAuthenticationError,
   GoogleOAuthConfigurationError,
 } from "@/modules/auth/infrastructure/oauth/google-oauth-token";
-import { GoogleDriveStorageError } from "@/modules/storage/infrastructure/google-drive/google-drive-storage-error";
+import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
+import { TursoConfigurationError } from "@/modules/shared/infrastructure/database/turso-server-config";
 
 import type { SaveMonthlyExpensesCommand } from "../../application/commands/save-monthly-expenses-command";
 
@@ -31,23 +31,34 @@ const monthlyExpensesRequestBodySchema = z.object({
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
 });
 
-async function getDefaultDriveClient(request: NextApiRequest) {
-  const { getGoogleDriveClientFromRequest } = await import(
-    "@/modules/auth/infrastructure/google-drive/google-drive-client"
+async function getDefaultUserSubject(request: NextApiRequest) {
+  const { getAuthenticatedUserSubjectFromRequest } = await import(
+    "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
   );
 
-  return getGoogleDriveClientFromRequest(request);
+  return getAuthenticatedUserSubjectFromRequest(request);
+}
+
+async function getDefaultDatabase(): Promise<TursoDatabase> {
+  const { createTursoDatabase } = await import(
+    "@/modules/shared/infrastructure/database/drizzle/turso-database"
+  );
+
+  return createTursoDatabase();
 }
 
 export function createMonthlyExpensesApiHandler<TResult>({
-  getDriveClient = getDefaultDriveClient,
+  getDatabase = getDefaultDatabase,
+  getUserSubject = getDefaultUserSubject,
   save,
 }: {
-  getDriveClient?: (request: NextApiRequest) => Promise<drive_v3.Drive>;
+  getDatabase?: () => Promise<TursoDatabase> | TursoDatabase;
+  getUserSubject?: (request: NextApiRequest) => Promise<string>;
   save: (dependencies: {
     command: SaveMonthlyExpensesCommand;
-    driveClient: drive_v3.Drive;
+    database: TursoDatabase;
     request: NextApiRequest;
+    userSubject: string;
   }) => Promise<TResult>;
 }): NextApiHandler {
   return async function monthlyExpensesApiHandler(request, response) {
@@ -69,11 +80,13 @@ export function createMonthlyExpensesApiHandler<TResult>({
     }
 
     try {
-      const driveClient = await getDriveClient(request);
+      const userSubject = await getUserSubject(request);
+      const database = await getDatabase();
       const result = await save({
         command: parsedBody.data,
-        driveClient,
+        database,
         request,
+        userSubject,
       });
 
       return response.status(201).json({
@@ -83,49 +96,26 @@ export function createMonthlyExpensesApiHandler<TResult>({
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
           error:
-            "Google authentication is required before saving monthly expenses to Drive.",
+            "Google authentication is required before saving monthly expenses.",
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
           error:
-            "Google OAuth server configuration is incomplete for monthly expenses Drive storage.",
+            "Google OAuth server configuration is incomplete for monthly expenses storage.",
         });
       }
 
-      if (error instanceof GoogleDriveStorageError) {
-        if (error.code === "api_disabled") {
-          return response.status(503).json({
-            error:
-              "Google Drive API is not enabled for this project yet. Enable drive.googleapis.com in Google Cloud and try again.",
-          });
-        }
-
-        if (error.code === "invalid_scope") {
-          return response.status(403).json({
-            error:
-              "The current Google session is missing the Drive permissions required to save monthly expenses. Sign out, connect Google again, and approve Drive access.",
-          });
-        }
-
-        if (error.code === "insufficient_permissions") {
-          return response.status(403).json({
-            error:
-              "Google Drive denied permission to save monthly expenses. Verify the selected Google account can create Drive files and try again.",
-          });
-        }
-
-        if (error.code === "invalid_payload") {
-          return response.status(400).json({
-            error:
-              "Google Drive rejected the monthly expenses payload. Check the month, rows, and numeric values and try again.",
-          });
-        }
+      if (error instanceof TursoConfigurationError) {
+        return response.status(500).json({
+          error:
+            "Database server configuration is incomplete for monthly expenses storage.",
+        });
       }
 
       return response.status(500).json({
-        error: "We could not save monthly expenses to Google Drive. Try again later.",
+        error: "We could not save monthly expenses right now. Try again later.",
       });
     }
   };

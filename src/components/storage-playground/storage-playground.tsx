@@ -86,8 +86,8 @@ export function StoragePlayground({
             </h2>
           </CardTitle>
           <CardDescription>
-            Guardá una configuración en `appDataFolder` o un archivo visible del
-            usuario sin salir de esta pantalla.
+            Guardá configuración interna en la base de datos y un archivo visible
+            del usuario en Drive sin salir de esta pantalla.
           </CardDescription>
         </CardHeader>
         <CardContent className={styles.content}>
@@ -117,8 +117,8 @@ export function StoragePlayground({
               <div className={styles.formHeader}>
                 <h3 className={styles.formTitle}>Guardar configuración</h3>
                 <p className={styles.formDescription}>
-                  Este formulario crea un archivo oculto para la app dentro de
-                  `appDataFolder`.
+                  Este formulario guarda configuración interna de la app en la
+                  base de datos.
                 </p>
               </div>
 

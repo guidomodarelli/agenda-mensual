@@ -1,12 +1,12 @@
 import type { NextApiHandler, NextApiRequest } from "next";
-import type { drive_v3 } from "googleapis";
 import { z } from "zod";
 
 import {
   GoogleOAuthAuthenticationError,
   GoogleOAuthConfigurationError,
 } from "@/modules/auth/infrastructure/oauth/google-oauth-token";
-import { GoogleDriveStorageError } from "@/modules/storage/infrastructure/google-drive/google-drive-storage-error";
+import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
+import { TursoConfigurationError } from "@/modules/shared/infrastructure/database/turso-server-config";
 
 const lenderSchema = z.object({
   id: z.string().trim().min(1),
@@ -19,25 +19,39 @@ const lendersRequestBodySchema = z.object({
   lenders: z.array(lenderSchema),
 });
 
-async function getDefaultDriveClient(request: NextApiRequest) {
-  const { getGoogleDriveClientFromRequest } = await import(
-    "@/modules/auth/infrastructure/google-drive/google-drive-client"
+async function getDefaultUserSubject(request: NextApiRequest) {
+  const { getAuthenticatedUserSubjectFromRequest } = await import(
+    "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
   );
 
-  return getGoogleDriveClientFromRequest(request);
+  return getAuthenticatedUserSubjectFromRequest(request);
+}
+
+async function getDefaultDatabase(): Promise<TursoDatabase> {
+  const { createTursoDatabase } = await import(
+    "@/modules/shared/infrastructure/database/drizzle/turso-database"
+  );
+
+  return createTursoDatabase();
 }
 
 export function createLendersApiHandler<TGetResult, TSaveResult>({
   get,
-  getDriveClient = getDefaultDriveClient,
+  getDatabase = getDefaultDatabase,
+  getUserSubject = getDefaultUserSubject,
   save,
 }: {
-  get: (dependencies: { driveClient: drive_v3.Drive }) => Promise<TGetResult>;
-  getDriveClient?: (request: NextApiRequest) => Promise<drive_v3.Drive>;
+  get: (dependencies: {
+    database: TursoDatabase;
+    userSubject: string;
+  }) => Promise<TGetResult>;
+  getDatabase?: () => Promise<TursoDatabase> | TursoDatabase;
+  getUserSubject?: (request: NextApiRequest) => Promise<string>;
   save: (dependencies: {
     command: z.infer<typeof lendersRequestBodySchema>;
-    driveClient: drive_v3.Drive;
+    database: TursoDatabase;
     request: NextApiRequest;
+    userSubject: string;
   }) => Promise<TSaveResult>;
 }): NextApiHandler {
   return async function lendersApiHandler(request, response) {
@@ -50,11 +64,12 @@ export function createLendersApiHandler<TGetResult, TSaveResult>({
     }
 
     try {
-      const driveClient = await getDriveClient(request);
+      const userSubject = await getUserSubject(request);
+      const database = await getDatabase();
 
       if (request.method === "GET") {
         return response.status(200).json({
-          data: await get({ driveClient }),
+          data: await get({ database, userSubject }),
         });
       }
 
@@ -70,53 +85,30 @@ export function createLendersApiHandler<TGetResult, TSaveResult>({
       return response.status(201).json({
         data: await save({
           command: parsedBody.data,
-          driveClient,
+          database,
           request,
+          userSubject,
         }),
       });
     } catch (error) {
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
           error:
-            "Google authentication is required before reading or saving lenders in Drive.",
+            "Google authentication is required before reading or saving lenders.",
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
           error:
-            "Google OAuth server configuration is incomplete for lenders Drive storage.",
+            "Google OAuth server configuration is incomplete for lenders storage.",
         });
       }
 
-      if (error instanceof GoogleDriveStorageError) {
-        if (error.code === "api_disabled") {
-          return response.status(503).json({
-            error:
-              "Google Drive API is not enabled for this project yet. Enable drive.googleapis.com in Google Cloud and try again.",
-          });
-        }
-
-        if (error.code === "invalid_scope") {
-          return response.status(403).json({
-            error:
-              "The current Google session is missing the Drive permissions required to manage lenders. Sign out, connect Google again, and approve Drive access.",
-          });
-        }
-
-        if (error.code === "insufficient_permissions") {
-          return response.status(403).json({
-            error:
-              "Google Drive denied permission to manage lenders. Verify the selected Google account can access app data and try again.",
-          });
-        }
-
-        if (error.code === "invalid_payload") {
-          return response.status(400).json({
-            error:
-              "Google Drive rejected the lenders payload. Check the catalog values and try again.",
-          });
-        }
+      if (error instanceof TursoConfigurationError) {
+        return response.status(500).json({
+          error: "Database server configuration is incomplete for lenders storage.",
+        });
       }
 
       if (error instanceof Error) {
@@ -126,7 +118,7 @@ export function createLendersApiHandler<TGetResult, TSaveResult>({
       }
 
       return response.status(500).json({
-        error: "We could not manage lenders in Google Drive. Try again later.",
+        error: "We could not manage lenders right now. Try again later.",
       });
     }
   };

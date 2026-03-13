@@ -9,7 +9,6 @@ describe("getStorageBootstrap", () => {
         "email",
         "profile",
         "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive.appdata",
       ],
     });
 
@@ -25,14 +24,8 @@ describe("getStorageBootstrap", () => {
         "email",
         "profile",
         "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive.appdata",
       ],
       storageTargets: [
-        {
-          id: "applicationSettings",
-          requiredScope: "https://www.googleapis.com/auth/drive.appdata",
-          writesUserVisibleFiles: false,
-        },
         {
           id: "userFiles",
           requiredScope: "https://www.googleapis.com/auth/drive.file",

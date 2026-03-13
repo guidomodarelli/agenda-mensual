@@ -74,9 +74,17 @@ export class GoogleDriveMonthlyExpensesRepository
       driveClient: this.driveClient,
       operation: "google-drive-monthly-expenses-repository:save:getFolder",
     });
+    const monthlyExpensesFolderId = monthlyExpensesFolder.id;
+
+    if (!monthlyExpensesFolderId) {
+      throw new Error(
+        "google-drive-monthly-expenses-repository:save could not resolve a folder id for monthly expenses storage.",
+      );
+    }
+
     const existingFile = await this.findFileByMonth(
       document.month,
-      monthlyExpensesFolder.id,
+      monthlyExpensesFolderId,
     );
     const legacyFile = existingFile
       ? null
@@ -87,8 +95,8 @@ export class GoogleDriveMonthlyExpensesRepository
       if (fileToUpdate?.id) {
         const response = await this.driveClient.files.update({
           ...this.createUpdateRequest({
-            file: fileToUpdate,
-            folderId: monthlyExpensesFolder.id,
+            file: fileToUpdate as drive_v3.Schema$File & { id: string },
+            folderId: monthlyExpensesFolderId,
             serializedDocument,
           }),
         });
@@ -107,7 +115,7 @@ export class GoogleDriveMonthlyExpensesRepository
         },
         requestBody: {
           name: serializedDocument.name,
-          parents: [monthlyExpensesFolder.id],
+          parents: [monthlyExpensesFolderId],
         },
       });
 
@@ -167,7 +175,7 @@ export class GoogleDriveMonthlyExpensesRepository
     folderId,
     serializedDocument,
   }: {
-    file: drive_v3.Schema$File;
+    file: drive_v3.Schema$File & { id: string };
     folderId: string;
     serializedDocument: ReturnType<typeof mapMonthlyExpensesDocumentToGoogleDriveFile>;
   }) {

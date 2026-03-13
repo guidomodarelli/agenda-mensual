@@ -25,14 +25,8 @@ const bootstrap: StorageBootstrapResult = {
     "email",
     "profile",
     "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive.appdata",
   ],
   storageTargets: [
-    {
-      id: "applicationSettings",
-      requiredScope: "https://www.googleapis.com/auth/drive.appdata",
-      writesUserVisibleFiles: false,
-    },
     {
       id: "userFiles",
       requiredScope: "https://www.googleapis.com/auth/drive.file",
@@ -68,7 +62,7 @@ describe("HomePage", () => {
       screen.queryByText("Pages Router + SSR + Hexagonal"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("Conectate con Google para habilitar el guardado en Drive."),
+      screen.getByText("Conectate con Google para habilitar el guardado."),
     ).toBeInTheDocument();
   });
 
@@ -132,7 +126,9 @@ describe("HomePage", () => {
     });
 
     expect(
-      screen.getByText("Configuración guardada en Drive con id settings-file-id."),
+      screen.getByText(
+        "Configuración guardada en la base de datos con id settings-file-id.",
+      ),
     ).toBeInTheDocument();
   });
 

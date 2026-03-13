@@ -46,7 +46,8 @@ function createDefaultProps() {
     onApplicationSettingsSubmit: jest.fn(),
     onUserFileFieldChange: jest.fn(),
     onUserFileSubmit: jest.fn(),
-    sessionMessage: "Sesión Google activa. Ya podés guardar en Drive.",
+    sessionMessage:
+      "Sesión Google activa. Ya podés guardar datos internos en la base y adjuntos en Drive.",
     sessionUserEmail: "gus@example.com",
     sessionUserName: "Gus",
     userFilesActionDisabled: false,
@@ -62,7 +63,7 @@ describe("StoragePlayground", () => {
         {...createDefaultProps()}
         applicationSettingsActionDisabled
         isAuthenticated={false}
-        sessionMessage="Conectate con Google para habilitar el guardado en Drive."
+        sessionMessage="Conectate con Google para habilitar el guardado."
         sessionUserEmail={null}
         sessionUserName={null}
         userFilesActionDisabled
@@ -70,7 +71,7 @@ describe("StoragePlayground", () => {
     );
 
     expect(
-      screen.getByText("Conectate con Google para habilitar el guardado en Drive."),
+      screen.getByText("Conectate con Google para habilitar el guardado."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Guardar configuración" }),
@@ -84,7 +85,9 @@ describe("StoragePlayground", () => {
     render(<StoragePlayground {...createDefaultProps()} />);
 
     expect(
-      screen.getByText("Sesión Google activa. Ya podés guardar en Drive."),
+      screen.getByText(
+        "Sesión Google activa. Ya podés guardar datos internos en la base y adjuntos en Drive.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -106,7 +109,8 @@ describe("StoragePlayground", () => {
             mimeType: "application/json",
             name: "application-settings.json",
           },
-          successMessage: "Configuración guardada en Drive con id settings-file-id.",
+          successMessage:
+            "Configuración guardada en la base de datos con id settings-file-id.",
         }}
         userFilesForm={{
           ...createStorageFormState(DEFAULT_USER_FILE_VALUES),
@@ -123,7 +127,9 @@ describe("StoragePlayground", () => {
     );
 
     expect(
-      screen.getByText("Configuración guardada en Drive con id settings-file-id."),
+      screen.getByText(
+        "Configuración guardada en la base de datos con id settings-file-id.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

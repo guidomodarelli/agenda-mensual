@@ -19,6 +19,13 @@ export class GoogleDriveUserFilesRepository implements UserFilesRepository {
       driveClient: this.driveClient,
       operation: "google-drive-user-files-repository:save:getFolder",
     });
+    const visibleDriveFolderId = visibleDriveFolder.id;
+
+    if (!visibleDriveFolderId) {
+      throw new Error(
+        "google-drive-user-files-repository:save could not resolve a folder id for user file storage.",
+      );
+    }
 
     try {
       const response = await this.driveClient.files.create({
@@ -29,7 +36,7 @@ export class GoogleDriveUserFilesRepository implements UserFilesRepository {
         },
         requestBody: {
           name: file.name,
-          parents: [visibleDriveFolder.id],
+          parents: [visibleDriveFolderId],
         },
       });
 

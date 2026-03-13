@@ -65,7 +65,6 @@ import {
 } from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-api";
 import { getStorageBootstrap } from "@/modules/storage/application/queries/get-storage-bootstrap";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
-import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 
 import styles from "./monthly-expenses.module.scss";
 
@@ -558,7 +557,7 @@ export default function MonthlyExpensesPage({
     : isSessionLoading
       ? "Estamos verificando tu sesión de Google."
       : isAuthenticated
-        ? "Sesión Google activa. Ya podés guardar tus gastos mensuales."
+        ? "Sesión Google activa. Ya podés guardar tus gastos mensuales en la base de datos."
         : "Conectate con Google para cargar y guardar tus gastos mensuales.";
   const expenseValidationMessage = getExpenseValidationMessage(
     formState.month,
@@ -704,7 +703,7 @@ export default function MonthlyExpensesPage({
         isSubmitting: false,
         result,
         rows,
-        successMessage: `Gastos mensuales guardados en Drive con id ${result.id} dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
+        successMessage: `Gastos mensuales guardados en la base de datos con id ${result.id}.`,
       }));
       await refreshLoansReport();
       return true;
@@ -1177,20 +1176,30 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
     }
 
     try {
-      const { getGoogleDriveClientFromRequest } = await import(
-        "@/modules/auth/infrastructure/google-drive/google-drive-client"
+      const { getAuthenticatedUserSubjectFromRequest } = await import(
+        "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
       );
-      const { GoogleDriveMonthlyExpensesRepository } = await import(
-        "@/modules/monthly-expenses/infrastructure/google-drive/repositories/google-drive-monthly-expenses-repository"
+      const { createTursoDatabase } = await import(
+        "@/modules/shared/infrastructure/database/drizzle/turso-database"
       );
-      const { GoogleDriveLendersRepository } = await import(
-        "@/modules/lenders/infrastructure/google-drive/repositories/google-drive-lenders-repository"
+      const { DrizzleMonthlyExpensesRepository } = await import(
+        "@/modules/monthly-expenses/infrastructure/turso/repositories/drizzle-monthly-expenses-repository"
       );
-      const driveClient = await getGoogleDriveClientFromRequest(context.req);
-      const monthlyExpensesRepository = new GoogleDriveMonthlyExpensesRepository(
-        driveClient,
+      const { DrizzleLendersRepository } = await import(
+        "@/modules/lenders/infrastructure/turso/repositories/drizzle-lenders-repository"
       );
-      const lendersRepository = new GoogleDriveLendersRepository(driveClient);
+      const userSubject = await getAuthenticatedUserSubjectFromRequest(
+        context.req,
+      );
+      const database = createTursoDatabase();
+      const monthlyExpensesRepository = new DrizzleMonthlyExpensesRepository(
+        database,
+        userSubject,
+      );
+      const lendersRepository = new DrizzleLendersRepository(
+        database,
+        userSubject,
+      );
       const [documentResult, lendersResult, reportResult] = await Promise.allSettled([
         getMonthlyExpensesDocument({
           query: {
@@ -1229,15 +1238,15 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
               : createEmptyMonthlyExpensesLoansReportResult(),
           lendersLoadError:
             lendersResult.status === "rejected"
-              ? "No pudimos cargar el catálogo de prestadores desde Drive."
+              ? "No pudimos cargar el catálogo de prestadores desde la base de datos."
               : null,
           loadError:
             documentResult.status === "rejected"
-              ? "No pudimos cargar el archivo mensual desde Drive. Igual podés editar la tabla y volver a guardarla."
+              ? "No pudimos cargar los gastos mensuales desde la base de datos. Igual podés editar la tabla y volver a guardarla."
               : null,
           reportLoadError:
             reportResult.status === "rejected"
-              ? "No pudimos cargar el reporte de deudas desde Drive."
+              ? "No pudimos cargar el reporte de deudas desde la base de datos."
               : null,
         },
       };
@@ -1257,7 +1266,7 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
             (error.name === "GoogleOAuthAuthenticationError" ||
               error.name === "GoogleOAuthConfigurationError")
               ? null
-              : "No pudimos cargar el archivo mensual desde Drive. Igual podés editar la tabla y volver a guardarla.",
+              : "No pudimos cargar los gastos mensuales desde la base de datos. Igual podés editar la tabla y volver a guardarla.",
           reportLoadError: null,
         },
       };

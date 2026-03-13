@@ -1,13 +1,15 @@
 import { saveApplicationSettings } from "@/modules/application-settings/application/use-cases/save-application-settings";
-import { GoogleDriveApplicationSettingsRepository } from "@/modules/application-settings/infrastructure/google-drive/repositories/google-drive-application-settings-repository";
-import { createStorageApiHandler } from "@/modules/storage/infrastructure/api/create-storage-api-handler";
+import { createApplicationSettingsApiHandler } from "@/modules/application-settings/infrastructure/api/create-application-settings-api-handler";
+import { DrizzleApplicationSettingsRepository } from "@/modules/application-settings/infrastructure/turso/repositories/drizzle-application-settings-repository";
 
-export default createStorageApiHandler({
-  operationLabel: "application settings",
-  async save({ command, driveClient }) {
+export default createApplicationSettingsApiHandler({
+  async save({ command, database, userSubject }) {
     return saveApplicationSettings({
       command,
-      repository: new GoogleDriveApplicationSettingsRepository(driveClient),
+      repository: new DrizzleApplicationSettingsRepository(
+        database,
+        userSubject,
+      ),
     });
   },
 });

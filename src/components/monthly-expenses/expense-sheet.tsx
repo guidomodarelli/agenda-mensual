@@ -90,6 +90,10 @@ interface ExpenseSheetProps {
   validationMessage: string | null;
 }
 
+type ExpenseSheetContentProps = Omit<ExpenseSheetProps, "draft"> & {
+  draft: MonthlyExpensesEditableRow;
+};
+
 type ExpenseFieldErrorMap = Partial<Record<ExpenseEditableFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseEditableFieldName, string>;
 
@@ -237,6 +241,17 @@ function getFieldErrors(draft: MonthlyExpensesEditableRow): ExpenseFieldErrorMap
 }
 
 export function ExpenseSheet({
+  draft,
+  ...props
+}: ExpenseSheetProps) {
+  if (!draft) {
+    return null;
+  }
+
+  return <ExpenseSheetContent {...props} draft={draft} />;
+}
+
+function ExpenseSheetContent({
   actionDisabled,
   changedFields,
   draft,
@@ -253,10 +268,7 @@ export function ExpenseSheet({
   onUnsavedChangesSave,
   showUnsavedChangesDialog,
   validationMessage,
-}: ExpenseSheetProps) {
-  if (!draft) {
-    return null;
-  }
+}: ExpenseSheetContentProps) {
 
   const title = mode === "create" ? "Nuevo gasto" : "Editar gasto";
   const description =
@@ -295,10 +307,6 @@ export function ExpenseSheet({
       },
     );
   }, [fieldErrors, form]);
-
-  useEffect(() => {
-    setStartMonthCalendarMonth(selectedStartMonthDate ?? new Date());
-  }, [selectedStartMonthDate]);
 
   return (
     <>

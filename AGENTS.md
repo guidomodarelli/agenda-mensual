@@ -20,7 +20,6 @@
   - `email`
   - `profile`
   - `https://www.googleapis.com/auth/drive.file`
-  - `https://www.googleapis.com/auth/drive.appdata`
 - Do not request `https://www.googleapis.com/auth/drive` unless there is an explicit product requirement for full My Drive access.
 - Request offline access only from the server-side OAuth flow and persist refresh tokens securely.
 - Use the Google callback path for Pages Router: `/api/auth/callback/google`.
@@ -216,15 +215,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Google Drive rules
 
-- Use `drive.appdata` for application metadata stored in `appDataFolder`.
-- Files saved to `appDataFolder` must be created with:
-
-```ts
-parents: ['appDataFolder']
-```
-
-- Queries against `appDataFolder` must use the `appDataFolder` space.
-- Do not attempt to share, move across spaces, or trash files stored in `appDataFolder`.
+- Store internal application data in the database (Turso), not in Drive app data storage.
 - Use `drive.file` for user-visible files in My Drive.
 - Keep Google SDK calls isolated in infrastructure adapters.
 - Keep Google Drive error mapping and Drive client factories inside module infrastructure folders such as `src/modules/storage/infrastructure/*` and `src/modules/auth/infrastructure/*`.

@@ -9,7 +9,6 @@ import {
   getSafeMonthlyExpensesErrorMessage,
 } from "@/modules/monthly-expenses/application/queries/get-monthly-expenses-page-feedback";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
-import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 import MonthlyExpensesPage, {
   getRequestedMonthlyExpensesTab,
   getReportProviderFilterOptions,
@@ -39,14 +38,8 @@ const bootstrap: StorageBootstrapResult = {
     "email",
     "profile",
     "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive.appdata",
   ],
   storageTargets: [
-    {
-      id: "applicationSettings",
-      requiredScope: "https://www.googleapis.com/auth/drive.appdata",
-      writesUserVisibleFiles: false,
-    },
     {
       id: "userFiles",
       requiredScope: "https://www.googleapis.com/auth/drive.file",
@@ -340,20 +333,13 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByText("Internet")).toBeInTheDocument();
     expect(
       screen.getByText(
-        `Gastos mensuales guardados en Drive con id monthly-expenses-file-id dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
+        "Gastos mensuales guardados en la base de datos con id monthly-expenses-file-id.",
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Carpeta en Drive:")).not.toBeInTheDocument();
     expect(
-      screen.getByText(
-        `Carpeta en Drive: ${VISIBLE_DRIVE_FOLDER_NAME}`,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Abrir archivo mensual en Drive" }),
-    ).toHaveAttribute(
-      "href",
-      "https://drive.google.com/file/d/monthly-expenses-file-id/view",
-    );
+      screen.queryByRole("link", { name: "Abrir archivo mensual en Drive" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render the authenticated session identity details", () => {
