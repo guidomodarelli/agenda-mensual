@@ -97,7 +97,6 @@ type ExpenseSheetContentProps = Omit<ExpenseSheetProps, "draft"> & {
 type ExpenseFieldErrorMap = Partial<Record<ExpenseEditableFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseEditableFieldName, string>;
 
-const INSTALLMENT_COUNT_SUGGESTIONS_ID = "expense-installment-count-suggestions";
 const INSTALLMENT_COUNT_SUGGESTIONS = ["3", "6", "9", "12", "18", "24"];
 
 function getFieldLabel(label: string, isChanged: boolean) {
@@ -719,11 +718,10 @@ function ExpenseSheetContent({
                                       : "false"
                                   }
                                   inputMode="numeric"
-                                  list={INSTALLMENT_COUNT_SUGGESTIONS_ID}
                                   onChange={(event) =>
                                     onFieldChange(
                                       "installmentCount",
-                                      event.target.value,
+                                      event.target.value.replace(/[^\d]/g, ""),
                                     )
                                   }
                                   pattern="[0-9]*"
@@ -732,11 +730,28 @@ function ExpenseSheetContent({
                                   value={draft.installmentCount}
                                 />
                               </FormControl>
-                              <datalist id={INSTALLMENT_COUNT_SUGGESTIONS_ID}>
+                              <div className={styles.installmentSuggestions}>
                                 {INSTALLMENT_COUNT_SUGGESTIONS.map((installment) => (
-                                  <option key={installment} value={installment} />
+                                  <Button
+                                    aria-label={`Usar ${installment} cuotas`}
+                                    aria-pressed={draft.installmentCount === installment}
+                                    className={cn(
+                                      styles.installmentSuggestionButton,
+                                      draft.installmentCount === installment &&
+                                        styles.installmentSuggestionButtonActive,
+                                    )}
+                                    key={installment}
+                                    onClick={() =>
+                                      onFieldChange("installmentCount", installment)
+                                    }
+                                    size="xs"
+                                    type="button"
+                                    variant="outline"
+                                  >
+                                    {installment}
+                                  </Button>
                                 ))}
-                              </datalist>
+                              </div>
                               <FormMessage className={styles.fieldErrorText} />
                             </div>
                           </FormItem>

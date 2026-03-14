@@ -108,6 +108,27 @@
   color: var(--destructive);
 }
 
+.installmentSuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.55rem;
+}
+
+.installmentSuggestionButton {
+  min-width: 2.4rem;
+}
+
+.installmentSuggestionButtonActive {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  color: var(--foreground);
+}
+
+.installmentSuggestionButtonActive:hover {
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
 .readOnlyField {
   color: var(--muted-foreground);
   background: color-mix(in srgb, var(--muted) 70%, transparent);

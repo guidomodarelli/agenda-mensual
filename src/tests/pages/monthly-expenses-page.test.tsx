@@ -1352,7 +1352,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
   });
 
-  it("shows installment shortcuts and allows custom installment input", async () => {
+  it("shows installment quick buttons, updates input on click, and allows custom input", async () => {
     const user = userEvent.setup();
 
     mockedUseSession.mockReturnValue({
@@ -1381,26 +1381,80 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     const installmentInput = screen.getByLabelText("Cantidad total de cuotas");
+    const quickInstallment3 = screen.getByRole("button", {
+      name: "Usar 3 cuotas",
+    });
+    const quickInstallment6 = screen.getByRole("button", {
+      name: "Usar 6 cuotas",
+    });
+    const quickInstallment9 = screen.getByRole("button", {
+      name: "Usar 9 cuotas",
+    });
+    const quickInstallment12 = screen.getByRole("button", {
+      name: "Usar 12 cuotas",
+    });
+    const quickInstallment18 = screen.getByRole("button", {
+      name: "Usar 18 cuotas",
+    });
+    const quickInstallment24 = screen.getByRole("button", {
+      name: "Usar 24 cuotas",
+    });
 
-    expect(installmentInput).toHaveAttribute(
-      "list",
-      "expense-installment-count-suggestions",
-    );
+    expect(quickInstallment3).toBeInTheDocument();
+    expect(quickInstallment6).toBeInTheDocument();
+    expect(quickInstallment9).toBeInTheDocument();
+    expect(quickInstallment12).toBeInTheDocument();
+    expect(quickInstallment18).toBeInTheDocument();
+    expect(quickInstallment24).toBeInTheDocument();
 
-    const suggestionsList = document.getElementById(
-      "expense-installment-count-suggestions",
-    );
+    expect(quickInstallment9).toHaveAttribute("aria-pressed", "false");
+    await user.click(quickInstallment9);
+    expect(installmentInput).toHaveValue("9");
+    expect(quickInstallment9).toHaveAttribute("aria-pressed", "true");
 
-    expect(suggestionsList).not.toBeNull();
-    expect(
-      Array.from(suggestionsList?.querySelectorAll("option") ?? []).map(
-        (option) => option.getAttribute("value"),
-      ),
-    ).toEqual(["3", "6", "9", "12", "18", "24"]);
-
+    await user.clear(installmentInput);
     await user.type(installmentInput, "7");
 
     expect(installmentInput).toHaveValue("7");
+    expect(quickInstallment9).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("marks the matching quick button as active when typing a suggested value", async () => {
+    const user = userEvent.setup();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.click(screen.getByLabelText("Es deuda/préstamo"));
+
+    const installmentInput = screen.getByLabelText("Cantidad total de cuotas");
+    const quickInstallment12 = screen.getByRole("button", {
+      name: "Usar 12 cuotas",
+    });
+
+    await user.type(installmentInput, "12");
+
+    expect(quickInstallment12).toHaveAttribute("aria-pressed", "true");
   });
 
   it("saves a loan with a custom installment count outside shortcuts", async () => {
