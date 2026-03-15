@@ -1389,6 +1389,59 @@ describe("MonthlyExpensesPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("saves a new expense when pressing Enter inside the expense sheet", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Descripción"), "Internet");
+    await user.type(screen.getByLabelText("Subtotal"), "15000");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: expect.any(String),
+            occurrencesPerMonth: 1,
+            paymentLink: null,
+            subtotal: 15000,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: "Nuevo gasto" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the occurrences input only for multiple monthly payments", async () => {
     const user = userEvent.setup();
 

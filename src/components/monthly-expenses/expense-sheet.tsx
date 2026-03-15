@@ -249,6 +249,26 @@ function getFieldErrors(draft: MonthlyExpensesEditableRow): ExpenseFieldErrorMap
   return fieldErrors;
 }
 
+function shouldSubmitOnEnterFromTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLInputElement)) {
+    return false;
+  }
+
+  const inputType = target.type.toLowerCase();
+
+  return ![
+    "button",
+    "checkbox",
+    "color",
+    "file",
+    "image",
+    "radio",
+    "range",
+    "reset",
+    "submit",
+  ].includes(inputType);
+}
+
 export function ExpenseSheet({
   draft,
   ...props
@@ -375,6 +395,18 @@ function ExpenseSheetContent({
           <Form {...form}>
             <form
               className={styles.form}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") {
+                  return;
+                }
+
+                if (!shouldSubmitOnEnterFromTarget(event.target)) {
+                  return;
+                }
+
+                event.preventDefault();
+                handleSaveAttempt();
+              }}
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSaveAttempt();
