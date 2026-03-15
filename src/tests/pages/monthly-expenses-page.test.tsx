@@ -2200,13 +2200,9 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "7");
-    await user.click(screen.getByLabelText("Inicio de la deuda"));
-    const [monthSelect, yearSelect] = screen
-      .getAllByRole("combobox")
-      .filter((element) => element.tagName === "SELECT");
-    await user.selectOptions(monthSelect, "0");
-    await user.selectOptions(yearSelect, "2026");
-    await user.click(screen.getByRole("button", { name: /Usar enero de 2026/i }));
+    fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
+      target: { value: "2026-01" },
+    });
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
     await user.click(screen.getByRole("button", { name: /Banco Ciudad/i }));
     await user.click(screen.getByRole("button", { name: "Guardar" }));
@@ -2283,13 +2279,9 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "0");
-    await user.click(screen.getByLabelText("Inicio de la deuda"));
-    const [monthSelect, yearSelect] = screen
-      .getAllByRole("combobox")
-      .filter((element) => element.tagName === "SELECT");
-    await user.selectOptions(monthSelect, "0");
-    await user.selectOptions(yearSelect, "2026");
-    await user.click(screen.getByRole("button", { name: /Usar enero de 2026/i }));
+    fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
+      target: { value: "2026-01" },
+    });
 
     expect(
       screen.queryByText("Completá la cantidad total de cuotas."),
@@ -2306,7 +2298,7 @@ describe("MonthlyExpensesPage", () => {
     );
   });
 
-  it("shows year options from 2000 to 2100 in debt start month picker", async () => {
+  it("uses native month input with a 2000 to 2100 range for debt start month", async () => {
     const user = userEvent.setup();
 
     mockedUseSession.mockReturnValue({
@@ -2345,18 +2337,12 @@ describe("MonthlyExpensesPage", () => {
     );
     await user.click(screen.getByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
-    await user.click(screen.getByLabelText("Inicio de la deuda"));
 
-    const yearSelect = screen.getByRole("combobox", {
-      name: /choose the year/i,
-    });
+    const startMonthInput = screen.getByLabelText("Inicio de la deuda");
 
-    expect(
-      within(yearSelect).getByRole("option", { name: "2000" }),
-    ).toBeInTheDocument();
-    expect(
-      within(yearSelect).getByRole("option", { name: "2100" }),
-    ).toBeInTheDocument();
+    expect(startMonthInput).toHaveAttribute("type", "month");
+    expect(startMonthInput).toHaveAttribute("min", "2000-01");
+    expect(startMonthInput).toHaveAttribute("max", "2100-12");
   });
 
   it("requires lender selection before saving loan metadata from the sheet", async () => {
@@ -2761,13 +2747,9 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
     await user.click(screen.getByRole("button", { name: "Papa Familiar" }));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "12");
-    await user.click(screen.getByLabelText("Inicio de la deuda"));
-    const [monthSelect, yearSelect] = screen
-      .getAllByRole("combobox")
-      .filter((element) => element.tagName === "SELECT");
-    await user.selectOptions(monthSelect, "0");
-    await user.selectOptions(yearSelect, "2026");
-    await user.click(screen.getByRole("button", { name: /Usar enero de 2026/i }));
+    fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
+      target: { value: "2026-01" },
+    });
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
