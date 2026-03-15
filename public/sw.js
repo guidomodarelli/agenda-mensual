@@ -2,6 +2,7 @@ const CACHE_NAME = "mis-finanzas-static-v1";
 
 const PRECACHE_URLS = [
   "/",
+  "/offline",
   "/manifest.webmanifest",
   "/apple-touch-icon.png",
   "/icons/icon-192x192.png",
@@ -51,6 +52,28 @@ self.addEventListener("fetch", (event) => {
     requestUrl.pathname.startsWith("/auth/") ||
     requestUrl.pathname.startsWith("/api/auth/")
   ) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match("/offline").then((offlineResponse) => {
+          if (offlineResponse) {
+            return offlineResponse;
+          }
+
+          return caches.match("/").then((homeResponse) => {
+            if (homeResponse) {
+              return homeResponse;
+            }
+
+            return Response.error();
+          });
+        }),
+      ),
+    );
+
     return;
   }
 
