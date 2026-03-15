@@ -296,6 +296,12 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
 
     expect(
+      screen.getByRole("menuitemcheckbox", { name: "Subtotal" }),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(
       screen.queryByRole("columnheader", { name: "Moneda" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
@@ -326,12 +332,16 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     await user.click(screen.getByRole("menuitem", { name: "Deseleccionar todas" }));
 
+    await user.keyboard("{Escape}");
+
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Moneda" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Link" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     await user.click(screen.getByRole("menuitem", { name: "Seleccionar todas" }));
+
+    await user.keyboard("{Escape}");
 
     expect(screen.getByRole("columnheader", { name: "Moneda" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Link" })).toBeInTheDocument();

@@ -132,7 +132,8 @@ export function DataTable<TData, TValue>({
                 <DropdownMenuLabel>{columnVisibilityMenuLabel}</DropdownMenuLabel>
                 <DropdownMenuItem
                   disabled={areAllHideableColumnsVisible}
-                  onSelect={() => {
+                  onSelect={(event) => {
+                    event.preventDefault();
                     hideableColumns.forEach((column) => {
                       column.toggleVisibility(true);
                     });
@@ -142,7 +143,8 @@ export function DataTable<TData, TValue>({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!areSomeHideableColumnsVisible}
-                  onSelect={() => {
+                  onSelect={(event) => {
+                    event.preventDefault();
                     hideableColumns.forEach((column) => {
                       column.toggleVisibility(false);
                     });
@@ -165,6 +167,9 @@ export function DataTable<TData, TValue>({
                     <DropdownMenuCheckboxItem
                       checked={column.getIsVisible()}
                       key={column.id}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                      }}
                       onCheckedChange={(nextVisible) => {
                         column.toggleVisibility(Boolean(nextVisible));
                       }}
