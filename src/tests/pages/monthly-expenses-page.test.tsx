@@ -2570,6 +2570,72 @@ describe("MonthlyExpensesPage", () => {
     );
   });
 
+  it("prioritizes ipe matches with more contiguous letters", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Impuestos del auto",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Limpieza Domestica",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 12000,
+              total: 12000,
+            },
+            {
+              currency: "ARS",
+              description: "Iphone",
+              id: "expense-3",
+              occurrencesPerMonth: 1,
+              subtotal: 15000,
+              total: 15000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "ipe");
+
+    const iphoneRow = screen.getByText((_, element) => element?.textContent === "Iphone").closest("tr");
+    const impuestosRow = screen.getByText(
+      (_, element) => element?.textContent === "Impuestos del auto",
+    ).closest("tr");
+    const limpiezaRow = screen.getByText(
+      (_, element) => element?.textContent === "Limpieza Domestica",
+    ).closest("tr");
+
+    expect(iphoneRow).not.toBeNull();
+    expect(impuestosRow).not.toBeNull();
+    expect(limpiezaRow).not.toBeNull();
+
+    if (!iphoneRow || !impuestosRow || !limpiezaRow) {
+      throw new Error("Expected all ipe fuzzy matching rows to be present");
+    }
+
+    const visibleRows = screen.getAllByRole("row");
+
+    expect(visibleRows.indexOf(iphoneRow)).toBeLessThan(
+      visibleRows.indexOf(impuestosRow),
+    );
+    expect(visibleRows.indexOf(iphoneRow)).toBeLessThan(
+      visibleRows.indexOf(limpiezaRow),
+    );
+  });
+
   it("shows validation when a debt is missing start month or installments", async () => {
     const user = userEvent.setup();
 

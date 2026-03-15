@@ -640,6 +640,14 @@ function compareDescriptionByFuzzyRank(
     });
   }
 
+  if (leftRank.longestRun !== rightRank.longestRun) {
+    return rightRank.longestRun - leftRank.longestRun;
+  }
+
+  if (leftRank.contiguousPairCount !== rightRank.contiguousPairCount) {
+    return rightRank.contiguousPairCount - leftRank.contiguousPairCount;
+  }
+
   if (leftRank.gapCount !== rightRank.gapCount) {
     return leftRank.gapCount - rightRank.gapCount;
   }

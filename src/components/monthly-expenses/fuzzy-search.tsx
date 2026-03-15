@@ -8,7 +8,9 @@ interface SearchCharWithSourceIndex {
 }
 
 export interface FuzzyMatchRank {
+  contiguousPairCount: number;
   gapCount: number;
+  longestRun: number;
   matchedChars: number;
   maxGap: number;
   span: number;
@@ -110,10 +112,24 @@ export function getFuzzyMatchRank(value: string, query: string): FuzzyMatchRank 
 
   const startIndex = matchedSourceIndices[0] ?? 0;
   const endIndex = matchedSourceIndices[matchedSourceIndices.length - 1] ?? startIndex;
+  let contiguousPairCount = 0;
   let gapCount = 0;
+  let longestRun = matchedSourceIndices.length > 0 ? 1 : 0;
   let maxGap = 0;
+  let currentRun = matchedSourceIndices.length > 0 ? 1 : 0;
 
   for (let index = 1; index < matchedSourceIndices.length; index += 1) {
+    if (matchedSourceIndices[index] === matchedSourceIndices[index - 1] + 1) {
+      contiguousPairCount += 1;
+      currentRun += 1;
+    } else {
+      currentRun = 1;
+    }
+
+    if (currentRun > longestRun) {
+      longestRun = currentRun;
+    }
+
     const gap = Math.max(matchedSourceIndices[index] - matchedSourceIndices[index - 1] - 1, 0);
     gapCount += gap;
 
@@ -123,7 +139,9 @@ export function getFuzzyMatchRank(value: string, query: string): FuzzyMatchRank 
   }
 
   return {
+    contiguousPairCount,
     gapCount,
+    longestRun,
     matchedChars: queryChars.length,
     maxGap,
     span: Math.max(endIndex - startIndex, 0),
