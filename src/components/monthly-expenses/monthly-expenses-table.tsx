@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { ArrowUpDown, ExternalLink, Info, X } from "lucide-react";
+import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { z } from "zod";
 
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
@@ -36,6 +36,7 @@ import {
   getFuzzyMatchIndices,
   renderHighlightedText,
 } from "./fuzzy-search";
+import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
 
@@ -506,7 +507,6 @@ export function MonthlyExpensesTable({
 }: MonthlyExpensesTableProps) {
   const [loanSortMode, setLoanSortMode] =
     useState<LoanSortMode>(DEFAULT_LOAN_SORT_MODE);
-  const [isMonthHintOpen, setIsMonthHintOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const loanSortDirection = getLoanSortDirection(sorting);
 
@@ -829,40 +829,11 @@ export function MonthlyExpensesTable({
             <div className={styles.monthField}>
               <div className={styles.monthLabelRow}>
                 <Label htmlFor="monthly-expenses-month">Mes</Label>
-                <Popover onOpenChange={setIsMonthHintOpen} open={isMonthHintOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      aria-label="Información sobre el campo Mes"
-                      className={styles.monthInfoButton}
-                      size="icon-xs"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Info aria-hidden="true" className={styles.monthInfoIcon} />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    className={styles.monthInfoPopover}
-                    sideOffset={8}
-                  >
-                    <div className={styles.monthInfoPopoverHeader}>
-                      <Button
-                        aria-label="Cerrar información de Mes"
-                        className={styles.monthInfoCloseButton}
-                        onClick={() => setIsMonthHintOpen(false)}
-                        size="icon-xs"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <X aria-hidden="true" />
-                      </Button>
-                    </div>
-                    <p className={styles.monthHint}>
-                      Cambiá el mes para guardar otra planilla mensual.
-                    </p>
-                  </PopoverContent>
-                </Popover>
+                <LoanInfoPopover
+                  closeLabel="Cerrar información de Mes"
+                  message="Cambiá el mes para guardar o consultar otra planilla mensual."
+                  triggerLabel="Información sobre el campo Mes"
+                />
               </div>
               <Input
                 id="monthly-expenses-month"

@@ -300,7 +300,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     expect(
-      screen.queryByText("Cambiá el mes para guardar otra planilla mensual."),
+      screen.queryByText("Cambiá el mes para guardar o consultar otra planilla mensual."),
     ).not.toBeInTheDocument();
 
     await user.click(
@@ -308,7 +308,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     expect(
-      screen.getByText("Cambiá el mes para guardar otra planilla mensual."),
+      screen.getByText("Cambiá el mes para guardar o consultar otra planilla mensual."),
     ).toBeInTheDocument();
 
     await user.click(
@@ -317,7 +317,7 @@ describe("MonthlyExpensesPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText("Cambiá el mes para guardar otra planilla mensual."),
+        screen.queryByText("Cambiá el mes para guardar o consultar otra planilla mensual."),
       ).not.toBeInTheDocument();
     });
   });

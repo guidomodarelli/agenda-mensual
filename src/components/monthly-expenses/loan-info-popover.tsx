@@ -7,12 +7,16 @@ import { Button } from "@/components/ui/button";
 import styles from "./loan-info-popover.module.scss";
 
 interface LoanInfoPopoverProps {
+  closeLabel?: string;
   message: string;
+  triggerLabel?: string;
   usePortal?: boolean;
 }
 
 export function LoanInfoPopover({
+  closeLabel = "Cerrar ayuda sobre deuda o préstamo",
   message,
+  triggerLabel = "Más información sobre deuda o préstamo",
   usePortal = true,
 }: LoanInfoPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +48,7 @@ export function LoanInfoPopover({
       sideOffset={10}
     >
       <Button
-        aria-label="Cerrar ayuda sobre deuda o préstamo"
+        aria-label={closeLabel}
         className={styles.closeButton}
         onClick={() => setIsOpen(false)}
         size="icon-xs"
@@ -62,7 +66,7 @@ export function LoanInfoPopover({
       <TooltipPrimitive.Trigger asChild>
         <Button
           aria-expanded={isOpen}
-          aria-label="Más información sobre deuda o préstamo"
+          aria-label={triggerLabel}
           className={styles.trigger}
           onClick={() => setIsOpen((currentOpen) => !currentOpen)}
           ref={triggerRef}
