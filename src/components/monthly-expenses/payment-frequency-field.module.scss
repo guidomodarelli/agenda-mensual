@@ -1,0 +1,60 @@
+.container {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.option {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.optionSelected {
+  border-color: color-mix(in srgb, var(--primary) 58%, transparent);
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+}
+
+.optionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.optionLabel {
+  font-weight: 600;
+}
+
+.optionDescription {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted-foreground);
+  padding-left: 1.5rem;
+}
+
+.singleFrequencyHint {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted-foreground);
+}
+
+.occurrencesField {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.changedField {
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.invalidField {
+  border-color: color-mix(in srgb, var(--destructive) 75%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--destructive) 35%, transparent);
+}

@@ -51,6 +51,7 @@ import {
   type LenderOption,
 } from "./lender-picker";
 import { LoanInfoPopover } from "./loan-info-popover";
+import { PaymentFrequencyField } from "./payment-frequency-field";
 import type { MonthlyExpensesEditableRow } from "./monthly-expenses-table";
 import styles from "./expense-sheet.module.scss";
 
@@ -557,35 +558,20 @@ function ExpenseSheetContent({
                     <FormItem className={styles.fieldGroup}>
                       <FormLabel>
                         {getFieldLabel(
-                          "Veces al mes",
+                          "Frecuencia de pago",
                           changedFields.has("occurrencesPerMonth"),
                         )}
                       </FormLabel>
                       <div className={styles.fieldControlWrapper}>
                         <FormControl>
-                          <Input
-                            aria-label="Veces al mes"
-                            className={cn(
-                              fieldErrors.occurrencesPerMonth && styles.invalidField,
-                              changedFields.has("occurrencesPerMonth") &&
-                                styles.changedField,
-                            )}
-                            data-changed={
-                              changedFields.has("occurrencesPerMonth")
-                                ? "true"
-                                : "false"
+                          <PaymentFrequencyField
+                            key={draft.id}
+                            hasError={Boolean(fieldErrors.occurrencesPerMonth)}
+                            isChanged={changedFields.has("occurrencesPerMonth")}
+                            occurrencesPerMonth={draft.occurrencesPerMonth}
+                            onOccurrencesPerMonthChange={(value) =>
+                              onFieldChange("occurrencesPerMonth", value)
                             }
-                            inputMode="numeric"
-                            min="0"
-                            onChange={(event) =>
-                              onFieldChange(
-                                "occurrencesPerMonth",
-                                event.target.value,
-                              )
-                            }
-                            step="1"
-                            type="number"
-                            value={draft.occurrencesPerMonth}
                           />
                         </FormControl>
                         <FormMessage className={styles.fieldErrorText} />

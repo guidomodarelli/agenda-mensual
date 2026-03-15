@@ -894,7 +894,13 @@ describe("MonthlyExpensesPage", () => {
     ).toBeInTheDocument();
     expect(mockedToast).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("Veces al mes")).toHaveValue(1);
+    expect(
+      screen.getByRole("radio", { name: "Un único pago al mes" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: "Se paga varias veces en el mes" }),
+    ).not.toBeChecked();
+    expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Descripción"), "Internet");
     await user.type(screen.getByLabelText("Subtotal"), "15000");
@@ -937,6 +943,112 @@ describe("MonthlyExpensesPage", () => {
     expect(
       screen.queryByRole("link", { name: "Abrir archivo mensual en Drive" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the occurrences input only for multiple monthly payments", async () => {
+    const user = userEvent.setup();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+
+    expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("radio", { name: "Se paga varias veces en el mes" }),
+    );
+
+    expect(screen.getByLabelText("Veces al mes")).toHaveValue(1);
+
+    await user.click(screen.getByRole("radio", { name: "Un único pago al mes" }));
+
+    expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
+  });
+
+  it("restores the last multiple-payment value after toggling back from single-payment mode", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Descripción"), "Empleada doméstica");
+    await user.type(screen.getByLabelText("Subtotal"), "5000");
+
+    await user.click(
+      screen.getByRole("radio", { name: "Se paga varias veces en el mes" }),
+    );
+
+    const occurrencesInput = screen.getByLabelText("Veces al mes");
+    await user.clear(occurrencesInput);
+    await user.type(occurrencesInput, "8");
+
+    await user.click(screen.getByRole("radio", { name: "Un único pago al mes" }));
+    expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("radio", { name: "Se paga varias veces en el mes" }),
+    );
+    expect(screen.getByLabelText("Veces al mes")).toHaveValue(8);
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Empleada doméstica",
+            id: expect.any(String),
+            occurrencesPerMonth: 8,
+            paymentLink: null,
+            subtotal: 5000,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
   });
 
   it("persists paymentLink as null when the payment link input is left empty", async () => {
@@ -1592,7 +1704,10 @@ describe("MonthlyExpensesPage", () => {
       "aria-invalid",
       "true",
     );
-    expect(screen.getByLabelText("Veces al mes")).toHaveValue(1);
+    expect(
+      screen.getByRole("radio", { name: "Un único pago al mes" }),
+    ).toBeChecked();
+    expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
   });
 
