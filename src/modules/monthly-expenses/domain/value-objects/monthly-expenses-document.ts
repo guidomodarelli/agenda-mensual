@@ -1,4 +1,11 @@
+import { z } from "zod";
+
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const PAYMENT_LINK_URL_SCHEMA = z.url({
+  protocol: /^https?$/,
+  hostname: z.regexes.domain,
+});
 
 export const MONTHLY_EXPENSE_CURRENCIES = ["ARS", "USD"] as const;
 
@@ -220,19 +227,16 @@ function validatePaymentLink(
   }
 
   try {
-    const parsedPaymentLink = new URL(normalizedPaymentLink);
+    const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
+      normalizedPaymentLink,
+    )
+      ? normalizedPaymentLink
+      : `https://${normalizedPaymentLink}`;
 
-    if (
-      parsedPaymentLink.protocol !== "http:" &&
-      parsedPaymentLink.protocol !== "https:"
-    ) {
-      throw new Error("payment-link:invalid-protocol");
-    }
-
-    return normalizedPaymentLink;
+    return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
   } catch {
     throw new Error(
-      `${operationName} requires every payment link to be a valid http or https URL.`,
+      `${operationName} requires every payment link to be a valid URL.`,
     );
   }
 }

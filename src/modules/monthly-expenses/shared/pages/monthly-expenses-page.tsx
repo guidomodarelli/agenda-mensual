@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
 import {
@@ -101,16 +102,31 @@ interface ExpenseSheetState {
 }
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const PAYMENT_LINK_URL_SCHEMA = z.url({
+  protocol: /^https?$/,
+  hostname: z.regexes.domain,
+});
 const MONTHLY_EXPENSES_TAB_KEYS = ["expenses", "lenders", "debts"] as const;
 export type MonthlyExpensesTabKey = (typeof MONTHLY_EXPENSES_TAB_KEYS)[number];
 type MonthlyExpenseCurrency = "ARS" | "USD";
 const DEFAULT_MONTHLY_EXPENSES_TAB: MonthlyExpensesTabKey = "expenses";
 
+function normalizeHttpPaymentLink(value: string): string {
+  const normalizedValue = value.trim();
+  const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
+    normalizedValue,
+  )
+    ? normalizedValue
+    : `https://${normalizedValue}`;
+
+  return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
+}
+
 function isValidHttpPaymentLink(value: string): boolean {
   try {
-    const parsedValue = new URL(value);
-
-    return parsedValue.protocol === "http:" || parsedValue.protocol === "https:";
+    normalizeHttpPaymentLink(value);
+    return true;
   } catch {
     return false;
   }
@@ -348,7 +364,7 @@ function getExpenseValidationMessage(
     normalizedPaymentLink.length > 0 &&
     !isValidHttpPaymentLink(normalizedPaymentLink)
   ) {
-    return "Ingresá una URL válida que empiece con http:// o https://.";
+    return "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).";
   }
 
   const installmentCount = Number(row.installmentCount);
@@ -424,7 +440,7 @@ function toSaveMonthlyExpensesCommand(
     items: state.rows.map((row) => ({
       ...(row.paymentLink.trim().length > 0
         ? {
-            paymentLink: row.paymentLink.trim(),
+            paymentLink: normalizeHttpPaymentLink(row.paymentLink),
           }
         : {
             paymentLink: null,

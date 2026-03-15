@@ -908,6 +908,56 @@ describe("MonthlyExpensesPage", () => {
     });
   });
 
+  it("accepts paymentLink without protocol and normalizes it before saving", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Descripción"), "Electricidad");
+    await user.type(screen.getByLabelText("Subtotal"), "45");
+    await user.type(screen.getByLabelText("Link de pago"), "google.com");
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: expect.any(String),
+            occurrencesPerMonth: 1,
+            paymentLink: "https://google.com",
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+  });
+
   it("does not render the authenticated session identity details", () => {
     mockedUseSession.mockReturnValue({
       data: {
@@ -1489,10 +1539,12 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.type(screen.getByLabelText("Descripción"), "Electricidad");
     await user.type(screen.getByLabelText("Subtotal"), "45");
-    await user.type(screen.getByLabelText("Link de pago"), "ftp://pagos.energia.com");
+    await user.type(screen.getByLabelText("Link de pago"), "asdads");
 
     expect(
-      screen.getByText("Ingresá una URL válida que empiece con http:// o https://."),
+      screen.getByText(
+        "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Link de pago")).toHaveAttribute(
       "aria-invalid",
@@ -1503,7 +1555,9 @@ describe("MonthlyExpensesPage", () => {
     await user.clear(screen.getByLabelText("Link de pago"));
 
     expect(
-      screen.queryByText("Ingresá una URL válida que empiece con http:// o https://."),
+      screen.queryByText(
+        "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).",
+      ),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
   });
@@ -2643,7 +2697,7 @@ describe("MonthlyExpensesPage", () => {
               description: "Electricidad",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              paymentLink: "https://pagos.empresa-energia.com",
+              paymentLink: "pagos.empresa-energia.com",
               subtotal: 45,
               total: 45,
             },

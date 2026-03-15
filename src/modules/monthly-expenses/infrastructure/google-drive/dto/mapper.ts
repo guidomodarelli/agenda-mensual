@@ -7,6 +7,83 @@ import {
 } from "../../../domain/value-objects/monthly-expenses-document";
 import type { GoogleDriveMonthlyExpensesFileDto } from "./google-drive-monthly-expenses-file.dto";
 
+const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const PAYMENT_LINK_URL_SCHEMA = z.url({
+  protocol: /^https?$/,
+  hostname: z.regexes.domain,
+});
+
+function normalizeHttpPaymentLink(value: string): string {
+  const normalizedValue = value.trim();
+  const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
+    normalizedValue,
+  )
+    ? normalizedValue
+    : `https://${normalizedValue}`;
+
+  return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
+}
+
+function isValidHttpPaymentLink(value: string): boolean {
+  try {
+    normalizeHttpPaymentLink(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeLegacyPaymentLink(paymentLink: unknown): unknown {
+  if (typeof paymentLink !== "string") {
+    return paymentLink;
+  }
+
+  const normalizedPaymentLink = paymentLink.trim();
+
+  if (!normalizedPaymentLink) {
+    return null;
+  }
+
+  try {
+    return normalizeHttpPaymentLink(normalizedPaymentLink);
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeLegacyMonthlyExpensesContent(rawContent: unknown): unknown {
+  if (!rawContent || typeof rawContent !== "object" || Array.isArray(rawContent)) {
+    return rawContent;
+  }
+
+  const contentRecord = rawContent as Record<string, unknown>;
+  const rawItems = contentRecord.items;
+
+  if (!Array.isArray(rawItems)) {
+    return rawContent;
+  }
+
+  return {
+    ...contentRecord,
+    items: rawItems.map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return item;
+      }
+
+      const itemRecord = item as Record<string, unknown>;
+
+      if (!Object.hasOwn(itemRecord, "paymentLink")) {
+        return item;
+      }
+
+      return {
+        ...itemRecord,
+        paymentLink: sanitizeLegacyPaymentLink(itemRecord.paymentLink),
+      };
+    }),
+  };
+}
+
 const googleDriveMonthlyExpenseItemSchema = z.object({
   currency: z.enum(["ARS", "USD"]),
   description: z.string().trim().min(1),
@@ -23,8 +100,8 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
   paymentLink: z
     .string()
     .trim()
-    .url()
-    .refine((value) => value.startsWith("http://") || value.startsWith("https://"))
+    .refine((value) => isValidHttpPaymentLink(value))
+    .transform((value) => normalizeHttpPaymentLink(value))
     .nullable()
     .optional(),
   subtotal: z.number().positive(),
@@ -156,7 +233,9 @@ export function parseGoogleDriveMonthlyExpensesContent(
   try {
     const rawContent =
       typeof content === "string" ? JSON.parse(content) : content ?? {};
-    const parsedDto = googleDriveMonthlyExpensesDocumentSchema.parse(rawContent);
+    const sanitizedContent = sanitizeLegacyMonthlyExpensesContent(rawContent);
+    const parsedDto =
+      googleDriveMonthlyExpensesDocumentSchema.parse(sanitizedContent);
 
     return createMonthlyExpensesDocument(parsedDto, operationName);
   } catch (error) {

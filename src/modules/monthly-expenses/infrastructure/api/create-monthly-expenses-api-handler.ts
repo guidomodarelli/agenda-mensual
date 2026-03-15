@@ -14,6 +14,32 @@ import {
 
 import type { SaveMonthlyExpensesCommand } from "../../application/commands/save-monthly-expenses-command";
 
+const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const PAYMENT_LINK_URL_SCHEMA = z.url({
+  protocol: /^https?$/,
+  hostname: z.regexes.domain,
+});
+
+function normalizeHttpPaymentLink(value: string): string {
+  const normalizedValue = value.trim();
+  const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
+    normalizedValue,
+  )
+    ? normalizedValue
+    : `https://${normalizedValue}`;
+
+  return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
+}
+
+function isValidHttpPaymentLink(value: string): boolean {
+  try {
+    normalizeHttpPaymentLink(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const monthlyExpenseItemSchema = z.object({
   currency: z.enum(["ARS", "USD"]),
   description: z.string().trim().min(1),
@@ -30,8 +56,8 @@ const monthlyExpenseItemSchema = z.object({
   paymentLink: z
     .string()
     .trim()
-    .url()
-    .refine((value) => value.startsWith("http://") || value.startsWith("https://"))
+    .refine((value) => isValidHttpPaymentLink(value))
+    .transform((value) => normalizeHttpPaymentLink(value))
     .nullable()
     .optional(),
   subtotal: z.number().positive(),

@@ -175,7 +175,7 @@ describe("monthlyExpensesDocument", () => {
     });
   });
 
-  it("normalizes a valid http/https payment link and trims whitespace", () => {
+  it("normalizes payment links and adds https protocol when omitted", () => {
     const result = createMonthlyExpensesDocument(
       {
         items: [
@@ -184,7 +184,7 @@ describe("monthlyExpensesDocument", () => {
             description: "Electricidad",
             id: "expense-1",
             occurrencesPerMonth: 1,
-            paymentLink: "  https://pagos.empresa-energia.com  ",
+            paymentLink: "  pagos.empresa-energia.com  ",
             subtotal: 45,
           },
         ],
@@ -196,7 +196,7 @@ describe("monthlyExpensesDocument", () => {
     expect(result.items[0]?.paymentLink).toBe("https://pagos.empresa-energia.com");
   });
 
-  it("rejects payment links that are not valid http/https URLs", () => {
+  it("rejects payment links that are not valid URLs", () => {
     expect(() =>
       createMonthlyExpensesDocument(
         {
@@ -206,7 +206,7 @@ describe("monthlyExpensesDocument", () => {
               description: "Electricidad",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              paymentLink: "ftp://pagos.empresa-energia.com",
+              paymentLink: "asdads",
               subtotal: 45,
             },
           ],
@@ -214,8 +214,6 @@ describe("monthlyExpensesDocument", () => {
         },
         "Saving monthly expenses",
       ),
-    ).toThrow(
-      "Saving monthly expenses requires every payment link to be a valid http or https URL.",
-    );
+    ).toThrow("Saving monthly expenses requires every payment link to be a valid URL.");
   });
 });

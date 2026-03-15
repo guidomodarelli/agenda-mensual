@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ExternalLink } from "lucide-react";
+import { z } from "zod";
 
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
 import {
   ExpenseSheet,
-  type ExpenseEditableFieldName,
 } from "@/components/monthly-expenses/expense-sheet";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -25,10 +25,14 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-import type { LenderOption } from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
+const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const PAYMENT_LINK_URL_SCHEMA = z.url({
+  protocol: /^https?$/,
+  hostname: z.regexes.domain,
+});
 
 export interface MonthlyExpensesEditableRow {
   currency: MonthlyExpenseCurrency;
@@ -67,20 +71,6 @@ interface MonthlyExpensesTableProps {
   isCopyFromDisabled: boolean;
   isExpenseSheetOpen: boolean;
   isSubmitting: boolean;
-  lenders: LenderOption[];
-  loadError: string | null;
-  month: string;
-  onAddExpense: () => void;
-  onCopyFromMonth: () => void;
-  onCopySourceMonthChange: (value: string) => void;
-  onDeleteExpense: (expenseId: string) => void;
-  onEditExpense: (expenseId: string) => void;
-  onExpenseFieldChange: (
-    fieldName: ExpenseEditableFieldName,
-    value: string,
-  ) => void;
-  onExpenseLenderSelect: (lenderId: string | null) => void;
-  onExpenseLoanToggle: (checked: boolean) => void;
   onMonthChange: (value: string) => void;
   onRequestCloseExpenseSheet: () => void;
   onSaveExpense: () => void;
@@ -192,13 +182,12 @@ function getValidPaymentLink(value: string): string | null {
   }
 
   try {
-    const parsedValue = new URL(normalizedValue);
-
-    if (parsedValue.protocol !== "http:" && parsedValue.protocol !== "https:") {
-      return null;
-    }
-
-    return normalizedValue;
+    const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
+      normalizedValue,
+    )
+      ? normalizedValue
+      : `https://${normalizedValue}`;
+    return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
   } catch {
     return null;
   }

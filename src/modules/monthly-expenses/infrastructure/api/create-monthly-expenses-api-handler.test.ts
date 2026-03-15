@@ -190,7 +190,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
   });
 
-  it("returns 400 when paymentLink is not a valid http/https URL", async () => {
+  it("returns 400 when paymentLink is not a valid URL", async () => {
     const handler = createMonthlyExpensesApiHandler({
       load: jest.fn(),
       getDatabase: jest.fn(),
@@ -206,7 +206,7 @@ describe("createMonthlyExpensesApiHandler", () => {
             description: "Electricidad",
             id: "expense-1",
             occurrencesPerMonth: 1,
-            paymentLink: "ftp://pagos.empresa-energia.com",
+              paymentLink: "asdads",
             subtotal: 45,
           },
         ],
@@ -370,7 +370,7 @@ describe("createMonthlyExpensesApiHandler", () => {
             description: "Electricidad",
             id: "expense-1",
             occurrencesPerMonth: 1,
-            paymentLink: "https://pagos.empresa-energia.com",
+            paymentLink: "pagos.empresa-energia.com",
             subtotal: 45,
           },
         ],

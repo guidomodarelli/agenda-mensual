@@ -25,7 +25,7 @@ describe("monthly-expenses-api client", () => {
     expect(headers.get("x-correlation-id")).toEqual(expect.any(String));
   });
 
-  it("accepts a valid http/https paymentLink in POST payloads", async () => {
+  it("accepts paymentLink without protocol in POST payloads", async () => {
     const fetchImplementation = jest.fn().mockResolvedValue({
       ok: true,
       status: 204,
@@ -39,7 +39,7 @@ describe("monthly-expenses-api client", () => {
             description: "Electricidad",
             id: "expense-1",
             occurrencesPerMonth: 1,
-            paymentLink: "https://pagos.empresa-energia.com",
+            paymentLink: "pagos.empresa-energia.com",
             subtotal: 45,
           },
         ],
@@ -51,6 +51,19 @@ describe("monthly-expenses-api client", () => {
     expect(fetchImplementation).toHaveBeenCalledWith(
       "/api/storage/monthly-expenses",
       expect.objectContaining({
+        body: JSON.stringify({
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentLink: "https://pagos.empresa-energia.com",
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        }),
         method: "POST",
       }),
     );
@@ -68,7 +81,7 @@ describe("monthly-expenses-api client", () => {
               description: "Electricidad",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              paymentLink: "ftp://pagos.empresa-energia.com",
+              paymentLink: "asdads",
               subtotal: 45,
             },
           ],

@@ -202,7 +202,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
           description: "Electricidad",
           id: "expense-1",
           occurrencesPerMonth: 1,
-          paymentLink: "https://pagos.empresa-energia.com",
+          paymentLink: "pagos.empresa-energia.com",
           subtotal: 45,
           total: 45,
         },
@@ -211,7 +211,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     });
 
     expect(serialized.content).toContain(
-      '"paymentLink": "https://pagos.empresa-energia.com"',
+      '"paymentLink": "pagos.empresa-energia.com"',
     );
 
     const parsed = parseGoogleDriveMonthlyExpensesContent(
@@ -220,5 +220,26 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     );
 
     expect(parsed.items[0]?.paymentLink).toBe("https://pagos.empresa-energia.com");
+  });
+
+  it("sanitizes legacy invalid paymentLink values to null while parsing", () => {
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      JSON.stringify({
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentLink: "asdads",
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      }),
+      "Loading monthly expenses",
+    );
+
+    expect(parsed.items[0]?.paymentLink).toBeNull();
   });
 });
