@@ -60,6 +60,48 @@ async function verifyReceiptStatusesByFileId({
   return statusesByFileId;
 }
 
+async function verifyFolderStatusesByItemId({
+  document,
+  receiptsRepository,
+}: {
+  document: ReturnType<typeof createMonthlyExpensesDocument>;
+  receiptsRepository?: MonthlyExpenseReceiptsRepository;
+}) {
+  if (!receiptsRepository) {
+    return {};
+  }
+
+  const statusesByItemId: Record<
+    string,
+    {
+      allReceiptsFolderStatus: "normal" | "trashed" | "missing";
+      monthlyFolderStatus: "normal" | "trashed" | "missing";
+    }
+  > = {};
+
+  for (const item of document.items) {
+    const allReceiptsFolderId =
+      item.folders?.allReceiptsFolderId ?? item.receipts[0]?.allReceiptsFolderId;
+    const monthlyFolderId =
+      item.folders?.monthlyFolderId ?? item.receipts[0]?.monthlyFolderId;
+
+    if (!allReceiptsFolderId || !monthlyFolderId) {
+      continue;
+    }
+
+    try {
+      statusesByItemId[item.id] = await receiptsRepository.verifyFolders({
+        allReceiptsFolderId,
+        monthlyFolderId,
+      });
+    } catch {
+      // Keep document loading resilient even if Drive status verification fails.
+    }
+  }
+
+  return statusesByItemId;
+}
+
 export async function getMonthlyExpensesDocument({
   getExchangeRateSnapshot,
   query,
@@ -93,6 +135,10 @@ export async function getMonthlyExpensesDocument({
           document: emptyDocument,
           receiptsRepository,
         }),
+        await verifyFolderStatusesByItemId({
+          document: emptyDocument,
+          receiptsRepository,
+        }),
       );
     }
 
@@ -101,6 +147,10 @@ export async function getMonthlyExpensesDocument({
         storedDocument,
         null,
         await verifyReceiptStatusesByFileId({
+          document: storedDocument,
+          receiptsRepository,
+        }),
+        await verifyFolderStatusesByItemId({
           document: storedDocument,
           receiptsRepository,
         }),
@@ -129,6 +179,10 @@ export async function getMonthlyExpensesDocument({
         document: enrichedDocument,
         receiptsRepository,
       }),
+      await verifyFolderStatusesByItemId({
+        document: enrichedDocument,
+        receiptsRepository,
+      }),
     );
   } catch {
     const fallbackDocument =
@@ -138,6 +192,10 @@ export async function getMonthlyExpensesDocument({
       fallbackDocument,
       "No pudimos cargar la cotización histórica del mes seleccionado.",
       await verifyReceiptStatusesByFileId({
+        document: fallbackDocument,
+        receiptsRepository,
+      }),
+      await verifyFolderStatusesByItemId({
         document: fallbackDocument,
         receiptsRepository,
       }),

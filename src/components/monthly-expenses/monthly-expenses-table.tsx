@@ -479,7 +479,9 @@ interface MonthlyExpensesTableProps {
   onAddLender: () => void;
   onCopyFromMonth: () => void;
   onCopySourceMonthChange: (value: string) => void;
+  onDeleteAllReceiptsFolderReference: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
+  onDeleteMonthlyFolderReference: (expenseId: string) => void;
   onEditExpense: (expenseId: string) => void;
   onExpenseFieldChange: (
     fieldName: ExpenseEditableFieldName,
@@ -743,6 +745,12 @@ function getDriveStatusMessage(
   return null;
 }
 
+function isBrokenDriveStatus(
+  status: MonthlyExpenseDriveResourceStatus | undefined,
+): boolean {
+  return status === "trashed" || status === "missing";
+}
+
 function DriveStatusBadge({
   status,
 }: {
@@ -788,7 +796,9 @@ export function MonthlyExpensesTable({
   onAddLender,
   onCopyFromMonth,
   onCopySourceMonthChange,
+  onDeleteAllReceiptsFolderReference,
   onDeleteExpense,
+  onDeleteMonthlyFolderReference,
   onEditExpense,
   onExpenseFieldChange,
   onExpenseLenderSelect,
@@ -1189,18 +1199,41 @@ export function MonthlyExpensesTable({
         accessorFn: (row) => row.monthlyFolderViewUrl,
         cell: ({ row }) => {
           const receiptFolderUrl = getValidHttpUrl(row.original.monthlyFolderViewUrl);
+          const canDeleteFolderReference = isBrokenDriveStatus(
+            row.original.monthlyFolderStatus,
+          );
 
           if (!receiptFolderUrl) {
             return (
               <div className={styles.folderCellValue}>
-                <span>-</span>
                 <DriveStatusBadge status={row.original.monthlyFolderStatus} />
+                <span>-</span>
+                {canDeleteFolderReference ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        aria-label="Quitar referencia de carpeta del mes actual"
+                        className={styles.receiptDeleteButton}
+                        disabled={actionDisabled}
+                        onClick={() =>
+                          onDeleteMonthlyFolderReference(row.original.id)}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Quitar referencia de carpeta</TooltipContent>
+                  </Tooltip>
+                ) : null}
               </div>
             );
           }
 
           return (
             <div className={styles.folderCellValue}>
+              <DriveStatusBadge status={row.original.monthlyFolderStatus} />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <a
@@ -1215,7 +1248,25 @@ export function MonthlyExpensesTable({
                 </TooltipTrigger>
                 <TooltipContent>Abrir carpeta del mes actual en Drive</TooltipContent>
               </Tooltip>
-              <DriveStatusBadge status={row.original.monthlyFolderStatus} />
+              {canDeleteFolderReference ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      aria-label="Quitar referencia de carpeta del mes actual"
+                      className={styles.receiptDeleteButton}
+                      disabled={actionDisabled}
+                      onClick={() =>
+                        onDeleteMonthlyFolderReference(row.original.id)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Quitar referencia de carpeta</TooltipContent>
+                </Tooltip>
+              ) : null}
             </div>
           );
         },
@@ -1235,18 +1286,41 @@ export function MonthlyExpensesTable({
           const allReceiptsFolderUrl = getValidHttpUrl(
             row.original.allReceiptsFolderViewUrl,
           );
+          const canDeleteFolderReference = isBrokenDriveStatus(
+            row.original.allReceiptsFolderStatus,
+          );
 
           if (!allReceiptsFolderUrl) {
             return (
               <div className={styles.folderCellValue}>
-                <span>-</span>
                 <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
+                <span>-</span>
+                {canDeleteFolderReference ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        aria-label="Quitar referencia de carpeta de comprobantes"
+                        className={styles.receiptDeleteButton}
+                        disabled={actionDisabled}
+                        onClick={() =>
+                          onDeleteAllReceiptsFolderReference(row.original.id)}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Quitar referencia de carpeta</TooltipContent>
+                  </Tooltip>
+                ) : null}
               </div>
             );
           }
 
           return (
             <div className={styles.folderCellValue}>
+              <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <a
@@ -1261,7 +1335,25 @@ export function MonthlyExpensesTable({
                 </TooltipTrigger>
                 <TooltipContent>Abrir carpeta con todos los comprobantes en Drive</TooltipContent>
               </Tooltip>
-              <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
+              {canDeleteFolderReference ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      aria-label="Quitar referencia de carpeta de comprobantes"
+                      className={styles.receiptDeleteButton}
+                      disabled={actionDisabled}
+                      onClick={() =>
+                        onDeleteAllReceiptsFolderReference(row.original.id)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Quitar referencia de carpeta</TooltipContent>
+                </Tooltip>
+              ) : null}
             </div>
           );
         },
@@ -1485,7 +1577,9 @@ export function MonthlyExpensesTable({
       loanInstallmentStartSortDirection,
       loanSortDirection,
       loanSortMode,
+      onDeleteAllReceiptsFolderReference,
       onDeleteExpense,
+      onDeleteMonthlyFolderReference,
       onDeleteReceipt,
       onEditExpense,
       onUploadReceipt,

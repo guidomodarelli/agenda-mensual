@@ -54,6 +54,10 @@ export function toMonthlyExpensesDocumentResult(
   document: MonthlyExpensesDocument,
   exchangeRateLoadError: string | null = null,
   receiptStatusesByFileId: Record<string, MonthlyExpenseReceiptDriveStatus> = {},
+  folderStatusesByItemId: Record<
+    string,
+    Pick<MonthlyExpenseFoldersResult, "allReceiptsFolderStatus" | "monthlyFolderStatus">
+  > = {},
 ): MonthlyExpensesDocumentResult {
   return {
     exchangeRateLoadError,
@@ -62,7 +66,16 @@ export function toMonthlyExpensesDocumentResult(
       : null,
     items: document.items.map((item) => ({
       ...item,
-      ...(item.folders ? { folders: { ...item.folders } } : {}),
+      ...(item.folders
+        ? {
+            folders: {
+              ...item.folders,
+              ...(folderStatusesByItemId[item.id]
+                ? folderStatusesByItemId[item.id]
+                : {}),
+            },
+          }
+        : {}),
       ...(item.loan ? { loan: { ...item.loan } } : {}),
       receipts: item.receipts.map((receipt) => ({
         ...receipt,

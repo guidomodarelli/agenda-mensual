@@ -1271,6 +1271,74 @@ export default function MonthlyExpensesPage({
     }
   };
 
+  const handleDeleteMonthlyFolderReference = async (expenseId: string) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para actualizar carpetas.");
+      return;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto de la carpeta seleccionada.");
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? {
+            ...row,
+            monthlyFolderId: "",
+            monthlyFolderStatus: undefined,
+            monthlyFolderViewUrl: "",
+          }
+        : row,
+    );
+
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Quitando referencia de carpeta del mes actual...",
+      success: "Referencia de carpeta del mes actual eliminada.",
+    });
+
+    if (!wasSaved) {
+      toast.error("No pudimos quitar la referencia de carpeta del mes actual.");
+    }
+  };
+
+  const handleDeleteAllReceiptsFolderReference = async (expenseId: string) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para actualizar carpetas.");
+      return;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto de la carpeta seleccionada.");
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? {
+            ...row,
+            allReceiptsFolderId: "",
+            allReceiptsFolderStatus: undefined,
+            allReceiptsFolderViewUrl: "",
+          }
+        : row,
+    );
+
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Quitando referencia de carpeta de comprobantes...",
+      success: "Referencia de carpeta de comprobantes eliminada.",
+    });
+
+    if (!wasSaved) {
+      toast.error("No pudimos quitar la referencia de carpeta de comprobantes.");
+    }
+  };
+
   const handleRequestCloseExpenseSheet = () => {
     if (
       shouldIgnoreNextExpenseSheetCloseRef.current ||
@@ -1609,7 +1677,9 @@ export default function MonthlyExpensesPage({
                 onAddLender={handleOpenLenderCreateFromExpenseSheet}
                 onCopyFromMonth={handleCopyFromMonth}
                 onCopySourceMonthChange={handleCopySourceMonthChange}
+                onDeleteAllReceiptsFolderReference={handleDeleteAllReceiptsFolderReference}
                 onDeleteExpense={handleRemoveExpense}
+                onDeleteMonthlyFolderReference={handleDeleteMonthlyFolderReference}
                 onDeleteReceipt={handleDeleteExpenseReceipt}
                 onEditExpense={handleEditExpense}
                 onExpenseFieldChange={handleExpenseFieldChange}

@@ -24,9 +24,19 @@ export interface VerifyMonthlyExpenseReceiptInput {
   monthlyFolderId: string;
 }
 
+export interface VerifyMonthlyExpenseFoldersInput {
+  allReceiptsFolderId: string;
+  monthlyFolderId: string;
+}
+
 export interface MonthlyExpenseReceiptDriveStatus {
   allReceiptsFolderStatus: MonthlyExpenseDriveResourceStatus;
   fileStatus: MonthlyExpenseDriveResourceStatus;
+  monthlyFolderStatus: MonthlyExpenseDriveResourceStatus;
+}
+
+export interface MonthlyExpenseFoldersDriveStatus {
+  allReceiptsFolderStatus: MonthlyExpenseDriveResourceStatus;
   monthlyFolderStatus: MonthlyExpenseDriveResourceStatus;
 }
 
@@ -49,6 +59,9 @@ export interface MonthlyExpenseReceiptsRepository {
   saveReceipt(
     input: MonthlyExpenseReceiptUploadInput,
   ): Promise<MonthlyExpenseReceiptUpload>;
+  verifyFolders(
+    input: VerifyMonthlyExpenseFoldersInput,
+  ): Promise<MonthlyExpenseFoldersDriveStatus>;
   verifyReceipt(
     input: VerifyMonthlyExpenseReceiptInput,
   ): Promise<MonthlyExpenseReceiptDriveStatus>;

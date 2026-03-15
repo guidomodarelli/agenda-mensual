@@ -7,6 +7,7 @@ describe("deleteMonthlyExpenseReceipt", () => {
       deleteReceipt: jest.fn().mockResolvedValue(undefined),
       renameExpenseFolder: jest.fn(),
       saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
       verifyReceipt: jest.fn(),
     };
 
@@ -27,6 +28,7 @@ describe("deleteMonthlyExpenseReceipt", () => {
       deleteReceipt: jest.fn(),
       renameExpenseFolder: jest.fn(),
       saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
       verifyReceipt: jest.fn(),
     };
 

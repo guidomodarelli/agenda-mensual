@@ -17,6 +17,7 @@ describe("uploadMonthlyExpenseReceipt", () => {
         monthlyFolderViewUrl:
           "https://drive.google.com/drive/folders/receipt-folder-id",
       }),
+        verifyFolders: jest.fn(),
       verifyReceipt: jest.fn(),
     };
 
@@ -49,6 +50,7 @@ describe("uploadMonthlyExpenseReceipt", () => {
       deleteReceipt: jest.fn(),
       renameExpenseFolder: jest.fn(),
       saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
       verifyReceipt: jest.fn(),
     };
     const oversizedContent = Buffer.alloc(5 * 1024 * 1024 + 1).toString("base64");

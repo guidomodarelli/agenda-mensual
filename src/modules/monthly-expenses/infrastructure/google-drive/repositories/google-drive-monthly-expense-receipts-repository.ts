@@ -14,11 +14,13 @@ import {
 import type {
   DeleteMonthlyExpenseReceiptInput,
   MonthlyExpenseDriveResourceStatus,
+  MonthlyExpenseFoldersDriveStatus,
   MonthlyExpenseReceiptDriveStatus,
   MonthlyExpenseReceiptUpload,
   MonthlyExpenseReceiptsRepository,
   MonthlyExpenseReceiptUploadInput,
   RenameMonthlyExpenseReceiptFolderInput,
+  VerifyMonthlyExpenseFoldersInput,
   VerifyMonthlyExpenseReceiptInput,
 } from "../../../domain/repositories/monthly-expense-receipts-repository";
 
@@ -166,26 +168,49 @@ export class GoogleDriveMonthlyExpenseReceiptsRepository
   async verifyReceipt(
     input: VerifyMonthlyExpenseReceiptInput,
   ): Promise<MonthlyExpenseReceiptDriveStatus> {
-    const allReceiptsFolderId = input.allReceiptsFolderId.trim();
-    const monthlyFolderId = input.monthlyFolderId.trim();
     const fileId = input.fileId.trim();
 
-    if (!allReceiptsFolderId || !monthlyFolderId || !fileId) {
+    if (!fileId) {
       throw new Error(
         "google-drive-monthly-expense-receipts-repository:verifyReceipt requires file and folder ids.",
       );
     }
 
-    const [allReceiptsFolderStatus, monthlyFolderStatus, fileStatus] =
+    const [{ allReceiptsFolderStatus, monthlyFolderStatus }, fileStatus] =
       await Promise.all([
-        this.getDriveResourceStatus(allReceiptsFolderId),
-        this.getDriveResourceStatus(monthlyFolderId),
+        this.verifyFolders({
+          allReceiptsFolderId: input.allReceiptsFolderId,
+          monthlyFolderId: input.monthlyFolderId,
+        }),
         this.getDriveResourceStatus(fileId),
       ]);
 
     return {
       allReceiptsFolderStatus,
       fileStatus,
+      monthlyFolderStatus,
+    };
+  }
+
+  async verifyFolders(
+    input: VerifyMonthlyExpenseFoldersInput,
+  ): Promise<MonthlyExpenseFoldersDriveStatus> {
+    const allReceiptsFolderId = input.allReceiptsFolderId.trim();
+    const monthlyFolderId = input.monthlyFolderId.trim();
+
+    if (!allReceiptsFolderId || !monthlyFolderId) {
+      throw new Error(
+        "google-drive-monthly-expense-receipts-repository:verifyFolders requires folder ids.",
+      );
+    }
+
+    const [allReceiptsFolderStatus, monthlyFolderStatus] = await Promise.all([
+      this.getDriveResourceStatus(allReceiptsFolderId),
+      this.getDriveResourceStatus(monthlyFolderId),
+    ]);
+
+    return {
+      allReceiptsFolderStatus,
       monthlyFolderStatus,
     };
   }

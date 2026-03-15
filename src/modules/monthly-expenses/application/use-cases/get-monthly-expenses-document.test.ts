@@ -1,4 +1,5 @@
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
+import type { MonthlyExpenseReceiptsRepository } from "../../domain/repositories/monthly-expense-receipts-repository";
 import { getMonthlyExpensesDocument } from "./get-monthly-expenses-document";
 
 const getExchangeRateSnapshot = jest.fn().mockResolvedValue({
@@ -75,5 +76,68 @@ describe("getMonthlyExpensesDocument", () => {
       month: "2026-03",
     });
     expect(repository.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("verifies folder status for items without receipts and exposes warning/error states", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            folders: {
+              allReceiptsFolderId: "receipt-folder-id",
+              allReceiptsFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-folder-id",
+              monthlyFolderId: "receipt-month-folder-id",
+              monthlyFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-month-folder-id",
+            },
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receipts: [],
+            subtotal: 100,
+            total: 100,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn(),
+    };
+    const receiptsRepository: MonthlyExpenseReceiptsRepository = {
+      deleteReceipt: jest.fn(),
+      renameExpenseFolder: jest.fn(),
+      saveReceipt: jest.fn(),
+      verifyFolders: jest.fn().mockResolvedValue({
+        allReceiptsFolderStatus: "missing",
+        monthlyFolderStatus: "trashed",
+      }),
+      verifyReceipt: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        month: "2026-03",
+      },
+      receiptsRepository,
+      repository,
+    });
+
+    expect(receiptsRepository.verifyFolders).toHaveBeenCalledWith({
+      allReceiptsFolderId: "receipt-folder-id",
+      monthlyFolderId: "receipt-month-folder-id",
+    });
+    expect(result.items[0]?.folders).toEqual({
+      allReceiptsFolderId: "receipt-folder-id",
+      allReceiptsFolderStatus: "missing",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-folder-id",
+      monthlyFolderId: "receipt-month-folder-id",
+      monthlyFolderStatus: "trashed",
+      monthlyFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    });
   });
 });
