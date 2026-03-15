@@ -40,6 +40,8 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   emptyMessage: string;
+  sorting?: SortingState;
+  onSortingChange?: (sorting: SortingState) => void;
   filterColumnId?: string;
   filterLabel?: string;
   filterPlaceholder?: string;
@@ -54,6 +56,8 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   emptyMessage,
+  sorting: controlledSorting,
+  onSortingChange,
   filterColumnId,
   filterLabel = "Filtrar",
   filterPlaceholder = "Filtrar...",
@@ -63,9 +67,24 @@ export function DataTable<TData, TValue>({
   selectAllColumnsLabel = "Seleccionar todas",
   deselectAllColumnsLabel = "Deseleccionar todas",
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const sorting = controlledSorting ?? uncontrolledSorting;
+
+  const handleSortingChange = React.useCallback(
+    (updater: SortingState | ((previousState: SortingState) => SortingState)) => {
+      const nextSorting =
+        typeof updater === "function" ? updater(sorting) : updater;
+
+      if (controlledSorting == null) {
+        setUncontrolledSorting(nextSorting);
+      }
+
+      onSortingChange?.(nextSorting);
+    },
+    [controlledSorting, onSortingChange, sorting],
+  );
 
   // TanStack Table manages internal reactive state through this hook.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -76,7 +95,7 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     onColumnVisibilityChange: setColumnVisibility,
     state: {
       columnFilters,

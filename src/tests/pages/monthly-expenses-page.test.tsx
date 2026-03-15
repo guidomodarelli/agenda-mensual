@@ -3126,6 +3126,230 @@ describe("MonthlyExpensesPage", () => {
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Con link", "Sin link"]);
   });
 
+  it("opens the debt sorting popover with three selectable criteria", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo 1",
+              id: "expense-1",
+              loan: {
+                endMonth: "2026-12",
+                installmentCount: 12,
+                paidInstallments: 3,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Sin deuda",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Configurar orden de Deuda / cuotas",
+      }),
+    );
+
+    expect(
+      screen.getByRole("radiogroup", {
+        name: "Criterio de orden para Deuda / cuotas",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Cuotas pagadas" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: "Cuotas restantes" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("radio", { name: "Total de cuotas" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+
+    await user.click(screen.getByRole("radio", { name: "Cuotas restantes" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Configurar orden de Deuda / cuotas",
+      }),
+    );
+
+    expect(screen.getByRole("radio", { name: "Cuotas restantes" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
+  it("sorts Deuda / cuotas by selected metric and keeps No aplica at the end", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo A",
+              id: "expense-1",
+              loan: {
+                endMonth: "2026-10",
+                installmentCount: 10,
+                paidInstallments: 1,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo B",
+              id: "expense-2",
+              loan: {
+                endMonth: "2026-12",
+                installmentCount: 12,
+                paidInstallments: 4,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo C",
+              id: "expense-3",
+              loan: {
+                endMonth: "2026-03",
+                installmentCount: 3,
+                paidInstallments: 2,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Sin deuda",
+              id: "expense-4",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo A",
+      "Prestamo C",
+      "Prestamo B",
+      "Sin deuda",
+    ]);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo B",
+      "Prestamo C",
+      "Prestamo A",
+      "Sin deuda",
+    ]);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Configurar orden de Deuda / cuotas",
+      }),
+    );
+    await user.click(screen.getByRole("radio", { name: "Cuotas restantes" }));
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo C",
+      "Prestamo B",
+      "Prestamo A",
+      "Sin deuda",
+    ]);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo A",
+      "Prestamo B",
+      "Prestamo C",
+      "Sin deuda",
+    ]);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Configurar orden de Deuda / cuotas",
+      }),
+    );
+    await user.click(screen.getByRole("radio", { name: "Total de cuotas" }));
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo C",
+      "Prestamo A",
+      "Prestamo B",
+      "Sin deuda",
+    ]);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo B",
+      "Prestamo A",
+      "Prestamo C",
+      "Sin deuda",
+    ]);
+  });
+
   it("renders an empty actions header immediately to the right of Deuda / cuotas", () => {
     renderWithProviders(
       <MonthlyExpensesPage

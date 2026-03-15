@@ -138,6 +138,49 @@
   color: var(--muted-foreground);
 }
 
+.loanSortHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.loanSortConfigButton {
+  color: var(--muted-foreground);
+}
+
+.loanSortConfigButton:hover,
+.loanSortConfigButton:focus-visible {
+  color: var(--foreground);
+}
+
+.loanSortPopover {
+  width: min(16rem, calc(100vw - 2rem));
+}
+
+.loanSortPopoverTitle {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.loanSortOptions {
+  gap: 0.5rem;
+}
+
+.loanSortOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.loanSortOptionLabel {
+  font-size: 0.875rem;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
 .cellField {
   min-width: 10rem;
 }

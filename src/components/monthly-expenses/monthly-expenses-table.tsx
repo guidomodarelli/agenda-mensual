@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, ExternalLink } from "lucide-react";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import { ArrowUpDown, ExternalLink, SlidersHorizontal } from "lucide-react";
 import { z } from "zod";
 
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
@@ -13,6 +13,12 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Tooltip,
   TooltipContent,
@@ -37,6 +43,23 @@ const PAYMENT_LINK_URL_SCHEMA = z.url({
   hostname: z.regexes.domain,
 });
 const DIACRITICS_PATTERN = /[\u0300-\u036f]/g;
+type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
+const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
+const LOAN_SORT_COLUMN_ID = "loanProgress";
+const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
+  {
+    label: "Cuotas pagadas",
+    value: "paidInstallments",
+  },
+  {
+    label: "Cuotas restantes",
+    value: "remainingInstallments",
+  },
+  {
+    label: "Total de cuotas",
+    value: "totalInstallments",
+  },
+];
 
 export interface MonthlyExpensesEditableRow {
   currency: MonthlyExpenseCurrency;
@@ -47,7 +70,10 @@ export interface MonthlyExpensesEditableRow {
   lenderId: string;
   lenderName: string;
   loanEndMonth: string;
+  loanPaidInstallments: number | null;
   loanProgress: string;
+  loanRemainingInstallments: number | null;
+  loanTotalInstallments: number | null;
   occurrencesPerMonth: string;
   paymentLink: string;
   startMonth: string;
@@ -128,6 +154,111 @@ function getSortableHeader(label: string) {
         {label}
         <ArrowUpDown aria-hidden="true" />
       </Button>
+    );
+  };
+}
+
+function getLoanSortDirection(sorting: SortingState): "asc" | "desc" {
+  const loanSortEntry = sorting.find((entry) => entry.id === LOAN_SORT_COLUMN_ID);
+
+  if (!loanSortEntry) {
+    return "asc";
+  }
+
+  return loanSortEntry.desc ? "desc" : "asc";
+}
+
+function getLoanSortValue(
+  row: MonthlyExpensesEditableRow,
+  loanSortMode: LoanSortMode,
+): number | null {
+  switch (loanSortMode) {
+    case "paidInstallments":
+      return row.loanPaidInstallments;
+    case "remainingInstallments":
+      return row.loanRemainingInstallments;
+    case "totalInstallments":
+      return row.loanTotalInstallments;
+  }
+}
+
+function getLoanSortableHeader({
+  loanSortMode,
+  onLoanSortModeChange,
+}: {
+  loanSortMode: LoanSortMode;
+  onLoanSortModeChange: (loanSortMode: LoanSortMode) => void;
+}) {
+  return function LoanSortableHeader({
+    column,
+  }: {
+    column: {
+      getCanSort: () => boolean;
+      getIsSorted: () => false | "asc" | "desc";
+      toggleSorting: (desc?: boolean) => void;
+    };
+  }) {
+    if (!column.getCanSort()) {
+      return <span className={styles.headLabel}>Deuda / cuotas</span>;
+    }
+
+    return (
+      <div className={styles.loanSortHeader}>
+        <Button
+          aria-label="Ordenar Deuda / cuotas"
+          className={styles.headButton}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          Deuda / cuotas
+          <ArrowUpDown aria-hidden="true" />
+        </Button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              aria-label="Configurar orden de Deuda / cuotas"
+              className={styles.loanSortConfigButton}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <SlidersHorizontal aria-hidden="true" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className={styles.loanSortPopover}>
+            <p className={styles.loanSortPopoverTitle}>Ordenar por</p>
+
+            <RadioGroup
+              aria-label="Criterio de orden para Deuda / cuotas"
+              className={styles.loanSortOptions}
+              onValueChange={(value) =>
+                onLoanSortModeChange(value as LoanSortMode)
+              }
+              value={loanSortMode}
+            >
+              {LOAN_SORT_OPTIONS.map((option) => {
+                const radioId = `loan-sort-mode-${option.value}`;
+
+                return (
+                  <div className={styles.loanSortOption} key={option.value}>
+                    <RadioGroupItem
+                      aria-label={option.label}
+                      id={radioId}
+                      value={option.value}
+                    />
+                    <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
+                      {option.label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          </PopoverContent>
+        </Popover>
+      </div>
     );
   };
 }
@@ -374,6 +505,11 @@ export function MonthlyExpensesTable({
   showUnsavedChangesDialog,
   validationMessage,
 }: MonthlyExpensesTableProps) {
+  const [loanSortMode, setLoanSortMode] =
+    useState<LoanSortMode>(DEFAULT_LOAN_SORT_MODE);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const loanSortDirection = getLoanSortDirection(sorting);
+
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
       {
@@ -546,8 +682,66 @@ export function MonthlyExpensesTable({
           row.original.isLoan
             ? row.original.loanProgress || "Completá datos de la deuda"
             : "No aplica",
-        header: "Deuda / cuotas",
+        header: getLoanSortableHeader({
+          loanSortMode,
+          onLoanSortModeChange: setLoanSortMode,
+        }),
         meta: { label: "Deuda / cuotas" },
+        sortingFn: (rowA, rowB) => {
+          const leftIsNoAplica = !rowA.original.isLoan;
+          const rightIsNoAplica = !rowB.original.isLoan;
+
+          if (leftIsNoAplica && !rightIsNoAplica) {
+            return loanSortDirection === "desc" ? -1 : 1;
+          }
+
+          if (!leftIsNoAplica && rightIsNoAplica) {
+            return loanSortDirection === "desc" ? 1 : -1;
+          }
+
+          if (leftIsNoAplica && rightIsNoAplica) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          const leftValue = getLoanSortValue(rowA.original, loanSortMode);
+          const rightValue = getLoanSortValue(rowB.original, loanSortMode);
+
+          if (leftValue == null && rightValue != null) {
+            return 1;
+          }
+
+          if (leftValue != null && rightValue == null) {
+            return -1;
+          }
+
+          if (leftValue == null && rightValue == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          if (leftValue == null || rightValue == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          const difference = leftValue - rightValue;
+
+          if (difference !== 0) {
+            return difference;
+          }
+
+          return rowA.original.description.localeCompare(
+            rowB.original.description,
+            "es",
+          );
+        },
       },
       {
         id: "actions",
@@ -566,7 +760,14 @@ export function MonthlyExpensesTable({
         header: () => null,
       },
     ],
-    [actionDisabled, exchangeRateSnapshot, onDeleteExpense, onEditExpense],
+    [
+      actionDisabled,
+      exchangeRateSnapshot,
+      loanSortDirection,
+      loanSortMode,
+      onDeleteExpense,
+      onEditExpense,
+    ],
   );
 
   return (
@@ -688,7 +889,9 @@ export function MonthlyExpensesTable({
               filterColumnId="description"
               filterLabel="Filtrar gastos"
               filterPlaceholder="Filtrar gastos por descripción"
+              onSortingChange={setSorting}
               showColumnVisibilityToggle={true}
+              sorting={sorting}
             />
           </div>
 

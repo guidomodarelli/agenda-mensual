@@ -184,7 +184,10 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     lenderId: "",
     lenderName: "",
     loanEndMonth: "",
+    loanPaidInstallments: null,
     loanProgress: "",
+    loanRemainingInstallments: null,
+    loanTotalInstallments: null,
     occurrencesPerMonth: "1",
     paymentLink: "",
     startMonth: "",
@@ -197,6 +200,20 @@ function toEditableRows(
   document: MonthlyExpensesDocumentResult,
 ): MonthlyExpensesEditableRow[] {
   return document.items.map((item) => ({
+    ...(item.loan
+      ? {
+          loanPaidInstallments: item.loan.paidInstallments,
+          loanRemainingInstallments: Math.max(
+            item.loan.installmentCount - item.loan.paidInstallments,
+            0,
+          ),
+          loanTotalInstallments: item.loan.installmentCount,
+        }
+      : {
+          loanPaidInstallments: null,
+          loanRemainingInstallments: null,
+          loanTotalInstallments: null,
+        }),
     currency: item.currency,
     description: item.description,
     id: item.id,
@@ -273,7 +290,14 @@ function buildLoanProgressLabel(
 function normalizeLoanPreview(
   month: string,
   row: MonthlyExpensesEditableRow,
-): Pick<MonthlyExpensesEditableRow, "loanEndMonth" | "loanProgress"> {
+): Pick<
+  MonthlyExpensesEditableRow,
+  | "loanEndMonth"
+  | "loanPaidInstallments"
+  | "loanProgress"
+  | "loanRemainingInstallments"
+  | "loanTotalInstallments"
+> {
   const normalizedMonth = month.trim();
   const normalizedStartMonth = row.startMonth.trim();
   const installmentCount = Number(row.installmentCount);
@@ -286,7 +310,10 @@ function normalizeLoanPreview(
   ) {
     return {
       loanEndMonth: "",
+      loanPaidInstallments: null,
       loanProgress: "",
+      loanRemainingInstallments: null,
+      loanTotalInstallments: null,
     };
   }
 
@@ -299,7 +326,10 @@ function normalizeLoanPreview(
 
   return {
     loanEndMonth,
+    loanPaidInstallments: paidInstallments,
     loanProgress: buildLoanProgressLabel(paidInstallments, installmentCount),
+    loanRemainingInstallments: Math.max(installmentCount - paidInstallments, 0),
+    loanTotalInstallments: installmentCount,
   };
 }
 
@@ -316,7 +346,10 @@ function normalizeEditableRows(
           lenderId: "",
           lenderName: "",
           loanEndMonth: "",
+          loanPaidInstallments: null,
           loanProgress: "",
+          loanRemainingInstallments: null,
+          loanTotalInstallments: null,
           startMonth: "",
         }),
     total: calculateRowTotal(row.subtotal, row.occurrencesPerMonth),
