@@ -54,6 +54,13 @@
   font-weight: 600;
 }
 
+.optionNameHighlight {
+  color: inherit;
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+  border-radius: 0.2rem;
+  padding: 0 0.08rem;
+}
+
 .optionMeta,
 .emptyMessage {
   font-size: 0.875rem;

@@ -89,4 +89,85 @@ describe("LenderPicker", () => {
       screen.getByRole("button", { name: "Agregar prestador" }),
     ).toBeInTheDocument();
   });
+
+  it("filters lenders using fuzzy, case-insensitive and accent-insensitive matching", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <LenderPicker
+        onAddLender={jest.fn()}
+        onSelect={jest.fn()}
+        options={[
+          {
+            id: "lender-1",
+            name: "Banco Nación",
+            type: "bank",
+          },
+          {
+            id: "lender-2",
+            name: "Árbol Finanzas",
+            type: "other",
+          },
+          {
+            id: "lender-3",
+            name: "Casa Central",
+            type: "family",
+          },
+        ]}
+        selectedLenderId=""
+        selectedLenderName=""
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
+    await user.type(screen.getByLabelText("Buscar prestador"), "BNCN");
+
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Banco Nación"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText((_, element) => element?.textContent === "Árbol Finanzas"),
+    ).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Buscar prestador"));
+    await user.type(screen.getByLabelText("Buscar prestador"), "NACION");
+
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Banco Nación"),
+    ).toBeInTheDocument();
+  });
+
+  it("highlights matching lender name parts while typing", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <LenderPicker
+        onAddLender={jest.fn()}
+        onSelect={jest.fn()}
+        options={[
+          {
+            id: "lender-1",
+            name: "Nación",
+            type: "bank",
+          },
+        ]}
+        selectedLenderId=""
+        selectedLenderName=""
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
+    await user.type(screen.getByLabelText("Buscar prestador"), "NACION");
+
+    const lenderOption = screen.getByRole("button", {
+      name: /Nación\s*Banco/i,
+    });
+
+    const highlightedText = Array.from(
+      lenderOption.querySelectorAll("mark"),
+      (element) => element.textContent ?? "",
+    ).join("");
+
+    expect(highlightedText).toBe("Nación");
+  });
 });

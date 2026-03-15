@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { getFuzzyMatchIndices, renderHighlightedText } from "./fuzzy-search";
 import styles from "./lender-picker.module.scss";
 
 export interface LenderOption {
@@ -53,18 +54,33 @@ export function LenderPicker({
   const [searchValue, setSearchValue] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
   const selectedOption = options.find((option) => option.id === selectedLenderId);
+  const hasSearchQuery = searchValue.trim().length > 0;
   const filteredOptions = useMemo(() => {
-    const normalizedSearch = searchValue.trim().toLocaleLowerCase();
+    const trimmedSearchValue = searchValue.trim();
 
-    if (!normalizedSearch) {
-      return options;
+    if (!trimmedSearchValue) {
+      return options.map((option) => ({
+        nameMatchIndices: [] as number[],
+        option,
+      }));
     }
 
-    return options.filter((option) =>
-      `${option.name} ${getLenderTypeLabel(option.type)}`
-        .toLocaleLowerCase()
-        .includes(normalizedSearch),
-    );
+    return options.flatMap((option) => {
+      const typeLabel = getLenderTypeLabel(option.type);
+      const nameMatchIndices = getFuzzyMatchIndices(option.name, trimmedSearchValue);
+      const typeMatchIndices = getFuzzyMatchIndices(typeLabel, trimmedSearchValue);
+
+      if (nameMatchIndices === null && typeMatchIndices === null) {
+        return [];
+      }
+
+      return [
+        {
+          nameMatchIndices: nameMatchIndices ?? [],
+          option,
+        },
+      ];
+    });
   }, [options, searchValue]);
 
   useEffect(() => {
@@ -119,7 +135,7 @@ export function LenderPicker({
 
           <div className={styles.options}>
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
+              filteredOptions.map(({ nameMatchIndices, option }) => (
                 <button
                   className={cn(
                     styles.option,
@@ -133,7 +149,16 @@ export function LenderPicker({
                   }}
                   type="button"
                 >
-                  <span className={styles.optionName}>{option.name}</span>
+                  <span className={styles.optionName}>
+                    {hasSearchQuery && nameMatchIndices.length > 0
+                      ? renderHighlightedText(
+                          option.name,
+                          nameMatchIndices,
+                          styles.optionNameHighlight,
+                          `lender-name-${option.id}`,
+                        )
+                      : option.name}
+                  </span>
                   <span className={styles.optionMeta}>
                     {getLenderTypeLabel(option.type)}
                   </span>
