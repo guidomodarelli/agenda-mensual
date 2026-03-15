@@ -56,6 +56,19 @@ const monthlyExpenseReceiptSchema = z.object({
     .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
 }).strict();
 
+const monthlyExpenseFoldersSchema = z.object({
+  allReceiptsFolderId: z.string().trim().min(1),
+  allReceiptsFolderViewUrl: z
+    .string()
+    .trim()
+    .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+  monthlyFolderId: z.string().trim().min(1),
+  monthlyFolderViewUrl: z
+    .string()
+    .trim()
+    .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+}).strict();
+
 const legacyMonthlyExpenseReceiptSchema = z.object({
   fileId: z.string().trim().min(1),
   fileName: z.string().trim().min(1),
@@ -73,6 +86,7 @@ const legacyMonthlyExpenseReceiptSchema = z.object({
 const googleDriveMonthlyExpenseItemSchema = z.object({
   currency: z.enum(["ARS", "USD"]),
   description: z.string().trim().min(1),
+  folders: monthlyExpenseFoldersSchema.nullable().optional(),
   id: z.string().trim().min(1),
   loan: z
     .object({
@@ -162,6 +176,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
           ({
             currency,
             description,
+            folders,
             id,
             loan,
             occurrencesPerMonth,
@@ -171,6 +186,16 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
           }) => ({
             currency,
             description,
+            ...(folders
+              ? {
+                  folders: {
+                    allReceiptsFolderId: folders.allReceiptsFolderId,
+                    allReceiptsFolderViewUrl: folders.allReceiptsFolderViewUrl,
+                    monthlyFolderId: folders.monthlyFolderId,
+                    monthlyFolderViewUrl: folders.monthlyFolderViewUrl,
+                  },
+                }
+              : {}),
             id,
             ...(loan
               ? {
@@ -255,10 +280,22 @@ export function parseGoogleDriveMonthlyExpensesContent(
               },
             ]
           : [];
+        const normalizedFolders = item.folders
+          ? item.folders
+          : normalizedReceipts[0]
+          ? {
+              allReceiptsFolderId: normalizedReceipts[0].allReceiptsFolderId,
+              allReceiptsFolderViewUrl:
+                normalizedReceipts[0].allReceiptsFolderViewUrl,
+              monthlyFolderId: normalizedReceipts[0].monthlyFolderId,
+              monthlyFolderViewUrl: normalizedReceipts[0].monthlyFolderViewUrl,
+            }
+          : undefined;
 
         return {
           currency: item.currency,
           description: item.description,
+          ...(normalizedFolders ? { folders: normalizedFolders } : {}),
           id: item.id,
           ...(item.loan ? { loan: item.loan } : {}),
           occurrencesPerMonth: item.occurrencesPerMonth,

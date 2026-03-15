@@ -1,5 +1,6 @@
 import type {
   MonthlyExpenseCurrency,
+  MonthlyExpenseFolders,
   MonthlyExpenseLoan,
   MonthlyExpenseReceipt,
   MonthlyExpensesExchangeRateSnapshot,
@@ -24,9 +25,15 @@ export interface MonthlyExpenseReceiptResult extends MonthlyExpenseReceipt {
   monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
 }
 
+export interface MonthlyExpenseFoldersResult extends MonthlyExpenseFolders {
+  allReceiptsFolderStatus?: MonthlyExpenseDriveResourceStatus;
+  monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
+}
+
 export interface MonthlyExpenseItemResult {
   currency: MonthlyExpenseCurrency;
   description: string;
+  folders?: MonthlyExpenseFoldersResult;
   id: string;
   loan?: MonthlyExpenseLoan;
   occurrencesPerMonth: number;
@@ -55,6 +62,7 @@ export function toMonthlyExpensesDocumentResult(
       : null,
     items: document.items.map((item) => ({
       ...item,
+      ...(item.folders ? { folders: { ...item.folders } } : {}),
       ...(item.loan ? { loan: { ...item.loan } } : {}),
       receipts: item.receipts.map((receipt) => ({
         ...receipt,

@@ -45,8 +45,12 @@ async function syncReceiptFolderRenames({
       continue;
     }
 
-    const currentFolderId = currentItem.receipts[0]?.allReceiptsFolderId?.trim();
-    const nextFolderId = nextItem.receipts[0]?.allReceiptsFolderId?.trim();
+    const currentFolderId =
+      currentItem.folders?.allReceiptsFolderId?.trim() ||
+      currentItem.receipts[0]?.allReceiptsFolderId?.trim();
+    const nextFolderId =
+      nextItem.folders?.allReceiptsFolderId?.trim() ||
+      nextItem.receipts[0]?.allReceiptsFolderId?.trim();
 
     if (!currentFolderId || !nextFolderId || currentFolderId !== nextFolderId) {
       continue;

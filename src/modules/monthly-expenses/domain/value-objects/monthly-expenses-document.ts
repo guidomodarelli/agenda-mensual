@@ -40,9 +40,19 @@ export interface MonthlyExpenseReceiptInput {
 
 export type MonthlyExpenseReceipt = MonthlyExpenseReceiptInput;
 
+export interface MonthlyExpenseFoldersInput {
+  allReceiptsFolderId: string;
+  allReceiptsFolderViewUrl: string;
+  monthlyFolderId: string;
+  monthlyFolderViewUrl: string;
+}
+
+export type MonthlyExpenseFolders = MonthlyExpenseFoldersInput;
+
 export interface MonthlyExpenseItemInput {
   currency: MonthlyExpenseCurrency;
   description: string;
+  folders?: MonthlyExpenseFoldersInput | null;
   id: string;
   loan?: MonthlyExpenseLoanInput;
   occurrencesPerMonth: number;
@@ -52,6 +62,7 @@ export interface MonthlyExpenseItemInput {
 }
 
 export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
+  folders?: MonthlyExpenseFolders;
   loan?: MonthlyExpenseLoan;
   paymentLink?: string | null;
   receipts: MonthlyExpenseReceipt[];
@@ -310,17 +321,56 @@ function validateReceipts(
   });
 }
 
+function validateFolders(
+  folders: MonthlyExpenseFoldersInput | null | undefined,
+  operationName: string,
+): MonthlyExpenseFolders | undefined {
+  if (!folders) {
+    return undefined;
+  }
+
+  const normalizedFolders = {
+    allReceiptsFolderId: folders.allReceiptsFolderId.trim(),
+    allReceiptsFolderViewUrl: folders.allReceiptsFolderViewUrl.trim(),
+    monthlyFolderId: folders.monthlyFolderId.trim(),
+    monthlyFolderViewUrl: folders.monthlyFolderViewUrl.trim(),
+  };
+
+  if (!normalizedFolders.monthlyFolderId || !normalizedFolders.allReceiptsFolderId) {
+    throw new Error(
+      `${operationName} requires folder metadata to include monthly and all-receipts folder identifiers.`,
+    );
+  }
+
+  try {
+    return {
+      ...normalizedFolders,
+      allReceiptsFolderViewUrl: RECEIPT_VIEW_URL_SCHEMA.parse(
+        normalizedFolders.allReceiptsFolderViewUrl,
+      ),
+      monthlyFolderViewUrl: RECEIPT_VIEW_URL_SCHEMA.parse(
+        normalizedFolders.monthlyFolderViewUrl,
+      ),
+    };
+  } catch {
+    throw new Error(
+      `${operationName} requires folder metadata to include valid Drive URLs.`,
+    );
+  }
+}
+
 function validateItem(
   item: MonthlyExpenseItemInput,
   operationName: string,
   targetMonth: string,
 ): MonthlyExpenseItem {
-  const { loan, paymentLink, receipts, ...rawItem } = item;
+  const { folders, loan, paymentLink, receipts, ...rawItem } = item;
   const normalizedItem = {
     ...rawItem,
     description: item.description.trim(),
     id: item.id.trim(),
   };
+  const normalizedFolders = validateFolders(folders, operationName);
   const normalizedPaymentLink = validatePaymentLink(paymentLink, operationName);
   const normalizedReceipts = validateReceipts(receipts, operationName);
 
@@ -350,6 +400,7 @@ function validateItem(
 
   return {
     ...normalizedItem,
+    ...(normalizedFolders ? { folders: normalizedFolders } : {}),
     ...(loan ? { loan: validateLoan(loan, operationName, targetMonth) } : {}),
     paymentLink: normalizedPaymentLink,
     receipts: normalizedReceipts,
@@ -444,6 +495,16 @@ export function toMonthlyExpensesDocumentInput(
     items: document.items.map((item) => ({
       currency: item.currency,
       description: item.description,
+      ...(item.folders
+        ? {
+            folders: {
+              allReceiptsFolderId: item.folders.allReceiptsFolderId,
+              allReceiptsFolderViewUrl: item.folders.allReceiptsFolderViewUrl,
+              monthlyFolderId: item.folders.monthlyFolderId,
+              monthlyFolderViewUrl: item.folders.monthlyFolderViewUrl,
+            },
+          }
+        : {}),
       id: item.id,
       ...(item.loan
         ? {

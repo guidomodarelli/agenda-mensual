@@ -54,15 +54,34 @@ const monthlyExpenseReceiptSchema = z.object({
     .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
 }).strict();
 
+const monthlyExpenseFoldersSchema = z.object({
+  allReceiptsFolderId: z.string().trim().min(1),
+  allReceiptsFolderViewUrl: z
+    .string()
+    .trim()
+    .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+  monthlyFolderId: z.string().trim().min(1),
+  monthlyFolderViewUrl: z
+    .string()
+    .trim()
+    .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+}).strict();
+
 const monthlyExpenseReceiptResponseSchema = monthlyExpenseReceiptSchema.extend({
   allReceiptsFolderStatus: z.enum(["normal", "trashed", "missing"]).optional(),
   fileStatus: z.enum(["normal", "trashed", "missing"]).optional(),
   monthlyFolderStatus: z.enum(["normal", "trashed", "missing"]).optional(),
 }).strict();
 
+const monthlyExpenseFoldersResponseSchema = monthlyExpenseFoldersSchema.extend({
+  allReceiptsFolderStatus: z.enum(["normal", "trashed", "missing"]).optional(),
+  monthlyFolderStatus: z.enum(["normal", "trashed", "missing"]).optional(),
+}).strict();
+
 const monthlyExpenseItemSchema = z.object({
   currency: z.enum(["ARS", "USD"]),
   description: z.string().trim().min(1),
+  folders: monthlyExpenseFoldersSchema.nullable().optional(),
   id: z.string().trim().min(1),
   loan: z
     .object({
@@ -109,6 +128,7 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
       z.object({
         currency: z.enum(["ARS", "USD"]),
         description: z.string().trim().min(1),
+        folders: monthlyExpenseFoldersResponseSchema.nullable().optional(),
         id: z.string().trim().min(1),
         loan: z
           .object({

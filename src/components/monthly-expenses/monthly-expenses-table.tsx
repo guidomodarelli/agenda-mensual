@@ -407,6 +407,9 @@ function LoanSortColumnHeader({
 }
 
 export interface MonthlyExpensesEditableRow {
+  allReceiptsFolderId: string;
+  allReceiptsFolderStatus?: MonthlyExpenseDriveResourceStatus;
+  allReceiptsFolderViewUrl: string;
   currency: MonthlyExpenseCurrency;
   description: string;
   id: string;
@@ -422,6 +425,9 @@ export interface MonthlyExpensesEditableRow {
   occurrencesPerMonth: string;
   paymentLink: string;
   receipts: MonthlyExpensesEditableReceipt[];
+  monthlyFolderId: string;
+  monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
+  monthlyFolderViewUrl: string;
   startMonth: string;
   subtotal: string;
   total: string;
@@ -1180,18 +1186,15 @@ export function MonthlyExpensesTable({
       },
       {
         id: "receiptFolderUrl",
-        accessorFn: (row) => row.receipts[0]?.monthlyFolderViewUrl ?? "",
+        accessorFn: (row) => row.monthlyFolderViewUrl,
         cell: ({ row }) => {
-          const firstReceipt = row.original.receipts[0];
-          const receiptFolderUrl = getValidHttpUrl(
-            firstReceipt?.monthlyFolderViewUrl ?? "",
-          );
+          const receiptFolderUrl = getValidHttpUrl(row.original.monthlyFolderViewUrl);
 
           if (!receiptFolderUrl) {
             return (
               <div className={styles.folderCellValue}>
                 <span>-</span>
-                <DriveStatusBadge status={firstReceipt?.monthlyFolderStatus} />
+                <DriveStatusBadge status={row.original.monthlyFolderStatus} />
               </div>
             );
           }
@@ -1212,33 +1215,32 @@ export function MonthlyExpensesTable({
                 </TooltipTrigger>
                 <TooltipContent>Abrir carpeta del mes actual en Drive</TooltipContent>
               </Tooltip>
-              <DriveStatusBadge status={firstReceipt?.monthlyFolderStatus} />
+              <DriveStatusBadge status={row.original.monthlyFolderStatus} />
             </div>
           );
         },
         header: getSortableHeader("Carpeta del mes actual"),
         meta: { label: "Carpeta del mes actual" },
         sortingFn: (rowA, rowB) => {
-          const leftHasFolder = rowA.original.receipts[0]?.monthlyFolderViewUrl ? 1 : 0;
-          const rightHasFolder = rowB.original.receipts[0]?.monthlyFolderViewUrl ? 1 : 0;
+          const leftHasFolder = rowA.original.monthlyFolderViewUrl ? 1 : 0;
+          const rightHasFolder = rowB.original.monthlyFolderViewUrl ? 1 : 0;
 
           return leftHasFolder - rightHasFolder;
         },
       },
       {
         id: "allReceiptsFolderUrl",
-        accessorFn: (row) => row.receipts[0]?.allReceiptsFolderViewUrl ?? "",
+        accessorFn: (row) => row.allReceiptsFolderViewUrl,
         cell: ({ row }) => {
-          const firstReceipt = row.original.receipts[0];
           const allReceiptsFolderUrl = getValidHttpUrl(
-            firstReceipt?.allReceiptsFolderViewUrl ?? "",
+            row.original.allReceiptsFolderViewUrl,
           );
 
           if (!allReceiptsFolderUrl) {
             return (
               <div className={styles.folderCellValue}>
                 <span>-</span>
-                <DriveStatusBadge status={firstReceipt?.allReceiptsFolderStatus} />
+                <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
               </div>
             );
           }
@@ -1259,17 +1261,15 @@ export function MonthlyExpensesTable({
                 </TooltipTrigger>
                 <TooltipContent>Abrir carpeta con todos los comprobantes en Drive</TooltipContent>
               </Tooltip>
-              <DriveStatusBadge status={firstReceipt?.allReceiptsFolderStatus} />
+              <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
             </div>
           );
         },
         header: getSortableHeader("Carpeta de comprobantes"),
         meta: { label: "Carpeta de comprobantes" },
         sortingFn: (rowA, rowB) => {
-          const leftHasAllReceiptsFolder =
-            rowA.original.receipts[0]?.allReceiptsFolderViewUrl ? 1 : 0;
-          const rightHasAllReceiptsFolder =
-            rowB.original.receipts[0]?.allReceiptsFolderViewUrl ? 1 : 0;
+          const leftHasAllReceiptsFolder = rowA.original.allReceiptsFolderViewUrl ? 1 : 0;
+          const rightHasAllReceiptsFolder = rowB.original.allReceiptsFolderViewUrl ? 1 : 0;
 
           return leftHasAllReceiptsFolder - rightHasAllReceiptsFolder;
         },

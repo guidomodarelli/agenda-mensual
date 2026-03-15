@@ -3724,6 +3724,53 @@ describe("MonthlyExpensesPage", () => {
     );
   });
 
+  it("keeps folder links visible when an item has folders metadata and no receipts", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              folders: {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentLink: null,
+              receipts: [],
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const monthlyReceiptFolderLink = screen.getByRole("link", {
+      name: "Ver carpeta del mes actual",
+    });
+    const allReceiptsFolderLink = screen.getByRole("link", {
+      name: "Ver carpeta",
+    });
+
+    expect(monthlyReceiptFolderLink).toHaveAttribute(
+      "href",
+      "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    );
+    expect(allReceiptsFolderLink).toHaveAttribute(
+      "href",
+      "https://drive.google.com/drive/folders/receipt-folder-id",
+    );
+  });
+
   it("sorts Link by rows with and without payment links", async () => {
     const user = userEvent.setup();
 

@@ -299,4 +299,41 @@ describe("monthlyExpensesDocument", () => {
       "Saving monthly expenses requires every receipt to include valid Drive URLs.",
     );
   });
+
+  it("keeps folder metadata even when an item has no receipts", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            folders: {
+              allReceiptsFolderId: " receipt-folder-id ",
+              allReceiptsFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-folder-id",
+              monthlyFolderId: " receipt-month-folder-id ",
+              monthlyFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-month-folder-id",
+            },
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receipts: [],
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.folders).toEqual({
+      allReceiptsFolderId: "receipt-folder-id",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-folder-id",
+      monthlyFolderId: "receipt-month-folder-id",
+      monthlyFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    });
+    expect(result.items[0]?.receipts).toEqual([]);
+  });
 });

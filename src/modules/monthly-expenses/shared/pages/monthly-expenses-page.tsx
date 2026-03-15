@@ -240,6 +240,8 @@ function calculateRowTotal(subtotal: string, occurrencesPerMonth: string): strin
 
 function createEmptyRow(): MonthlyExpensesEditableRow {
   return {
+    allReceiptsFolderId: "",
+    allReceiptsFolderViewUrl: "",
     currency: "ARS",
     description: "",
     id: createExpenseRowId(),
@@ -255,6 +257,8 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     occurrencesPerMonth: "1",
     paymentLink: "",
     receipts: [],
+    monthlyFolderId: "",
+    monthlyFolderViewUrl: "",
     startMonth: "",
     subtotal: "",
     total: "0.00",
@@ -286,6 +290,14 @@ function toEditableRows(
   document: MonthlyExpensesDocumentResult,
 ): MonthlyExpensesEditableRow[] {
   return document.items.map((item) => ({
+    allReceiptsFolderId:
+      item.folders?.allReceiptsFolderId ?? item.receipts?.[0]?.allReceiptsFolderId ?? "",
+    allReceiptsFolderStatus:
+      item.folders?.allReceiptsFolderStatus ?? item.receipts?.[0]?.allReceiptsFolderStatus,
+    allReceiptsFolderViewUrl:
+      item.folders?.allReceiptsFolderViewUrl ??
+      item.receipts?.[0]?.allReceiptsFolderViewUrl ??
+      "",
     ...(item.loan
       ? {
           loanPaidInstallments: item.loan.paidInstallments,
@@ -316,6 +328,12 @@ function toEditableRows(
     occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
     paymentLink: item.paymentLink?.trim() ?? "",
     receipts: toEditableReceipts(item.receipts),
+    monthlyFolderId:
+      item.folders?.monthlyFolderId ?? item.receipts?.[0]?.monthlyFolderId ?? "",
+    monthlyFolderStatus:
+      item.folders?.monthlyFolderStatus ?? item.receipts?.[0]?.monthlyFolderStatus,
+    monthlyFolderViewUrl:
+      item.folders?.monthlyFolderViewUrl ?? item.receipts?.[0]?.monthlyFolderViewUrl ?? "",
     startMonth: item.loan?.startMonth ?? "",
     subtotal: formatEditableNumber(item.subtotal),
     total: item.total.toFixed(2),
@@ -562,6 +580,19 @@ function toSaveMonthlyExpensesCommand(
 ): SaveMonthlyExpensesCommand {
   return {
     items: state.rows.map((row) => ({
+      ...((row.allReceiptsFolderId.trim().length > 0 &&
+        row.allReceiptsFolderViewUrl.trim().length > 0 &&
+        row.monthlyFolderId.trim().length > 0 &&
+        row.monthlyFolderViewUrl.trim().length > 0)
+        ? {
+            folders: {
+              allReceiptsFolderId: row.allReceiptsFolderId.trim(),
+              allReceiptsFolderViewUrl: row.allReceiptsFolderViewUrl.trim(),
+              monthlyFolderId: row.monthlyFolderId.trim(),
+              monthlyFolderViewUrl: row.monthlyFolderViewUrl.trim(),
+            },
+          }
+        : {}),
       ...(row.paymentLink.trim().length > 0
         ? {
             paymentLink: normalizeHttpPaymentLink(row.paymentLink),
@@ -1140,6 +1171,12 @@ export default function MonthlyExpensesPage({
         row.id === expenseRow.id
           ? {
               ...row,
+              allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
+              allReceiptsFolderStatus: undefined,
+              allReceiptsFolderViewUrl: receiptUpload.allReceiptsFolderViewUrl,
+              monthlyFolderId: receiptUpload.monthlyFolderId,
+              monthlyFolderStatus: undefined,
+              monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
               receipts: [
                 ...row.receipts,
                 {

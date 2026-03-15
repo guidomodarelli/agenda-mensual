@@ -46,6 +46,19 @@ const monthlyExpenseReceiptSchema = z.object({
     .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
 }).strict();
 
+const monthlyExpenseFoldersSchema = z.object({
+  allReceiptsFolderId: z.string().trim().min(1),
+  allReceiptsFolderViewUrl: z
+    .string()
+    .trim()
+    .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+  monthlyFolderId: z.string().trim().min(1),
+  monthlyFolderViewUrl: z
+    .string()
+    .trim()
+    .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+}).strict();
+
 function normalizeHttpPaymentLink(value: string): string {
   const normalizedValue = value.trim();
   const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
@@ -69,6 +82,7 @@ function isValidHttpPaymentLink(value: string): boolean {
 const monthlyExpenseItemSchema = z.object({
   currency: z.enum(["ARS", "USD"]),
   description: z.string().trim().min(1),
+  folders: monthlyExpenseFoldersSchema.nullable().optional(),
   id: z.string().trim().min(1),
   loan: z
     .object({
