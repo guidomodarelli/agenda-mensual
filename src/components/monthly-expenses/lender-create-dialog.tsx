@@ -96,11 +96,12 @@ export function LenderCreateDialog({
   };
 
   const handleSave = async () => {
-    setHasAttemptedSubmit(true);
-
     if (!formValues.name.trim()) {
+      setHasAttemptedSubmit(true);
       return;
     }
+
+    setHasAttemptedSubmit(false);
 
     const wasSaved = await onSubmit();
 
