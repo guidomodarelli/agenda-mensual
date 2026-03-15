@@ -465,8 +465,8 @@ function ExpenseSheetContent({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="ARS">ARS</SelectItem>
-                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="ARS">Peso argentino (ARS)</SelectItem>
+                            <SelectItem value="USD">Dolar estadounidense (USD)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage className={styles.fieldErrorText} />
