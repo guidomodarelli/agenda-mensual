@@ -1341,19 +1341,6 @@ export function MonthlyExpensesTable({
           );
           const normalizedCoveredPayments = Math.max(coveredPayments, 0);
 
-          if (requiredPayments === 0 || coveredPayments <= 0) {
-            return (
-              <Badge
-                className={cn(
-                  styles.paymentProgressBadge,
-                  "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
-                )}
-              >
-                {normalizedCoveredPayments} / {requiredPayments}
-              </Badge>
-            );
-          }
-
           if (coveredPayments >= requiredPayments) {
             return (
               <Badge
@@ -1368,9 +1355,14 @@ export function MonthlyExpensesTable({
           }
 
           return (
-            <span className={styles.paymentProgressValue}>
-              {coveredPayments} / {requiredPayments}
-            </span>
+            <Badge
+              className={cn(
+                styles.paymentProgressBadge,
+                "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+              )}
+            >
+              {normalizedCoveredPayments} / {requiredPayments}
+            </Badge>
           );
         },
         header: getSortableHeader("Pagos"),

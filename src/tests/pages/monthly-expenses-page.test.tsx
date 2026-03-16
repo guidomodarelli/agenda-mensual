@@ -3905,7 +3905,14 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    expect(screen.getByText("5 / 8")).toBeInTheDocument();
+    const partialBadge = screen.getByText("5 / 8");
+
+    expect(partialBadge).toHaveClass(
+      "bg-yellow-50",
+      "text-yellow-700",
+      "dark:bg-yellow-950",
+      "dark:text-yellow-300",
+    );
   });
 
   it("shows completed payment progress as a covered/total badge with custom success colors", () => {
