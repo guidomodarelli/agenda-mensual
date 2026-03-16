@@ -443,7 +443,7 @@ function validateItem(
     normalizedManualCoveredPayments +
     normalizedReceipts.reduce(
       (accumulatedPayments, receipt) =>
-        accumulatedPayments + receipt.coveredPayments,
+        accumulatedPayments + (receipt.coveredPayments ?? 0),
       0,
     );
   const normalizedIsPaid =

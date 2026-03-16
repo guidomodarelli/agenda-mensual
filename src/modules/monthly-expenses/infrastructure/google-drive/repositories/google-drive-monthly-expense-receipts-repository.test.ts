@@ -78,6 +78,7 @@ describe("GoogleDriveMonthlyExpenseReceiptsRepository", () => {
 
     const result = await repository.saveReceipt({
       contentBytes: Uint8Array.from([1, 2, 3]),
+      coveredPayments: 1,
       expenseDescription: "Internet",
       fileName: "factura-internet.pdf",
       mimeType: "application/pdf",
@@ -109,6 +110,7 @@ describe("GoogleDriveMonthlyExpenseReceiptsRepository", () => {
     expect(result).toEqual({
       allReceiptsFolderId: "expense-folder-id",
       allReceiptsFolderViewUrl: "https://drive.google.com/drive/folders/expense-folder-id",
+      coveredPayments: 1,
       fileId: "receipt-file-id",
       fileName: "factura-internet.pdf",
       fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
@@ -170,6 +172,7 @@ describe("GoogleDriveMonthlyExpenseReceiptsRepository", () => {
     await expect(
       repository.saveReceipt({
         contentBytes: Uint8Array.from([1, 2, 3]),
+        coveredPayments: 1,
         expenseDescription: "Internet",
         fileName: "factura-internet.pdf",
         mimeType: "application/pdf",
@@ -178,6 +181,7 @@ describe("GoogleDriveMonthlyExpenseReceiptsRepository", () => {
     ).resolves.toEqual({
       allReceiptsFolderId: "expense-folder-id",
       allReceiptsFolderViewUrl: "https://drive.google.com/drive/folders/expense-folder-id",
+      coveredPayments: 1,
       fileId: "receipt-file-id",
       fileName: "factura-internet.pdf",
       fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",

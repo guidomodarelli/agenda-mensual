@@ -37,6 +37,7 @@ export interface MonthlyExpenseItemResult {
   id: string;
   isPaid?: boolean;
   loan?: MonthlyExpenseLoan;
+  manualCoveredPayments?: number;
   occurrencesPerMonth: number;
   paymentLink?: string | null;
   receipts?: MonthlyExpenseReceiptResult[];
