@@ -10,6 +10,7 @@ describe("monthly-expenses-receipts-api client", () => {
           allReceiptsFolderId: "all-receipts-folder-id",
           allReceiptsFolderViewUrl:
             "https://drive.google.com/drive/folders/all-receipts-folder-id",
+          coveredPayments: 2,
           fileId: "receipt-file-id",
           fileName: "comprobante.pdf",
           fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
@@ -24,6 +25,7 @@ describe("monthly-expenses-receipts-api client", () => {
     await uploadMonthlyExpenseReceiptViaApi(
       {
         contentBase64: "dGVzdA==",
+        coveredPayments: 2,
         expenseDescription: "Internet",
         fileName: "comprobante.pdf",
         month: "2026-03",
@@ -36,8 +38,10 @@ describe("monthly-expenses-receipts-api client", () => {
       | RequestInit
       | undefined;
     const headers = new Headers(options?.headers);
+    const requestPayload = JSON.parse(String(options?.body));
 
     expect(headers.get("x-correlation-id")).toEqual(expect.any(String));
     expect(headers.get("Content-Type")).toBe("application/json");
+    expect(requestPayload.coveredPayments).toBe(2);
   });
 });

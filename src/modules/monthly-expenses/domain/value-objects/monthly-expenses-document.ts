@@ -31,6 +31,7 @@ export interface MonthlyExpenseLoan extends MonthlyExpenseLoanInput {
 export interface MonthlyExpenseReceiptInput {
   allReceiptsFolderId: string;
   allReceiptsFolderViewUrl: string;
+  coveredPayments?: number;
   fileId: string;
   fileName: string;
   fileViewUrl: string;
@@ -56,6 +57,7 @@ export interface MonthlyExpenseItemInput {
   id: string;
   isPaid?: boolean;
   loan?: MonthlyExpenseLoanInput;
+  manualCoveredPayments?: number;
   occurrencesPerMonth: number;
   paymentLink?: string | null;
   receipts?: MonthlyExpenseReceiptInput[] | null;
@@ -65,6 +67,7 @@ export interface MonthlyExpenseItemInput {
 export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   folders?: MonthlyExpenseFolders;
   loan?: MonthlyExpenseLoan;
+  manualCoveredPayments: number;
   paymentLink?: string | null;
   receipts: MonthlyExpenseReceipt[];
   total: number;
@@ -280,9 +283,18 @@ function validateReceipts(
   }
 
   return receipts.map((receipt) => {
+    const coveredPayments = receipt.coveredPayments ?? 1;
+
+    if (!Number.isInteger(coveredPayments) || coveredPayments <= 0) {
+      throw new Error(
+        `${operationName} requires every receipt to include covered payments greater than 0.`,
+      );
+    }
+
     const normalizedReceipt = {
       allReceiptsFolderId: receipt.allReceiptsFolderId.trim(),
       allReceiptsFolderViewUrl: receipt.allReceiptsFolderViewUrl.trim(),
+      coveredPayments,
       fileId: receipt.fileId.trim(),
       fileName: receipt.fileName.trim(),
       fileViewUrl: receipt.fileViewUrl.trim(),
@@ -365,7 +377,15 @@ function validateItem(
   operationName: string,
   targetMonth: string,
 ): MonthlyExpenseItem {
-  const { folders, isPaid, loan, paymentLink, receipts, ...rawItem } = item;
+  const {
+    folders,
+    isPaid,
+    loan,
+    manualCoveredPayments,
+    paymentLink,
+    receipts,
+    ...rawItem
+  } = item;
   const normalizedItem = {
     ...rawItem,
     description: item.description.trim(),
@@ -405,13 +425,36 @@ function validateItem(
     );
   }
 
-  const normalizedIsPaid = normalizedReceipts.length > 0 || isPaid === true;
+  const normalizedManualCoveredPayments = manualCoveredPayments ??
+    (isPaid === true && normalizedReceipts.length === 0
+      ? normalizedItem.occurrencesPerMonth
+      : 0);
+
+  if (
+    !Number.isInteger(normalizedManualCoveredPayments) ||
+    normalizedManualCoveredPayments < 0
+  ) {
+    throw new Error(
+      `${operationName} requires manual covered payments greater than or equal to 0.`,
+    );
+  }
+
+  const totalCoveredPayments =
+    normalizedManualCoveredPayments +
+    normalizedReceipts.reduce(
+      (accumulatedPayments, receipt) =>
+        accumulatedPayments + receipt.coveredPayments,
+      0,
+    );
+  const normalizedIsPaid =
+    totalCoveredPayments >= normalizedItem.occurrencesPerMonth;
 
   return {
     ...normalizedItem,
     ...(normalizedFolders ? { folders: normalizedFolders } : {}),
     ...(normalizedIsPaid ? { isPaid: true } : {}),
     ...(loan ? { loan: validateLoan(loan, operationName, targetMonth) } : {}),
+    manualCoveredPayments: normalizedManualCoveredPayments,
     paymentLink: normalizedPaymentLink,
     receipts: normalizedReceipts,
     total: calculateMonthlyExpenseTotal(normalizedItem),
@@ -529,6 +572,11 @@ export function toMonthlyExpensesDocumentInput(
             },
           }
         : {}),
+      ...(item.manualCoveredPayments > 0
+        ? {
+            manualCoveredPayments: item.manualCoveredPayments,
+          }
+        : {}),
       occurrencesPerMonth: item.occurrencesPerMonth,
       paymentLink: item.paymentLink,
       ...(item.receipts.length > 0
@@ -536,6 +584,7 @@ export function toMonthlyExpensesDocumentInput(
             receipts: item.receipts.map((receipt) => ({
               allReceiptsFolderId: receipt.allReceiptsFolderId,
               allReceiptsFolderViewUrl: receipt.allReceiptsFolderViewUrl,
+              coveredPayments: receipt.coveredPayments,
               fileId: receipt.fileId,
               fileName: receipt.fileName,
               fileViewUrl: receipt.fileViewUrl,

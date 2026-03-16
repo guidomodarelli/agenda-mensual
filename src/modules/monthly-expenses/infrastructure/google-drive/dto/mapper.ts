@@ -43,6 +43,7 @@ const monthlyExpenseReceiptSchema = z.object({
     .string()
     .trim()
     .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+  coveredPayments: z.number().int().positive().optional(),
   fileId: z.string().trim().min(1),
   fileName: z.string().trim().min(1),
   fileViewUrl: z
@@ -97,6 +98,7 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })
     .optional(),
+  manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
   paymentLink: z
     .string()
@@ -181,6 +183,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             id,
             isPaid,
             loan,
+            manualCoveredPayments,
             occurrencesPerMonth,
             paymentLink,
             receipts,
@@ -209,6 +212,9 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
                   },
                 }
               : {}),
+            ...(manualCoveredPayments > 0
+              ? { manualCoveredPayments }
+              : {}),
             ...(isPaid === true ? { isPaid: true } : {}),
             occurrencesPerMonth,
             paymentLink,
@@ -217,6 +223,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
                   receipts: receipts.map((receipt) => ({
                     allReceiptsFolderId: receipt.allReceiptsFolderId,
                     allReceiptsFolderViewUrl: receipt.allReceiptsFolderViewUrl,
+                    coveredPayments: receipt.coveredPayments,
                     fileId: receipt.fileId,
                     fileName: receipt.fileName,
                     fileViewUrl: receipt.fileViewUrl,
@@ -269,12 +276,16 @@ export function parseGoogleDriveMonthlyExpensesContent(
       ...parsedDto,
       items: parsedDto.items.map((item) => {
         const normalizedReceipts = item.receipts && item.receipts.length > 0
-          ? item.receipts
+          ? item.receipts.map((receipt) => ({
+              ...receipt,
+              coveredPayments: receipt.coveredPayments ?? 1,
+            }))
           : item.receipt
           ? [
               {
                 allReceiptsFolderId: item.receipt.folderId,
                 allReceiptsFolderViewUrl: item.receipt.folderViewUrl,
+                coveredPayments: 1,
                 fileId: item.receipt.fileId,
                 fileName: item.receipt.fileName,
                 fileViewUrl: item.receipt.fileViewUrl,
@@ -302,6 +313,9 @@ export function parseGoogleDriveMonthlyExpensesContent(
           id: item.id,
           ...(item.isPaid === true ? { isPaid: true } : {}),
           ...(item.loan ? { loan: item.loan } : {}),
+          ...(item.manualCoveredPayments !== undefined
+            ? { manualCoveredPayments: item.manualCoveredPayments }
+            : {}),
           occurrencesPerMonth: item.occurrencesPerMonth,
           ...(item.paymentLink !== undefined
             ? { paymentLink: item.paymentLink }

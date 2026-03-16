@@ -10,6 +10,7 @@ import {
   CircleX,
   ExternalLink,
   Paperclip,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { z } from "zod";
@@ -20,6 +21,7 @@ import {
   type ExpenseEditableFieldName,
 } from "@/components/monthly-expenses/expense-sheet";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Highlighter } from "@/components/ui/highlighter";
 import { Input } from "@/components/ui/input";
@@ -70,7 +72,7 @@ const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
   "mis-finanzas.monthly-expenses.table-preferences";
 const SORTABLE_COLUMN_IDS = new Set([
   "description",
-  "isPaid",
+  "paymentsProgress",
   "currency",
   "subtotal",
   "occurrencesPerMonth",
@@ -87,7 +89,7 @@ const SORTABLE_COLUMN_IDS = new Set([
   LOAN_INSTALLMENT_END_COLUMN_ID,
 ]);
 const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
-  "isPaid",
+  "paymentsProgress",
   "currency",
   "subtotal",
   "occurrencesPerMonth",
@@ -421,7 +423,6 @@ export interface MonthlyExpensesEditableRow {
   description: string;
   id: string;
   installmentCount: string;
-  isPaid: boolean;
   isLoan: boolean;
   lenderId: string;
   lenderName: string;
@@ -430,6 +431,7 @@ export interface MonthlyExpensesEditableRow {
   loanProgress: string;
   loanRemainingInstallments: number | null;
   loanTotalInstallments: number | null;
+  manualCoveredPayments: string;
   occurrencesPerMonth: string;
   paymentLink: string;
   receipts: MonthlyExpensesEditableReceipt[];
@@ -450,6 +452,7 @@ export interface MonthlyExpensesEditableReceipt {
   allReceiptsFolderId: string;
   allReceiptsFolderStatus?: MonthlyExpenseDriveResourceStatus;
   allReceiptsFolderViewUrl: string;
+  coveredPayments: number;
   fileId: string;
   fileName: string;
   fileStatus?: MonthlyExpenseDriveResourceStatus;
@@ -498,8 +501,11 @@ interface MonthlyExpensesTableProps {
   onExpenseLenderSelect: (lenderId: string | null) => void;
   onExpenseLoanToggle: (checked: boolean) => void;
   onMonthChange: (value: string) => void;
-  onToggleExpensePaid: (args: { checked: boolean; expenseId: string }) => void;
   onDeleteReceipt: (args: {
+    expenseId: string;
+    receiptFileId: string;
+  }) => void;
+  onEditReceiptCoverage: (args: {
     expenseId: string;
     receiptFileId: string;
   }) => void;
@@ -774,6 +780,51 @@ function getConvertedTotalAmount({
   return hasValues ? total : null;
 }
 
+function parseNonNegativeInteger(value: string): number {
+  const numericValue = Number(value);
+
+  if (!Number.isInteger(numericValue) || numericValue < 0) {
+    return 0;
+  }
+
+  return numericValue;
+}
+
+function parsePositiveInteger(value: string): number {
+  const numericValue = Number(value);
+
+  if (!Number.isInteger(numericValue) || numericValue <= 0) {
+    return 0;
+  }
+
+  return numericValue;
+}
+
+function getCoveredPaymentsByReceipts(receipts: MonthlyExpensesEditableReceipt[]): number {
+  return receipts.reduce(
+    (coveredPayments, receipt) => coveredPayments + receipt.coveredPayments,
+    0,
+  );
+}
+
+function getPaymentProgress(row: MonthlyExpensesEditableRow): {
+  coveredPayments: number;
+  coveredPaymentsByReceipts: number;
+  requiredPayments: number;
+} {
+  const requiredPayments = parsePositiveInteger(row.occurrencesPerMonth);
+  const manualCoveredPayments = parseNonNegativeInteger(
+    row.manualCoveredPayments,
+  );
+  const coveredPaymentsByReceipts = getCoveredPaymentsByReceipts(row.receipts);
+
+  return {
+    coveredPayments: manualCoveredPayments + coveredPaymentsByReceipts,
+    coveredPaymentsByReceipts,
+    requiredPayments,
+  };
+}
+
 function getValidPaymentLink(value: string): string | null {
   return getValidHttpUrl(value);
 }
@@ -870,8 +921,8 @@ export function MonthlyExpensesTable({
   onExpenseLenderSelect,
   onExpenseLoanToggle,
   onDeleteReceipt,
+  onEditReceiptCoverage,
   onMonthChange,
-  onToggleExpensePaid,
   onUploadReceipt,
   onRequestCloseExpenseSheet,
   onSaveExpense,
@@ -1149,48 +1200,82 @@ export function MonthlyExpensesTable({
         },
       },
       {
-        accessorKey: "isPaid",
+        id: "paymentsProgress",
+        accessorFn: (row) => {
+          const { coveredPayments, requiredPayments } = getPaymentProgress(row);
+
+          return requiredPayments > 0 ? coveredPayments / requiredPayments : 0;
+        },
         cell: ({ row }) => {
-          const hasReceipts = row.original.receipts.length > 0;
-          const effectiveIsPaid = hasReceipts || row.original.isPaid;
-          const checkboxLabel = row.original.description.trim().length > 0
-            ? `Se pagó: ${row.original.description}`
-            : "Se pagó";
+          const { coveredPayments, requiredPayments } = getPaymentProgress(
+            row.original,
+          );
+          const normalizedCoveredPayments = Math.max(coveredPayments, 0);
+
+          if (requiredPayments === 0 || coveredPayments <= 0) {
+            return (
+              <Badge
+                className={cn(
+                  styles.paymentProgressBadge,
+                  "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+                )}
+              >
+                {normalizedCoveredPayments} / {requiredPayments}
+              </Badge>
+            );
+          }
+
+          if (coveredPayments >= requiredPayments) {
+            return (
+              <Badge
+                className={cn(
+                  styles.paymentProgressBadge,
+                  "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
+                )}
+              >
+                {coveredPayments} / {requiredPayments}
+              </Badge>
+            );
+          }
 
           return (
-            <div className={styles.paidCell}>
-              <input
-                aria-label={checkboxLabel}
-                checked={effectiveIsPaid}
-                className={styles.paidToggle}
-                disabled={actionDisabled || hasReceipts}
-                onChange={(event) =>
-                  onToggleExpensePaid({
-                    checked: event.target.checked,
-                    expenseId: row.original.id,
-                  })}
-                type="checkbox"
-              />
-            </div>
+            <span className={styles.paymentProgressValue}>
+              {coveredPayments} / {requiredPayments}
+            </span>
           );
         },
-        header: getSortableHeader("Se pagó"),
-        meta: { label: "Se pagó" },
+        header: getSortableHeader("Pagos"),
+        meta: { label: "Pagos" },
         sortingFn: (rowA, rowB) => {
-          const leftValue =
-            rowA.original.receipts.length > 0 || rowA.original.isPaid ? 1 : 0;
-          const rightValue =
-            rowB.original.receipts.length > 0 || rowB.original.isPaid ? 1 : 0;
+          const leftProgress = getPaymentProgress(rowA.original);
+          const rightProgress = getPaymentProgress(rowB.original);
 
-          return leftValue - rightValue;
+          const leftIsDone =
+            leftProgress.requiredPayments > 0 &&
+            leftProgress.coveredPayments >= leftProgress.requiredPayments
+              ? 1
+              : 0;
+          const rightIsDone =
+            rightProgress.requiredPayments > 0 &&
+            rightProgress.coveredPayments >= rightProgress.requiredPayments
+              ? 1
+              : 0;
+
+          if (leftIsDone !== rightIsDone) {
+            return leftIsDone - rightIsDone;
+          }
+
+          return leftProgress.coveredPayments - rightProgress.coveredPayments;
         },
       },
       {
         id: "receiptFileUrl",
         accessorFn: (row) => row.receipts[0]?.fileViewUrl ?? "",
         cell: ({ row }) => {
-          const [firstReceipt, ...extraReceipts] = row.original.receipts;
-          const firstReceiptFileUrl = getValidHttpUrl(firstReceipt?.fileViewUrl ?? "");
+          const receiptsCount = row.original.receipts.length;
+          const { coveredPaymentsByReceipts, requiredPayments } = getPaymentProgress(
+            row.original,
+          );
 
           return (
             <div className={styles.receiptActionsCell}>
@@ -1210,47 +1295,7 @@ export function MonthlyExpensesTable({
                 <TooltipContent>Adjuntar comprobante</TooltipContent>
               </Tooltip>
 
-              {firstReceipt && firstReceiptFileUrl ? (
-                <div className={styles.receiptPrimaryActions}>
-                  <DriveStatusBadge status={firstReceipt.fileStatus} />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <a
-                        className={styles.paymentLinkAction}
-                        href={firstReceiptFileUrl}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        Ver comprobante
-                        <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                      </a>
-                    </TooltipTrigger>
-                    <TooltipContent>Abrir comprobante en Drive</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        aria-label={`Eliminar comprobante ${firstReceipt.fileName}`}
-                        className={styles.receiptDeleteButton}
-                        disabled={actionDisabled}
-                        onClick={() =>
-                          onDeleteReceipt({
-                            expenseId: row.original.id,
-                            receiptFileId: firstReceipt.fileId,
-                          })}
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <Trash2 aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Eliminar comprobante</TooltipContent>
-                  </Tooltip>
-                </div>
-              ) : null}
-
-              {extraReceipts.length > 0 ? (
+              {receiptsCount > 0 ? (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -1258,35 +1303,60 @@ export function MonthlyExpensesTable({
                       type="button"
                       variant="link"
                     >
-                      +{extraReceipts.length}
+                      {`📎 ${receiptsCount} comprobantes`}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className={styles.extraReceiptsPopover}>
                     <div className={styles.extraReceiptsList}>
-                      {extraReceipts.map((receipt, index) => {
+                      {row.original.receipts.map((receipt, index) => {
                         const receiptFileUrl = getValidHttpUrl(receipt.fileViewUrl);
 
                         return (
                           <div className={styles.extraReceiptRow} key={receipt.fileId}>
                             <DriveStatusBadge status={receipt.fileStatus} />
                             {receiptFileUrl ? (
-                              <a
-                                className={styles.paymentLinkAction}
-                                href={receiptFileUrl}
-                                rel="noopener noreferrer"
-                                target="_blank"
-                              >
-                                Ver comprobante parte {index + 2}
-                                <ExternalLink
-                                  aria-hidden="true"
-                                  className={styles.paymentLinkIcon}
-                                />
-                              </a>
+                              <div className={styles.extraReceiptInfo}>
+                                <a
+                                  className={styles.paymentLinkAction}
+                                  href={receiptFileUrl}
+                                  rel="noopener noreferrer"
+                                  target="_blank"
+                                >
+                                  Ver comprobante parte {index + 1}
+                                  <ExternalLink
+                                    aria-hidden="true"
+                                    className={styles.paymentLinkIcon}
+                                  />
+                                </a>
+                                <span className={styles.receiptCoverage}>
+                                  ({receipt.coveredPayments} pagos)
+                                </span>
+                              </div>
                             ) : (
-                              <span className={styles.mutedValue}>
-                                Comprobante parte {index + 2} sin enlace
-                              </span>
+                              <div className={styles.extraReceiptInfo}>
+                                <span className={styles.mutedValue}>
+                                  Comprobante parte {index + 1} sin enlace
+                                </span>
+                                <span className={styles.receiptCoverage}>
+                                  ({receipt.coveredPayments} pagos)
+                                </span>
+                              </div>
                             )}
+                            <Button
+                              aria-label={`Editar cobertura de comprobante ${receipt.fileName}`}
+                              className={styles.receiptEditButton}
+                              disabled={actionDisabled}
+                              onClick={() =>
+                                onEditReceiptCoverage({
+                                  expenseId: row.original.id,
+                                  receiptFileId: receipt.fileId,
+                                })}
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              <Pencil aria-hidden="true" />
+                            </Button>
                             <Button
                               aria-label={`Eliminar comprobante ${receipt.fileName}`}
                               className={styles.receiptDeleteButton}
@@ -1305,6 +1375,9 @@ export function MonthlyExpensesTable({
                           </div>
                         );
                       })}
+                      <p className={styles.receiptSummary}>
+                        {`Total cubierto: ${coveredPaymentsByReceipts} / ${requiredPayments}`}
+                      </p>
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -1718,8 +1791,8 @@ export function MonthlyExpensesTable({
       onDeleteExpense,
       onDeleteMonthlyFolderReference,
       onDeleteReceipt,
+      onEditReceiptCoverage,
       onEditExpense,
-      onToggleExpensePaid,
       onUploadReceipt,
     ],
   );

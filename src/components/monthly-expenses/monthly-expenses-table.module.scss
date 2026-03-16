@@ -293,6 +293,18 @@
   opacity: 0.75;
 }
 
+.paymentProgressBadge,
+.paymentProgressValue {
+  display: inline-flex;
+  min-width: 4.5rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.paymentProgressValue {
+  color: var(--foreground);
+}
+
 .numericField {
   min-width: 8rem;
 }
@@ -468,10 +480,9 @@
   gap: 0.45rem;
 }
 
-.receiptPrimaryActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+.receiptCoverage {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
 }
 
 .receiptCellContent {
@@ -482,6 +493,14 @@
 
 .receiptDeleteButton {
   color: var(--muted-foreground);
+}
+
+.receiptEditButton {
+  color: var(--muted-foreground);
+}
+
+.receiptEditButton:hover {
+  color: var(--primary);
 }
 
 .receiptDeleteButton:hover {
@@ -519,6 +538,19 @@
   gap: 0.4rem;
   align-items: center;
   justify-content: start;
+}
+
+.extraReceiptInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.receiptSummary {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
 }
 
 .mutedValue {

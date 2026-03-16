@@ -35,6 +35,7 @@ function validateReceiptCommand(
   command: UploadMonthlyExpenseReceiptCommand,
 ): {
   contentBytes: Uint8Array;
+  coveredPayments: number;
   expenseDescription: string;
   fileName: string;
   month: string;
@@ -42,6 +43,7 @@ function validateReceiptCommand(
 } {
   const normalizedCommand = {
     contentBase64: command.contentBase64.trim(),
+    coveredPayments: command.coveredPayments,
     expenseDescription: command.expenseDescription.trim(),
     fileName: command.fileName.trim(),
     month: command.month.trim(),
@@ -72,6 +74,15 @@ function validateReceiptCommand(
     throw new Error("Monthly expense receipts require file content.");
   }
 
+  if (
+    !Number.isInteger(normalizedCommand.coveredPayments) ||
+    normalizedCommand.coveredPayments <= 0
+  ) {
+    throw new Error(
+      "Monthly expense receipts require covered payments greater than 0.",
+    );
+  }
+
   const contentBytes = decodeBase64Content(normalizedCommand.contentBase64);
 
   if (contentBytes.byteLength <= 0) {
@@ -84,6 +95,7 @@ function validateReceiptCommand(
 
   return {
     contentBytes,
+    coveredPayments: normalizedCommand.coveredPayments,
     expenseDescription: normalizedCommand.expenseDescription,
     fileName: normalizedCommand.fileName,
     month: normalizedCommand.month,

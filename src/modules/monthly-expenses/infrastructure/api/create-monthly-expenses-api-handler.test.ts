@@ -406,6 +406,91 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(response.ended).toBe(true);
   });
 
+  it("passes receipt coveredPayments and manualCoveredPayments to save", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-03",
+      name: "gastos-mensuales-2026-marzo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Limpieza",
+            id: "expense-1",
+            manualCoveredPayments: 2,
+            occurrencesPerMonth: 8,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 6,
+                fileId: "receipt-file-id",
+                fileName: "comprobante.pdf",
+                fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(save).toHaveBeenCalledWith({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Limpieza",
+            id: "expense-1",
+            manualCoveredPayments: 2,
+            occurrencesPerMonth: 8,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 6,
+                fileId: "receipt-file-id",
+                fileName: "comprobante.pdf",
+                fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      database,
+      request,
+      userSubject: "google-user-123",
+    });
+    expect(response.statusCode).toBe(204);
+    expect(response.ended).toBe(true);
+  });
+
   it("returns 401 when Google authentication is missing", async () => {
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
     const handler = createMonthlyExpensesApiHandler({

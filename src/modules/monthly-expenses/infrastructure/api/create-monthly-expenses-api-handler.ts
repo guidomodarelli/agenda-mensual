@@ -33,6 +33,7 @@ const monthlyExpenseReceiptSchema = z.object({
     .string()
     .trim()
     .refine((value) => RECEIPT_VIEW_URL_SCHEMA.safeParse(value).success),
+  coveredPayments: z.number().int().positive().optional(),
   fileId: z.string().trim().min(1),
   fileName: z.string().trim().min(1),
   fileViewUrl: z
@@ -93,6 +94,7 @@ const monthlyExpenseItemSchema = z.object({
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })
     .optional(),
+  manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
   paymentLink: z
     .string()

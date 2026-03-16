@@ -4,6 +4,7 @@ import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observ
 
 const uploadMonthlyExpenseReceiptRequestSchema = z.object({
   contentBase64: z.string().trim().min(1),
+  coveredPayments: z.number().int().positive(),
   expenseDescription: z.string().trim().min(1),
   fileName: z.string().trim().min(1),
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
@@ -17,6 +18,7 @@ const deleteMonthlyExpenseReceiptRequestSchema = z.object({
 const monthlyExpenseReceiptResultSchema = z.object({
   allReceiptsFolderId: z.string().trim().min(1),
   allReceiptsFolderViewUrl: z.string().trim().url(),
+  coveredPayments: z.number().int().positive(),
   fileId: z.string().trim().min(1),
   fileName: z.string().trim().min(1),
   fileViewUrl: z.string().trim().url(),

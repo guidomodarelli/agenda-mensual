@@ -41,6 +41,7 @@ describe("monthlyExpensesDocument", () => {
             paidInstallments: 3,
             startMonth: "2026-01",
           },
+          manualCoveredPayments: 0,
           occurrencesPerMonth: 8,
           paymentLink: null,
           receipts: [],
@@ -169,6 +170,7 @@ describe("monthlyExpensesDocument", () => {
       currency: "USD",
       description: "Google One",
       id: "expense-1",
+      manualCoveredPayments: 0,
       occurrencesPerMonth: 1,
       paymentLink: null,
       receipts: [],
@@ -198,6 +200,131 @@ describe("monthlyExpensesDocument", () => {
     expect(result.items[0]?.isPaid).toBe(true);
   });
 
+  it("keeps expenses pending when covered payments do not reach occurrences", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Limpieza",
+            id: "expense-1",
+            manualCoveredPayments: 1,
+            occurrencesPerMonth: 8,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 2,
+                fileId: "receipt-file-id-1",
+                fileName: "transferencia_01.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 3,
+                fileId: "receipt-file-id-2",
+                fileName: "transferencia_02.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.manualCoveredPayments).toBe(1);
+    expect(result.items[0]?.receipts.map((receipt) => receipt.coveredPayments)).toEqual([
+      2,
+      3,
+    ]);
+    expect(result.items[0]?.isPaid).toBeUndefined();
+  });
+
+  it("marks an expense as paid when covered payments reach occurrences", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Limpieza",
+            id: "expense-1",
+            manualCoveredPayments: 2,
+            occurrencesPerMonth: 8,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 3,
+                fileId: "receipt-file-id-1",
+                fileName: "transferencia_01.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 3,
+                fileId: "receipt-file-id-2",
+                fileName: "transferencia_02.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.isPaid).toBe(true);
+  });
+
+  it("migrates legacy isPaid=true without coverage to full manual coverage", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            isPaid: true,
+            occurrencesPerMonth: 8,
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.manualCoveredPayments).toBe(8);
+    expect(result.items[0]?.isPaid).toBe(true);
+  });
+
   it("forces isPaid to true when receipts exist", () => {
     const result = createMonthlyExpensesDocument(
       {
@@ -213,6 +340,7 @@ describe("monthlyExpensesDocument", () => {
                 allReceiptsFolderId: "receipt-folder-id",
                 allReceiptsFolderViewUrl:
                   "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
                 fileId: "receipt-file-id",
                 fileName: "comprobante.pdf",
                 fileViewUrl:
@@ -289,6 +417,7 @@ describe("monthlyExpensesDocument", () => {
                 allReceiptsFolderId: " receipt-folder-id ",
                 allReceiptsFolderViewUrl:
                   "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 2,
                 fileId: " receipt-file-id ",
                 fileName: " comprobante.pdf ",
                 fileViewUrl:
@@ -311,6 +440,7 @@ describe("monthlyExpensesDocument", () => {
         allReceiptsFolderId: "receipt-folder-id",
         allReceiptsFolderViewUrl:
           "https://drive.google.com/drive/folders/receipt-folder-id",
+        coveredPayments: 2,
         fileId: "receipt-file-id",
         fileName: "comprobante.pdf",
         fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
@@ -336,6 +466,7 @@ describe("monthlyExpensesDocument", () => {
                   allReceiptsFolderId: "receipt-folder-id",
                   allReceiptsFolderViewUrl:
                     "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
                   fileId: "receipt-file-id",
                   fileName: "comprobante.pdf",
                   fileViewUrl: "not-a-url",
@@ -353,6 +484,66 @@ describe("monthlyExpensesDocument", () => {
       ),
     ).toThrow(
       "Saving monthly expenses requires every receipt to include valid Drive URLs.",
+    );
+  });
+
+  it("rejects receipt metadata when coveredPayments is not a positive integer", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 8,
+              receipts: [
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 0,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              ],
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(
+      "Saving monthly expenses requires every receipt to include covered payments greater than 0.",
+    );
+  });
+
+  it("rejects manualCoveredPayments when it is negative", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              manualCoveredPayments: -1,
+              occurrencesPerMonth: 8,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(
+      "Saving monthly expenses requires manual covered payments greater than or equal to 0.",
     );
   });
 

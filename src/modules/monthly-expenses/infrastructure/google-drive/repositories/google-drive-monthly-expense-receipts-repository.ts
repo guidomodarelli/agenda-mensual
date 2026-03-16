@@ -117,6 +117,7 @@ export class GoogleDriveMonthlyExpenseReceiptsRepository
       return {
         allReceiptsFolderId: allReceiptsFolder.id,
         allReceiptsFolderViewUrl: buildDriveFolderViewUrl(allReceiptsFolder.id),
+        coveredPayments: input.coveredPayments,
         fileId,
         fileName: response.data.name ?? input.fileName,
         fileViewUrl:

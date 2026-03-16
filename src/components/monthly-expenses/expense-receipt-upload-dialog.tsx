@@ -23,12 +23,14 @@ const FILE_ACCEPT = [
 ].join(",");
 
 interface ExpenseReceiptUploadDialogProps {
+  coveredPaymentsMax: number;
+  coveredPaymentsRemaining: number;
   errorMessage: string | null;
   expenseDescription: string;
   isOpen: boolean;
   isSubmitting: boolean;
   onClose: () => void;
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (args: { coveredPayments: number; file: File }) => Promise<void>;
 }
 
 function getDroppedFile(event: DragEvent<HTMLDivElement>): File | null {
@@ -38,6 +40,8 @@ function getDroppedFile(event: DragEvent<HTMLDivElement>): File | null {
 }
 
 export function ExpenseReceiptUploadDialog({
+  coveredPaymentsMax,
+  coveredPaymentsRemaining,
   errorMessage,
   expenseDescription,
   isOpen,
@@ -47,6 +51,16 @@ export function ExpenseReceiptUploadDialog({
 }: ExpenseReceiptUploadDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [coverageMode, setCoverageMode] = useState<"full" | "partial">("full");
+  const [partialCoveredPayments, setPartialCoveredPayments] = useState("1");
+
+  const normalizedCoveredPaymentsMax = Math.max(coveredPaymentsMax, 1);
+  const normalizedCoveredPaymentsRemaining = Math.max(coveredPaymentsRemaining, 1);
+  const parsedPartialCoveredPayments = Number(partialCoveredPayments);
+  const partialCoveredPaymentsIsValid =
+    Number.isInteger(parsedPartialCoveredPayments) &&
+    parsedPartialCoveredPayments > 0 &&
+    parsedPartialCoveredPayments <= normalizedCoveredPaymentsMax;
 
   const dropzoneLabel = useMemo(
     () =>
@@ -60,6 +74,8 @@ export function ExpenseReceiptUploadDialog({
     if (!nextOpen) {
       setSelectedFile(null);
       setIsDraggingFile(false);
+      setCoverageMode("full");
+      setPartialCoveredPayments("1");
       onClose();
     }
   };
@@ -90,7 +106,18 @@ export function ExpenseReceiptUploadDialog({
       return;
     }
 
-    await onUpload(selectedFile);
+    const coveredPayments = coverageMode === "full"
+      ? normalizedCoveredPaymentsRemaining
+      : parsedPartialCoveredPayments;
+
+    if (!Number.isInteger(coveredPayments) || coveredPayments <= 0) {
+      return;
+    }
+
+    await onUpload({
+      coveredPayments,
+      file: selectedFile,
+    });
   };
 
   return (
@@ -127,6 +154,62 @@ export function ExpenseReceiptUploadDialog({
             <p className={styles.selectedFile}>Archivo: {selectedFile.name}</p>
           ) : null}
 
+          <div className={styles.coverageSection}>
+            <p className={styles.coverageTitle}>
+              Este comprobante corresponde a:
+            </p>
+
+            <div className={styles.coverageOptions}>
+              <label className={styles.coverageOption}>
+                <input
+                  checked={coverageMode === "full"}
+                  name="receipt-coverage-mode"
+                  onChange={() => setCoverageMode("full")}
+                  type="radio"
+                />
+                <span>Todo el mes</span>
+              </label>
+              <label className={styles.coverageOption}>
+                <input
+                  checked={coverageMode === "partial"}
+                  name="receipt-coverage-mode"
+                  onChange={() => setCoverageMode("partial")}
+                  type="radio"
+                />
+                <span>Cobertura parcial</span>
+              </label>
+            </div>
+
+            {coverageMode === "full" ? (
+              <p className={styles.coverageHint}>
+                Se van a cubrir {normalizedCoveredPaymentsRemaining} pagos.
+              </p>
+            ) : (
+              <div className={styles.partialCoverageField}>
+                <label htmlFor="partial-covered-payments">Cantidad de pagos</label>
+                <Input
+                  id="partial-covered-payments"
+                  inputMode="numeric"
+                  max={normalizedCoveredPaymentsMax}
+                  min={1}
+                  onChange={(event) =>
+                    setPartialCoveredPayments(event.target.value.replace(/[^\d]/g, ""))}
+                  type="number"
+                  value={partialCoveredPayments}
+                />
+                <p className={styles.coverageHint}>
+                  Máximo permitido: {normalizedCoveredPaymentsMax} pagos.
+                </p>
+              </div>
+            )}
+
+            {coverageMode === "partial" && !partialCoveredPaymentsIsValid ? (
+              <p className={styles.errorText} role="alert">
+                Ingresá una cantidad de pagos válida entre 1 y {normalizedCoveredPaymentsMax}.
+              </p>
+            ) : null}
+          </div>
+
           <p className={styles.supportedTypes}>
             Formatos permitidos: PDF, JPG, PNG, WEBP, HEIC, HEIF (hasta 5MB).
           </p>
@@ -147,7 +230,11 @@ export function ExpenseReceiptUploadDialog({
               Cancelar
             </Button>
             <Button
-              disabled={!selectedFile || isSubmitting}
+              disabled={
+                !selectedFile ||
+                isSubmitting ||
+                (coverageMode === "partial" && !partialCoveredPaymentsIsValid)
+              }
               onClick={() => {
                 void handleUpload();
               }}

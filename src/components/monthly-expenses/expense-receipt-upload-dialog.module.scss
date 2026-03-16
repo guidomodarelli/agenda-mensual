@@ -42,6 +42,47 @@
   color: var(--muted-foreground);
 }
 
+.coverageSection {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.coverageTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.coverageOptions {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.coverageOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--foreground);
+}
+
+.partialCoverageField {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.partialCoverageField label {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+.coverageHint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
 .errorText {
   margin: 0;
   font-size: 0.85rem;

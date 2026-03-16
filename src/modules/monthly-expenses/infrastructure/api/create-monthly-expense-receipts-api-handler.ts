@@ -23,6 +23,7 @@ import type {
 
 const uploadMonthlyExpenseReceiptBodySchema = z.object({
   contentBase64: z.string().trim().min(1),
+  coveredPayments: z.number().int().positive(),
   expenseDescription: z.string().trim().min(1),
   fileName: z.string().trim().min(1),
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
@@ -180,7 +181,7 @@ export function createMonthlyExpenseReceiptsApiHandler<TResult>({
 
       return response.status(400).json({
         error:
-          "monthly-expense-receipts requires fileName, mimeType, contentBase64, expenseDescription, and month.",
+          "monthly-expense-receipts requires fileName, mimeType, contentBase64, coveredPayments, expenseDescription, and month.",
       });
     }
 

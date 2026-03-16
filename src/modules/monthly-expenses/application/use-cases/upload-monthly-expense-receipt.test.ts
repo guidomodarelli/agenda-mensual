@@ -10,6 +10,7 @@ describe("uploadMonthlyExpenseReceipt", () => {
         allReceiptsFolderId: "all-receipts-folder-id",
         allReceiptsFolderViewUrl:
           "https://drive.google.com/drive/folders/all-receipts-folder-id",
+        coveredPayments: 2,
         fileId: "receipt-file-id",
         fileName: "comprobante.pdf",
         fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
@@ -24,6 +25,7 @@ describe("uploadMonthlyExpenseReceipt", () => {
     const result = await uploadMonthlyExpenseReceipt({
       command: {
         contentBase64: "dGVzdA==",
+        coveredPayments: 2,
         expenseDescription: "Internet",
         fileName: "comprobante.pdf",
         month: "2026-03",
@@ -33,10 +35,16 @@ describe("uploadMonthlyExpenseReceipt", () => {
     });
 
     expect(repository.saveReceipt).toHaveBeenCalled();
+    expect(repository.saveReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coveredPayments: 2,
+      }),
+    );
     expect(result).toEqual({
       allReceiptsFolderId: "all-receipts-folder-id",
       allReceiptsFolderViewUrl:
         "https://drive.google.com/drive/folders/all-receipts-folder-id",
+      coveredPayments: 2,
       fileId: "receipt-file-id",
       fileName: "comprobante.pdf",
       fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
@@ -59,6 +67,7 @@ describe("uploadMonthlyExpenseReceipt", () => {
       uploadMonthlyExpenseReceipt({
         command: {
           contentBase64: oversizedContent,
+          coveredPayments: 1,
           expenseDescription: "Internet",
           fileName: "comprobante.pdf",
           month: "2026-03",
@@ -67,5 +76,31 @@ describe("uploadMonthlyExpenseReceipt", () => {
         repository,
       }),
     ).rejects.toThrow("Monthly expense receipts support files up to 5MB.");
+  });
+
+  it("rejects coveredPayments that are not positive integers", async () => {
+    const repository: MonthlyExpenseReceiptsRepository = {
+      deleteReceipt: jest.fn(),
+      renameExpenseFolder: jest.fn(),
+      saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
+      verifyReceipt: jest.fn(),
+    };
+
+    await expect(
+      uploadMonthlyExpenseReceipt({
+        command: {
+          contentBase64: "dGVzdA==",
+          coveredPayments: 0,
+          expenseDescription: "Internet",
+          fileName: "comprobante.pdf",
+          month: "2026-03",
+          mimeType: "application/pdf",
+        },
+        repository,
+      }),
+    ).rejects.toThrow(
+      "Monthly expense receipts require covered payments greater than 0.",
+    );
   });
 });

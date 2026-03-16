@@ -1,0 +1,38 @@
+.content {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.fileName {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+.fieldGroup {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.fieldGroup label {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.errorText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--destructive);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

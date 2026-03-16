@@ -3,6 +3,7 @@ import type { MonthlyExpenseReceiptUpload } from "../../domain/repositories/mont
 export interface MonthlyExpenseReceiptResult {
   allReceiptsFolderId: string;
   allReceiptsFolderViewUrl: string;
+  coveredPayments: number;
   fileId: string;
   fileName: string;
   fileViewUrl: string;
@@ -16,6 +17,7 @@ export function toMonthlyExpenseReceiptResult(
   return {
     allReceiptsFolderId: upload.allReceiptsFolderId,
     allReceiptsFolderViewUrl: upload.allReceiptsFolderViewUrl,
+    coveredPayments: upload.coveredPayments,
     fileId: upload.fileId,
     fileName: upload.fileName,
     fileViewUrl: upload.fileViewUrl,

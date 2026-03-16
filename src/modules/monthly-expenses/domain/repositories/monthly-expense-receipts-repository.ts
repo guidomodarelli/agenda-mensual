@@ -1,5 +1,6 @@
 export interface MonthlyExpenseReceiptUploadInput {
   contentBytes: Uint8Array;
+  coveredPayments: number;
   expenseDescription: string;
   fileName: string;
   month: string;
@@ -9,6 +10,7 @@ export interface MonthlyExpenseReceiptUploadInput {
 export interface MonthlyExpenseReceiptUpload {
   allReceiptsFolderId: string;
   allReceiptsFolderViewUrl: string;
+  coveredPayments: number;
   fileId: string;
   fileName: string;
   fileViewUrl: string;

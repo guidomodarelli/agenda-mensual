@@ -3805,7 +3805,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getAllByText("Abrir página de pago").length).toBeGreaterThan(0);
   });
 
-  it("renders Se pagó column immediately before Comprobantes", () => {
+  it("renders Pagos column immediately before Comprobantes", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -3828,29 +3828,14 @@ describe("MonthlyExpensesPage", () => {
     const headers = screen
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
-    const paidHeaderIndex = headers.indexOf("Se pagó");
+    const paidHeaderIndex = headers.indexOf("Pagos");
     const receiptHeaderIndex = headers.indexOf("Comprobantes");
 
     expect(receiptHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(paidHeaderIndex).toBe(receiptHeaderIndex - 1);
   });
 
-  it("allows toggling Se pagó when no receipts exist and persists immediately", async () => {
-    const user = userEvent.setup();
-    const fetchMock = createMonthlyExpensesFetchMock();
-
-    mockedUseSession.mockReturnValue({
-      data: {
-        expires: "2099-01-01T00:00:00.000Z",
-        user: {
-          email: "user@example.com",
-          name: "User",
-        },
-      },
-      status: "authenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-    global.fetch = fetchMock as typeof fetch;
+  it("shows pending payments as a covered/total yellow badge when no manual or receipt coverage exists", () => {
 
     renderWithProviders(
       <MonthlyExpensesPage
@@ -3871,40 +3856,17 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    const paidCheckbox = screen.getByRole("checkbox", {
-      name: "Se pagó: Agua",
-    });
+    const pendingBadge = screen.getByText("0 / 1");
 
-    expect(paidCheckbox).not.toBeChecked();
-    expect(paidCheckbox).toBeEnabled();
-
-    await user.click(paidCheckbox);
-
-    await waitFor(() => {
-      const payload = getMonthlyExpensesSavePayload(fetchMock);
-
-      expect(payload.items[0]).toEqual(
-        expect.objectContaining({
-          id: "expense-1",
-          isPaid: true,
-        }),
-      );
-    });
+    expect(pendingBadge).toHaveClass(
+      "bg-yellow-50",
+      "text-yellow-700",
+      "dark:bg-yellow-950",
+      "dark:text-yellow-300",
+    );
   });
 
-  it("forces Se pagó to checked and disabled when the expense has receipts", () => {
-    mockedUseSession.mockReturnValue({
-      data: {
-        expires: "2099-01-01T00:00:00.000Z",
-        user: {
-          email: "user@example.com",
-          name: "User",
-        },
-      },
-      status: "authenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-
+  it("shows partial payment progress when covered payments are below occurrences", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -3914,13 +3876,14 @@ describe("MonthlyExpensesPage", () => {
               currency: "ARS",
               description: "Internet",
               id: "expense-1",
-              isPaid: false,
-              occurrencesPerMonth: 1,
+              manualCoveredPayments: 2,
+              occurrencesPerMonth: 8,
               receipts: [
                 {
                   allReceiptsFolderId: "receipt-folder-id",
                   allReceiptsFolderViewUrl:
                     "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 3,
                   fileId: "receipt-file-id",
                   fileName: "comprobante.pdf",
                   fileViewUrl:
@@ -3939,15 +3902,56 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    const paidCheckbox = screen.getByRole("checkbox", {
-      name: "Se pagó: Internet",
-    });
-
-    expect(paidCheckbox).toBeChecked();
-    expect(paidCheckbox).toBeDisabled();
+    expect(screen.getByText("5 / 8")).toBeInTheDocument();
   });
 
-  it("asks how to keep Se pagó when deleting the last receipt", async () => {
+  it("shows completed payment progress as a covered/total badge with custom success colors", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Streaming",
+              id: "expense-1",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 3,
+              receipts: [
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 2,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              ],
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const doneBadge = screen.getByText("3 / 3");
+
+    expect(doneBadge).toHaveClass(
+      "bg-green-50",
+      "text-green-700",
+      "dark:bg-green-950",
+      "dark:text-green-300",
+    );
+  });
+
+  it("recalculates progress when deleting the last receipt without legacy confirmation", async () => {
     const user = userEvent.setup();
     const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
       if (input === "/api/storage/monthly-expenses") {
@@ -4032,6 +4036,7 @@ describe("MonthlyExpensesPage", () => {
                   allReceiptsFolderId: "receipt-folder-id",
                   allReceiptsFolderViewUrl:
                     "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
                   fileId: "receipt-file-id",
                   fileName: "comprobante.pdf",
                   fileViewUrl:
@@ -4052,13 +4057,17 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(
       screen.getByRole("button", {
+        name: /1 comprobantes/i,
+      }),
+    );
+
+    await user.click(
+      screen.getByRole("button", {
         name: "Eliminar comprobante comprobante.pdf",
       }),
     );
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining("último comprobante"),
-    );
+    expect(confirmSpy).not.toHaveBeenCalled();
 
     await waitFor(() => {
       const payload = getMonthlyExpensesSavePayload(fetchMock);
@@ -4069,7 +4078,86 @@ describe("MonthlyExpensesPage", () => {
     confirmSpy.mockRestore();
   });
 
-  it("renders Se pagó, Comprobantes, Carpeta del mes actual, and Carpeta de comprobantes columns after Link", () => {
+  it("allows editing receipt coverage from the comprobantes popover", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "user@example.com",
+          name: "User",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 4,
+              receipts: [
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              ],
+              subtotal: 100,
+              total: 400,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /1 comprobantes/i,
+      }),
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Editar cobertura de comprobante comprobante.pdf",
+      }),
+    );
+
+    const coveredPaymentsInput = screen.getByRole("spinbutton", {
+      name: "Cantidad de pagos",
+    });
+
+    await user.clear(coveredPaymentsInput);
+    await user.type(coveredPaymentsInput, "4");
+
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      const payload = getMonthlyExpensesSavePayload(fetchMock);
+
+      expect(payload.items[0]?.receipts?.[0]?.coveredPayments).toBe(4);
+    });
+  });
+
+  it("renders Pagos, Comprobantes, Carpeta del mes actual, and Carpeta de comprobantes columns after Link", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -4101,7 +4189,7 @@ describe("MonthlyExpensesPage", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
     const linkHeaderIndex = headers.indexOf("Link");
-    const paidHeaderIndex = headers.indexOf("Se pagó");
+    const paidHeaderIndex = headers.indexOf("Pagos");
     const receiptHeaderIndex = headers.indexOf("Comprobantes");
     const monthlyReceiptFolderHeaderIndex = headers.indexOf(
       "Carpeta del mes actual",
@@ -4118,7 +4206,9 @@ describe("MonthlyExpensesPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders receipt link, monthly folder link, and all-receipts folder link when receipt metadata is present", () => {
+  it("renders receipt link inside the comprobantes popover and keeps folder links visible", async () => {
+    const user = userEvent.setup();
+
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -4153,8 +4243,14 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    const receiptLink = screen.getByRole("link", {
-      name: "Ver comprobante",
+    await user.click(
+      screen.getByRole("button", {
+        name: /1 comprobantes/i,
+      }),
+    );
+
+    const receiptLink = await screen.findByRole("link", {
+      name: "Ver comprobante parte 1",
     });
     const monthlyReceiptFolderLink = screen.getByRole("link", {
       name: "Ver carpeta del mes actual",
