@@ -5,6 +5,7 @@ import type {
 } from "next";
 
 import { Button } from "@/components/ui/button";
+import { TypingAnimation } from "@/components/ui/typing-animation";
 import {
   Card,
   CardContent,
@@ -22,7 +23,15 @@ export default function AuthErrorPage({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <main className={styles.page}>
-      <h1 className={styles.pageHeading}>Error de autenticación</h1>
+      <TypingAnimation
+        aria-label="Error de autenticación"
+        as="h1"
+        className={styles.pageHeading}
+        showCursor={false}
+        startOnView={false}
+      >
+        Error de autenticación
+      </TypingAnimation>
       <Card className={styles.card}>
         <CardHeader>
           <CardTitle>No pudimos conectar tu cuenta</CardTitle>

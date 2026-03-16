@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { toast } from "sonner";
 
 import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
+import { TypingAnimation } from "@/components/ui/typing-animation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -159,7 +160,15 @@ export default function ExchangeRatesPage({
       <section className={styles.section}>
         <div className={styles.hero}>
           <p className={styles.eyebrow}>Mercado cambiario</p>
-          <h1 className={styles.title}>Cotizaciones del dólar</h1>
+          <TypingAnimation
+            aria-label="Cotizaciones del dólar"
+            as="h1"
+            className={styles.title}
+            showCursor={false}
+            startOnView={false}
+          >
+            Cotizaciones del dólar
+          </TypingAnimation>
           <p className={styles.description}>
             Consultá el valor oficial, blue y solidario del mes seleccionado.
           </p>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { TypingAnimation } from "@/components/ui/typing-animation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +16,15 @@ import styles from "./offline-page.module.scss";
 export default function OfflinePage() {
   return (
     <main className={styles.page}>
-      <h1 className={styles.pageHeading}>Sin conexión</h1>
+      <TypingAnimation
+        aria-label="Sin conexión"
+        as="h1"
+        className={styles.pageHeading}
+        showCursor={false}
+        startOnView={false}
+      >
+        Sin conexión
+      </TypingAnimation>
       <Card className={styles.card}>
         <CardHeader>
           <CardTitle>No hay internet en este momento</CardTitle>

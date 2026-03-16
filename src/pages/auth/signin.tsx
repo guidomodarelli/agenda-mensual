@@ -11,6 +11,7 @@ import {
 } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
+import { TypingAnimation } from "@/components/ui/typing-animation";
 import {
   Card,
   CardContent,
@@ -43,7 +44,15 @@ export default function SignInPage({
 
   return (
     <main className={styles.page}>
-      <h1 className={styles.pageHeading}>Ingreso a tu cuenta</h1>
+      <TypingAnimation
+        aria-label="Ingreso a tu cuenta"
+        as="h1"
+        className={styles.pageHeading}
+        showCursor={false}
+        startOnView={false}
+      >
+        Ingreso a tu cuenta
+      </TypingAnimation>
       <Card className={styles.card}>
         <CardHeader>
           <CardTitle>Conectar Google</CardTitle>

@@ -20,6 +20,7 @@ import {
   type MonthlyExpensesEditableReceipt,
   type MonthlyExpensesEditableRow,
 } from "@/components/monthly-expenses/monthly-expenses-table";
+import { TypingAnimation } from "@/components/ui/typing-animation";
 import type { ExpenseEditableFieldName } from "@/components/monthly-expenses/expense-sheet";
 import {
   type LendersCatalogDocumentResult,
@@ -1646,6 +1647,8 @@ export default function MonthlyExpensesPage({
     toast.info("Filtros del reporte restablecidos.");
   };
 
+  const pageHeading = getPageHeadingByTab(activeTab);
+
   return (
     <FinanceAppShell
       activeSection={activeTab}
@@ -1654,7 +1657,14 @@ export default function MonthlyExpensesPage({
       initialSidebarOpen={initialSidebarOpen}
       isOAuthConfigured={isOAuthConfigured}
     >
-      <h1>{getPageHeadingByTab(activeTab)}</h1>
+      <TypingAnimation
+        aria-label={pageHeading}
+        as="h1"
+        showCursor={false}
+        startOnView={false}
+      >
+        {pageHeading}
+      </TypingAnimation>
 
       {activeTab === "expenses" ? (
               <MonthlyExpensesTable
