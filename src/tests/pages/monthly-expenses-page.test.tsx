@@ -403,6 +403,71 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
   });
 
+  it("shows hide icons only for hideable headers and hides columns from the header controls", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo A",
+              id: "expense-1",
+              loan: {
+                endMonth: "2026-12",
+                installmentCount: 12,
+                paidInstallments: 3,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Sin deuda",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 200,
+              total: 200,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Ocultar columna Descripción" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Ocultar columna Subtotal" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Ocultar columna Deuda / cuotas" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ocultar columna Subtotal" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("columnheader", { name: "Subtotal" }),
+      ).not.toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Ocultar columna Deuda / cuotas" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("columnheader", { name: "Deuda / cuotas" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("allows selecting and deselecting all hideable columns from the selector", async () => {
     const user = userEvent.setup();
 

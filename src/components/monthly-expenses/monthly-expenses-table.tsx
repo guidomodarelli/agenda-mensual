@@ -11,6 +11,7 @@ import {
   ArrowUpDown,
   Check,
   CircleX,
+  EyeOff,
   ExternalLink,
   Link2,
   Paperclip,
@@ -292,8 +293,10 @@ function persistMonthlyExpensesTablePreferences(
 
 interface LoanSortColumnHeaderProps {
   column: {
+    getCanHide: () => boolean;
     getCanSort: () => boolean;
     getIsSorted: () => false | "asc" | "desc";
+    toggleVisibility: (value?: boolean) => void;
   };
   loanSortMode: LoanSortMode;
   onApplyLoanSort: (args: {
@@ -366,6 +369,7 @@ function LoanSortColumnHeader({
   onApplyLoanSort,
 }: LoanSortColumnHeaderProps) {
   const canSort = column.getCanSort();
+  const canHide = column.getCanHide();
   const currentSortDirection = column.getIsSorted() === "desc" ? "desc" : "asc";
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [draftLoanSortMode, setDraftLoanSortMode] =
@@ -384,11 +388,26 @@ function LoanSortColumnHeader({
   }
 
   if (!canSort) {
-    return <span className={styles.headLabel}>Deuda / cuotas</span>;
+    return (
+      <span className={styles.sortableHeader}>
+        <span className={styles.headLabel}>Deuda / cuotas</span>
+        {canHide ? (
+          <button
+            aria-label="Ocultar columna Deuda / cuotas"
+            className={styles.sortIconButton}
+            onClick={() => column.toggleVisibility(false)}
+            type="button"
+          >
+            <EyeOff aria-hidden="true" />
+          </button>
+        ) : null}
+      </span>
+    );
   }
 
   const sorted = column.getIsSorted();
-  const SortIcon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
+  const SortIcon =
+    sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
 
   return (
     <div className={styles.loanSortHeader}>
@@ -404,92 +423,102 @@ function LoanSortColumnHeader({
               <SortIcon aria-hidden="true" />
             </button>
           </PopoverTrigger>
-        <PopoverContent align="end" className={styles.loanSortPopover}>
-          <p className={styles.loanSortPopoverTitle}>Criterio</p>
+          <PopoverContent align="end" className={styles.loanSortPopover}>
+            <p className={styles.loanSortPopoverTitle}>Criterio</p>
 
-          <RadioGroup
-            aria-label="Criterio de orden para Deuda / cuotas"
-            className={styles.loanSortOptions}
-            onValueChange={(value) => setDraftLoanSortMode(value as LoanSortMode)}
-            value={draftLoanSortMode}
-          >
-            {LOAN_SORT_OPTIONS.map((option) => {
-              const radioId = `loan-sort-mode-${option.value}`;
-
-              return (
-                <div className={styles.loanSortOption} key={option.value}>
-                  <RadioGroupItem
-                    aria-label={option.label}
-                    id={radioId}
-                    value={option.value}
-                  />
-                  <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
-                    {option.label}
-                  </Label>
-                </div>
-              );
-            })}
-          </RadioGroup>
-
-          <p className={styles.loanSortPopoverTitle}>Dirección</p>
-
-          <RadioGroup
-            aria-label="Dirección de orden para Deuda / cuotas"
-            className={styles.loanSortOptions}
-            onValueChange={(value) =>
-              setDraftLoanSortDirection(value as "asc" | "desc")
-            }
-            value={draftLoanSortDirection}
-          >
-            {LOAN_SORT_DIRECTION_OPTIONS.map((option) => {
-              const radioId = `loan-sort-direction-${option.value}`;
-
-              return (
-                <div className={styles.loanSortOption} key={option.value}>
-                  <RadioGroupItem
-                    aria-label={option.label}
-                    id={radioId}
-                    value={option.value}
-                  />
-                  <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
-                    {option.label}
-                  </Label>
-                </div>
-              );
-            })}
-          </RadioGroup>
-
-          <p className={styles.loanSortHint}>Los cambios se aplican al presionar Aplicar.</p>
-
-          <div className={styles.loanSortActions}>
-            <Button
-              className={styles.loanSortDiscardButton}
-              onClick={() => {
-                setIsPopoverOpen(false);
-              }}
-              size="sm"
-              type="button"
-              variant="outline"
+            <RadioGroup
+              aria-label="Criterio de orden para Deuda / cuotas"
+              className={styles.loanSortOptions}
+              onValueChange={(value) => setDraftLoanSortMode(value as LoanSortMode)}
+              value={draftLoanSortMode}
             >
-              Descartar
-            </Button>
-            <Button
-              className={styles.loanSortApplyButton}
-              onClick={() => {
-                onApplyLoanSort({
-                  direction: draftLoanSortDirection,
-                  mode: draftLoanSortMode,
-                });
-                setIsPopoverOpen(false);
-              }}
-              size="sm"
-              type="button"
+              {LOAN_SORT_OPTIONS.map((option) => {
+                const radioId = `loan-sort-mode-${option.value}`;
+
+                return (
+                  <div className={styles.loanSortOption} key={option.value}>
+                    <RadioGroupItem
+                      aria-label={option.label}
+                      id={radioId}
+                      value={option.value}
+                    />
+                    <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
+                      {option.label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+
+            <p className={styles.loanSortPopoverTitle}>Dirección</p>
+
+            <RadioGroup
+              aria-label="Dirección de orden para Deuda / cuotas"
+              className={styles.loanSortOptions}
+              onValueChange={(value) =>
+                setDraftLoanSortDirection(value as "asc" | "desc")
+              }
+              value={draftLoanSortDirection}
             >
-              Aplicar
-            </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+              {LOAN_SORT_DIRECTION_OPTIONS.map((option) => {
+                const radioId = `loan-sort-direction-${option.value}`;
+
+                return (
+                  <div className={styles.loanSortOption} key={option.value}>
+                    <RadioGroupItem
+                      aria-label={option.label}
+                      id={radioId}
+                      value={option.value}
+                    />
+                    <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
+                      {option.label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+
+            <p className={styles.loanSortHint}>Los cambios se aplican al presionar Aplicar.</p>
+
+            <div className={styles.loanSortActions}>
+              <Button
+                className={styles.loanSortDiscardButton}
+                onClick={() => {
+                  setIsPopoverOpen(false);
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Descartar
+              </Button>
+              <Button
+                className={styles.loanSortApplyButton}
+                onClick={() => {
+                  onApplyLoanSort({
+                    direction: draftLoanSortDirection,
+                    mode: draftLoanSortMode,
+                  });
+                  setIsPopoverOpen(false);
+                }}
+                size="sm"
+                type="button"
+              >
+                Aplicar
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        {canHide ? (
+          <button
+            aria-label="Ocultar columna Deuda / cuotas"
+            className={styles.sortIconButton}
+            onClick={() => column.toggleVisibility(false)}
+            type="button"
+          >
+            <EyeOff aria-hidden="true" />
+          </button>
+        ) : null}
       </span>
     </div>
   );
@@ -622,17 +651,36 @@ function getSortableHeader(label: string) {
     column,
   }: {
     column: {
+      getCanHide: () => boolean;
       getCanSort: () => boolean;
       getIsSorted: () => false | "asc" | "desc";
       toggleSorting: (desc?: boolean) => void;
+      toggleVisibility: (value?: boolean) => void;
     };
   }) {
+    const canHide = column.getCanHide();
+
     if (!column.getCanSort()) {
-      return <span className={styles.headLabel}>{label}</span>;
+      return (
+        <span className={styles.sortableHeader}>
+          <span className={styles.headLabel}>{label}</span>
+          {canHide ? (
+            <button
+              aria-label={`Ocultar columna ${label}`}
+              className={styles.sortIconButton}
+              onClick={() => column.toggleVisibility(false)}
+              type="button"
+            >
+              <EyeOff aria-hidden="true" />
+            </button>
+          ) : null}
+        </span>
+      );
     }
 
     const sorted = column.getIsSorted();
-    const SortIcon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
+    const SortIcon =
+      sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
 
     return (
       <span className={styles.sortableHeader}>
@@ -645,6 +693,16 @@ function getSortableHeader(label: string) {
         >
           <SortIcon aria-hidden="true" />
         </button>
+        {canHide ? (
+          <button
+            aria-label={`Ocultar columna ${label}`}
+            className={styles.sortIconButton}
+            onClick={() => column.toggleVisibility(false)}
+            type="button"
+          >
+            <EyeOff aria-hidden="true" />
+          </button>
+        ) : null}
       </span>
     );
   };
