@@ -111,7 +111,6 @@ export function FinanceAppShell({
           className={`${styles.sidebarHeader} group-data-[collapsible=icon]:hidden`}
         >
           <p className={styles.sidebarTitle}>XFly</p>
-          <p className={styles.sidebarSubtitle}>Navegacion principal</p>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>

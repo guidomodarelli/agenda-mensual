@@ -67,11 +67,6 @@
   color: color-mix(in srgb, var(--sidebar-foreground) 92%, var(--sidebar-primary) 8%);
 }
 
-.sidebarSubtitle {
-  font-size: 0.8rem;
-  color: color-mix(in srgb, var(--sidebar-foreground) 58%, var(--sidebar-accent-foreground) 42%);
-}
-
 .sidebarEdgeTriggerDock {
   position: absolute;
   right: -0.85rem;
