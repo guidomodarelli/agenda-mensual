@@ -1896,8 +1896,11 @@ describe("MonthlyExpensesPage", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("renders Enviar link with encoded message when receipt sharing is enabled", async () => {
+  it("renders Enviar link with one receipt plus custom message", async () => {
     const user = userEvent.setup();
+    const receiptViewUrl =
+      "https://drive.google.com/file/d/receipt-file-id/view";
+    const customMessage = "Pago correspondiente a marzo";
 
     renderWithProviders(
       <MonthlyExpensesPage
@@ -1909,10 +1912,24 @@ describe("MonthlyExpensesPage", () => {
               description: "Electricidad",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              receiptShareMessage: "Hola, te envío el comprobante",
+              receiptShareMessage: customMessage,
               receiptSharePhoneDigits: "5491123456789",
               receiptShareStatus: "pending",
               requiresReceiptShare: true,
+              receipts: [
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl: receiptViewUrl,
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              ],
               subtotal: 45,
               total: 45,
             },
@@ -1926,7 +1943,9 @@ describe("MonthlyExpensesPage", () => {
 
     expect(sendLink).toHaveAttribute(
       "href",
-      "https://wa.me/5491123456789?text=Hola%2C%20te%20env%C3%ADo%20el%20comprobante",
+      `https://wa.me/5491123456789?text=${encodeURIComponent(
+        `Comprobante: ${receiptViewUrl}\n\n${customMessage}`,
+      )}`,
     );
 
     await user.hover(sendLink);
@@ -1936,7 +1955,12 @@ describe("MonthlyExpensesPage", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("renders Enviar link without text query when message is empty", () => {
+  it("renders Enviar link with multiple receipts and no custom message", () => {
+    const firstReceiptViewUrl =
+      "https://drive.google.com/file/d/receipt-file-id/view";
+    const secondReceiptViewUrl =
+      "https://drive.google.com/file/d/receipt-file-id-2/view";
+
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -1951,6 +1975,32 @@ describe("MonthlyExpensesPage", () => {
               receiptSharePhoneDigits: "5491123456789",
               receiptShareStatus: "pending",
               requiresReceiptShare: true,
+              receipts: [
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante-1.pdf",
+                  fileViewUrl: firstReceiptViewUrl,
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id-2",
+                  fileName: "comprobante-2.pdf",
+                  fileViewUrl: secondReceiptViewUrl,
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              ],
               subtotal: 45,
               total: 45,
             },
@@ -1962,8 +2012,84 @@ describe("MonthlyExpensesPage", () => {
 
     expect(screen.getByRole("link", { name: "Enviar" })).toHaveAttribute(
       "href",
-      "https://wa.me/5491123456789",
+      `https://wa.me/5491123456789?text=${encodeURIComponent(
+        `Comprobante 1: ${firstReceiptViewUrl}\nComprobante 2: ${secondReceiptViewUrl}`,
+      )}`,
     );
+  });
+
+  it("does not render Enviar link when there are no receipts", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptShareMessage: "Hola",
+              receiptSharePhoneDigits: "5491123456789",
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              receipts: [],
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "Enviar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render Enviar link when destination phone is missing", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptShareMessage: "Hola",
+              receiptSharePhoneDigits: "",
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              receipts: [
+                {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              ],
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "Enviar" }),
+    ).not.toBeInTheDocument();
   });
 
   it("updates receipt share status from the table and persists immediately", async () => {

@@ -785,10 +785,37 @@ function getReceiptShareMessage(value: string): string | null {
   return normalizedMessage.length > 0 ? normalizedMessage : null;
 }
 
+function getReceiptShareReceiptUrls(
+  receipts: MonthlyExpensesEditableReceipt[],
+): string[] {
+  return receipts
+    .map((receipt) => receipt.fileViewUrl.trim())
+    .filter((receiptUrl) => receiptUrl.length > 0);
+}
+
+function getReceiptShareReceiptsMessage(receiptUrls: string[]): string | null {
+  if (receiptUrls.length === 0) {
+    return null;
+  }
+
+  if (receiptUrls.length === 1) {
+    return `Comprobante: ${receiptUrls[0]}`;
+  }
+
+  return receiptUrls
+    .map(
+      (receiptUrl, index) => `Comprobante ${index + 1}: ${receiptUrl}`,
+    )
+    .join("\n");
+}
+
 function getReceiptShareWhatsAppLink(
   row: Pick<
     MonthlyExpensesEditableRow,
-    "receiptShareMessage" | "receiptSharePhoneDigits" | "requiresReceiptShare"
+    | "receiptShareMessage"
+    | "receiptSharePhoneDigits"
+    | "receipts"
+    | "requiresReceiptShare"
   >,
 ): string | null {
   if (!row.requiresReceiptShare) {
@@ -801,13 +828,21 @@ function getReceiptShareWhatsAppLink(
     return null;
   }
 
-  const normalizedMessage = getReceiptShareMessage(row.receiptShareMessage);
+  const receiptShareMessage = getReceiptShareReceiptsMessage(
+    getReceiptShareReceiptUrls(row.receipts),
+  );
 
-  if (!normalizedMessage) {
-    return `https://wa.me/${phoneDigits}`;
+  if (!receiptShareMessage) {
+    return null;
   }
 
-  return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(normalizedMessage)}`;
+  const normalizedMessage = getReceiptShareMessage(row.receiptShareMessage);
+
+  const fullMessage = normalizedMessage
+    ? `${receiptShareMessage}\n\n${normalizedMessage}`
+    : receiptShareMessage;
+
+  return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(fullMessage)}`;
 }
 
 function parseYearMonth(value: string): { month: string; year: string } | null {
