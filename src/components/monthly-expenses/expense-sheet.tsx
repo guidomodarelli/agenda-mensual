@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Info, X } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { z } from "zod";
 
 import {
   Alert,
@@ -16,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   InputGroup,
   InputGroupAddon,
@@ -54,6 +57,8 @@ export type ExpenseEditableFieldName =
   | "installmentCount"
   | "manualCoveredPayments"
   | "occurrencesPerMonth"
+  | "receiptShareMessage"
+  | "receiptSharePhoneDigits"
   | "startMonth"
   | "subtotal";
 
@@ -69,6 +74,7 @@ interface ExpenseSheetProps {
   onFieldChange: (fieldName: ExpenseEditableFieldName, value: string) => void;
   onLenderSelect: (lenderId: string | null) => void;
   onLoanToggle: (checked: boolean) => void;
+  onReceiptShareToggle: (checked: boolean) => void;
   onRequestClose: () => void;
   onSave: () => void;
   onUnsavedChangesClose: () => void;
@@ -90,6 +96,22 @@ type ExpenseFieldErrorMap = Partial<Record<ExpenseSheetFormFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseSheetFormFieldName, string>;
 
 const INSTALLMENT_COUNT_SUGGESTIONS = ["3", "6", "9", "12", "18", "24"];
+const RECEIPT_SHARE_PHONE_SCHEMA = z
+  .string()
+  .trim()
+  .min(1, "Completá el número de WhatsApp.")
+  .refine((value) => {
+    const phoneDigits = value.replace(/\D+/g, "");
+
+    if (!phoneDigits) {
+      return false;
+    }
+
+    const parsedPhone = parsePhoneNumberFromString(`+${phoneDigits}`);
+
+    return Boolean(parsedPhone?.isValid());
+  }, "Ingresá un número de WhatsApp internacional válido.")
+  .transform((value) => value.replace(/\D+/g, ""));
 
 function getFieldLabel(label: string, isChanged: boolean) {
   return (
@@ -187,6 +209,8 @@ function getExpenseSheetFormValues(
     description: draft.description,
     installmentCount: draft.installmentCount,
     occurrencesPerMonth: draft.occurrencesPerMonth,
+    receiptShareMessage: draft.receiptShareMessage,
+    receiptSharePhoneDigits: draft.receiptSharePhoneDigits,
     startMonth: draft.startMonth,
     subtotal: draft.subtotal,
   };
@@ -216,6 +240,18 @@ function getFieldErrors(draft: MonthlyExpensesEditableRow): ExpenseFieldErrorMap
 
   if (draft.isLoan && (!Number.isInteger(installmentCount) || installmentCount <= 0)) {
     fieldErrors.installmentCount = "Completá la cantidad total de cuotas.";
+  }
+
+  if (draft.requiresReceiptShare) {
+    const parsedPhone = RECEIPT_SHARE_PHONE_SCHEMA.safeParse(
+      draft.receiptSharePhoneDigits,
+    );
+
+    if (!parsedPhone.success) {
+      fieldErrors.receiptSharePhoneDigits =
+        parsedPhone.error.issues[0]?.message ??
+        "Ingresá un número de WhatsApp internacional válido.";
+    }
   }
 
   return fieldErrors;
@@ -264,6 +300,7 @@ function ExpenseSheetContent({
   onFieldChange,
   onLenderSelect,
   onLoanToggle,
+  onReceiptShareToggle,
   onRequestClose,
   onSave,
   onUnsavedChangesClose,
@@ -751,6 +788,117 @@ function ExpenseSheetContent({
                         </p>
                       </AlertDescription>
                     </Alert>
+                  </>
+                ) : null}
+              </div>
+
+              <div className={styles.loanSection}>
+                <div className={styles.loanToggleRow}>
+                  <div className={styles.fieldControlWrapper}>
+                    <input
+                      checked={draft.requiresReceiptShare}
+                      className={styles.loanToggle}
+                      id="expense-requires-receipt-share"
+                      onChange={(event) => onReceiptShareToggle(event.target.checked)}
+                      type="checkbox"
+                    />
+                  </div>
+                  <div className={styles.loanToggleLabelGroup}>
+                    <Label htmlFor="expense-requires-receipt-share">
+                      {getFieldLabel(
+                        "¿Necesitas enviar el comprobante a alguien?",
+                        changedFields.has("requiresReceiptShare"),
+                      )}
+                    </Label>
+                  </div>
+                </div>
+
+                {draft.requiresReceiptShare ? (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="receiptSharePhoneDigits"
+                      render={() => (
+                        <FormItem className={styles.fieldGroup}>
+                          <FormLabel>
+                            {getFieldLabel(
+                              "Número de teléfono (WhatsApp)",
+                              changedFields.has("receiptSharePhoneDigits"),
+                            )}
+                          </FormLabel>
+                          <div className={styles.fieldControlWrapper}>
+                            <FormControl>
+                              <Input
+                                aria-label="Número de teléfono (WhatsApp)"
+                                className={cn(
+                                  shouldShowValidation &&
+                                    fieldErrors.receiptSharePhoneDigits &&
+                                    styles.invalidField,
+                                  changedFields.has("receiptSharePhoneDigits") &&
+                                    styles.changedField,
+                                )}
+                                data-changed={
+                                  changedFields.has("receiptSharePhoneDigits")
+                                    ? "true"
+                                    : "false"
+                                }
+                                inputMode="numeric"
+                                onChange={(event) =>
+                                  onFieldChange(
+                                    "receiptSharePhoneDigits",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Ej: 5491123456789"
+                                type="tel"
+                                value={draft.receiptSharePhoneDigits}
+                              />
+                            </FormControl>
+                            <FormMessage className={styles.fieldErrorText} />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="receiptShareMessage"
+                      render={() => (
+                        <FormItem className={styles.fieldGroup}>
+                          <FormLabel>
+                            {getFieldLabel(
+                              "Mensaje personalizado (opcional)",
+                              changedFields.has("receiptShareMessage"),
+                            )}
+                          </FormLabel>
+                          <div className={styles.fieldControlWrapper}>
+                            <FormControl>
+                              <Textarea
+                                aria-label="Mensaje personalizado (opcional)"
+                                className={cn(
+                                  changedFields.has("receiptShareMessage") &&
+                                    styles.changedField,
+                                )}
+                                data-changed={
+                                  changedFields.has("receiptShareMessage")
+                                    ? "true"
+                                    : "false"
+                                }
+                                onChange={(event) =>
+                                  onFieldChange(
+                                    "receiptShareMessage",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Opcional"
+                                value={draft.receiptShareMessage}
+                              />
+                            </FormControl>
+                            <FormMessage className={styles.fieldErrorText} />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
                   </>
                 ) : null}
               </div>

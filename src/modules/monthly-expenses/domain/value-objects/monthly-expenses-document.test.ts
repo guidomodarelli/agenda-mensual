@@ -403,6 +403,78 @@ describe("monthlyExpensesDocument", () => {
     ).toThrow("Saving monthly expenses requires every payment link to be a valid URL.");
   });
 
+  it("requires a valid international receipt share phone when sharing is enabled", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              requiresReceiptShare: true,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(
+      "Saving monthly expenses requires a valid international receipt share phone when receipt sharing is enabled.",
+    );
+  });
+
+  it("normalizes receipt share phone digits and defaults share status to pending", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receiptSharePhoneDigits: "+54 9 11 2345-6789",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.receiptSharePhoneDigits).toBe("5491123456789");
+    expect(result.items[0]?.receiptShareStatus).toBe("pending");
+    expect(result.items[0]?.requiresReceiptShare).toBe(true);
+  });
+
+  it("rejects invalid receipt share statuses", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptSharePhoneDigits: "5491123456789",
+              receiptShareStatus: "done" as unknown as "pending",
+              requiresReceiptShare: true,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(
+      "Saving monthly expenses requires every receipt share status to be pending or sent.",
+    );
+  });
+
   it("normalizes receipt metadata and keeps Drive links", () => {
     const result = createMonthlyExpensesDocument(
       {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
 
@@ -14,6 +15,7 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
   protocol: /^https?$/,
   hostname: z.regexes.domain,
 });
+const RECEIPT_SHARE_STATUSES = ["pending", "sent"] as const;
 
 function normalizeHttpPaymentLink(value: string): string {
   const normalizedValue = value.trim();
@@ -34,6 +36,58 @@ function isValidHttpPaymentLink(value: string): boolean {
     return false;
   }
 }
+
+function normalizeReceiptSharePhoneDigits(value: string): string {
+  const phoneDigits = value.trim().replace(/\D+/g, "");
+  const parsedPhone = parsePhoneNumberFromString(`+${phoneDigits}`);
+
+  if (!phoneDigits || !parsedPhone || !parsedPhone.isValid()) {
+    throw new Error(
+      "monthly-expenses-api requires receiptSharePhoneDigits to be a valid international phone number.",
+    );
+  }
+
+  return phoneDigits;
+}
+
+function isValidReceiptSharePhoneDigits(value: string): boolean {
+  try {
+    normalizeReceiptSharePhoneDigits(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const receiptSharePhoneDigitsSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmedValue = value.trim();
+
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  },
+  z
+    .string()
+    .refine((value) => isValidReceiptSharePhoneDigits(value))
+    .transform((value) => normalizeReceiptSharePhoneDigits(value))
+    .nullable(),
+);
+
+const receiptShareMessageSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmedValue = value.trim();
+
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  },
+  z.string().trim().nullable(),
+);
 
 const monthlyExpenseReceiptSchema = z.object({
   allReceiptsFolderId: z.string().trim().min(1),
@@ -102,9 +156,22 @@ const monthlyExpenseItemSchema = z.object({
     .transform((value) => normalizeHttpPaymentLink(value))
     .nullable()
     .optional(),
+  receiptShareMessage: receiptShareMessageSchema.optional(),
+  receiptSharePhoneDigits: receiptSharePhoneDigitsSchema.optional(),
+  receiptShareStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
+  requiresReceiptShare: z.boolean().optional(),
   receipts: z.array(monthlyExpenseReceiptSchema).optional(),
   subtotal: z.number().positive(),
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (value.requiresReceiptShare === true && !value.receiptSharePhoneDigits) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "monthly-expenses-api requires receiptSharePhoneDigits when requiresReceiptShare is true.",
+      path: ["receiptSharePhoneDigits"],
+    });
+  }
+});
 
 const monthlyExpensesRequestSchema = z.object({
   items: z.array(monthlyExpenseItemSchema),
@@ -153,10 +220,23 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
           .transform((value) => normalizeHttpPaymentLink(value))
           .nullable()
           .optional(),
+        receiptShareMessage: receiptShareMessageSchema.optional(),
+        receiptSharePhoneDigits: receiptSharePhoneDigitsSchema.optional(),
+        receiptShareStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
+        requiresReceiptShare: z.boolean().optional(),
         receipts: z.array(monthlyExpenseReceiptResponseSchema).optional(),
         subtotal: z.number().positive(),
         total: z.number().nonnegative(),
-      }).strict(),
+      }).strict().superRefine((value, context) => {
+        if (value.requiresReceiptShare === true && !value.receiptSharePhoneDigits) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "monthly-expenses-api requires receiptSharePhoneDigits when requiresReceiptShare is true.",
+            path: ["receiptSharePhoneDigits"],
+          });
+        }
+      }),
     ),
     month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
   }).strict(),

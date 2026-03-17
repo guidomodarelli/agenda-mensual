@@ -235,6 +235,39 @@ function getPersistedTablePreferences():
 
 describe("MonthlyExpensesPage", () => {
   beforeEach(() => {
+    if (typeof HTMLElement !== "undefined") {
+      if (!HTMLElement.prototype.hasPointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
+          configurable: true,
+          value: () => false,
+        });
+      }
+
+      if (!HTMLElement.prototype.setPointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "setPointerCapture", {
+          configurable: true,
+          value: () => undefined,
+        });
+      }
+
+      if (!HTMLElement.prototype.releasePointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "releasePointerCapture", {
+          configurable: true,
+          value: () => undefined,
+        });
+      }
+    }
+
+    if (
+      typeof Element !== "undefined" &&
+      !Element.prototype.scrollIntoView
+    ) {
+      Object.defineProperty(Element.prototype, "scrollIntoView", {
+        configurable: true,
+        value: () => undefined,
+      });
+    }
+
     mockedSignIn.mockReset();
     mockedSignOut.mockReset();
     mockedToast.mockReset();
@@ -1861,6 +1894,129 @@ describe("MonthlyExpensesPage", () => {
       "true",
     );
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("renders Enviar link with encoded message when receipt sharing is enabled", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptShareMessage: "Hola, te envío el comprobante",
+              receiptSharePhoneDigits: "5491123456789",
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const sendLink = screen.getByRole("link", { name: "Enviar" });
+
+    expect(sendLink).toHaveAttribute(
+      "href",
+      "https://wa.me/5491123456789?text=Hola%2C%20te%20env%C3%ADo%20el%20comprobante",
+    );
+
+    await user.hover(sendLink);
+
+    expect(
+      screen.getAllByText("Enviar comprobante a 5491123456789").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("renders Enviar link without text query when message is empty", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptShareMessage: null,
+              receiptSharePhoneDigits: "5491123456789",
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Enviar" })).toHaveAttribute(
+      "href",
+      "https://wa.me/5491123456789",
+    );
+  });
+
+  it("updates receipt share status from the table and persists immediately", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptSharePhoneDigits: "5491123456789",
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("combobox", { name: "Estado de envío de Electricidad" }),
+    );
+    await user.click(screen.getByText("Enviado"));
+
+    await waitFor(() => {
+      const payload = getMonthlyExpensesSavePayload(fetchMock);
+
+      expect(payload.items[0]?.receiptShareStatus).toBe("sent");
+      expect(payload.items[0]?.receiptSharePhoneDigits).toBe("5491123456789");
+      expect(payload.items[0]?.requiresReceiptShare).toBe(true);
+    });
   });
 
   it("does not render the authenticated session identity details", () => {
@@ -4580,7 +4736,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.queryByText("Subir comprobante")).not.toBeInTheDocument();
   });
 
-  it("renders Pagos, Pagos sin comprobante, Comprobantes, Carpeta del mes actual, and Carpeta de comprobantes columns after Link", () => {
+  it("renders Estado de envío, Enviar, and payments columns after Link", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -4612,6 +4768,8 @@ describe("MonthlyExpensesPage", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
     const linkHeaderIndex = headers.indexOf("Link");
+    const receiptShareStatusHeaderIndex = headers.indexOf("Estado de envío");
+    const receiptShareLinkHeaderIndex = headers.indexOf("Enviar");
     const paidHeaderIndex = headers.indexOf("Pagos");
     const manualPaidHeaderIndex = headers.indexOf("Pagos sin comprobante");
     const receiptHeaderIndex = headers.indexOf("Comprobantes");
@@ -4621,7 +4779,9 @@ describe("MonthlyExpensesPage", () => {
     const allReceiptsFolderHeaderIndex = headers.indexOf("Carpeta de comprobantes");
 
     expect(linkHeaderIndex).toBeGreaterThanOrEqual(0);
-    expect(paidHeaderIndex).toBe(linkHeaderIndex + 1);
+    expect(receiptShareStatusHeaderIndex).toBe(linkHeaderIndex + 1);
+    expect(receiptShareLinkHeaderIndex).toBe(receiptShareStatusHeaderIndex + 1);
+    expect(paidHeaderIndex).toBe(receiptShareLinkHeaderIndex + 1);
     expect(manualPaidHeaderIndex).toBe(paidHeaderIndex + 1);
     expect(receiptHeaderIndex).toBe(manualPaidHeaderIndex + 1);
     expect(monthlyReceiptFolderHeaderIndex).toBe(receiptHeaderIndex + 1);

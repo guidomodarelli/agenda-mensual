@@ -27,6 +27,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.44.6",
     "googleapis": "171.4.0",
+    "libphonenumber-js": "^1.12.11",
     "lucide-react": "0.575.0",
     "motion": "^12.36.0",
     "next": "16.1.6",

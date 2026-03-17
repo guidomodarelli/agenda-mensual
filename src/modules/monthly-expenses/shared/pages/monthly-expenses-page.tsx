@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
 import { ExpenseReceiptCoverageEditDialog } from "@/components/monthly-expenses/expense-receipt-coverage-edit-dialog";
@@ -141,6 +142,7 @@ const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MONTHLY_EXPENSES_TAB_KEYS = ["expenses", "lenders", "debts"] as const;
 export type MonthlyExpensesTabKey = (typeof MONTHLY_EXPENSES_TAB_KEYS)[number];
 type MonthlyExpenseCurrency = "ARS" | "USD";
+type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
 const DEFAULT_MONTHLY_EXPENSES_TAB: MonthlyExpensesTabKey = "expenses";
 const MAX_RECEIPT_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const RECEIPT_READ_PROGRESS_WEIGHT = 0.35;
@@ -297,6 +299,38 @@ function calculateRowTotal(subtotal: string, occurrencesPerMonth: string): strin
   return Number((subtotalValue * occurrencesValue).toFixed(2)).toFixed(2);
 }
 
+function normalizeReceiptSharePhoneDigits(value: string): string {
+  return value.trim().replace(/\D+/g, "");
+}
+
+function normalizeReceiptShareMessage(value: string): string {
+  return value.trim();
+}
+
+function isReceiptShareStatus(
+  value: string,
+): value is MonthlyExpenseReceiptShareStatus {
+  return value === "pending" || value === "sent";
+}
+
+function normalizeReceiptShareStatus(
+  value: string,
+): MonthlyExpenseReceiptShareStatus | "" {
+  return isReceiptShareStatus(value) ? value : "";
+}
+
+function isValidInternationalReceiptSharePhone(value: string): boolean {
+  const phoneDigits = normalizeReceiptSharePhoneDigits(value);
+
+  if (!phoneDigits) {
+    return false;
+  }
+
+  const parsedPhone = parsePhoneNumberFromString(`+${phoneDigits}`);
+
+  return Boolean(parsedPhone?.isValid());
+}
+
 function createEmptyRow(): MonthlyExpensesEditableRow {
   return {
     allReceiptsFolderId: "",
@@ -316,6 +350,10 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     manualCoveredPayments: "0",
     occurrencesPerMonth: "1",
     paymentLink: "",
+    receiptShareMessage: "",
+    receiptSharePhoneDigits: "",
+    receiptShareStatus: "",
+    requiresReceiptShare: false,
     receipts: [],
     monthlyFolderId: "",
     monthlyFolderViewUrl: "",
@@ -351,6 +389,16 @@ function toEditableRows(
   document: MonthlyExpensesDocumentResult,
 ): MonthlyExpensesEditableRow[] {
   return document.items.map((item) => ({
+    ...(item.requiresReceiptShare === true
+      ? {
+          receiptShareStatus:
+            item.receiptShareStatus === "sent" ? "sent" : "pending",
+        }
+      : {
+          receiptShareStatus: normalizeReceiptShareStatus(
+            item.receiptShareStatus ?? "",
+          ),
+        }),
     ...(item.manualCoveredPayments !== undefined
       ? {
           manualCoveredPayments: formatEditableNumber(item.manualCoveredPayments),
@@ -397,6 +445,9 @@ function toEditableRows(
       : "",
     occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
     paymentLink: item.paymentLink?.trim() ?? "",
+    receiptShareMessage: item.receiptShareMessage?.trim() ?? "",
+    receiptSharePhoneDigits: item.receiptSharePhoneDigits?.trim() ?? "",
+    requiresReceiptShare: item.requiresReceiptShare === true,
     receipts: toEditableReceipts(item.receipts),
     monthlyFolderId:
       item.folders?.monthlyFolderId ?? item.receipts?.[0]?.monthlyFolderId ?? "",
@@ -683,6 +734,13 @@ function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
+  if (
+    row.requiresReceiptShare &&
+    !isValidInternationalReceiptSharePhone(row.receiptSharePhoneDigits)
+  ) {
+    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
+  }
+
   return null;
 }
 
@@ -735,6 +793,18 @@ function getChangedExpenseFields(
     changedFields.add("manualCoveredPayments");
   }
 
+  if (originalRow.requiresReceiptShare !== draft.requiresReceiptShare) {
+    changedFields.add("requiresReceiptShare");
+  }
+
+  if (originalRow.receiptSharePhoneDigits !== draft.receiptSharePhoneDigits) {
+    changedFields.add("receiptSharePhoneDigits");
+  }
+
+  if (originalRow.receiptShareMessage !== draft.receiptShareMessage) {
+    changedFields.add("receiptShareMessage");
+  }
+
   return changedFields;
 }
 
@@ -750,6 +820,24 @@ function toSaveMonthlyExpensesCommand(
         : {
             paymentLink: null,
           }),
+      ...(row.requiresReceiptShare ? { requiresReceiptShare: true } : {}),
+      ...(normalizeReceiptSharePhoneDigits(row.receiptSharePhoneDigits)
+        ? {
+            receiptSharePhoneDigits: normalizeReceiptSharePhoneDigits(
+              row.receiptSharePhoneDigits,
+            ),
+          }
+        : {}),
+      ...(normalizeReceiptShareMessage(row.receiptShareMessage)
+        ? {
+            receiptShareMessage: normalizeReceiptShareMessage(
+              row.receiptShareMessage,
+            ),
+          }
+        : {}),
+      ...(isReceiptShareStatus(row.receiptShareStatus)
+        ? { receiptShareStatus: row.receiptShareStatus }
+        : {}),
       ...((row.allReceiptsFolderId.trim().length > 0 &&
         row.allReceiptsFolderViewUrl.trim().length > 0 &&
         row.monthlyFolderId.trim().length > 0 &&
@@ -1188,6 +1276,8 @@ export default function MonthlyExpensesPage({
                 ? (value as MonthlyExpenseCurrency)
                 : fieldName === "manualCoveredPayments"
                 ? value || "0"
+                : fieldName === "receiptSharePhoneDigits"
+                ? normalizeReceiptSharePhoneDigits(value)
                 : value,
           },
         ])[0],
@@ -1239,6 +1329,33 @@ export default function MonthlyExpensesPage({
                 loanProgress: "",
                 startMonth: "",
               },
+        ])[0],
+      };
+    });
+  };
+
+  const handleExpenseReceiptShareToggle = (checked: boolean) => {
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+
+      const hasKnownStatus = isReceiptShareStatus(
+        currentState.draft.receiptShareStatus,
+      );
+
+      return {
+        ...currentState,
+        draft: normalizeEditableRows(formState.month, [
+          {
+            ...currentState.draft,
+            receiptShareStatus: checked
+              ? hasKnownStatus
+                ? currentState.draft.receiptShareStatus
+                : "pending"
+              : currentState.draft.receiptShareStatus,
+            requiresReceiptShare: checked,
+          },
         ])[0],
       };
     });
@@ -1813,6 +1930,56 @@ export default function MonthlyExpensesPage({
     }
   };
 
+  const handleUpdateReceiptShareStatus = async ({
+    expenseId,
+    receiptShareStatus,
+  }: {
+    expenseId: string;
+    receiptShareStatus: MonthlyExpenseReceiptShareStatus;
+  }) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para actualizar el estado de envío.");
+      return;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
+      return;
+    }
+
+    if (!expenseRow.requiresReceiptShare) {
+      return;
+    }
+
+    const currentStatus = isReceiptShareStatus(expenseRow.receiptShareStatus)
+      ? expenseRow.receiptShareStatus
+      : "pending";
+
+    if (currentStatus === receiptShareStatus) {
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? {
+            ...row,
+            receiptShareStatus,
+          }
+        : row,
+    );
+
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Actualizando estado de envío...",
+      success: "Estado de envío actualizado.",
+    });
+
+    if (!wasSaved) {
+      toast.error("No pudimos actualizar el estado de envío.");
+    }
+  };
+
   const handleDeleteMonthlyFolderReference = async (expenseId: string) => {
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para actualizar carpetas.");
@@ -2238,12 +2405,14 @@ export default function MonthlyExpensesPage({
                 onExpenseFieldChange={handleExpenseFieldChange}
                 onExpenseLenderSelect={handleExpenseLenderSelect}
                 onExpenseLoanToggle={handleExpenseLoanToggle}
+                onExpenseReceiptShareToggle={handleExpenseReceiptShareToggle}
                 onMonthChange={handleMonthChange}
                 onRequestCloseExpenseSheet={handleRequestCloseExpenseSheet}
                 onSaveExpense={handleSaveExpense}
                 onSaveUnsavedChanges={handleSaveUnsavedChanges}
                 onUpdateManualCoveredPayments={handleUpdateManualCoveredPayments}
                 onUpdatePaymentLink={handleUpdatePaymentLink}
+                onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}
                 onUploadReceipt={handleOpenReceiptUpload}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}

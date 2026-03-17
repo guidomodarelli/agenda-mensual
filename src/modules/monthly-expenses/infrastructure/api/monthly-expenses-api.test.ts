@@ -95,4 +95,79 @@ describe("monthly-expenses-api client", () => {
 
     expect(fetchImplementation).not.toHaveBeenCalled();
   });
+
+  it("accepts receipt share phone with separators and normalizes it", async () => {
+    const fetchImplementation = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await saveMonthlyExpensesDocumentViaApi(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receiptShareMessage: "Hola",
+            receiptSharePhoneDigits: "+54 9 11 2345-6789",
+            receiptShareStatus: "pending",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      fetchImplementation,
+    );
+
+    expect(fetchImplementation).toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses",
+      expect.objectContaining({
+        body: JSON.stringify({
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptShareMessage: "Hola",
+              receiptSharePhoneDigits: "5491123456789",
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        }),
+        method: "POST",
+      }),
+    );
+  });
+
+  it("rejects receipt share payload when requiresReceiptShare is true and phone is missing", async () => {
+    const fetchImplementation = jest.fn();
+
+    await expect(
+      saveMonthlyExpensesDocumentViaApi(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              requiresReceiptShare: true,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        fetchImplementation,
+      ),
+    ).rejects.toThrow();
+
+    expect(fetchImplementation).not.toHaveBeenCalled();
+  });
 });

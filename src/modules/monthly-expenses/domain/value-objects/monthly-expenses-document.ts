@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
@@ -12,9 +13,16 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
 });
 
 export const MONTHLY_EXPENSE_CURRENCIES = ["ARS", "USD"] as const;
+export const MONTHLY_EXPENSE_RECEIPT_SHARE_STATUSES = [
+  "pending",
+  "sent",
+] as const;
 
 export type MonthlyExpenseCurrency =
   (typeof MONTHLY_EXPENSE_CURRENCIES)[number];
+
+export type MonthlyExpenseReceiptShareStatus =
+  (typeof MONTHLY_EXPENSE_RECEIPT_SHARE_STATUSES)[number];
 
 export interface MonthlyExpenseLoanInput {
   installmentCount: number;
@@ -60,6 +68,10 @@ export interface MonthlyExpenseItemInput {
   manualCoveredPayments?: number;
   occurrencesPerMonth: number;
   paymentLink?: string | null;
+  receiptShareMessage?: string | null;
+  receiptSharePhoneDigits?: string | null;
+  receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
+  requiresReceiptShare?: boolean;
   receipts?: MonthlyExpenseReceiptInput[] | null;
   subtotal: number;
 }
@@ -69,6 +81,10 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   loan?: MonthlyExpenseLoan;
   manualCoveredPayments: number;
   paymentLink?: string | null;
+  receiptShareMessage?: string | null;
+  receiptSharePhoneDigits?: string | null;
+  receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
+  requiresReceiptShare?: boolean;
   receipts: MonthlyExpenseReceipt[];
   total: number;
 }
@@ -124,6 +140,14 @@ function formatMonthFromIndex(monthIndex: number): string {
 function isValidCurrency(currency: string): currency is MonthlyExpenseCurrency {
   return MONTHLY_EXPENSE_CURRENCIES.includes(
     currency as MonthlyExpenseCurrency,
+  );
+}
+
+function isValidReceiptShareStatus(
+  status: string,
+): status is MonthlyExpenseReceiptShareStatus {
+  return MONTHLY_EXPENSE_RECEIPT_SHARE_STATUSES.includes(
+    status as MonthlyExpenseReceiptShareStatus,
   );
 }
 
@@ -274,6 +298,74 @@ function validatePaymentLink(
   }
 }
 
+function validateReceiptSharePhoneDigits(
+  receiptSharePhoneDigits: string | null | undefined,
+  operationName: string,
+): string | null {
+  if (receiptSharePhoneDigits == null) {
+    return null;
+  }
+
+  const normalizedPhoneValue = receiptSharePhoneDigits.trim();
+
+  if (!normalizedPhoneValue) {
+    return null;
+  }
+
+  const phoneDigits = normalizedPhoneValue.replace(/\D+/g, "");
+
+  if (!phoneDigits) {
+    throw new Error(
+      `${operationName} requires every receipt share phone to contain only digits.`,
+    );
+  }
+
+  const parsedPhone = parsePhoneNumberFromString(`+${phoneDigits}`);
+
+  if (!parsedPhone || !parsedPhone.isValid()) {
+    throw new Error(
+      `${operationName} requires every receipt share phone to be a valid international phone number.`,
+    );
+  }
+
+  return phoneDigits;
+}
+
+function normalizeReceiptShareMessage(
+  receiptShareMessage: string | null | undefined,
+): string | null {
+  if (receiptShareMessage == null) {
+    return null;
+  }
+
+  const normalizedMessage = receiptShareMessage.trim();
+
+  return normalizedMessage.length > 0 ? normalizedMessage : null;
+}
+
+function validateReceiptShareStatus(
+  receiptShareStatus: string | null | undefined,
+  operationName: string,
+): MonthlyExpenseReceiptShareStatus | null {
+  if (receiptShareStatus == null) {
+    return null;
+  }
+
+  const normalizedStatus = receiptShareStatus.trim().toLowerCase();
+
+  if (!normalizedStatus) {
+    return null;
+  }
+
+  if (!isValidReceiptShareStatus(normalizedStatus)) {
+    throw new Error(
+      `${operationName} requires every receipt share status to be pending or sent.`,
+    );
+  }
+
+  return normalizedStatus;
+}
+
 function validateReceipts(
   receipts: MonthlyExpenseReceiptInput[] | null | undefined,
   operationName: string,
@@ -383,6 +475,10 @@ function validateItem(
     loan,
     manualCoveredPayments,
     paymentLink,
+    receiptShareMessage,
+    receiptSharePhoneDigits,
+    receiptShareStatus,
+    requiresReceiptShare,
     receipts,
     ...rawItem
   } = item;
@@ -393,6 +489,21 @@ function validateItem(
   };
   const normalizedFolders = validateFolders(folders, operationName);
   const normalizedPaymentLink = validatePaymentLink(paymentLink, operationName);
+  const normalizedReceiptSharePhoneDigits = validateReceiptSharePhoneDigits(
+    receiptSharePhoneDigits,
+    operationName,
+  );
+  const normalizedReceiptShareMessage = normalizeReceiptShareMessage(
+    receiptShareMessage,
+  );
+  const normalizedReceiptShareStatus = validateReceiptShareStatus(
+    receiptShareStatus,
+    operationName,
+  );
+  const normalizedRequiresReceiptShare = requiresReceiptShare === true;
+  const resolvedReceiptShareStatus = normalizedRequiresReceiptShare
+    ? normalizedReceiptShareStatus ?? "pending"
+    : normalizedReceiptShareStatus;
   const normalizedReceipts = validateReceipts(receipts, operationName);
 
   if (!normalizedItem.id) {
@@ -422,6 +533,21 @@ function validateItem(
   if (isPaid !== undefined && typeof isPaid !== "boolean") {
     throw new Error(
       `${operationName} requires every paid flag to be a boolean when provided.`,
+    );
+  }
+
+  if (
+    requiresReceiptShare !== undefined &&
+    typeof requiresReceiptShare !== "boolean"
+  ) {
+    throw new Error(
+      `${operationName} requires every receipt share flag to be a boolean when provided.`,
+    );
+  }
+
+  if (normalizedRequiresReceiptShare && !normalizedReceiptSharePhoneDigits) {
+    throw new Error(
+      `${operationName} requires a valid international receipt share phone when receipt sharing is enabled.`,
     );
   }
 
@@ -456,6 +582,16 @@ function validateItem(
     ...(loan ? { loan: validateLoan(loan, operationName, targetMonth) } : {}),
     manualCoveredPayments: normalizedManualCoveredPayments,
     paymentLink: normalizedPaymentLink,
+    ...(normalizedReceiptShareMessage
+      ? { receiptShareMessage: normalizedReceiptShareMessage }
+      : {}),
+    ...(normalizedReceiptSharePhoneDigits
+      ? { receiptSharePhoneDigits: normalizedReceiptSharePhoneDigits }
+      : {}),
+    ...(resolvedReceiptShareStatus
+      ? { receiptShareStatus: resolvedReceiptShareStatus }
+      : {}),
+    ...(normalizedRequiresReceiptShare ? { requiresReceiptShare: true } : {}),
     receipts: normalizedReceipts,
     total: calculateMonthlyExpenseTotal(normalizedItem),
   };
@@ -579,6 +715,22 @@ export function toMonthlyExpensesDocumentInput(
         : {}),
       occurrencesPerMonth: item.occurrencesPerMonth,
       paymentLink: item.paymentLink,
+      ...(item.receiptShareMessage
+        ? {
+            receiptShareMessage: item.receiptShareMessage,
+          }
+        : {}),
+      ...(item.receiptSharePhoneDigits
+        ? {
+            receiptSharePhoneDigits: item.receiptSharePhoneDigits,
+          }
+        : {}),
+      ...(item.receiptShareStatus
+        ? {
+            receiptShareStatus: item.receiptShareStatus,
+          }
+        : {}),
+      ...(item.requiresReceiptShare ? { requiresReceiptShare: true } : {}),
       ...(item.receipts.length > 0
         ? {
             receipts: item.receipts.map((receipt) => ({

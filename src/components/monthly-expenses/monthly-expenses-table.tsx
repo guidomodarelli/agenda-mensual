@@ -10,10 +10,12 @@ import {
   ArrowUp,
   ArrowUpDown,
   Check,
+  Clock3,
   CircleX,
   EyeOff,
   ExternalLink,
   Link2,
+  Mail,
   Paperclip,
   Plus,
   Pencil,
@@ -80,6 +82,7 @@ import {
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
+type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
@@ -99,6 +102,8 @@ const SORTABLE_COLUMN_IDS = new Set([
   "ars",
   "usd",
   "paymentLink",
+  "receiptShareStatus",
+  "receiptShareLink",
   "receiptFileUrl",
   "receiptFolderUrl",
   "allReceiptsFolderUrl",
@@ -117,6 +122,8 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "ars",
   "usd",
   "paymentLink",
+  "receiptShareStatus",
+  "receiptShareLink",
   "receiptFileUrl",
   "receiptFolderUrl",
   "allReceiptsFolderUrl",
@@ -543,6 +550,10 @@ export interface MonthlyExpensesEditableRow {
   manualCoveredPayments: string;
   occurrencesPerMonth: string;
   paymentLink: string;
+  receiptShareMessage: string;
+  receiptSharePhoneDigits: string;
+  receiptShareStatus: MonthlyExpenseReceiptShareStatus | "";
+  requiresReceiptShare: boolean;
   receipts: MonthlyExpensesEditableReceipt[];
   monthlyFolderId: string;
   monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
@@ -610,6 +621,7 @@ interface MonthlyExpensesTableProps {
   ) => void;
   onExpenseLenderSelect: (lenderId: string | null) => void;
   onExpenseLoanToggle: (checked: boolean) => void;
+  onExpenseReceiptShareToggle: (checked: boolean) => void;
   onMonthChange: (value: string) => void;
   onDeleteReceipt: (args: {
     expenseId: string;
@@ -626,6 +638,10 @@ interface MonthlyExpensesTableProps {
   onUpdatePaymentLink: (args: {
     expenseId: string;
     paymentLink: string;
+  }) => void | Promise<void>;
+  onUpdateReceiptShareStatus: (args: {
+    expenseId: string;
+    receiptShareStatus: MonthlyExpenseReceiptShareStatus;
   }) => void | Promise<void>;
   onUploadReceipt: (expenseId: string) => void;
   onRequestCloseExpenseSheet: () => void;
@@ -739,6 +755,59 @@ function getColumnSortDirection(
   }
 
   return sortEntry.desc ? "desc" : "asc";
+}
+
+function getReceiptShareStatusLabel(
+  status: MonthlyExpenseReceiptShareStatus,
+): string {
+  return status === "sent" ? "Enviado" : "Pendiente";
+}
+
+function getReceiptShareStatusIcon(
+  status: MonthlyExpenseReceiptShareStatus,
+): typeof Clock3 {
+  return status === "sent" ? Mail : Clock3;
+}
+
+function getNormalizedReceiptShareStatus(
+  row: Pick<MonthlyExpensesEditableRow, "receiptShareStatus" | "requiresReceiptShare">,
+): MonthlyExpenseReceiptShareStatus | null {
+  if (!row.requiresReceiptShare) {
+    return null;
+  }
+
+  return row.receiptShareStatus === "sent" ? "sent" : "pending";
+}
+
+function getReceiptShareMessage(value: string): string | null {
+  const normalizedMessage = value.trim();
+
+  return normalizedMessage.length > 0 ? normalizedMessage : null;
+}
+
+function getReceiptShareWhatsAppLink(
+  row: Pick<
+    MonthlyExpensesEditableRow,
+    "receiptShareMessage" | "receiptSharePhoneDigits" | "requiresReceiptShare"
+  >,
+): string | null {
+  if (!row.requiresReceiptShare) {
+    return null;
+  }
+
+  const phoneDigits = row.receiptSharePhoneDigits.trim();
+
+  if (!phoneDigits) {
+    return null;
+  }
+
+  const normalizedMessage = getReceiptShareMessage(row.receiptShareMessage);
+
+  if (!normalizedMessage) {
+    return `https://wa.me/${phoneDigits}`;
+  }
+
+  return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(normalizedMessage)}`;
 }
 
 function parseYearMonth(value: string): { month: string; year: string } | null {
@@ -1189,10 +1258,12 @@ export function MonthlyExpensesTable({
   onExpenseFieldChange,
   onExpenseLenderSelect,
   onExpenseLoanToggle,
+  onExpenseReceiptShareToggle,
   onDeleteReceipt,
   onEditReceiptCoverage,
   onUpdateManualCoveredPayments,
   onUpdatePaymentLink,
+  onUpdateReceiptShareStatus,
   onMonthChange,
   onUploadReceipt,
   onRequestCloseExpenseSheet,
@@ -1587,6 +1658,125 @@ export function MonthlyExpensesTable({
             getValidPaymentLinkUrl(rowB.original.paymentLink) != null ? 1 : 0;
 
           return leftHasPaymentLink - rightHasPaymentLink;
+        },
+      },
+      {
+        accessorKey: "receiptShareStatus",
+        cell: ({ row }) => {
+          const normalizedStatus = getNormalizedReceiptShareStatus(row.original);
+
+          if (!normalizedStatus) {
+            return null;
+          }
+
+          const expenseDescription = row.original.description.trim() || "gasto";
+
+          return (
+            <Select
+              onValueChange={(value) => {
+                void onUpdateReceiptShareStatus({
+                  expenseId: row.original.id,
+                  receiptShareStatus: value as MonthlyExpenseReceiptShareStatus,
+                });
+              }}
+              value={normalizedStatus}
+            >
+              <SelectTrigger aria-label={`Estado de envío de ${expenseDescription}`}>
+                <SelectValue>
+                  <span className={styles.receiptShareStatusValue}>
+                    {(() => {
+                      const StatusIcon = getReceiptShareStatusIcon(normalizedStatus);
+
+                      return <StatusIcon aria-hidden="true" className={styles.paymentLinkIcon} />;
+                    })()}
+                    <span>{getReceiptShareStatusLabel(normalizedStatus)}</span>
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">
+                  <span className={styles.receiptShareStatusValue}>
+                    <Clock3 aria-hidden="true" className={styles.paymentLinkIcon} />
+                    <span>Pendiente</span>
+                  </span>
+                </SelectItem>
+                <SelectItem value="sent">
+                  <span className={styles.receiptShareStatusValue}>
+                    <Mail aria-hidden="true" className={styles.paymentLinkIcon} />
+                    <span>Enviado</span>
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          );
+        },
+        header: getSortableHeader("Estado de envío"),
+        meta: { label: "Estado de envío" },
+        sortingFn: (rowA, rowB) => {
+          const leftStatus = getNormalizedReceiptShareStatus(rowA.original);
+          const rightStatus = getNormalizedReceiptShareStatus(rowB.original);
+
+          if (leftStatus == null && rightStatus != null) {
+            return 1;
+          }
+
+          if (leftStatus != null && rightStatus == null) {
+            return -1;
+          }
+
+          if (leftStatus == null && rightStatus == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          if (leftStatus === rightStatus) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          return leftStatus === "pending" ? -1 : 1;
+        },
+      },
+      {
+        id: "receiptShareLink",
+        accessorFn: (row) => getReceiptShareWhatsAppLink(row),
+        cell: ({ row }) => {
+          const receiptShareLink = getReceiptShareWhatsAppLink(row.original);
+
+          if (!receiptShareLink) {
+            return null;
+          }
+
+          const phoneDigits = row.original.receiptSharePhoneDigits.trim();
+
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  className={styles.paymentLinkAction}
+                  href={receiptShareLink}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Enviar
+                  <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>{`Enviar comprobante a ${phoneDigits}`}</TooltipContent>
+            </Tooltip>
+          );
+        },
+        header: getSortableHeader("Enviar"),
+        meta: { label: "Enviar" },
+        sortingFn: (rowA, rowB) => {
+          const leftHasLink = getReceiptShareWhatsAppLink(rowA.original) ? 1 : 0;
+          const rightHasLink = getReceiptShareWhatsAppLink(rowB.original) ? 1 : 0;
+
+          return leftHasLink - rightHasLink;
         },
       },
       {
@@ -2222,6 +2412,7 @@ export function MonthlyExpensesTable({
       onEditExpense,
       onUpdateManualCoveredPayments,
       onUploadReceipt,
+      onUpdateReceiptShareStatus,
       handleOpenPaymentLinkDialog,
     ],
   );
@@ -2415,6 +2606,7 @@ export function MonthlyExpensesTable({
           onFieldChange={onExpenseFieldChange}
           onLenderSelect={onExpenseLenderSelect}
           onLoanToggle={onExpenseLoanToggle}
+          onReceiptShareToggle={onExpenseReceiptShareToggle}
           onRequestClose={onRequestCloseExpenseSheet}
           onSave={onSaveExpense}
           onUnsavedChangesClose={onUnsavedChangesClose}

@@ -562,6 +562,12 @@
   gap: 0.2rem;
 }
 
+.receiptShareStatusValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .paymentLinkActionButton {
   color: var(--muted-foreground);
 }

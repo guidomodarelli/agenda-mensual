@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import type { StoredMonthlyExpensesDocument } from "../../../domain/entities/stored-monthly-expenses-document";
 import {
@@ -16,6 +17,7 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
   protocol: /^https?$/,
   hostname: z.regexes.domain,
 });
+const RECEIPT_SHARE_STATUSES = ["pending", "sent"] as const;
 
 function normalizeHttpPaymentLink(value: string): string {
   const normalizedValue = value.trim();
@@ -36,6 +38,58 @@ function isValidHttpPaymentLink(value: string): boolean {
     return false;
   }
 }
+
+function normalizeReceiptSharePhoneDigits(value: string): string {
+  const phoneDigits = value.trim().replace(/\D+/g, "");
+  const parsedPhone = parsePhoneNumberFromString(`+${phoneDigits}`);
+
+  if (!phoneDigits || !parsedPhone || !parsedPhone.isValid()) {
+    throw new Error(
+      "monthly-expenses mapper requires receiptSharePhoneDigits to be a valid international phone number.",
+    );
+  }
+
+  return phoneDigits;
+}
+
+function isValidReceiptSharePhoneDigits(value: string): boolean {
+  try {
+    normalizeReceiptSharePhoneDigits(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const receiptSharePhoneDigitsSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmedValue = value.trim();
+
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  },
+  z
+    .string()
+    .refine((value) => isValidReceiptSharePhoneDigits(value))
+    .transform((value) => normalizeReceiptSharePhoneDigits(value))
+    .nullable(),
+);
+
+const receiptShareMessageSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmedValue = value.trim();
+
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  },
+  z.string().trim().nullable(),
+);
 
 const monthlyExpenseReceiptSchema = z.object({
   allReceiptsFolderId: z.string().trim().min(1),
@@ -107,10 +161,23 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
     .transform((value) => normalizeHttpPaymentLink(value))
     .nullable()
     .optional(),
+  receiptShareMessage: receiptShareMessageSchema.optional(),
+  receiptSharePhoneDigits: receiptSharePhoneDigitsSchema.optional(),
+  receiptShareStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
+  requiresReceiptShare: z.boolean().optional(),
   receipt: legacyMonthlyExpenseReceiptSchema.nullable().optional(),
   receipts: z.array(monthlyExpenseReceiptSchema).optional(),
   subtotal: z.number().positive(),
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (value.requiresReceiptShare === true && !value.receiptSharePhoneDigits) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "monthly-expenses mapper requires receiptSharePhoneDigits when requiresReceiptShare is true.",
+      path: ["receiptSharePhoneDigits"],
+    });
+  }
+});
 
 const googleDriveMonthlyExpensesDocumentSchema = z.object({
   exchangeRateSnapshot: z
@@ -186,6 +253,10 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             manualCoveredPayments,
             occurrencesPerMonth,
             paymentLink,
+            receiptShareMessage,
+            receiptSharePhoneDigits,
+            receiptShareStatus,
+            requiresReceiptShare,
             receipts,
             subtotal,
           }) => ({
@@ -218,6 +289,16 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             ...(isPaid === true ? { isPaid: true } : {}),
             occurrencesPerMonth,
             paymentLink,
+            ...(receiptShareMessage
+              ? { receiptShareMessage }
+              : {}),
+            ...(receiptSharePhoneDigits
+              ? { receiptSharePhoneDigits }
+              : {}),
+            ...(receiptShareStatus
+              ? { receiptShareStatus }
+              : {}),
+            ...(requiresReceiptShare ? { requiresReceiptShare: true } : {}),
             ...(receipts.length > 0
               ? {
                   receipts: receipts.map((receipt) => ({
@@ -319,6 +400,18 @@ export function parseGoogleDriveMonthlyExpensesContent(
           occurrencesPerMonth: item.occurrencesPerMonth,
           ...(item.paymentLink !== undefined
             ? { paymentLink: item.paymentLink }
+            : {}),
+          ...(item.receiptShareMessage !== undefined
+            ? { receiptShareMessage: item.receiptShareMessage }
+            : {}),
+          ...(item.receiptSharePhoneDigits !== undefined
+            ? { receiptSharePhoneDigits: item.receiptSharePhoneDigits }
+            : {}),
+          ...(item.receiptShareStatus !== undefined
+            ? { receiptShareStatus: item.receiptShareStatus }
+            : {}),
+          ...(item.requiresReceiptShare === true
+            ? { requiresReceiptShare: true }
             : {}),
           receipts: normalizedReceipts,
           subtotal: item.subtotal,

@@ -3,6 +3,7 @@ import type {
   MonthlyExpenseFolders,
   MonthlyExpenseLoan,
   MonthlyExpenseReceipt,
+  MonthlyExpenseReceiptShareStatus,
   MonthlyExpensesExchangeRateSnapshot,
   MonthlyExpensesDocument,
 } from "../../domain/value-objects/monthly-expenses-document";
@@ -40,6 +41,10 @@ export interface MonthlyExpenseItemResult {
   manualCoveredPayments?: number;
   occurrencesPerMonth: number;
   paymentLink?: string | null;
+  receiptShareMessage?: string | null;
+  receiptSharePhoneDigits?: string | null;
+  receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
+  requiresReceiptShare?: boolean;
   receipts?: MonthlyExpenseReceiptResult[];
   subtotal: number;
   total: number;

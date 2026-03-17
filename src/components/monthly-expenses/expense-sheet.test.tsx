@@ -26,6 +26,10 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     monthlyFolderViewUrl: "",
     occurrencesPerMonth: "1",
     paymentLink: "",
+    receiptShareMessage: "",
+    receiptSharePhoneDigits: "",
+    receiptShareStatus: "",
+    requiresReceiptShare: false,
     receipts: [],
     startMonth: "",
     subtotal: "100",
@@ -49,6 +53,7 @@ describe("ExpenseSheet", () => {
           onFieldChange={jest.fn()}
           onLenderSelect={jest.fn()}
           onLoanToggle={jest.fn()}
+          onReceiptShareToggle={jest.fn()}
           onRequestClose={jest.fn()}
           onSave={jest.fn()}
           onUnsavedChangesClose={jest.fn()}

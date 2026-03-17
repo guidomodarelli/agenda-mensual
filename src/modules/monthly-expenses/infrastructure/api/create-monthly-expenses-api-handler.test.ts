@@ -406,6 +406,100 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(response.ended).toBe(true);
   });
 
+  it("passes receipt sharing metadata to the save use case when provided", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-03",
+      name: "gastos-mensuales-2026-marzo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receiptShareMessage: "Hola, te comparto el comprobante",
+            receiptSharePhoneDigits: "+54 9 11 2345-6789",
+            receiptShareStatus: "pending",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(save).toHaveBeenCalledWith({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receiptShareMessage: "Hola, te comparto el comprobante",
+            receiptSharePhoneDigits: "5491123456789",
+            receiptShareStatus: "pending",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      database,
+      request,
+      userSubject: "google-user-123",
+    });
+    expect(response.statusCode).toBe(204);
+    expect(response.ended).toBe(true);
+  });
+
+  it("returns 400 when receipt sharing is enabled without a valid phone", async () => {
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn(),
+      save: jest.fn(),
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(400);
+  });
+
   it("passes receipt coveredPayments and manualCoveredPayments to save", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({

@@ -282,6 +282,63 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     ).toThrow("Loading monthly expenses could not parse the stored monthly expenses document.");
   });
 
+  it("serializes and parses receipt sharing metadata", () => {
+    const serialized = mapMonthlyExpensesDocumentToGoogleDriveFile({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-1",
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          receiptShareMessage: "Hola",
+          receiptSharePhoneDigits: "5491123456789",
+          receiptShareStatus: "pending",
+          requiresReceiptShare: true,
+          paymentLink: null,
+          receipts: [],
+          subtotal: 45,
+          total: 45,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(serialized.content).toContain('"requiresReceiptShare": true');
+    expect(serialized.content).toContain('"receiptSharePhoneDigits": "5491123456789"');
+
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      serialized.content,
+      "Loading monthly expenses",
+    );
+
+    expect(parsed.items[0]?.requiresReceiptShare).toBe(true);
+    expect(parsed.items[0]?.receiptSharePhoneDigits).toBe("5491123456789");
+    expect(parsed.items[0]?.receiptShareStatus).toBe("pending");
+  });
+
+  it("throws when parsing an invalid receiptSharePhoneDigits", () => {
+    expect(() =>
+      parseGoogleDriveMonthlyExpensesContent(
+        JSON.stringify({
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              receiptSharePhoneDigits: "123",
+              requiresReceiptShare: true,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        }),
+        "Loading monthly expenses",
+      ),
+    ).toThrow("Loading monthly expenses could not parse the stored monthly expenses document.");
+  });
+
   it("parses legacy singular receipt payloads into receipts array", () => {
     const result = parseGoogleDriveMonthlyExpensesContent(
       JSON.stringify({
