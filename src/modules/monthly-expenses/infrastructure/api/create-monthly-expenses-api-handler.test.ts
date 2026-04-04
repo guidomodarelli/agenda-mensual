@@ -134,6 +134,7 @@ describe("createMonthlyExpensesApiHandler", () => {
 
     expect(load).toHaveBeenCalledWith({
       database,
+      includeDriveStatuses: true,
       month: "2026-03",
       request,
       userSubject: "google-user-123",

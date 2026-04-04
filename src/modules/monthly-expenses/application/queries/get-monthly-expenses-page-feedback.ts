@@ -83,6 +83,27 @@ export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
   return fallbackMessage;
 }
 
+export function getSafeMonthlyExpensesLoadErrorMessage(error: unknown): string {
+  const fallbackMessage =
+    "No pudimos cargar los gastos mensuales en este momento. Volvé a intentarlo más tarde.";
+
+  if (!(error instanceof Error) && typeof error !== "string") {
+    return fallbackMessage;
+  }
+
+  const message = typeof error === "string" ? error : error.message;
+
+  if (message.includes("Google authentication is required")) {
+    return "Conectate con Google para cargar tus gastos mensuales.";
+  }
+
+  if (message.includes("missing the Drive permissions required")) {
+    return "Tu sesión actual no tiene permisos suficientes para cargar gastos mensuales desde Drive.";
+  }
+
+  return fallbackMessage;
+}
+
 export function getSafeLendersErrorMessage(error: unknown): string {
   const fallbackMessage =
     "No pudimos actualizar el catálogo de prestamistas en este momento. Volvé a intentarlo más tarde.";

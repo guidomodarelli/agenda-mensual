@@ -673,10 +673,12 @@ interface MonthlyExpensesTableProps {
   feedbackTone: "default" | "error" | "success";
   isCopyFromDisabled: boolean;
   isExpenseSheetOpen: boolean;
+  isMonthTransitionPending: boolean;
   isSubmitting: boolean;
   lenders: LenderOption[];
   loadError: string | null;
   month: string;
+  pendingMonth: string | null;
   onAddExpense: () => void;
   onAddLender: () => void;
   onCopyFromMonth: () => void;
@@ -1409,10 +1411,12 @@ export function MonthlyExpensesTable({
   feedbackTone,
   isCopyFromDisabled,
   isExpenseSheetOpen,
+  isMonthTransitionPending,
   isSubmitting,
   lenders,
   loadError,
   month,
+  pendingMonth,
   onAddExpense,
   onAddLender,
   onCopyFromMonth,
@@ -2561,7 +2565,10 @@ export function MonthlyExpensesTable({
   );
 
   return (
-    <section className={styles.section}>
+    <section
+      aria-busy={isMonthTransitionPending || isRestoringTablePreferences}
+      className={styles.section}
+    >
       <div className={styles.content}>
         <div className={styles.headerTopRow}>
           <div className={styles.header}>
@@ -2599,6 +2606,7 @@ export function MonthlyExpensesTable({
                 />
               </div>
               <Input
+                disabled={isMonthTransitionPending}
                 id="monthly-expenses-month"
                 onChange={(event) => onMonthChange(event.target.value)}
                 type="month"
@@ -2646,7 +2654,7 @@ export function MonthlyExpensesTable({
             ) : null}
 
             <Button
-              disabled={actionDisabled}
+              disabled={actionDisabled || isMonthTransitionPending}
               onClick={onAddExpense}
               type="button"
               variant="outline"
@@ -2682,9 +2690,13 @@ export function MonthlyExpensesTable({
           </div>
 
           <div className={styles.tableWrapper}>
-            {isRestoringTablePreferences ? (
+            {isRestoringTablePreferences || isMonthTransitionPending ? (
               <div
-                aria-label="Cargando configuración de tabla"
+                aria-label={
+                  isMonthTransitionPending && pendingMonth
+                    ? `Cargando mes ${pendingMonth}`
+                    : "Cargando configuración de tabla"
+                }
                 aria-live="polite"
                 className={styles.tableLoadingOverlay}
                 role="status"
@@ -2695,7 +2707,9 @@ export function MonthlyExpensesTable({
                     className={styles.tableLoadingSpinner}
                   />
                   <span className={styles.tableLoadingText}>
-                    Cargando configuración de tabla...
+                    {isMonthTransitionPending && pendingMonth
+                      ? `Cargando ${pendingMonth}...`
+                      : "Cargando configuración de tabla..."}
                   </span>
                 </div>
               </div>

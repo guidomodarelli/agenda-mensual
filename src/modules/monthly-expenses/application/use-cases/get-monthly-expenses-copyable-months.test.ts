@@ -5,6 +5,11 @@ describe("getMonthlyExpensesCopyableMonths", () => {
   it("returns only saved months with expenses up to the month before target", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
+      listMonthsWithExpenses: jest.fn().mockResolvedValue([
+        "2026-01",
+        "2026-03",
+        "2026-04",
+      ]),
       listAll: jest.fn().mockResolvedValue([
         {
           items: [
@@ -60,6 +65,8 @@ describe("getMonthlyExpensesCopyableMonths", () => {
       repository,
     });
 
+    expect(repository.listMonthsWithExpenses).toHaveBeenCalledTimes(1);
+    expect(repository.listAll).not.toHaveBeenCalled();
     expect(result).toEqual({
       defaultSourceMonth: "2026-03",
       sourceMonths: ["2026-03", "2026-01"],

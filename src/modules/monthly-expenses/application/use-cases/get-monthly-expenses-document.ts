@@ -36,12 +36,14 @@ function getPreferredFolderId(
 
 async function verifyReceiptStatusesByFileId({
   document,
+  includeDriveStatuses,
   receiptsRepository,
 }: {
   document: ReturnType<typeof createMonthlyExpensesDocument>;
+  includeDriveStatuses: boolean;
   receiptsRepository?: MonthlyExpenseReceiptsRepository;
 }) {
-  if (!receiptsRepository) {
+  if (!includeDriveStatuses || !receiptsRepository) {
     return {};
   }
 
@@ -73,12 +75,14 @@ async function verifyReceiptStatusesByFileId({
 
 async function verifyFolderStatusesByItemId({
   document,
+  includeDriveStatuses,
   receiptsRepository,
 }: {
   document: ReturnType<typeof createMonthlyExpensesDocument>;
+  includeDriveStatuses: boolean;
   receiptsRepository?: MonthlyExpenseReceiptsRepository;
 }) {
-  if (!receiptsRepository) {
+  if (!includeDriveStatuses || !receiptsRepository) {
     return {};
   }
 
@@ -123,6 +127,7 @@ export async function getMonthlyExpensesDocument({
   receiptsRepository,
   repository,
 }: GetMonthlyExpensesDocumentDependencies): Promise<MonthlyExpensesDocumentResult> {
+  const includeDriveStatuses = query.includeDriveStatuses !== false;
   const storedDocument = await repository.getByMonth(query.month);
 
   try {
@@ -148,10 +153,12 @@ export async function getMonthlyExpensesDocument({
         null,
         await verifyReceiptStatusesByFileId({
           document: emptyDocument,
+          includeDriveStatuses,
           receiptsRepository,
         }),
         await verifyFolderStatusesByItemId({
           document: emptyDocument,
+          includeDriveStatuses,
           receiptsRepository,
         }),
       );
@@ -163,10 +170,12 @@ export async function getMonthlyExpensesDocument({
         null,
         await verifyReceiptStatusesByFileId({
           document: storedDocument,
+          includeDriveStatuses,
           receiptsRepository,
         }),
         await verifyFolderStatusesByItemId({
           document: storedDocument,
+          includeDriveStatuses,
           receiptsRepository,
         }),
       );
@@ -192,10 +201,12 @@ export async function getMonthlyExpensesDocument({
       null,
       await verifyReceiptStatusesByFileId({
         document: enrichedDocument,
+        includeDriveStatuses,
         receiptsRepository,
       }),
       await verifyFolderStatusesByItemId({
         document: enrichedDocument,
+        includeDriveStatuses,
         receiptsRepository,
       }),
     );
@@ -208,10 +219,12 @@ export async function getMonthlyExpensesDocument({
       "No pudimos cargar la cotización histórica del mes seleccionado.",
       await verifyReceiptStatusesByFileId({
         document: fallbackDocument,
+        includeDriveStatuses,
         receiptsRepository,
       }),
       await verifyFolderStatusesByItemId({
         document: fallbackDocument,
+        includeDriveStatuses,
         receiptsRepository,
       }),
     );

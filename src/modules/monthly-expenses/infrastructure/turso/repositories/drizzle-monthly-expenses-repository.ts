@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import {
   monthlyExpensesDocumentsTable,
@@ -106,6 +106,22 @@ export class DrizzleMonthlyExpensesRepository
         "Loading monthly expenses report from database",
       ),
     );
+  }
+
+  async listMonthsWithExpenses(): Promise<string[]> {
+    const rows = await this.database
+      .select({
+        month: monthlyExpensesDocumentsTable.month,
+      })
+      .from(monthlyExpensesDocumentsTable)
+      .where(
+        and(
+          eq(monthlyExpensesDocumentsTable.userSubject, this.userSubject),
+          sql`json_array_length(json_extract(${monthlyExpensesDocumentsTable.payloadJson}, '$.items')) > 0`,
+        ),
+      );
+
+    return rows.map((row) => row.month);
   }
 
   createFileName(month: string): string {
