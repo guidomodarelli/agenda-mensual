@@ -54,6 +54,9 @@ import {
   getMonthlyExpensesLoansReportViaApi,
 } from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-report-api";
 import {
+  getMonthlyExpensesCopyableMonthsViaApi,
+} from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-copyable-months-api";
+import {
   getMonthlyExpensesDocumentViaApi,
   saveMonthlyExpensesDocumentViaApi,
 } from "../../infrastructure/api/monthly-expenses-api";
@@ -1073,6 +1076,9 @@ export default function MonthlyExpensesPage({
   const [reportState, setReportState] = useState<LoansReportState>(
     createLoansReportState(initialLoansReport, reportLoadError),
   );
+  const [copyableMonthsState, setCopyableMonthsState] =
+    useState<MonthlyExpensesCopyableMonthsResult>(initialCopyableMonths);
+  const [currentLoadError, setCurrentLoadError] = useState<string | null>(loadError);
   const [copySourceMonth, setCopySourceMonth] = useState<string | null>(
     initialCopyableMonths.defaultSourceMonth,
   );
@@ -1088,6 +1094,8 @@ export default function MonthlyExpensesPage({
       createClosedExpenseReceiptCoverageEditState(),
     );
   const [isLenderCreateModalOpen, setIsLenderCreateModalOpen] = useState(false);
+  const [isMonthTransitionPending, setIsMonthTransitionPending] = useState(false);
+  const [pendingMonth, setPendingMonth] = useState<string | null>(null);
   const shouldIgnoreNextExpenseSheetCloseRef = useRef(false);
 
   const isAuthenticated = status === "authenticated";
@@ -1113,18 +1121,21 @@ export default function MonthlyExpensesPage({
 
   useEffect(() => {
     setFormState(createMonthlyExpensesFormState(initialDocument));
+    setCopyableMonthsState(initialCopyableMonths);
     setCopySourceMonth(initialCopyableMonths.defaultSourceMonth);
     setIsCopyingFromMonth(false);
+    setIsMonthTransitionPending(false);
+    setPendingMonth(null);
     setExpenseSheetState(createClosedExpenseSheetState());
     setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
     setExpenseReceiptCoverageEditState(
       createClosedExpenseReceiptCoverageEditState(),
     );
-  }, [
-    initialCopyableMonths.defaultSourceMonth,
-    initialCopyableMonths.sourceMonths,
-    initialDocument,
-  ]);
+  }, [initialCopyableMonths, initialDocument]);
+
+  useEffect(() => {
+    setCurrentLoadError(loadError);
+  }, [loadError]);
 
   useEffect(() => {
     if (isLenderCreateModalOpen) {
@@ -1139,8 +1150,9 @@ export default function MonthlyExpensesPage({
     !isOAuthConfigured ||
     !isAuthenticated ||
     isSessionLoading ||
-    formState.isSubmitting;
-  const copySourceMonthOptions = initialCopyableMonths.sourceMonths.map((month) => ({
+    formState.isSubmitting ||
+    isMonthTransitionPending;
+  const copySourceMonthOptions = copyableMonthsState.sourceMonths.map((month) => ({
     label: month,
     value: month,
   }));
@@ -1210,26 +1222,57 @@ export default function MonthlyExpensesPage({
     }
   };
 
-  const handleMonthChange = (value: string) => {
+  const handleMonthChange = async (value: string) => {
     const normalizedMonth = value.trim();
 
-    if (!MONTH_PATTERN.test(normalizedMonth) || normalizedMonth === formState.month) {
+    if (
+      !MONTH_PATTERN.test(normalizedMonth) ||
+      normalizedMonth === formState.month ||
+      normalizedMonth === pendingMonth
+    ) {
       return;
     }
 
-    void router.replace(
-      {
-        pathname: router.pathname,
-        query: {
-          ...router.query,
-          month: normalizedMonth,
+    setIsMonthTransitionPending(true);
+    setPendingMonth(normalizedMonth);
+
+    try {
+      const [document, copyableMonths] = await Promise.all([
+        getMonthlyExpensesDocumentViaApi(normalizedMonth),
+        getMonthlyExpensesCopyableMonthsViaApi(normalizedMonth),
+      ]);
+
+      setFormState(createMonthlyExpensesFormState(document));
+      setCurrentLoadError(null);
+      setCopyableMonthsState(copyableMonths);
+      setCopySourceMonth(copyableMonths.defaultSourceMonth);
+      setIsCopyingFromMonth(false);
+      setExpenseSheetState(createClosedExpenseSheetState());
+      setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
+      setExpenseReceiptCoverageEditState(
+        createClosedExpenseReceiptCoverageEditState(),
+      );
+
+      await router.replace(
+        {
+          pathname: router.pathname,
+          query: {
+            ...router.query,
+            month: normalizedMonth,
+          },
         },
-      },
-      undefined,
-      {
-        scroll: false,
-      },
-    );
+        undefined,
+        {
+          scroll: false,
+          shallow: true,
+        },
+      );
+    } catch (error) {
+      toast.error(getSafeMonthlyExpensesErrorMessage(error));
+    } finally {
+      setIsMonthTransitionPending(false);
+      setPendingMonth(null);
+    }
   };
 
   const handleCopySourceMonthChange = (value: string) => {
@@ -2474,10 +2517,12 @@ export default function MonthlyExpensesPage({
                 feedbackTone={feedbackTone}
                 isCopyFromDisabled={copyFromDisabled}
                 isExpenseSheetOpen={expenseSheetState.isOpen}
+                isMonthTransitionPending={isMonthTransitionPending}
                 isSubmitting={formState.isSubmitting}
                 lenders={lendersState.lenders}
-                loadError={loadError}
+                loadError={currentLoadError}
                 month={formState.month}
+                pendingMonth={pendingMonth}
                 onAddExpense={handleAddExpense}
                 onAddLender={handleOpenLenderCreateFromExpenseSheet}
                 onCopyFromMonth={handleCopyFromMonth}

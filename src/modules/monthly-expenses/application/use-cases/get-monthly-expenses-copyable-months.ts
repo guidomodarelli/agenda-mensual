@@ -42,16 +42,17 @@ export async function getMonthlyExpensesCopyableMonths({
   }
 
   const previousMonth = getPreviousMonthIdentifier(targetMonth);
-  const documents =
-    typeof (repository as Partial<MonthlyExpensesRepository>).listAll === "function"
-      ? await repository.listAll()
-      : [];
+  const sourceMonths =
+    typeof repository.listMonthsWithExpenses === "function"
+      ? await repository.listMonthsWithExpenses()
+      : (await repository.listAll())
+        .filter((document) => document.items.length > 0)
+        .map((document) => document.month);
   const validSourceMonths = Array.from(
     new Set(
-      documents
-        .filter((document) => document.items.length > 0)
-        .map((document) => document.month)
-        .filter((month) => MONTH_PATTERN.test(month) && month <= previousMonth),
+      sourceMonths.filter(
+        (month) => MONTH_PATTERN.test(month) && month <= previousMonth,
+      ),
     ),
   ).sort((left, right) => right.localeCompare(left));
 

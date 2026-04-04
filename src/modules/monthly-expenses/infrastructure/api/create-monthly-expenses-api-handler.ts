@@ -197,6 +197,26 @@ const monthlyExpensesRequestBodySchema = z.object({
 }).strict();
 
 const monthlyExpensesGetQuerySchema = z.object({
+  includeDriveStatuses: z.preprocess(
+    (value) => {
+      const normalizedValue = Array.isArray(value) ? value[0] : value;
+
+      if (normalizedValue === undefined) {
+        return true;
+      }
+
+      if (normalizedValue === "true") {
+        return true;
+      }
+
+      if (normalizedValue === "false") {
+        return false;
+      }
+
+      return normalizedValue;
+    },
+    z.boolean(),
+  ),
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
 });
 
@@ -226,6 +246,7 @@ export function createMonthlyExpensesApiHandler<TLoadResult, TSaveResult>({
   getUserSubject?: (request: NextApiRequest) => Promise<string>;
   load: (dependencies: {
     database: TursoDatabase;
+    includeDriveStatuses: boolean;
     month: string;
     request: NextApiRequest;
     userSubject: string;
@@ -260,6 +281,7 @@ export function createMonthlyExpensesApiHandler<TLoadResult, TSaveResult>({
         ? request.query.month[0]
         : request.query.month;
       const parsedQuery = monthlyExpensesGetQuerySchema.safeParse({
+        includeDriveStatuses: request.query.includeDriveStatuses,
         month: rawMonthQuery,
       });
 
@@ -284,6 +306,7 @@ export function createMonthlyExpensesApiHandler<TLoadResult, TSaveResult>({
         return response.status(200).json({
           data: await load({
             database,
+            includeDriveStatuses: parsedQuery.data.includeDriveStatuses,
             month: parsedQuery.data.month,
             request,
             userSubject,

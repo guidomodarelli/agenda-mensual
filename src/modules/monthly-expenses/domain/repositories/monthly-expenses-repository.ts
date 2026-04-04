@@ -5,6 +5,7 @@ export interface MonthlyExpensesRepository {
   getByMonth(month: string): Promise<MonthlyExpensesDocument | null>;
   getOldestStoredMonth?(): Promise<string | null>;
   listAll(): Promise<MonthlyExpensesDocument[]>;
+  listMonthsWithExpenses?(): Promise<string[]>;
   save(
     document: MonthlyExpensesDocument,
   ): Promise<StoredMonthlyExpensesDocument>;

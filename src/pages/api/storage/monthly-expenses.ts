@@ -11,34 +11,37 @@ import {
 } from "@/modules/shared/infrastructure/observability/app-logger";
 
 export default createMonthlyExpensesApiHandler({
-  async load({ database, month, request, userSubject }) {
+  async load({ database, includeDriveStatuses, month, request, userSubject }) {
     const getExchangeRateSnapshot = createGetMonthlyExchangeRateSnapshot(database);
     let receiptsRepository:
       | GoogleDriveMonthlyExpenseReceiptsRepository
       | undefined;
 
-    try {
-      const driveClient = await getGoogleDriveClientFromRequest(request);
-      receiptsRepository = new GoogleDriveMonthlyExpenseReceiptsRepository(
-        driveClient,
-      );
-    } catch (error) {
-      appLogger.warn(
-        "monthly-expenses API GET skipped Drive receipt status verification",
-        {
-          context: {
-            ...createRequestLogContext(request),
-            month,
-            operation: "monthly-expenses-api:get:skip-drive-verification",
+    if (includeDriveStatuses) {
+      try {
+        const driveClient = await getGoogleDriveClientFromRequest(request);
+        receiptsRepository = new GoogleDriveMonthlyExpenseReceiptsRepository(
+          driveClient,
+        );
+      } catch (error) {
+        appLogger.warn(
+          "monthly-expenses API GET skipped Drive receipt status verification",
+          {
+            context: {
+              ...createRequestLogContext(request),
+              month,
+              operation: "monthly-expenses-api:get:skip-drive-verification",
+            },
+            error,
           },
-          error,
-        },
-      );
+        );
+      }
     }
 
     return getMonthlyExpensesDocument({
       getExchangeRateSnapshot,
       query: {
+        includeDriveStatuses,
         month,
       },
       receiptsRepository,

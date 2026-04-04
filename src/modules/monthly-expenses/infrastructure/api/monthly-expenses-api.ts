@@ -265,10 +265,16 @@ export class MonthlyExpensesApiError extends Error {
 
 export async function saveMonthlyExpensesDocumentViaApi(
   payload: SaveMonthlyExpensesCommand,
-  fetchImplementation: typeof fetch = fetch,
+  fetchImplementation?: typeof fetch,
 ): Promise<void> {
+  const resolvedFetchImplementation = fetchImplementation ?? globalThis.fetch;
+
+  if (!resolvedFetchImplementation) {
+    throw new Error("monthly-expenses-api requires a fetch implementation.");
+  }
+
   const normalizedPayload = monthlyExpensesRequestSchema.parse(payload);
-  const response = await fetchImplementation("/api/storage/monthly-expenses", {
+  const response = await resolvedFetchImplementation("/api/storage/monthly-expenses", {
     body: JSON.stringify(normalizedPayload),
     headers: withCorrelationIdHeaders({
       "Content-Type": "application/json",
@@ -291,20 +297,41 @@ export async function saveMonthlyExpensesDocumentViaApi(
 
 export async function getMonthlyExpensesDocumentViaApi(
   month: string,
-  fetchImplementation: typeof fetch = fetch,
+  optionsOrFetchImplementation?: {
+    includeDriveStatuses?: boolean;
+    signal?: AbortSignal;
+  } | typeof fetch,
+  fetchImplementation?: typeof fetch,
 ): Promise<MonthlyExpensesDocumentResult> {
+  const options =
+    typeof optionsOrFetchImplementation === "function"
+      ? undefined
+      : optionsOrFetchImplementation;
+  const resolvedFetchImplementation =
+    typeof optionsOrFetchImplementation === "function"
+      ? optionsOrFetchImplementation
+      : (fetchImplementation ?? globalThis.fetch);
+  if (!resolvedFetchImplementation) {
+    throw new Error("monthly-expenses-api requires a fetch implementation.");
+  }
   const normalizedMonth = z
     .string()
     .trim()
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
     .parse(month);
-  const searchParams = new URLSearchParams({
-    month: normalizedMonth,
-  });
-  const response = await fetchImplementation(
+  const searchParams = new URLSearchParams();
+
+  searchParams.set("month", normalizedMonth);
+
+  if (options?.includeDriveStatuses === false) {
+    searchParams.set("includeDriveStatuses", "false");
+  }
+
+  const response = await resolvedFetchImplementation(
     `/api/storage/monthly-expenses?${searchParams.toString()}`,
     {
       headers: withCorrelationIdHeaders(),
+      signal: options?.signal,
     },
   );
   const responseJson = await response.json();

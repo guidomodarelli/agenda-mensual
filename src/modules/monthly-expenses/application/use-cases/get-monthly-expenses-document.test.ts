@@ -142,6 +142,168 @@ describe("getMonthlyExpensesDocument", () => {
     });
   });
 
+  it("skips Drive verification when includeDriveStatuses is false", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            folders: {
+              allReceiptsFolderId: "receipt-folder-id",
+              allReceiptsFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-folder-id",
+              monthlyFolderId: "receipt-month-folder-id",
+              monthlyFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-month-folder-id",
+            },
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                fileId: "receipt-file-id",
+                fileName: "comprobante.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+            total: 100,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn(),
+    };
+    const receiptsRepository: MonthlyExpenseReceiptsRepository = {
+      deleteReceipt: jest.fn(),
+      renameExpenseFolder: jest.fn(),
+      renameReceiptFile: jest.fn(),
+      saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
+      verifyReceipt: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-03",
+      },
+      receiptsRepository,
+      repository,
+    });
+
+    expect(receiptsRepository.verifyReceipt).not.toHaveBeenCalled();
+    expect(receiptsRepository.verifyFolders).not.toHaveBeenCalled();
+    expect(result.items[0]?.receipts?.[0]).toEqual({
+      allReceiptsFolderId: "receipt-folder-id",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-folder-id",
+      coveredPayments: 1,
+      fileId: "receipt-file-id",
+      fileName: "comprobante.pdf",
+      fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
+      monthlyFolderId: "receipt-month-folder-id",
+      monthlyFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    });
+  });
+
+  it("verifies receipt Drive statuses sequentially to avoid request bursts", async () => {
+    let activeVerifications = 0;
+    let peakConcurrentVerifications = 0;
+
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id-1",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id-1",
+                fileId: "receipt-file-id-1",
+                fileName: "comprobante-1.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id-1",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id-1",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id-2",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id-2",
+                fileId: "receipt-file-id-2",
+                fileName: "comprobante-2.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id-2",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id-2",
+              },
+            ],
+            subtotal: 100,
+            total: 100,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn(),
+    };
+    const receiptsRepository: MonthlyExpenseReceiptsRepository = {
+      deleteReceipt: jest.fn(),
+      renameExpenseFolder: jest.fn(),
+      renameReceiptFile: jest.fn(),
+      saveReceipt: jest.fn(),
+      verifyFolders: jest.fn().mockResolvedValue({
+        allReceiptsFolderStatus: "normal",
+        monthlyFolderStatus: "normal",
+      }),
+      verifyReceipt: jest.fn().mockImplementation(async () => {
+        activeVerifications += 1;
+        peakConcurrentVerifications = Math.max(
+          peakConcurrentVerifications,
+          activeVerifications,
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        activeVerifications -= 1;
+
+        return {
+          allReceiptsFolderStatus: "normal",
+          fileStatus: "normal",
+          monthlyFolderStatus: "normal",
+        };
+      }),
+    };
+
+    await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        month: "2026-03",
+      },
+      receiptsRepository,
+      repository,
+    });
+
+    expect(peakConcurrentVerifications).toBe(1);
+  });
+
   it("verifies the shared receipts folder even when the monthly folder reference is empty", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue({
