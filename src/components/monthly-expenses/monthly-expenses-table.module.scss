@@ -123,6 +123,21 @@
   overflow: visible;
 }
 
+.receiptShareSummary {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.receiptShareSummaryInfo {
+  color: #0b4a75;
+  border-color: color-mix(in srgb, #4da3e2 46%, var(--border));
+  background: color-mix(in srgb, #4da3e2 14%, var(--background));
+}
+
 .tableWrapper :global([data-slot="table-container"]) {
   max-height: 80vh;
   overflow: auto;
@@ -584,6 +599,24 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+}
+
+.receiptShareStatusControl {
+  border-color: currentColor;
+}
+
+.receiptShareStatusControl :global(.text-muted-foreground) {
+  color: currentColor;
+}
+
+.receiptShareStatusPending {
+  color: #875500;
+  background: color-mix(in srgb, #fbbc04 18%, var(--background));
+}
+
+.receiptShareStatusSent {
+  color: #1b6f36;
+  background: color-mix(in srgb, #34a853 16%, var(--background));
 }
 
 .paymentLinkActionButton {

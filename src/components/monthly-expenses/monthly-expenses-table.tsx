@@ -907,6 +907,21 @@ function getNormalizedReceiptShareStatus(
   return row.receiptShareStatus === "sent" ? "sent" : "pending";
 }
 
+function getReceiptShareStatusToneClassName(
+  args: {
+    isPaymentFullyCompleted: boolean;
+    status: MonthlyExpenseReceiptShareStatus;
+  },
+): string {
+  if (args.status === "sent") {
+    return styles.receiptShareStatusSent;
+  }
+
+  return args.isPaymentFullyCompleted
+    ? styles.receiptShareStatusPending
+    : "";
+}
+
 function getReceiptShareMessage(value: string): string | null {
   const normalizedMessage = value.trim();
 
@@ -1519,6 +1534,34 @@ export function MonthlyExpensesTable({
         normalizedFilter,
       ));
   }, [descriptionFilter, rows]);
+  const completedPendingReceiptShareCount = useMemo(() => {
+    let pendingCount = 0;
+
+    for (const row of rows) {
+      if (!isPaymentCompleted(row)) {
+        continue;
+      }
+
+      const normalizedStatus = getNormalizedReceiptShareStatus(row);
+
+      if (!normalizedStatus) {
+        continue;
+      }
+
+      if (normalizedStatus === "pending") {
+        pendingCount += 1;
+      }
+    }
+
+    return pendingCount;
+  }, [rows]);
+  const completedPendingReceiptShareMessage = useMemo(() => {
+    if (completedPendingReceiptShareCount === 1) {
+      return "Hay 1 gasto con todos los pagos completos pendiente de envío.";
+    }
+
+    return `Hay ${completedPendingReceiptShareCount} gastos con todos los pagos completos pendientes de envío.`;
+  }, [completedPendingReceiptShareCount]);
 
   const handleOpenPaymentLinkDialog = useCallback(({
     expenseDescription,
@@ -1886,10 +1929,15 @@ export function MonthlyExpensesTable({
           }
 
           const expenseDescription = row.original.description.trim() || "gasto";
+          const isPaymentFullyCompleted = isPaymentCompleted(row.original);
+          const statusToneClassName = getReceiptShareStatusToneClassName({
+            isPaymentFullyCompleted,
+            status: normalizedStatus,
+          });
 
           return (
-            <Select
-              onValueChange={(value) => {
+              <Select
+                onValueChange={(value) => {
                 void onUpdateReceiptShareStatus({
                   expenseId: row.original.id,
                   receiptShareStatus: value as MonthlyExpenseReceiptShareStatus,
@@ -1897,7 +1945,13 @@ export function MonthlyExpensesTable({
               }}
               value={normalizedStatus}
             >
-              <SelectTrigger aria-label={`Estado de envío de ${expenseDescription}`}>
+              <SelectTrigger
+                aria-label={`Estado de envío de ${expenseDescription}`}
+                className={cn(
+                  styles.receiptShareStatusControl,
+                  statusToneClassName,
+                )}
+              >
                 <SelectValue>
                   <span className={styles.receiptShareStatusValue}>
                     {(() => {
@@ -1910,13 +1964,31 @@ export function MonthlyExpensesTable({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">
+                <SelectItem
+                  className={cn(
+                    styles.receiptShareStatusControl,
+                    getReceiptShareStatusToneClassName({
+                      isPaymentFullyCompleted,
+                      status: "pending",
+                    }),
+                  )}
+                  value="pending"
+                >
                   <span className={styles.receiptShareStatusValue}>
                     <Clock3 aria-hidden="true" className={styles.paymentLinkIcon} />
                     <span>Pendiente</span>
                   </span>
                 </SelectItem>
-                <SelectItem value="sent">
+                <SelectItem
+                  className={cn(
+                    styles.receiptShareStatusControl,
+                    getReceiptShareStatusToneClassName({
+                      isPaymentFullyCompleted,
+                      status: "sent",
+                    }),
+                  )}
+                  value="sent"
+                >
                   <span className={styles.receiptShareStatusValue}>
                     <Mail aria-hidden="true" className={styles.paymentLinkIcon} />
                     <span>Enviado</span>
@@ -2690,6 +2762,15 @@ export function MonthlyExpensesTable({
           </div>
 
           <div className={styles.tableWrapper}>
+            {completedPendingReceiptShareCount > 0 ? (
+              <p
+                aria-live="polite"
+                className={cn(styles.receiptShareSummary, styles.receiptShareSummaryInfo)}
+                role="status"
+              >
+                {completedPendingReceiptShareMessage}
+              </p>
+            ) : null}
             {isRestoringTablePreferences || isMonthTransitionPending ? (
               <div
                 aria-label={

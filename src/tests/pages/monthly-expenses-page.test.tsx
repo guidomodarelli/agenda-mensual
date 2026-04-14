@@ -3611,6 +3611,139 @@ describe("MonthlyExpensesPage", () => {
     });
   });
 
+  it("shows pending receipt-share summary above the description filter", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Servicio pendiente",
+              id: "expense-1",
+              manualCoveredPayments: 2,
+              occurrencesPerMonth: 2,
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Servicio enviado",
+              id: "expense-2",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 1,
+              receiptShareStatus: "sent",
+              requiresReceiptShare: true,
+              subtotal: 120,
+              total: 120,
+            },
+            {
+              currency: "ARS",
+              description: "Servicio incompleto",
+              id: "expense-3",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 3,
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 80,
+              total: 80,
+            },
+            {
+              currency: "ARS",
+              description: "Sin envío",
+              id: "expense-4",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 1,
+              requiresReceiptShare: false,
+              subtotal: 75,
+              total: 75,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Hay 1 gasto con todos los pagos completos pendiente de envío.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Estado de envío de Servicio pendiente" }),
+    ).toHaveClass("receiptShareStatusPending");
+    expect(
+      screen.getByRole("combobox", { name: "Estado de envío de Servicio enviado" }),
+    ).toHaveClass("receiptShareStatusSent");
+    expect(
+      screen.getByRole("combobox", { name: "Estado de envío de Servicio incompleto" }),
+    ).not.toHaveClass("receiptShareStatusPending");
+  });
+
+  it("does not show the summary when there are no pending completed expenses", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Servicio parcial",
+              id: "expense-1",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 3,
+              receiptShareStatus: "pending",
+              requiresReceiptShare: true,
+              subtotal: 80,
+              total: 80,
+            },
+            {
+              currency: "ARS",
+              description: "Sin envío parcial",
+              id: "expense-2",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 2,
+              requiresReceiptShare: false,
+              subtotal: 75,
+              total: 75,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(screen.queryByText(/pagos completos pendientes de envío/i)).not.toBeInTheDocument();
+  });
+
+  it("does not show the summary when all completed expenses were already sent", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Servicio enviado",
+              id: "expense-1",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 1,
+              receiptShareStatus: "sent",
+              requiresReceiptShare: true,
+              subtotal: 120,
+              total: 120,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(screen.queryByText(/pagos completos pendientes de envío/i)).not.toBeInTheDocument();
+  });
+
   it("does not render the authenticated session identity details", () => {
     mockedUseSession.mockReturnValue({
       data: {
