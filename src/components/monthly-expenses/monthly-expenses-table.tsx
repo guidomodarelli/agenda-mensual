@@ -350,8 +350,10 @@ interface PaymentLinkActionsMenuProps {
 
 interface QuickEditActionsMenuProps {
   actionDisabled: boolean;
+  deleteActionLabel?: string;
   editActionLabel: string;
   expenseDescription: string;
+  onDelete?: () => void | Promise<void>;
   onEdit: () => void;
   triggerAriaLabel: string;
 }
@@ -434,8 +436,10 @@ function PaymentLinkActionsMenu({
 
 function QuickEditActionsMenu({
   actionDisabled,
+  deleteActionLabel,
   editActionLabel,
   expenseDescription,
+  onDelete,
   onEdit,
   triggerAriaLabel,
 }: QuickEditActionsMenuProps) {
@@ -468,6 +472,20 @@ function QuickEditActionsMenu({
           <Pencil aria-hidden="true" />
           {editActionLabel}
         </DropdownMenuItem>
+        {onDelete ? (
+          <DropdownMenuItem
+            onSelect={() => {
+              setIsMenuOpen(false);
+              window.setTimeout(() => {
+                void onDelete();
+              }, 0);
+            }}
+            variant="destructive"
+          >
+            <Trash2 aria-hidden="true" />
+            {deleteActionLabel ?? "Eliminar"}
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -777,6 +795,7 @@ interface MonthlyExpensesTableProps {
   onCopySourceMonthChange: (value: string) => void;
   onDeleteAllReceiptsFolderReference: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
+  onDeleteExpenseReceiptShare: (expenseId: string) => void | Promise<void>;
   onDeletePaymentLink: (expenseId: string) => void | Promise<void>;
   onDeleteMonthlyFolderReference: (expenseId: string) => void;
   onEditExpense: (expenseId: string) => void;
@@ -1774,6 +1793,7 @@ export function MonthlyExpensesTable({
   onCopySourceMonthChange,
   onDeleteAllReceiptsFolderReference,
   onDeleteExpense,
+  onDeleteExpenseReceiptShare,
   onDeletePaymentLink,
   onDeleteMonthlyFolderReference,
   onEditExpense,
@@ -2613,8 +2633,10 @@ export function MonthlyExpensesTable({
               )}
               <QuickEditActionsMenu
                 actionDisabled={actionDisabled}
+                deleteActionLabel="Eliminar datos de envío"
                 editActionLabel="Editar datos de envío"
                 expenseDescription={expenseDescription}
+                onDelete={() => onDeleteExpenseReceiptShare(row.original.id)}
                 onEdit={() =>
                   handleOpenReceiptShareDialog({
                     expenseId: row.original.id,

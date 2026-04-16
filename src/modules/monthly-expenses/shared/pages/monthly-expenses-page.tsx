@@ -2717,6 +2717,53 @@ export default function MonthlyExpensesPage({
     }
   };
 
+  const handleDeleteExpenseReceiptShare = async (expenseId: string) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para eliminar datos de envío.");
+      return;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
+      return;
+    }
+
+    const hasReceiptShareData =
+      expenseRow.requiresReceiptShare ||
+      expenseRow.receiptSharePhoneDigits.trim().length > 0 ||
+      normalizeReceiptShareMessage(expenseRow.receiptShareMessage) !== null;
+
+    if (!hasReceiptShareData) {
+      return;
+    }
+
+    const nextRows = normalizeEditableRows(
+      formState.month,
+      formState.rows.map((row) =>
+        row.id === expenseId
+          ? {
+              ...row,
+              receiptShareMessage: "",
+              receiptSharePhoneDigits: "",
+              receiptShareStatus: "",
+              requiresReceiptShare: false,
+            }
+          : row,
+      ),
+    );
+
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Eliminando datos de envío...",
+      success: "Datos de envío eliminados.",
+    });
+
+    if (!wasSaved) {
+      toast.error("No pudimos eliminar los datos de envío.");
+    }
+  };
+
   const handleDeletePaymentLink = async (expenseId: string) => {
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para eliminar links de pago.");
@@ -3222,6 +3269,7 @@ export default function MonthlyExpensesPage({
                 onCopySourceMonthChange={handleCopySourceMonthChange}
                 onDeleteAllReceiptsFolderReference={handleDeleteAllReceiptsFolderReference}
                 onDeleteExpense={handleRemoveExpense}
+                onDeleteExpenseReceiptShare={handleDeleteExpenseReceiptShare}
                 onDeletePaymentLink={handleDeletePaymentLink}
                 onDeleteMonthlyFolderReference={handleDeleteMonthlyFolderReference}
                 onDeleteReceipt={handleDeleteExpenseReceipt}
