@@ -82,6 +82,10 @@ import {
   getFuzzyMatchRank,
   renderHighlightedText,
 } from "./fuzzy-search";
+import {
+  formatCurrencyDisplayWithOptions,
+  normalizeCurrencyInput,
+} from "./currency-input-format";
 import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
 import {
@@ -2950,6 +2954,7 @@ export function MonthlyExpensesTable({
       onDeleteAllReceiptsFolderReference,
       onDeleteExpense,
       onDeletePaymentLink,
+      onDeleteExpenseReceiptShare,
       onDeleteMonthlyFolderReference,
       onDeleteReceipt,
       onDeleteManualPaymentRecord,
@@ -3249,7 +3254,9 @@ export function MonthlyExpensesTable({
                   id="subtotal-dialog-input"
                   inputMode="decimal"
                   onChange={(event) => {
-                    setSubtotalDraftValue(event.target.value);
+                    setSubtotalDraftValue(
+                      normalizeCurrencyInput(event.target.value),
+                    );
 
                     if (subtotalDraftError) {
                       setSubtotalDraftError(null);
@@ -3262,8 +3269,10 @@ export function MonthlyExpensesTable({
                     }
                   }}
                   placeholder="0"
-                  type="number"
-                  value={subtotalDraftValue}
+                  type="text"
+                  value={formatCurrencyDisplayWithOptions(subtotalDraftValue, {
+                    preserveExplicitFractionDigits: true,
+                  })}
                 />
               </InputGroup>
               {subtotalDraftError ? (

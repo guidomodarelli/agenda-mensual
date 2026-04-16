@@ -4446,7 +4446,8 @@ describe("MonthlyExpensesPage", () => {
     const subtotalInput = screen.getByLabelText("Subtotal de Agua");
 
     await user.clear(subtotalInput);
-    await user.type(subtotalInput, "250");
+    await user.type(subtotalInput, "15000");
+    expect(subtotalInput).toHaveValue("15.000");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
@@ -4458,7 +4459,7 @@ describe("MonthlyExpensesPage", () => {
             id: "expense-1",
             occurrencesPerMonth: 1,
             paymentLink: null,
-            subtotal: 250,
+            subtotal: 15000,
           },
         ],
         month: "2026-03",
