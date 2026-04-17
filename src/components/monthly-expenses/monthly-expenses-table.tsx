@@ -1666,6 +1666,7 @@ function PaymentHistoryCell({
   const receiptPaymentRecordsCount = paymentRecords.filter(
     (paymentRecord) => Boolean(paymentRecord.receipt),
   ).length;
+  const hasPaymentRecords = paymentRecords.length > 0;
   const recordsCountLabel = paymentRecords.length === 1
     ? "registro"
     : "registros";
@@ -1802,38 +1803,56 @@ function PaymentHistoryCell({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button className={styles.extraReceiptsTrigger} type="button" variant="link">
-            {`${paymentRecords.length} ${recordsCountLabel}`}
-            {receiptPaymentRecordsCount > 0 ? (
-              <span className={styles.receiptCountIndicator}>
-                {" ("}
-                <Paperclip aria-hidden="true" className={styles.receiptCountIcon} />
-                {"\u00A0"}
-                {receiptPaymentRecordsCount}
-                {")"}
-              </span>
-            ) : null}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className={styles.extraReceiptsPopover}>
-          <div className={styles.extraReceiptsList}>
-            <div className={styles.manualPaymentsControls}>
-              <Button
-                aria-label={`Agregar nuevo registro de pago para ${expenseDescription}`}
-                className={styles.manualPaymentsRegisterButton}
-                disabled={actionDisabled || maxPaymentsPerRecord <= 0}
-                onClick={() => setIsRegisterPaymentDialogOpen(true)}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <Plus aria-hidden="true" />
-                Agregar nuevo registro de pago
-              </Button>
-            </div>
-            {sortedPaymentRecords.map((paymentRecord) => {
+      {!hasPaymentRecords ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              aria-label={`Agregar nuevo registro de pago para ${expenseDescription}`}
+              className={styles.paymentLinkActionButton}
+              disabled={actionDisabled || maxPaymentsPerRecord <= 0}
+              onClick={() => setIsRegisterPaymentDialogOpen(true)}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <Plus aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Agregar nuevo registro de pago</TooltipContent>
+        </Tooltip>
+      ) : (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button className={styles.extraReceiptsTrigger} type="button" variant="link">
+              {`${paymentRecords.length} ${recordsCountLabel}`}
+              {receiptPaymentRecordsCount > 0 ? (
+                <span className={styles.receiptCountIndicator}>
+                  {" ("}
+                  <Paperclip aria-hidden="true" className={styles.receiptCountIcon} />
+                  {"\u00A0"}
+                  {receiptPaymentRecordsCount}
+                  {")"}
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className={styles.extraReceiptsPopover}>
+            <div className={styles.extraReceiptsList}>
+              <div className={styles.manualPaymentsControls}>
+                <Button
+                  aria-label={`Agregar nuevo registro de pago para ${expenseDescription}`}
+                  className={styles.manualPaymentsRegisterButton}
+                  disabled={actionDisabled || maxPaymentsPerRecord <= 0}
+                  onClick={() => setIsRegisterPaymentDialogOpen(true)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Plus aria-hidden="true" />
+                  Agregar nuevo registro de pago
+                </Button>
+              </div>
+              {sortedPaymentRecords.map((paymentRecord) => {
               const displayDate = paymentRecord.registeredAt
                 ? formatPaymentRecordDate(paymentRecord.registeredAt)
                 : "Sin fecha";
@@ -1943,10 +1962,11 @@ function PaymentHistoryCell({
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </PopoverContent>
-      </Popover>
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }

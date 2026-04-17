@@ -566,8 +566,6 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /registros/i }));
-
     await user.click(
       screen.getByRole("button", {
         name: "Agregar nuevo registro de pago para Internet",
@@ -624,8 +622,6 @@ registerMonthlyExpensesPageDefaultHooks({
         }}
       />,
     );
-
-    await user.click(screen.getByRole("button", { name: /registros/i }));
 
     await user.click(
       screen.getByRole("button", {
