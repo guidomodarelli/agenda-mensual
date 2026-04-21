@@ -331,14 +331,10 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
     await user.type(screen.getByRole("spinbutton", { name: "Subtotal Mínimo" }), "150");
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Estado de envío" }),
-      "sent",
-    );
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Link" }),
-      "noValue",
-    );
+    await user.click(screen.getByRole("combobox", { name: "Estado de envío" }));
+    await user.click(screen.getByRole("option", { name: "Enviado" }));
+    await user.click(screen.getByRole("combobox", { name: "Link" }));
+    await user.click(screen.getByRole("option", { name: "Sin valor" }));
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
     expect(screen.queryByText("Pendiente con link")).not.toBeInTheDocument();
@@ -348,6 +344,12 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
     await user.click(screen.getByRole("button", { name: "Limpiar" }));
+
+    expect(screen.queryByText("Pendiente con link")).not.toBeInTheDocument();
+    expect(screen.getByText("Enviado sin link")).toBeInTheDocument();
+    expect(screen.queryByText("Sin estado sin link")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
     expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
     expect(screen.getByText("Enviado sin link")).toBeInTheDocument();

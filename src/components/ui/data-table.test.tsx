@@ -11,6 +11,38 @@ type TableRow = {
 };
 
 describe("DataTable", () => {
+  beforeEach(() => {
+    if (typeof HTMLElement !== "undefined") {
+      if (!HTMLElement.prototype.hasPointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
+          configurable: true,
+          value: () => false,
+        });
+      }
+
+      if (!HTMLElement.prototype.setPointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "setPointerCapture", {
+          configurable: true,
+          value: () => undefined,
+        });
+      }
+
+      if (!HTMLElement.prototype.releasePointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "releasePointerCapture", {
+          configurable: true,
+          value: () => undefined,
+        });
+      }
+    }
+
+    if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+      Object.defineProperty(Element.prototype, "scrollIntoView", {
+        configurable: true,
+        value: () => undefined,
+      });
+    }
+  });
+
   it("applies custom row class names based on the provided callback", () => {
     const rows: TableRow[] = [
       { label: "Pagado", paid: true },
@@ -415,7 +447,7 @@ describe("DataTable", () => {
     ).toBeInTheDocument();
   });
 
-  it("applies and clears enum and presence advanced filters", async () => {
+  it("keeps advanced filters applied after clearing draft values until reapplying", async () => {
     const user = userEvent.setup();
     const rows = [
       { label: "Sin envio", link: "", status: "none" },
@@ -491,14 +523,10 @@ describe("DataTable", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Estado" }),
-      "pending",
-    );
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Link" }),
-      "hasValue",
-    );
+    await user.click(screen.getByRole("combobox", { name: "Estado" }));
+    await user.click(screen.getByRole("option", { name: "Pendiente" }));
+    await user.click(screen.getByRole("combobox", { name: "Link" }));
+    await user.click(screen.getByRole("option", { name: "Tiene valor" }));
     await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
     expect(screen.queryByText("Sin envio")).not.toBeInTheDocument();
@@ -507,6 +535,12 @@ describe("DataTable", () => {
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
     await user.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+
+    expect(screen.queryByText("Sin envio")).not.toBeInTheDocument();
+    expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
+    expect(screen.queryByText("Enviado con link")).not.toBeInTheDocument();
+    expect(screen.getByText("Filtros avanzados")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
     expect(screen.getByText("Sin envio")).toBeInTheDocument();
     expect(screen.getByText("Pendiente con link")).toBeInTheDocument();

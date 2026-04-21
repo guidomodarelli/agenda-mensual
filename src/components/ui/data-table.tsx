@@ -38,6 +38,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -155,6 +162,7 @@ const ADVANCED_FILTERS_ENUM_ALL_OPTION = "Todos";
 const ADVANCED_FILTERS_PRESENCE_ALL_OPTION = "Todos";
 const ADVANCED_FILTERS_PRESENCE_HAS_OPTION = "Tiene valor";
 const ADVANCED_FILTERS_PRESENCE_HAS_NOT_OPTION = "Sin valor";
+const ADVANCED_FILTERS_ALL_VALUE = "__all__";
 const ADVANCED_FILTERS_INVALID_MIN_MESSAGE = "Ingresá un mínimo válido.";
 const ADVANCED_FILTERS_INVALID_MAX_MESSAGE = "Ingresá un máximo válido.";
 const ADVANCED_FILTERS_INVALID_RANGE_MESSAGE =
@@ -698,8 +706,6 @@ export function DataTable<TData, TValue>({
 
   const handleClearAdvancedFilters = React.useCallback(() => {
     setAdvancedFiltersDraftByColumn({});
-    setAdvancedFiltersAppliedByColumn({});
-    setIsAdvancedFiltersDialogOpen(false);
   }, []);
 
   return (
@@ -1228,55 +1234,77 @@ export function DataTable<TData, TValue>({
                     ) : null}
 
                     {advancedFilterConfig.type === "enum" && draftFilterValue.kind === "enum" ? (
-                      <select
-                        aria-label={advancedFilterConfig.label}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-
+                      <Select
+                        onValueChange={(nextValue) => {
                           setAdvancedFiltersDraftByColumn((previousState) => ({
                             ...previousState,
                             [advancedFilterConfig.columnId]: {
                               kind: "enum",
-                              value: nextValue,
+                              value:
+                                nextValue === ADVANCED_FILTERS_ALL_VALUE
+                                  ? ""
+                                  : nextValue,
                             },
                           }));
                         }}
-                        value={draftFilterValue.value}
+                        value={
+                          draftFilterValue.value === ""
+                            ? ADVANCED_FILTERS_ALL_VALUE
+                            : draftFilterValue.value
+                        }
                       >
-                        <option value="">{ADVANCED_FILTERS_ENUM_ALL_OPTION}</option>
-                        {(advancedFilterConfig.enumOptions ?? []).map((enumOption) => (
-                          <option key={enumOption.value} value={enumOption.value}>
-                            {enumOption.label}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger aria-label={advancedFilterConfig.label} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={ADVANCED_FILTERS_ALL_VALUE}>
+                            {ADVANCED_FILTERS_ENUM_ALL_OPTION}
+                          </SelectItem>
+                          {(advancedFilterConfig.enumOptions ?? []).map((enumOption) => (
+                            <SelectItem key={enumOption.value} value={enumOption.value}>
+                              {enumOption.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : null}
 
                     {advancedFilterConfig.type === "presence" &&
                     draftFilterValue.kind === "presence" ? (
-                      <select
-                        aria-label={advancedFilterConfig.label}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        onChange={(event) => {
-                          const nextValue = event.target.value as PresenceFilterValue | "";
-
+                      <Select
+                        onValueChange={(nextValue) => {
                           setAdvancedFiltersDraftByColumn((previousState) => ({
                             ...previousState,
                             [advancedFilterConfig.columnId]: {
                               kind: "presence",
-                              value: nextValue,
+                              value:
+                                nextValue === ADVANCED_FILTERS_ALL_VALUE
+                                  ? ""
+                                  : (nextValue as PresenceFilterValue),
                             },
                           }));
                         }}
-                        value={draftFilterValue.value}
+                        value={
+                          draftFilterValue.value === ""
+                            ? ADVANCED_FILTERS_ALL_VALUE
+                            : draftFilterValue.value
+                        }
                       >
-                        <option value="">{ADVANCED_FILTERS_PRESENCE_ALL_OPTION}</option>
-                        <option value="hasValue">{ADVANCED_FILTERS_PRESENCE_HAS_OPTION}</option>
-                        <option value="noValue">
-                          {ADVANCED_FILTERS_PRESENCE_HAS_NOT_OPTION}
-                        </option>
-                      </select>
+                        <SelectTrigger aria-label={advancedFilterConfig.label} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={ADVANCED_FILTERS_ALL_VALUE}>
+                            {ADVANCED_FILTERS_PRESENCE_ALL_OPTION}
+                          </SelectItem>
+                          <SelectItem value="hasValue">
+                            {ADVANCED_FILTERS_PRESENCE_HAS_OPTION}
+                          </SelectItem>
+                          <SelectItem value="noValue">
+                            {ADVANCED_FILTERS_PRESENCE_HAS_NOT_OPTION}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     ) : null}
 
                     {columnValidationMessage ? (
