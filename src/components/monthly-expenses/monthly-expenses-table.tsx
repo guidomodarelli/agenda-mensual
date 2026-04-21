@@ -1301,6 +1301,16 @@ function getNonEmptyDescriptionFilters(descriptionFilters: string[]): string[] {
     .filter((descriptionFilter) => descriptionFilter.length > 0);
 }
 
+function getPrimaryDescriptionFilter(descriptionFilter: string): string {
+  const normalizedDescriptionFilter = descriptionFilter.trimStart();
+
+  if (!normalizedDescriptionFilter.startsWith("-")) {
+    return descriptionFilter;
+  }
+
+  return "";
+}
+
 function getRowsMatchingDescriptionFilter(
   rows: MonthlyExpensesEditableRow[],
   descriptionFilter: string,
@@ -2182,9 +2192,13 @@ export function MonthlyExpensesTable({
     () => getNonEmptyDescriptionFilters(excludedDescriptionFilters),
     [excludedDescriptionFilters],
   );
+  const primaryDescriptionFilter = useMemo(
+    () => getPrimaryDescriptionFilter(descriptionFilter),
+    [descriptionFilter],
+  );
   const rowsMatchingDescriptionFilter = useMemo(
-    () => getRowsMatchingDescriptionFilter(rows, descriptionFilter),
-    [descriptionFilter, rows],
+    () => getRowsMatchingDescriptionFilter(rows, primaryDescriptionFilter),
+    [primaryDescriptionFilter, rows],
   );
   const excludeFilterMetrics = useMemo(
     () =>
@@ -2195,7 +2209,7 @@ export function MonthlyExpensesTable({
     [nonEmptyExcludedDescriptionFilters, rowsMatchingDescriptionFilter],
   );
   const hasActiveDescriptionFiltering =
-    descriptionFilter.trim().length > 0 ||
+    primaryDescriptionFilter.trim().length > 0 ||
     nonEmptyExcludedDescriptionFilters.length > 0;
   const rowsExcludingDescriptions = useMemo(
     () =>
@@ -2469,7 +2483,7 @@ export function MonthlyExpensesTable({
       leftRow: MonthlyExpensesEditableRow,
       rightRow: MonthlyExpensesEditableRow,
     ): number => {
-      const normalizedFilterValue = descriptionFilter.trim();
+      const normalizedFilterValue = primaryDescriptionFilter.trim();
 
       if (!normalizedFilterValue) {
         return 0;
@@ -2536,7 +2550,7 @@ export function MonthlyExpensesTable({
 
       return 0;
     },
-    [descriptionFilter],
+    [primaryDescriptionFilter],
   );
 
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(

@@ -124,6 +124,55 @@ describe("DataTable", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("adds a new exclusion when pressing Enter on the main filter with spaces before the leading minus", async () => {
+    const user = userEvent.setup();
+    const rows: TableRow[] = [
+      { label: "Internet", paid: true },
+      { label: "Agua", paid: false },
+    ];
+    const columns: ColumnDef<TableRow>[] = [
+      {
+        accessorKey: "label",
+        header: "Estado",
+      },
+    ];
+
+    function DataTableWithMainAndExcludeFilters() {
+      const [excludeFilterValues, setExcludeFilterValues] = useState<string[]>([]);
+
+      return (
+        <DataTable
+          columns={columns}
+          data={rows}
+          emptyMessage="Sin datos"
+          excludeFilterValues={excludeFilterValues}
+          filterColumnId="label"
+          onExcludeFilterValuesChange={setExcludeFilterValues}
+          showExcludeFilterToggle
+        />
+      );
+    }
+
+    render(<DataTableWithMainAndExcludeFilters />);
+
+    const mainFilterInput = screen.getByRole("textbox", { name: "Filtrar" });
+    await user.type(mainFilterInput, "   -internet");
+
+    expect(mainFilterInput).toHaveClass("text-red-400");
+    expect(
+      screen.getByText("Estás escribiendo una exclusión. Presioná Enter para aplicarla."),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByText("− internet")).toBeInTheDocument();
+    expect(mainFilterInput).toHaveValue("");
+    expect(mainFilterInput).not.toHaveClass("text-red-400");
+    expect(
+      screen.queryByText("Estás escribiendo una exclusión. Presioná Enter para aplicarla."),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders per-tag excluded rows counters and unique excluded rows summary", () => {
     const rows: TableRow[] = [
       { label: "Préstamo auto", paid: false },

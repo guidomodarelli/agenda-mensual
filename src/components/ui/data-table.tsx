@@ -15,7 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, Ellipsis, Eraser, X } from "lucide-react";
+import { CircleAlert, ChevronDown, Ellipsis, Eraser, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,8 @@ const DUPLICATE_EXCLUDE_FILTER_ERROR_MESSAGE = "Esa exclusión ya está activa."
 const EXCLUDED_ROWS_SUMMARY_LABEL = "Total excluidas";
 const CLEAR_ALL_EXCLUSIONS_ARIA_LABEL = "Quitar todas las exclusiones";
 const CLEAR_ALL_EXCLUSIONS_FROM_INPUT_ARIA_LABEL = "Limpiar filtros excluidos";
+const REVERSE_FILTER_PENDING_MESSAGE =
+  "Estás escribiendo una exclusión. Presioná Enter para aplicarla.";
 
 function normalizeFilterToken(value: string): string {
   return value
@@ -91,6 +93,19 @@ function normalizeFilterToken(value: string): string {
     .replace(DIACRITICS_PATTERN, "")
     .toLocaleLowerCase()
     .trim();
+}
+
+function getTableFilterValue(
+  filterValue: string,
+  showExcludeFilterToggle: boolean,
+): string {
+  const normalizedFilterValue = filterValue.trimStart();
+
+  if (showExcludeFilterToggle && normalizedFilterValue.startsWith("-")) {
+    return "";
+  }
+
+  return filterValue;
 }
 
 export function DataTable<TData, TValue>({
@@ -147,6 +162,12 @@ export function DataTable<TData, TValue>({
     ? controlledExcludeFilterValues
     : uncontrolledExcludeFilterValues;
   const hasActiveExcludeFilterValues = resolvedExcludeFilterValues.length > 0;
+  const tableFilterValue = getTableFilterValue(
+    resolvedFilterValue,
+    showExcludeFilterToggle,
+  );
+  const hasPendingReverseFilter =
+    showExcludeFilterToggle && resolvedFilterValue.trimStart().startsWith("-");
 
   const handleExcludeFilterValuesChange = React.useCallback(
     (nextExcludeFilterValues: string[]) => {
@@ -159,35 +180,42 @@ export function DataTable<TData, TValue>({
     [isExcludeFilterValuesControlled, onExcludeFilterValuesChange],
   );
 
-  const addExcludeFilterValue = React.useCallback(() => {
-    const normalizedCandidate = normalizeFilterToken(excludeFilterInputValue);
+  const addExcludeFilterValue = React.useCallback(
+    (
+      rawExcludeFilterValue: string,
+      options: { clearExcludeInputValue?: boolean } = {},
+    ): boolean => {
+      const normalizedCandidate = normalizeFilterToken(rawExcludeFilterValue);
 
-    if (!normalizedCandidate) {
-      setExcludeFilterErrorMessage(EMPTY_EXCLUDE_FILTER_ERROR_MESSAGE);
-      return;
-    }
+      if (!normalizedCandidate) {
+        setExcludeFilterErrorMessage(EMPTY_EXCLUDE_FILTER_ERROR_MESSAGE);
+        return false;
+      }
 
-    const hasDuplicateExcludeFilter = resolvedExcludeFilterValues.some(
-      (excludeFilterValue) =>
-        normalizeFilterToken(excludeFilterValue) === normalizedCandidate,
-    );
+      const hasDuplicateExcludeFilter = resolvedExcludeFilterValues.some(
+        (excludeFilterValue) =>
+          normalizeFilterToken(excludeFilterValue) === normalizedCandidate,
+      );
 
-    if (hasDuplicateExcludeFilter) {
-      setExcludeFilterErrorMessage(DUPLICATE_EXCLUDE_FILTER_ERROR_MESSAGE);
-      return;
-    }
+      if (hasDuplicateExcludeFilter) {
+        setExcludeFilterErrorMessage(DUPLICATE_EXCLUDE_FILTER_ERROR_MESSAGE);
+        return false;
+      }
 
-    handleExcludeFilterValuesChange([
-      ...resolvedExcludeFilterValues,
-      excludeFilterInputValue.trim(),
-    ]);
-    setExcludeFilterInputValue("");
-    setExcludeFilterErrorMessage(null);
-  }, [
-    excludeFilterInputValue,
-    handleExcludeFilterValuesChange,
-    resolvedExcludeFilterValues,
-  ]);
+      handleExcludeFilterValuesChange([
+        ...resolvedExcludeFilterValues,
+        rawExcludeFilterValue.trim(),
+      ]);
+
+      if (options.clearExcludeInputValue ?? true) {
+        setExcludeFilterInputValue("");
+      }
+
+      setExcludeFilterErrorMessage(null);
+      return true;
+    },
+    [handleExcludeFilterValuesChange, resolvedExcludeFilterValues],
+  );
 
   const removeExcludeFilterValue = React.useCallback(
     (excludeFilterValueToRemove: string) => {
@@ -307,6 +335,15 @@ export function DataTable<TData, TValue>({
     handleSortingChange([]);
   }, [handleSortingChange]);
 
+  const handleClearMainFilter = React.useCallback(() => {
+    if (!isFilterValueControlled) {
+      setUncontrolledFilterValue("");
+    }
+
+    onFilterValueChange?.("");
+    filterColumn?.setFilterValue("");
+  }, [filterColumn, isFilterValueControlled, onFilterValueChange]);
+
   React.useEffect(() => {
     if (!filterColumn) {
       return;
@@ -314,12 +351,12 @@ export function DataTable<TData, TValue>({
 
     const currentFilterValue = String(filterColumn.getFilterValue() ?? "");
 
-    if (currentFilterValue === resolvedFilterValue) {
+    if (currentFilterValue === tableFilterValue) {
       return;
     }
 
-    filterColumn.setFilterValue(resolvedFilterValue);
-  }, [filterColumn, resolvedFilterValue]);
+    filterColumn.setFilterValue(tableFilterValue);
+  }, [filterColumn, tableFilterValue]);
 
   return (
     <div className="grid gap-4">
@@ -331,7 +368,9 @@ export function DataTable<TData, TValue>({
                 <div className="relative w-full">
                   <Input
                     aria-label={filterLabel}
-                    className="w-full pr-16"
+                    className={`w-full pr-16 ${
+                      hasPendingReverseFilter ? "text-red-400" : ""
+                    }`}
                     onChange={(event) => {
                       const nextFilterValue = event.target.value;
 
@@ -340,7 +379,38 @@ export function DataTable<TData, TValue>({
                       }
 
                       onFilterValueChange?.(nextFilterValue);
-                      filterColumn?.setFilterValue(nextFilterValue);
+                      filterColumn?.setFilterValue(
+                        getTableFilterValue(nextFilterValue, showExcludeFilterToggle),
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") {
+                        return;
+                      }
+
+                      const trimmedResolvedFilterValue = resolvedFilterValue.trimStart();
+
+                      if (
+                        !showExcludeFilterToggle ||
+                        !trimmedResolvedFilterValue.startsWith("-")
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      const excludeFilterCandidate =
+                        trimmedResolvedFilterValue.slice(1);
+                      const wasExcludeFilterAdded = addExcludeFilterValue(
+                        excludeFilterCandidate,
+                        {
+                          clearExcludeInputValue: false,
+                        },
+                      );
+
+                      if (wasExcludeFilterAdded) {
+                        handleClearMainFilter();
+                      }
                     }}
                     placeholder={filterPlaceholder}
                     type="text"
@@ -351,14 +421,7 @@ export function DataTable<TData, TValue>({
                       <Button
                         aria-label={CLEAR_FILTER_ARIA_LABEL}
                         className="active:-translate-y-0"
-                        onClick={() => {
-                          if (!isFilterValueControlled) {
-                            setUncontrolledFilterValue("");
-                          }
-
-                          onFilterValueChange?.("");
-                          filterColumn?.setFilterValue("");
-                        }}
+                        onClick={handleClearMainFilter}
                         size="icon-xs"
                         type="button"
                         variant="ghost"
@@ -424,7 +487,7 @@ export function DataTable<TData, TValue>({
                           }
 
                           event.preventDefault();
-                          addExcludeFilterValue();
+                          addExcludeFilterValue(excludeFilterInputValue);
                         }}
                         placeholder={excludeFilterPlaceholder}
                         type="text"
@@ -447,6 +510,21 @@ export function DataTable<TData, TValue>({
                         {excludeFilterErrorMessage}
                       </p>
                     ) : null}
+                  </div>
+                ) : null}
+                {hasPendingReverseFilter ? (
+                  <div
+                    aria-live="polite"
+                    className="rounded-md border border-border/80 bg-muted/40 px-3 py-2 text-muted-foreground"
+                    role="status"
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+                      <CircleAlert aria-hidden="true" className="size-4" />
+                      <span>Exclusión pendiente</span>
+                    </div>
+                    <p className="mt-1 text-xs">
+                      {REVERSE_FILTER_PENDING_MESSAGE}
+                    </p>
                   </div>
                 ) : null}
                 {showExcludeFilterToggle && resolvedExcludeFilterValues.length > 0 ? (

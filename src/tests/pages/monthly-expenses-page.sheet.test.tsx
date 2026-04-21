@@ -2603,6 +2603,56 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByText("Agua")).toBeInTheDocument();
   });
 
+  it("shows reverse-filter feedback and applies exclusion only after pressing Enter", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Internet casa",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 12000,
+              total: 12000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const mainFilterInput = screen.getByRole("textbox", { name: "Filtrar gastos" });
+    await user.type(mainFilterInput, "-internet");
+
+    expect(mainFilterInput).toHaveValue("-internet");
+    expect(
+      screen.getByText("Estás escribiendo una exclusión. Presioná Enter para aplicarla."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Internet casa")).toBeInTheDocument();
+    expect(screen.getByText("Agua")).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+
+    expect(mainFilterInput).toHaveValue("");
+    expect(screen.getByText("− internet")).toBeInTheDocument();
+    expect(screen.queryByText("Internet casa")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Estás escribiendo una exclusión. Presioná Enter para aplicarla."),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows validation when a debt is missing start month or installments", async () => {
     const user = userEvent.setup();
 
