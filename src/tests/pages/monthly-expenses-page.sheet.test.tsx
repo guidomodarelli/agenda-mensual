@@ -3241,7 +3241,7 @@ registerMonthlyExpensesPageDefaultHooks({
           json: async () => ({
             data: {
               id: "lenders-file-id",
-              name: "lenders-catalog.json",
+              name: "lenders-catalog",
             },
           }),
           ok: true,
@@ -3361,7 +3361,7 @@ registerMonthlyExpensesPageDefaultHooks({
         json: async () => ({
           data: {
             id: "lenders-file-id",
-            name: "lenders-catalog.json",
+            name: "lenders-catalog",
           },
         }),
         ok: true,

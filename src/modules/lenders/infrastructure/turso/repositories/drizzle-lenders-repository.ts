@@ -1,19 +1,19 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import {
-  lendersCatalogDocumentsTable,
+  lendersCatalogTable,
 } from "@/modules/shared/infrastructure/database/drizzle/schema";
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
 import type { StoredLendersCatalog } from "../../../domain/entities/stored-lenders-catalog";
 import type { LendersRepository } from "../../../domain/repositories/lenders-repository";
-import type { LendersCatalogDocument } from "../../../domain/value-objects/lenders-catalog-document";
 import {
-  mapLendersCatalogToGoogleDriveFile,
-  parseGoogleDriveLendersCatalogContent,
-} from "../../google-drive/dto/mapper";
+  createLendersCatalogDocument,
+  type LenderType,
+  type LendersCatalogDocument,
+} from "../../../domain/value-objects/lenders-catalog-document";
 
-const LENDERS_CATALOG_DOCUMENT_NAME = "lenders-catalog.json";
+const LENDERS_CATALOG_DOCUMENT_NAME = "lenders-catalog";
 
 export class DrizzleLendersRepository implements LendersRepository {
   constructor(
@@ -24,40 +24,55 @@ export class DrizzleLendersRepository implements LendersRepository {
   async get(): Promise<LendersCatalogDocument | null> {
     const rows = await this.database
       .select({
-        payloadJson: lendersCatalogDocumentsTable.payloadJson,
+        id: lendersCatalogTable.lenderId,
+        name: lendersCatalogTable.name,
+        notes: lendersCatalogTable.notes,
+        type: lendersCatalogTable.type,
       })
-      .from(lendersCatalogDocumentsTable)
-      .where(eq(lendersCatalogDocumentsTable.userSubject, this.userSubject))
-      .limit(1);
-    const row = rows[0];
+      .from(lendersCatalogTable)
+      .where(eq(lendersCatalogTable.userSubject, this.userSubject))
+      .orderBy(asc(lendersCatalogTable.name));
 
-    if (!row) {
+    if (rows.length === 0) {
       return null;
     }
 
-    return parseGoogleDriveLendersCatalogContent(
-      row.payloadJson,
+    return createLendersCatalogDocument(
+      {
+        lenders: rows.map((row) => ({
+          ...(row.notes ? { notes: row.notes } : {}),
+          id: row.id,
+          name: row.name,
+          type: row.type as LenderType,
+        })),
+      },
       "Loading lenders catalog from database",
     );
   }
 
   async save(document: LendersCatalogDocument): Promise<StoredLendersCatalog> {
-    const serializedDocument = mapLendersCatalogToGoogleDriveFile(document);
+    const updatedAtIso = new Date().toISOString();
 
-    await this.database
-      .insert(lendersCatalogDocumentsTable)
-      .values({
-        payloadJson: serializedDocument.content,
-        updatedAtIso: new Date().toISOString(),
-        userSubject: this.userSubject,
-      })
-      .onConflictDoUpdate({
-        set: {
-          payloadJson: serializedDocument.content,
-          updatedAtIso: new Date().toISOString(),
-        },
-        target: lendersCatalogDocumentsTable.userSubject,
-      });
+    await this.database.transaction(async (executor) => {
+      await executor
+        .delete(lendersCatalogTable)
+        .where(eq(lendersCatalogTable.userSubject, this.userSubject));
+
+      if (document.lenders.length === 0) {
+        return;
+      }
+
+      await executor.insert(lendersCatalogTable).values(
+        document.lenders.map((lender) => ({
+          ...(lender.notes ? { notes: lender.notes } : {}),
+          lenderId: lender.id,
+          name: lender.name,
+          type: lender.type,
+          updatedAtIso,
+          userSubject: this.userSubject,
+        })),
+      );
+    });
 
     return {
       id: `${this.userSubject}:lenders-catalog`,

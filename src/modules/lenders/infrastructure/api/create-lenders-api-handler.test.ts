@@ -83,7 +83,7 @@ describe("createLendersApiHandler", () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({
       id: "lenders-file-id",
-      name: "lenders-catalog.json",
+      name: "lenders-catalog",
     });
     const handler = createLendersApiHandler({
       get: jest.fn(),

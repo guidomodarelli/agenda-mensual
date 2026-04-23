@@ -7,7 +7,7 @@ describe("saveLendersCatalog", () => {
       get: jest.fn(),
       save: jest.fn().mockResolvedValue({
         id: "lenders-file-id",
-        name: "lenders-catalog.json",
+        name: "lenders-catalog",
       }),
     };
 
@@ -35,7 +35,7 @@ describe("saveLendersCatalog", () => {
     });
     expect(result).toEqual({
       id: "lenders-file-id",
-      name: "lenders-catalog.json",
+      name: "lenders-catalog",
     });
   });
 });

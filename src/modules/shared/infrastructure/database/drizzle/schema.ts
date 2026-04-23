@@ -118,13 +118,21 @@ export const expensePaymentRecordsTable = sqliteTable(
   ],
 );
 
-export const lendersCatalogDocumentsTable = sqliteTable(
-  "lenders_catalog_documents",
+export const lendersCatalogTable = sqliteTable(
+  "lenders_catalog",
   {
-    payloadJson: text("payload_json").notNull(),
+    lenderId: text("lender_id").notNull(),
+    name: text("name").notNull(),
+    notes: text("notes"),
+    type: text("type").notNull(),
     updatedAtIso: text("updated_at_iso").notNull(),
-    userSubject: text("user_subject").primaryKey(),
+    userSubject: text("user_subject").notNull(),
   },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.lenderId],
+    }),
+  ],
 );
 
 export const applicationSettingsDocumentsTable = sqliteTable(
