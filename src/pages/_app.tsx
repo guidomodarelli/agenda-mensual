@@ -58,19 +58,6 @@ export default function App({
   const documentTitle = getDocumentTitle(router.pathname);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development") {
-      return;
-    }
-
-    async function loadReactGrabCodexProvider() {
-      await import("react-grab");
-      await import("@react-grab/codex/client");
-    }
-
-    void loadReactGrabCodexProvider();
-  }, []);
-
-  useEffect(() => {
     registerServiceWorker();
   }, []);
 
