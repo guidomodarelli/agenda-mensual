@@ -57,6 +57,13 @@
       "when": 1777321414986,
       "tag": "0007_famous_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1777341483872,
+      "tag": "0008_first_shen",
+      "breakpoints": true
     }
   ]
 }

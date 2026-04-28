@@ -252,10 +252,17 @@ export async function saveMonthlyExpensesDocument({
     exchangeRateLoadError = MONTHLY_EXCHANGE_RATE_FALLBACK_MESSAGE;
   }
   const currentDocument = await repository.getByMonth(validatedBaseDocument.month);
+  const hasReplicatedFromPreviousMonth =
+    command.hasReplicatedFromPreviousMonth ??
+    currentDocument?.hasReplicatedFromPreviousMonth ??
+    false;
   const resolvedExchangeRateSnapshot =
     exchangeRateSnapshot ?? currentDocument?.exchangeRateSnapshot ?? null;
   const validatedDocumentInput = {
     ...toMonthlyExpensesDocumentInput(validatedBaseDocument),
+    ...(hasReplicatedFromPreviousMonth
+      ? { hasReplicatedFromPreviousMonth: true }
+      : {}),
     ...(resolvedExchangeRateSnapshot
       ? {
           exchangeRateSnapshot: {

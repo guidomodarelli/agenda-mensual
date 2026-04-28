@@ -47,8 +47,6 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
       <MonthlyExpensesTable
         actionDisabled={false}
         changedFields={new Set()}
-        copySourceMonth={null}
-        copySourceMonthOptions={[]}
         draft={null}
         exchangeRateLoadError={null}
         exchangeRateSnapshot={null}
@@ -64,7 +62,6 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onAddExpense={jest.fn()}
         onAddLender={jest.fn()}
         onCopyFromMonth={jest.fn()}
-        onCopySourceMonthChange={jest.fn()}
         onDeleteAllReceiptsFolderReference={jest.fn()}
         onDeleteExpense={jest.fn()}
         onDeleteExpenseReceiptShare={jest.fn()}

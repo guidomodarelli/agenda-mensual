@@ -99,6 +99,7 @@ describe("monthly expenses page mappers", () => {
       error: null,
       exchangeRateLoadError: null,
       exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
       isSubmitting: false,
       month: "2026-03",
       rows,
@@ -158,6 +159,7 @@ describe("monthly expenses page mappers", () => {
       error: null,
       exchangeRateLoadError: null,
       exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
       isSubmitting: false,
       month: "2026-03",
       rows,
@@ -254,6 +256,7 @@ describe("monthly expenses page mappers", () => {
       error: null,
       exchangeRateLoadError: null,
       exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
       isSubmitting: false,
       month: "2026-03",
       rows: [
@@ -345,6 +348,7 @@ describe("monthly expenses page mappers", () => {
       error: null,
       exchangeRateLoadError: null,
       exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
       isSubmitting: false,
       month: "2026-03",
       rows: [

@@ -14,6 +14,10 @@ export const monthlyExpenseMonthsTable = sqliteTable(
     exchangeRateMonth: text("exchange_rate_month"),
     exchangeRateOfficialRate: real("exchange_rate_official_rate"),
     exchangeRateSolidarityRate: real("exchange_rate_solidarity_rate"),
+    hasReplicatedFromPreviousMonth:
+      integer("has_replicated_from_previous_month")
+        .notNull()
+        .default(0),
     month: text("month").notNull(),
     updatedAtIso: text("updated_at_iso").notNull(),
     userSubject: text("user_subject").notNull(),

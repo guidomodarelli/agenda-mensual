@@ -2,7 +2,7 @@ import type { MonthlyExpensesRepository } from "../../domain/repositories/monthl
 import { getMonthlyExpensesCopyableMonths } from "./get-monthly-expenses-copyable-months";
 
 describe("getMonthlyExpensesCopyableMonths", () => {
-  it("returns only saved months with expenses up to the month before target", async () => {
+  it("returns only the immediately previous month when it has expenses", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
       listMonthsWithExpenses: jest.fn().mockResolvedValue([
@@ -69,12 +69,12 @@ describe("getMonthlyExpensesCopyableMonths", () => {
     expect(repository.listAll).not.toHaveBeenCalled();
     expect(result).toEqual({
       defaultSourceMonth: "2026-03",
-      sourceMonths: ["2026-03", "2026-01"],
+      sourceMonths: ["2026-03"],
       targetMonth: "2026-04",
     });
   });
 
-  it("falls back to the most recent available source month when the previous month is not valid", async () => {
+  it("returns empty copyable months when the previous month has no expenses", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
       listAll: jest.fn().mockResolvedValue([
@@ -107,8 +107,8 @@ describe("getMonthlyExpensesCopyableMonths", () => {
     });
 
     expect(result).toEqual({
-      defaultSourceMonth: "2026-02",
-      sourceMonths: ["2026-02"],
+      defaultSourceMonth: null,
+      sourceMonths: [],
       targetMonth: "2026-04",
     });
   });

@@ -111,6 +111,7 @@ interface MonthlyExpensesFormState {
     MonthlyExpensesDocumentResult["exchangeRateSnapshot"],
     undefined
   >;
+  hasReplicatedFromPreviousMonth: boolean;
   isSubmitting: boolean;
   month: string;
   rows: MonthlyExpensesEditableRow[];
@@ -842,6 +843,8 @@ function createMonthlyExpensesFormState(
     errorCode: null,
     exchangeRateLoadError: document.exchangeRateLoadError ?? null,
     exchangeRateSnapshot: document.exchangeRateSnapshot ?? null,
+    hasReplicatedFromPreviousMonth:
+      document.hasReplicatedFromPreviousMonth === true,
     isSubmitting: false,
     month: document.month,
     rows: toEditableRows(document),
@@ -1004,6 +1007,43 @@ export function copyMonthlyExpenseTemplatesToMonth(
   return normalizedRowsToCopy.filter(
     (row) => !row.isLoan || row.loanRemainingInstallments !== 0,
   );
+}
+
+function normalizeTextForReplicationComparison(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function createReplicationComparisonKey(row: MonthlyExpensesEditableRow): string {
+  return [
+    normalizeTextForReplicationComparison(row.description),
+    row.currency,
+    row.isLoan ? "loan" : "expense",
+    row.loanDirection ?? "payable",
+    row.installmentCount.trim(),
+    row.startMonth.trim(),
+    normalizeTextForReplicationComparison(row.lenderId),
+    normalizeTextForReplicationComparison(row.lenderName),
+    row.occurrencesPerMonth.trim(),
+  ].join("|");
+}
+
+function createRowReplicationComparisonCounts(
+  rows: MonthlyExpensesEditableRow[],
+): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    const key = createReplicationComparisonKey(row);
+    const currentCount = counts.get(key) ?? 0;
+    counts.set(key, currentCount + 1);
+  }
+
+  return counts;
 }
 
 function createClosedExpenseSheetState(): ExpenseSheetState {
@@ -1199,6 +1239,11 @@ export function toSaveMonthlyExpensesCommand(
   state: MonthlyExpensesFormState,
 ): SaveMonthlyExpensesCommand {
   return {
+    ...(state.hasReplicatedFromPreviousMonth
+      ? {
+          hasReplicatedFromPreviousMonth: true,
+        }
+      : {}),
     items: state.rows.map((row) => {
       const synchronizedPaymentRecords = getSynchronizedPaymentRecordsForSave(row);
 
@@ -1442,9 +1487,6 @@ export default function MonthlyExpensesPage({
     errorCode: loadErrorCode,
     message: loadError,
   });
-  const [copySourceMonth, setCopySourceMonth] = useState<string | null>(
-    initialCopyableMonths.defaultSourceMonth,
-  );
   const [isCopyingFromMonth, setIsCopyingFromMonth] = useState(false);
   const [expenseSheetState, setExpenseSheetState] = useState<ExpenseSheetState>(
     createClosedExpenseSheetState(),
@@ -1489,7 +1531,6 @@ export default function MonthlyExpensesPage({
     latestMonthLoadRequestIdRef.current += 1;
     setFormState(createMonthlyExpensesFormState(initialDocument));
     setCopyableMonthsState(initialCopyableMonths);
-    setCopySourceMonth(initialCopyableMonths.defaultSourceMonth);
     setIsCopyingFromMonth(false);
     setIsMonthTransitionPending(false);
     setPendingMonth(null);
@@ -1522,17 +1563,13 @@ export default function MonthlyExpensesPage({
     isSessionLoading ||
     formState.isSubmitting ||
     isMonthTransitionPending;
-  const copySourceMonthOptions = copyableMonthsState.sourceMonths.map((month) => ({
-    label: month,
-    value: month,
-  }));
-  const showCopyFromControls = formState.rows.length === 0;
+  const copySourceMonth = copyableMonthsState.defaultSourceMonth;
+  const showCopyFromControls = !formState.hasReplicatedFromPreviousMonth;
   const copyFromDisabled =
     actionDisabled ||
     isCopyingFromMonth ||
     !showCopyFromControls ||
-    !copySourceMonth ||
-    copySourceMonthOptions.length === 0;
+    !copySourceMonth;
   const lendersFeedbackMessage = lendersState.error ?? lendersLoadError ?? null;
   const lendersFeedbackErrorCode = lendersState.errorCode ?? lendersLoadErrorCode;
   const lendersFeedbackTone = lendersState.error || lendersLoadError
@@ -1710,12 +1747,10 @@ export default function MonthlyExpensesPage({
 
         if (copyableMonthsResult.status === "fulfilled") {
           setCopyableMonthsState(copyableMonthsResult.copyableMonths);
-          setCopySourceMonth(copyableMonthsResult.copyableMonths.defaultSourceMonth);
         } else {
           setCopyableMonthsState(
             createEmptyMonthlyExpensesCopyableMonthsResult(normalizedMonth),
           );
-          setCopySourceMonth(null);
         }
       } catch (error) {
         if (latestMonthLoadRequestIdRef.current !== requestId) {
@@ -1784,22 +1819,14 @@ export default function MonthlyExpensesPage({
     await loadMonth(normalizedMonth);
   };
 
-  const handleCopySourceMonthChange = (value: string) => {
-    if (!copySourceMonthOptions.some((option) => option.value === value)) {
-      return;
-    }
-
-    setCopySourceMonth(value);
-  };
-
   const handleCopyFromMonth = async () => {
     if (!copySourceMonth) {
-      toast.warning("Seleccioná un mes guardado para copiar.");
+      toast.warning("El mes anterior no tiene compromisos para replicar.");
       return;
     }
 
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para copiar compromisos de otro mes.");
+      toast.warning("Conectate con Google para replicar compromisos del mes anterior.");
       return;
     }
 
@@ -1809,7 +1836,7 @@ export default function MonthlyExpensesPage({
       const sourceDocument = await getMonthlyExpensesDocumentViaApi(copySourceMonth);
 
       if (sourceDocument.items.length === 0) {
-        toast.warning("El mes seleccionado no tiene compromisos para copiar.");
+        toast.warning("El mes anterior no tiene compromisos para replicar.");
         return;
       }
 
@@ -1825,14 +1852,45 @@ export default function MonthlyExpensesPage({
         return;
       }
 
-      const wasSaved = await persistMonthlyExpensesRows(copiedRows, {
-        loading: `Copiando compromisos desde ${copySourceMonth}...`,
-        success: `Copiamos y guardamos la planilla de ${copySourceMonth} en ${formState.month}.`,
+      const currentRowCounts = createRowReplicationComparisonCounts(formState.rows);
+      const missingRows = copiedRows.filter((row) => {
+        const comparisonKey = createReplicationComparisonKey(row);
+        const currentCount = currentRowCounts.get(comparisonKey) ?? 0;
+
+        if (currentCount > 0) {
+          currentRowCounts.set(comparisonKey, currentCount - 1);
+          return false;
+        }
+
+        return true;
       });
+
+      if (missingRows.length === 0) {
+        toast.warning(
+          "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+        );
+        return;
+      }
+
+      const wasSaved = await persistMonthlyExpensesRows(
+        [...formState.rows, ...missingRows],
+        {
+          loading: `Replicando gastos/deudas desde ${copySourceMonth}...`,
+          success: `Replicamos y guardamos gastos/deudas de ${copySourceMonth} en ${formState.month}.`,
+        },
+        {
+          hasReplicatedFromPreviousMonth: true,
+        },
+      );
 
       if (!wasSaved) {
         return;
       }
+
+      updateFormState((currentState) => ({
+        ...currentState,
+        hasReplicatedFromPreviousMonth: true,
+      }));
 
       setExpenseSheetState(createClosedExpenseSheetState());
     } catch (error) {
@@ -1843,7 +1901,7 @@ export default function MonthlyExpensesPage({
       }));
       toast.error(
         renderErrorWithCode(
-          "No pudimos copiar compromisos desde el mes seleccionado.",
+          "No pudimos replicar compromisos desde el mes anterior.",
           getTechnicalErrorCode(error),
         ),
       );
@@ -1862,11 +1920,16 @@ export default function MonthlyExpensesPage({
       success: "Compromisos mensuales guardados correctamente.",
     },
     options: {
+      hasReplicatedFromPreviousMonth?: boolean;
       showToast?: boolean;
       throwOnError?: boolean;
     } = {},
   ) => {
-    const { showToast = true, throwOnError = false } = options;
+    const {
+      hasReplicatedFromPreviousMonth = formState.hasReplicatedFromPreviousMonth,
+      showToast = true,
+      throwOnError = false,
+    } = options;
 
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para guardar compromisos mensuales.");
@@ -1884,6 +1947,7 @@ export default function MonthlyExpensesPage({
       const savePromise = saveMonthlyExpensesDocumentViaApi(
         toSaveMonthlyExpensesCommand({
           ...formState,
+          hasReplicatedFromPreviousMonth,
           rows,
         }),
       );
@@ -1911,6 +1975,7 @@ export default function MonthlyExpensesPage({
         error: null,
         errorCode: null,
         exchangeRateLoadError: saveResult.exchangeRateLoadError ?? null,
+        hasReplicatedFromPreviousMonth,
         isSubmitting: false,
         rows,
       }));
@@ -3811,8 +3876,6 @@ export default function MonthlyExpensesPage({
               <MonthlyExpensesTable
                 actionDisabled={actionDisabled}
                 changedFields={changedExpenseFields}
-                copySourceMonth={copySourceMonth}
-                copySourceMonthOptions={copySourceMonthOptions}
                 draft={expenseSheetState.draft}
                 exchangeRateLoadError={formState.exchangeRateLoadError}
                 exchangeRateSnapshot={formState.exchangeRateSnapshot}
@@ -3831,7 +3894,6 @@ export default function MonthlyExpensesPage({
                 onAddExpense={handleAddExpense}
                 onAddLender={handleOpenLenderCreateFromExpenseSheet}
                 onCopyFromMonth={handleCopyFromMonth}
-                onCopySourceMonthChange={handleCopySourceMonthChange}
                 onDeleteAllReceiptsFolderReference={handleDeleteAllReceiptsFolderReference}
                 onDeleteExpense={handleRemoveExpense}
                 onDeleteExpenseReceiptShare={handleDeleteExpenseReceiptShare}

@@ -1845,7 +1845,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
-    expect(screen.getByRole("button", { name: "Copia de" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeDisabled();
     expect(screen.queryByText("2026-02")).not.toBeInTheDocument();
     expect(mockedToast.error).not.toHaveBeenCalled();
   });
@@ -2384,7 +2384,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.queryByText(loadErrorMessage)).not.toBeInTheDocument();
   });
 
-  it("shows copy controls only when the current month has no rows", () => {
+  it("shows replication button while the month was not replicated yet, even with existing rows", () => {
     const { rerender } = renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -2400,7 +2400,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Copia de" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeInTheDocument();
 
     rerender(
       <TooltipProvider>
@@ -2422,6 +2422,36 @@ registerMonthlyExpensesPageDefaultHooks({
                 total: 10000,
               },
             ],
+            hasReplicatedFromPreviousMonth: false,
+            month: "2026-03",
+          }}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeInTheDocument();
+
+    rerender(
+      <TooltipProvider>
+        <MonthlyExpensesPage
+          {...basePageProps}
+          initialCopyableMonths={{
+            defaultSourceMonth: "2026-02",
+            sourceMonths: ["2026-02"],
+            targetMonth: "2026-03",
+          }}
+          initialDocument={{
+            items: [
+              {
+                currency: "ARS",
+                description: "Agua",
+                id: "expense-1",
+                occurrencesPerMonth: 1,
+                subtotal: 10000,
+                total: 10000,
+              },
+            ],
+            hasReplicatedFromPreviousMonth: true,
             month: "2026-03",
           }}
         />
@@ -2429,7 +2459,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.queryByRole("button", { name: "Copia de" }),
+      screen.queryByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
     ).not.toBeInTheDocument();
   });
 
@@ -2479,7 +2509,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Copia de" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar replicación de gastos/deudas del mes anterior",
+      }),
+    );
 
     await waitFor(() => {
       expect(fetchMock.mock.calls[0]?.[0]).toBe(
@@ -2499,6 +2534,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+      hasReplicatedFromPreviousMonth: true,
       items: [
         {
           currency: "ARS",
@@ -2511,6 +2547,204 @@ registerMonthlyExpensesPageDefaultHooks({
       ],
       month: "2026-03",
     });
+    expect(
+      screen.queryByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("replicates only missing rows by normalized description and keeps existing rows", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock({
+      monthlyDocument: {
+        items: [
+          {
+            currency: "ARS",
+            description: "  INTERNET  ",
+            id: "expense-source-1",
+            occurrencesPerMonth: 1,
+            subtotal: 12000,
+            total: 12000,
+          },
+          {
+            currency: "ARS",
+            description: "Préstamo Carlos",
+            id: "expense-source-2",
+            occurrencesPerMonth: 1,
+            subtotal: 9000,
+            total: 9000,
+          },
+        ],
+        month: "2026-02",
+      },
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02"],
+          targetMonth: "2026-03",
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "internet",
+              id: "expense-current-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo Carlos",
+              id: "expense-current-2",
+              occurrencesPerMonth: 1,
+              subtotal: 5000,
+              total: 5000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar replicación de gastos/deudas del mes anterior",
+      }),
+    );
+
+    expect(mockedToast.warning).toHaveBeenCalledWith(
+      "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+  });
+
+  it("replicates rows with same description when business fields differ", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock({
+      monthlyDocument: {
+        items: [
+          {
+            currency: "ARS",
+            description: "  INTERNET  ",
+            id: "expense-source-ars",
+            occurrencesPerMonth: 1,
+            subtotal: 12000,
+            total: 12000,
+          },
+          {
+            currency: "USD",
+            description: "Internet",
+            id: "expense-source-usd",
+            occurrencesPerMonth: 1,
+            subtotal: 50,
+            total: 50,
+          },
+        ],
+        month: "2026-02",
+      },
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02"],
+          targetMonth: "2026-03",
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "internet",
+              id: "expense-current-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar replicación de gastos/deudas del mes anterior",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/storage/monthly-expenses",
+        expect.objectContaining({
+          method: "POST",
+        }),
+      );
+    });
+
+    const payload = getMonthlyExpensesSavePayload(fetchMock);
+    expect(payload.month).toBe("2026-03");
+    expect(payload.hasReplicatedFromPreviousMonth).toBe(true);
+    expect(payload.items).toHaveLength(2);
+    expect(payload.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          currency: "ARS",
+          description: "internet",
+          id: "expense-current-1",
+        }),
+        expect.objectContaining({
+          currency: "USD",
+          description: "Internet",
+          id: "expense-source-usd",
+        }),
+      ]),
+    );
+    expect(mockedToast.warning).not.toHaveBeenCalledWith(
+      "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+    );
   });
 
   it("shows a warning and skips persistence when all copied debts have zero remaining installments", async () => {
@@ -2567,7 +2801,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Copia de" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar replicación de gastos/deudas del mes anterior",
+      }),
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2645,7 +2884,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Copia de" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar replicación de gastos/deudas del mes anterior",
+      }),
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2657,6 +2901,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+      hasReplicatedFromPreviousMonth: true,
       items: [
         {
           currency: "ARS",
@@ -2724,7 +2969,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Copia de" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar replicación de gastos/deudas del mes anterior",
+      }),
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2736,7 +2986,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(screen.queryByText("Internet")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Copia de" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeInTheDocument();
   });
 
   it("copies the expense template without carrying folder references", () => {

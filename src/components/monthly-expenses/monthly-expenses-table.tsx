@@ -979,11 +979,6 @@ export interface MonthlyExpensesEditablePaymentRecord {
 interface MonthlyExpensesTableProps {
   actionDisabled: boolean;
   changedFields: Set<string>;
-  copySourceMonth: string | null;
-  copySourceMonthOptions: Array<{
-    label: string;
-    value: string;
-  }>;
   draft: MonthlyExpensesEditableRow | null;
   exchangeRateLoadError: string | null;
   exchangeRateSnapshot: {
@@ -1007,7 +1002,6 @@ interface MonthlyExpensesTableProps {
   onAddExpense: () => void;
   onAddLender: () => void;
   onCopyFromMonth: () => void;
-  onCopySourceMonthChange: (value: string) => void;
   onDeleteAllReceiptsFolderReference: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
   onDeleteExpenseReceiptShare: (expenseId: string) => void | Promise<void>;
@@ -2216,8 +2210,6 @@ function PaymentHistoryCell({
 export function MonthlyExpensesTable({
   actionDisabled,
   changedFields,
-  copySourceMonth,
-  copySourceMonthOptions,
   draft,
   exchangeRateLoadError,
   exchangeRateSnapshot,
@@ -2236,7 +2228,6 @@ export function MonthlyExpensesTable({
   onAddExpense,
   onAddLender,
   onCopyFromMonth,
-  onCopySourceMonthChange,
   onDeleteAllReceiptsFolderReference,
   onDeleteExpense,
   onDeleteExpenseReceiptShare,
@@ -2299,6 +2290,10 @@ export function MonthlyExpensesTable({
     useState<string | null>(null);
   const [receiptShareDialogState, setReceiptShareDialogState] =
     useState<ExpenseReceiptShareDialogState | null>(null);
+  const [
+    isReplicateFromPreviousMonthDialogOpen,
+    setIsReplicateFromPreviousMonthDialogOpen,
+  ] = useState(false);
   const [receiptSharePhoneDraftValue, setReceiptSharePhoneDraftValue] = useState("");
   const [receiptShareMessageDraftValue, setReceiptShareMessageDraftValue] = useState("");
   const [receiptShareDraftError, setReceiptShareDraftError] =
@@ -3922,55 +3917,23 @@ export function MonthlyExpensesTable({
                 value={month}
               />
             </div>
-
-            {showCopyFromControls ? (
-              <div className={styles.copyField}>
-                <Label htmlFor="monthly-expenses-copy-source">Copia de</Label>
-                <div className={styles.copyActions}>
-                  <Select
-                    onValueChange={onCopySourceMonthChange}
-                    value={copySourceMonth ?? undefined}
-                  >
-                    <SelectTrigger
-                      aria-label="Mes de origen para copiar"
-                      className={styles.copySourceSelect}
-                      id="monthly-expenses-copy-source"
-                    >
-                      <SelectValue placeholder="Seleccioná un mes guardado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {copySourceMonthOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Button
-                    disabled={isCopyFromDisabled}
-                    onClick={onCopyFromMonth}
-                    type="button"
-                    variant="outline"
-                  >
-                    Copia de
-                  </Button>
-                </div>
-                <p className={styles.monthHint}>
-                  Copiá compromisos guardados de otro mes y revisá antes de guardar.
-                </p>
-              </div>
-            ) : null}
-
-            <Button
-              disabled={actionDisabled || isMonthTransitionPending}
-              onClick={onAddExpense}
-              type="button"
-              variant="outline"
-            >
-              Agregar compromiso
-            </Button>
           </div>
+          {showCopyFromControls ? (
+            <div className={styles.copyField}>
+              <div className={styles.copyActions}>
+                <Button
+                  disabled={isCopyFromDisabled}
+                  onClick={() => {
+                    setIsReplicateFromPreviousMonthDialogOpen(true);
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  Replicar gastos/deudas del mes anterior
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {exchangeRateSnapshot ? (
             <div className={styles.exchangeRateSummary}>
@@ -3996,6 +3959,16 @@ export function MonthlyExpensesTable({
             <p className={styles.tableDescription}>
               Editá cada compromiso desde su menú de acciones.
             </p>
+            <div className={styles.tableAddAction}>
+              <Button
+                disabled={actionDisabled || isMonthTransitionPending}
+                onClick={onAddExpense}
+                type="button"
+                variant="outline"
+              >
+                Agregar compromiso
+              </Button>
+            </div>
           </div>
 
           <div className={styles.tableWrapper}>
@@ -4149,6 +4122,37 @@ export function MonthlyExpensesTable({
             </p>
           ) : null}
         </div>
+
+        <AlertDialog
+          onOpenChange={setIsReplicateFromPreviousMonthDialogOpen}
+          open={isReplicateFromPreviousMonthDialogOpen}
+        >
+          <AlertDialogContent size="sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                ¿Querés replicar gastos/deudas del mes anterior?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Vamos a copiar solo los gastos/deudas faltantes desde el mes anterior y
+                guardarlos automáticamente. No se reemplazan compromisos ya cargados. Al
+                finalizar, esta opción se ocultará para este mes.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                aria-label="Confirmar replicación de gastos/deudas del mes anterior"
+                disabled={isCopyFromDisabled}
+                onClick={() => {
+                  setIsReplicateFromPreviousMonthDialogOpen(false);
+                  onCopyFromMonth();
+                }}
+              >
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <ExpenseSheet
           actionDisabled={actionDisabled || isSubmitting}

@@ -209,6 +209,7 @@ const monthlyExpenseItemSchema = z.object({
 });
 
 const monthlyExpensesRequestBodySchema = z.object({
+  hasReplicatedFromPreviousMonth: z.boolean().optional(),
   items: z.array(monthlyExpenseItemSchema),
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
 }).strict();

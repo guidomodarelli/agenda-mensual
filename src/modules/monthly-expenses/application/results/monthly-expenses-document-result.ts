@@ -55,6 +55,7 @@ export interface MonthlyExpenseItemResult {
 export interface MonthlyExpensesDocumentResult {
   exchangeRateLoadError?: string | null;
   exchangeRateSnapshot?: MonthlyExpensesExchangeRateSnapshot | null;
+  hasReplicatedFromPreviousMonth?: boolean;
   items: MonthlyExpenseItemResult[];
   month: string;
 }
@@ -73,6 +74,11 @@ export function toMonthlyExpensesDocumentResult(
     exchangeRateSnapshot: document.exchangeRateSnapshot
       ? { ...document.exchangeRateSnapshot }
       : null,
+    ...(document.hasReplicatedFromPreviousMonth
+      ? {
+          hasReplicatedFromPreviousMonth: true,
+        }
+      : {}),
     items: document.items.map((item) => ({
       ...item,
       ...(item.folders

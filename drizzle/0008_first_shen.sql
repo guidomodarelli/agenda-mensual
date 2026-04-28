@@ -1,0 +1,1 @@
+ALTER TABLE `monthly_expense_months` ADD `has_replicated_from_previous_month` integer DEFAULT 0 NOT NULL;

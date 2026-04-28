@@ -5,5 +5,6 @@ import type {
 
 export interface SaveMonthlyExpensesCommand
   extends MonthlyExpensesDocumentInput {
+  hasReplicatedFromPreviousMonth?: boolean;
   items: MonthlyExpenseItemInput[];
 }

@@ -48,23 +48,17 @@ export async function getMonthlyExpensesCopyableMonths({
       : (await repository.listAll())
         .filter((document) => document.items.length > 0)
         .map((document) => document.month);
-  const validSourceMonths = Array.from(
-    new Set(
-      sourceMonths.filter(
-        (month) => MONTH_PATTERN.test(month) && month <= previousMonth,
-      ),
-    ),
-  ).sort((left, right) => right.localeCompare(left));
+  const previousMonthIsCopyable = sourceMonths.some(
+    (month) => MONTH_PATTERN.test(month) && month === previousMonth,
+  );
 
-  if (validSourceMonths.length === 0) {
+  if (!previousMonthIsCopyable) {
     return createEmptyMonthlyExpensesCopyableMonthsResult(targetMonth);
   }
 
   return {
-    defaultSourceMonth: validSourceMonths.includes(previousMonth)
-      ? previousMonth
-      : validSourceMonths[0],
-    sourceMonths: validSourceMonths,
+    defaultSourceMonth: previousMonth,
+    sourceMonths: [previousMonth],
     targetMonth,
   };
 }

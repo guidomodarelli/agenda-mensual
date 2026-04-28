@@ -55,6 +55,7 @@ interface MonthlyExpenseMonthRow {
   exchangeRateMonth: string | null;
   exchangeRateOfficialRate: number | null;
   exchangeRateSolidarityRate: number | null;
+  hasReplicatedFromPreviousMonth: number;
   month: string;
 }
 
@@ -238,6 +239,9 @@ export class DrizzleMonthlyExpensesRepository
           document.exchangeRateSnapshot?.officialRate ?? null,
         exchangeRateSolidarityRate:
           document.exchangeRateSnapshot?.solidarityRate ?? null,
+        hasReplicatedFromPreviousMonth: toBooleanInteger(
+          document.hasReplicatedFromPreviousMonth === true,
+        ),
         month: document.month,
         updatedAtIso: nowIso,
         userSubject: this.userSubject,
@@ -250,6 +254,9 @@ export class DrizzleMonthlyExpensesRepository
             document.exchangeRateSnapshot?.officialRate ?? null,
           exchangeRateSolidarityRate:
             document.exchangeRateSnapshot?.solidarityRate ?? null,
+          hasReplicatedFromPreviousMonth: toBooleanInteger(
+            document.hasReplicatedFromPreviousMonth === true,
+          ),
           updatedAtIso: nowIso,
         },
         target: [
@@ -525,6 +532,8 @@ export class DrizzleMonthlyExpensesRepository
           monthlyExpenseMonthsTable.exchangeRateOfficialRate,
         exchangeRateSolidarityRate:
           monthlyExpenseMonthsTable.exchangeRateSolidarityRate,
+        hasReplicatedFromPreviousMonth:
+          monthlyExpenseMonthsTable.hasReplicatedFromPreviousMonth,
         month: monthlyExpenseMonthsTable.month,
       })
       .from(monthlyExpenseMonthsTable)
@@ -597,6 +606,8 @@ export class DrizzleMonthlyExpensesRepository
           ...(emptyMonthExchangeRateSnapshot
             ? { exchangeRateSnapshot: emptyMonthExchangeRateSnapshot }
             : {}),
+          hasReplicatedFromPreviousMonth:
+            monthlyRow.hasReplicatedFromPreviousMonth === 1,
           items: [],
           month,
         },
@@ -750,6 +761,12 @@ export class DrizzleMonthlyExpensesRepository
         ...(exchangeRateSnapshot
           ? {
               exchangeRateSnapshot,
+            }
+          : {}),
+        ...(monthlyRow
+          ? {
+              hasReplicatedFromPreviousMonth:
+                monthlyRow.hasReplicatedFromPreviousMonth === 1,
             }
           : {}),
         items: normalizedRows.map((row) => ({

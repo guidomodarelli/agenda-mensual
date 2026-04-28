@@ -125,12 +125,14 @@ export type MonthlyExpensesExchangeRateSnapshot =
 
 export interface MonthlyExpensesDocumentInput {
   exchangeRateSnapshot?: MonthlyExpensesExchangeRateSnapshotInput;
+  hasReplicatedFromPreviousMonth?: boolean;
   items: MonthlyExpenseItemInput[];
   month: string;
 }
 
 export interface MonthlyExpensesDocument {
   exchangeRateSnapshot?: MonthlyExpensesExchangeRateSnapshot | null;
+  hasReplicatedFromPreviousMonth?: boolean;
   items: MonthlyExpenseItem[];
   month: string;
 }
@@ -845,6 +847,8 @@ export function createMonthlyExpensesDocument(
           ),
         }
       : {}),
+    hasReplicatedFromPreviousMonth:
+      payload.hasReplicatedFromPreviousMonth === true,
     items: payload.items.map((item) => validateItem(item, operationName, month)),
     month,
   };
@@ -874,6 +878,11 @@ export function toMonthlyExpensesDocumentInput(
             officialRate: document.exchangeRateSnapshot.officialRate,
             solidarityRate: document.exchangeRateSnapshot.solidarityRate,
           },
+        }
+      : {}),
+    ...(document.hasReplicatedFromPreviousMonth
+      ? {
+          hasReplicatedFromPreviousMonth: true,
         }
       : {}),
     items: document.items.map((item) => ({
