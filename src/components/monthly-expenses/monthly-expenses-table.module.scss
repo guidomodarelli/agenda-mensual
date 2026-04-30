@@ -63,6 +63,25 @@
   width: 100%;
 }
 
+.copySelectionList {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.copySelectionToggleAll,
+.copySelectionOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.copySelectionToggleAll {
+  font-weight: 600;
+}
+
 .monthHint {
   margin: 0;
   font-size: 0.875rem;

@@ -25,6 +25,7 @@ import {
   MonthlyExpensesTable,
   type MonthlyExpensesEditablePaymentRecord,
   type MonthlyExpensesEditableReceipt,
+  type MonthlyExpensesReplicableOption,
   type MonthlyExpenseLoanDirection,
   type MonthlyExpensesEditableRow,
 } from "@/components/monthly-expenses/monthly-expenses-table";
@@ -180,6 +181,14 @@ interface ExpenseReceiptCoverageEditState {
   receiptFileId: string | null;
   receiptFileName: string | null;
   receiptFileViewUrl: string | null;
+}
+
+interface ReplicateFromPreviousMonthDialogState {
+  isOpen: boolean;
+  options: MonthlyExpensesReplicableOption[];
+  selectedOptionIds: string[];
+  sourceMonth: string | null;
+  rowsByOptionId: Map<string, MonthlyExpensesEditableRow>;
 }
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -851,6 +860,16 @@ function createMonthlyExpensesFormState(
   };
 }
 
+function createClosedReplicateFromPreviousMonthDialogState(): ReplicateFromPreviousMonthDialogState {
+  return {
+    isOpen: false,
+    options: [],
+    selectedOptionIds: [],
+    sourceMonth: null,
+    rowsByOptionId: new Map<string, MonthlyExpensesEditableRow>(),
+  };
+}
+
 function createLendersCatalogState(
   catalog: LendersCatalogDocumentResult,
 ): LendersCatalogState {
@@ -1488,6 +1507,10 @@ export default function MonthlyExpensesPage({
     message: loadError,
   });
   const [isCopyingFromMonth, setIsCopyingFromMonth] = useState(false);
+  const [replicateFromPreviousMonthDialogState, setReplicateFromPreviousMonthDialogState] =
+    useState<ReplicateFromPreviousMonthDialogState>(
+      createClosedReplicateFromPreviousMonthDialogState(),
+    );
   const [expenseSheetState, setExpenseSheetState] = useState<ExpenseSheetState>(
     createClosedExpenseSheetState(),
   );
@@ -1532,6 +1555,9 @@ export default function MonthlyExpensesPage({
     setFormState(createMonthlyExpensesFormState(initialDocument));
     setCopyableMonthsState(initialCopyableMonths);
     setIsCopyingFromMonth(false);
+    setReplicateFromPreviousMonthDialogState(
+      createClosedReplicateFromPreviousMonthDialogState(),
+    );
     setIsMonthTransitionPending(false);
     setPendingMonth(null);
     setExpenseSheetState(createClosedExpenseSheetState());
@@ -1746,13 +1772,16 @@ export default function MonthlyExpensesPage({
         }
 
         if (copyableMonthsResult.status === "fulfilled") {
-          setCopyableMonthsState(copyableMonthsResult.copyableMonths);
-        } else {
-          setCopyableMonthsState(
-            createEmptyMonthlyExpensesCopyableMonthsResult(normalizedMonth),
-          );
-        }
-      } catch (error) {
+        setCopyableMonthsState(copyableMonthsResult.copyableMonths);
+      } else {
+        setCopyableMonthsState(
+          createEmptyMonthlyExpensesCopyableMonthsResult(normalizedMonth),
+        );
+      }
+      setReplicateFromPreviousMonthDialogState(
+        createClosedReplicateFromPreviousMonthDialogState(),
+      );
+    } catch (error) {
         if (latestMonthLoadRequestIdRef.current !== requestId) {
           return;
         }
@@ -1819,6 +1848,44 @@ export default function MonthlyExpensesPage({
     await loadMonth(normalizedMonth);
   };
 
+  const buildReplicableRowsFromSourceMonth = (
+    sourceDocument: MonthlyExpensesDocumentResult,
+  ): {
+    copiedRows: MonthlyExpensesEditableRow[];
+    missingRows: MonthlyExpensesEditableRow[];
+  } => {
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
+      formState.month,
+      toEditableRows(sourceDocument),
+    );
+
+    if (copiedRows.length === 0) {
+      return {
+        copiedRows: [],
+        missingRows: [],
+      };
+    }
+
+    const currentRowCounts = createRowReplicationComparisonCounts(formState.rows);
+
+    const missingRows = copiedRows.filter((row) => {
+      const comparisonKey = createReplicationComparisonKey(row);
+      const currentCount = currentRowCounts.get(comparisonKey) ?? 0;
+
+      if (currentCount > 0) {
+        currentRowCounts.set(comparisonKey, currentCount - 1);
+        return false;
+      }
+
+      return true;
+    });
+
+    return {
+      copiedRows,
+      missingRows,
+    };
+  };
+
   const handleCopyFromMonth = async () => {
     if (!copySourceMonth) {
       toast.warning("El mes anterior no tiene compromisos para replicar.");
@@ -1840,10 +1907,7 @@ export default function MonthlyExpensesPage({
         return;
       }
 
-      const copiedRows = copyMonthlyExpenseTemplatesToMonth(
-        formState.month,
-        toEditableRows(sourceDocument),
-      );
+      const { copiedRows, missingRows } = buildReplicableRowsFromSourceMonth(sourceDocument);
 
       if (copiedRows.length === 0) {
         toast.warning(
@@ -1852,19 +1916,6 @@ export default function MonthlyExpensesPage({
         return;
       }
 
-      const currentRowCounts = createRowReplicationComparisonCounts(formState.rows);
-      const missingRows = copiedRows.filter((row) => {
-        const comparisonKey = createReplicationComparisonKey(row);
-        const currentCount = currentRowCounts.get(comparisonKey) ?? 0;
-
-        if (currentCount > 0) {
-          currentRowCounts.set(comparisonKey, currentCount - 1);
-          return false;
-        }
-
-        return true;
-      });
-
       if (missingRows.length === 0) {
         toast.warning(
           "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
@@ -1872,11 +1923,109 @@ export default function MonthlyExpensesPage({
         return;
       }
 
+      const rowsByOptionId = new Map<string, MonthlyExpensesEditableRow>();
+      const options: MonthlyExpensesReplicableOption[] = missingRows.map((row) => {
+        rowsByOptionId.set(row.id, row);
+
+        return {
+          description: row.description,
+          id: row.id,
+        };
+      });
+
+      setReplicateFromPreviousMonthDialogState({
+        isOpen: true,
+        options,
+        selectedOptionIds: options.map((option) => option.id),
+        rowsByOptionId,
+        sourceMonth: copySourceMonth,
+      });
+    } catch (error) {
+      updateFormState((currentState) => ({
+        ...currentState,
+        errorCode: getTechnicalErrorCode(error),
+        error: getSafeMonthlyExpensesErrorMessage(error),
+      }));
+      toast.error(
+        renderErrorWithCode(
+          "No pudimos replicar compromisos desde el mes anterior.",
+          getTechnicalErrorCode(error),
+        ),
+      );
+    } finally {
+      setIsCopyingFromMonth(false);
+    }
+  };
+
+  const handleReplicateFromPreviousMonthDialogOpenChange = (isOpen: boolean) => {
+    setReplicateFromPreviousMonthDialogState((currentState) => ({
+      ...currentState,
+      isOpen,
+    }));
+  };
+
+  const handleToggleReplicableOption = (optionId: string) => {
+    setReplicateFromPreviousMonthDialogState((currentState) => {
+      const selectedOptionIdSet = new Set(currentState.selectedOptionIds);
+
+      if (selectedOptionIdSet.has(optionId)) {
+        selectedOptionIdSet.delete(optionId);
+      } else {
+        selectedOptionIdSet.add(optionId);
+      }
+
+      return {
+        ...currentState,
+        selectedOptionIds: currentState.options
+          .map((option) => option.id)
+          .filter((currentOptionId) => selectedOptionIdSet.has(currentOptionId)),
+      };
+    });
+  };
+
+  const handleToggleAllReplicableOptions = () => {
+    setReplicateFromPreviousMonthDialogState((currentState) => {
+      const allOptionIds = currentState.options.map((option) => option.id);
+      const allSelected =
+        allOptionIds.length > 0 &&
+        allOptionIds.every((optionId) => currentState.selectedOptionIds.includes(optionId));
+
+      return {
+        ...currentState,
+        selectedOptionIds: allSelected ? [] : allOptionIds,
+      };
+    });
+  };
+
+  const handleConfirmCopyFromMonth = async (selectedOptionIds: string[]) => {
+    const sourceMonth = replicateFromPreviousMonthDialogState.sourceMonth;
+
+    if (!sourceMonth) {
+      toast.warning("No encontramos el mes origen para replicar compromisos.");
+      return;
+    }
+
+    const selectedRows = selectedOptionIds
+      .map((optionId) => replicateFromPreviousMonthDialogState.rowsByOptionId.get(optionId))
+      .filter((row): row is MonthlyExpensesEditableRow => row != null);
+
+    if (selectedRows.length === 0) {
+      return;
+    }
+
+    setReplicateFromPreviousMonthDialogState((currentState) => ({
+      ...currentState,
+      isOpen: false,
+    }));
+
+    setIsCopyingFromMonth(true);
+
+    try {
       const wasSaved = await persistMonthlyExpensesRows(
-        [...formState.rows, ...missingRows],
+        [...formState.rows, ...selectedRows],
         {
-          loading: `Replicando gastos/deudas desde ${copySourceMonth}...`,
-          success: `Replicamos y guardamos gastos/deudas de ${copySourceMonth} en ${formState.month}.`,
+          loading: `Replicando gastos/deudas seleccionados desde ${sourceMonth}...`,
+          success: `Replicamos y guardamos los gastos/deudas seleccionados de ${sourceMonth} en ${formState.month}.`,
         },
         {
           hasReplicatedFromPreviousMonth: true,
@@ -3894,6 +4043,12 @@ export default function MonthlyExpensesPage({
                 onAddExpense={handleAddExpense}
                 onAddLender={handleOpenLenderCreateFromExpenseSheet}
                 onCopyFromMonth={handleCopyFromMonth}
+                onCopyFromMonthDialogOpenChange={
+                  handleReplicateFromPreviousMonthDialogOpenChange
+                }
+                onConfirmCopyFromMonth={handleConfirmCopyFromMonth}
+                onToggleAllReplicableOptions={handleToggleAllReplicableOptions}
+                onToggleReplicableOption={handleToggleReplicableOption}
                 onDeleteAllReceiptsFolderReference={handleDeleteAllReceiptsFolderReference}
                 onDeleteExpense={handleRemoveExpense}
                 onDeleteExpenseReceiptShare={handleDeleteExpenseReceiptShare}
@@ -3920,6 +4075,15 @@ export default function MonthlyExpensesPage({
                 onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
+                replicateFromPreviousMonthDialogOpen={
+                  replicateFromPreviousMonthDialogState.isOpen
+                }
+                replicateFromPreviousMonthOptions={
+                  replicateFromPreviousMonthDialogState.options
+                }
+                selectedReplicableOptionIds={
+                  replicateFromPreviousMonthDialogState.selectedOptionIds
+                }
                 rows={formState.rows}
                 sheetMode={expenseSheetState.mode}
                 showCopyFromControls={showCopyFromControls}
