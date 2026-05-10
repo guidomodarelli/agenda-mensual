@@ -82,4 +82,38 @@ describe("FinanceAppShell", () => {
       screen.getByRole("menuitem", { name: "Cerrar sesión" }),
     ).toBeInTheDocument();
   });
+
+  it("shows sign in action in the account footer menu when session is disconnected", async () => {
+    const user = userEvent.setup();
+
+    mockedUseSession.mockReturnValue({
+      data: null,
+      status: "unauthenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+
+    render(
+      <TooltipProvider>
+        <FinanceAppShell
+          activeSection="expenses"
+          authRedirectPath="/gastos"
+          initialSidebarOpen
+          isOAuthConfigured
+        >
+          <h1>Page content</h1>
+        </FinanceAppShell>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cuenta activa" }));
+
+    expect(screen.getAllByText("Incógnito")).toHaveLength(2);
+    expect(screen.getAllByText("Sin cuenta")).toHaveLength(2);
+
+    await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
+
+    expect(jest.mocked(signIn)).toHaveBeenCalledWith("google", {
+      callbackUrl: "/gastos",
+    });
+  });
 });

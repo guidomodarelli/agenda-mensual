@@ -17,7 +17,7 @@ function renderGoogleAccountAvatar(
 }
 
 describe("GoogleAccountAvatar", () => {
-  it("renders connect action when session is disconnected", async () => {
+  it("opens sign in menu when session is disconnected", async () => {
     const user = userEvent.setup();
     const onConnect = jest.fn();
 
@@ -34,7 +34,10 @@ describe("GoogleAccountAvatar", () => {
     await user.click(
       screen.getByRole("button", { name: "Conectar cuenta de Google" }),
     );
+    expect(screen.getByText("Incógnito")).toBeInTheDocument();
+    expect(screen.getByText("Sin cuenta")).toBeInTheDocument();
 
+    await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
     expect(onConnect).toHaveBeenCalledTimes(1);
   });
 
@@ -77,7 +80,7 @@ describe("GoogleAccountAvatar", () => {
     expect(screen.getByText("GM")).toBeInTheDocument();
   });
 
-  it("shows disconnected status in tooltip", async () => {
+  it("shows generic disconnected status in tooltip", async () => {
     const user = userEvent.setup();
 
     renderGoogleAccountAvatar({
@@ -92,7 +95,7 @@ describe("GoogleAccountAvatar", () => {
       screen.getByRole("button", { name: "Conectar cuenta de Google" }),
     );
 
-    expect((await screen.findAllByText("Google desconectado")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Sin sesión")).length).toBeGreaterThan(0);
   });
 
   it("shows connected status in tooltip", async () => {

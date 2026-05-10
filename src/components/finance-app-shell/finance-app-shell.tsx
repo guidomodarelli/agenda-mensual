@@ -7,6 +7,7 @@ import {
   IconCalendarDollar,
   IconCashBanknote,
   IconChevronDown,
+  IconLogin,
   IconLogout,
   IconReportMoney,
 } from "@tabler/icons-react";
@@ -69,8 +70,8 @@ export function FinanceAppShell({
 }: FinanceAppShellProps) {
   const { data: session, status } = useSession();
   const sessionUserImage = session?.user?.image?.trim() || null;
-  const sessionUserName = session?.user?.name?.trim() || null;
-  const sessionUserEmail = session?.user?.email?.trim() || "Sin cuenta de Google";
+  const sessionUserName = session?.user?.name?.trim() || "Incógnito";
+  const sessionUserEmail = session?.user?.email?.trim() || "Sin cuenta";
 
   const handleGoogleAccountConnect = () => {
     if (!isOAuthConfigured) {
@@ -86,6 +87,15 @@ export function FinanceAppShell({
     void signOut({
       callbackUrl: authRedirectPath,
     });
+  };
+
+  const handleSidebarAccountAction = () => {
+    if (status === "authenticated") {
+      handleGoogleAccountDisconnect();
+      return;
+    }
+
+    handleGoogleAccountConnect();
   };
 
   const expensesHref = expensesMonth
@@ -193,7 +203,7 @@ export function FinanceAppShell({
                 <Avatar className={styles.sidebarAccountAvatar}>
                   {sessionUserImage ? (
                     <AvatarImage
-                      alt={sessionUserName ?? "Cuenta de Google"}
+                      alt={sessionUserName}
                       src={sessionUserImage}
                     />
                   ) : null}
@@ -209,7 +219,7 @@ export function FinanceAppShell({
                   className={`${styles.sidebarAccountText} group-data-[collapsible=icon]:hidden`}
                 >
                   <span className={styles.sidebarAccountName}>
-                    {sessionUserName ?? "Control Mensual"}
+                    {sessionUserName}
                   </span>
                   <span className={styles.sidebarAccountEmail}>{sessionUserEmail}</span>
                 </span>
@@ -228,7 +238,7 @@ export function FinanceAppShell({
                 <Avatar className={styles.sidebarAccountMenuAvatar}>
                   {sessionUserImage ? (
                     <AvatarImage
-                      alt={sessionUserName ?? "Cuenta de Google"}
+                      alt={sessionUserName}
                       src={sessionUserImage}
                     />
                   ) : null}
@@ -242,7 +252,7 @@ export function FinanceAppShell({
                 </Avatar>
                 <span className={styles.sidebarAccountMenuText}>
                   <span className={styles.sidebarAccountMenuName}>
-                    {sessionUserName ?? "Control Mensual"}
+                    {sessionUserName}
                   </span>
                   <span className={styles.sidebarAccountMenuEmail}>
                     {sessionUserEmail}
@@ -254,11 +264,13 @@ export function FinanceAppShell({
                 className={styles.sidebarAccountMenuItem}
                 onSelect={(event) => {
                   event.preventDefault();
-                  handleGoogleAccountDisconnect();
+                  handleSidebarAccountAction();
                 }}
               >
-                <IconLogout />
-                <span>Cerrar sesión</span>
+                {status === "authenticated" ? <IconLogout /> : <IconLogin />}
+                <span>
+                  {status === "authenticated" ? "Cerrar sesión" : "Iniciar sesión"}
+                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

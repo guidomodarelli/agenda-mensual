@@ -1,4 +1,4 @@
-import { LogOutIcon, PlusIcon } from "lucide-react";
+import { LogInIcon, LogOutIcon, PlusIcon } from "lucide-react";
 
 import {
   Avatar,
@@ -54,15 +54,15 @@ export function GoogleAccountAvatar({
   userImage,
   userName,
 }: GoogleAccountAvatarProps) {
-  const initials = getUserInitials(userName);
-  const accountName = userName ?? "Control Mensual";
-  const accountEmail = userEmail?.trim() || "Sin cuenta de Google";
+  const accountName = userName ?? "Incógnito";
+  const accountEmail = userEmail?.trim() || "Sin cuenta";
+  const initials = getUserInitials(accountName);
   const tooltipStatusLabel =
     status === "authenticated"
       ? "Google conectado"
       : status === "loading"
         ? "Verificando conexion de Google"
-        : "Google desconectado";
+        : "Sin sesión";
 
   if (status === "authenticated") {
     return (
@@ -115,28 +115,76 @@ export function GoogleAccountAvatar({
     );
   }
 
+  if (status === "loading") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            aria-label="Verificando sesión de Google"
+            disabled
+            type="button"
+          >
+            <Avatar className="grayscale">
+              {userImage ? <AvatarImage alt={accountName} src={userImage} /> : null}
+              <AvatarFallback>{initials}</AvatarFallback>
+              <AvatarBadge>
+                <PlusIcon />
+              </AvatarBadge>
+            </Avatar>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="mr-2" side="bottom" sideOffset={8}>{tooltipStatusLabel}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          aria-label={
-            status === "loading"
-              ? "Verificando sesión de Google"
-              : "Conectar cuenta de Google"
-          }
-          disabled={status === "loading"}
-          onClick={onConnect}
-          type="button"
-        >
-          <Avatar className="grayscale">
-            {userImage ? <AvatarImage alt={userName ?? "Cuenta de Google"} src={userImage} /> : null}
-            <AvatarFallback>{initials}</AvatarFallback>
-            <AvatarBadge>
-              <PlusIcon />
-            </AvatarBadge>
-          </Avatar>
-        </button>
-      </TooltipTrigger>
+      <DropdownMenu>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label="Conectar cuenta de Google"
+              type="button"
+            >
+              <Avatar className="grayscale">
+                {userImage ? <AvatarImage alt={accountName} src={userImage} /> : null}
+                <AvatarFallback>{initials}</AvatarFallback>
+                <AvatarBadge>
+                  <PlusIcon />
+                </AvatarBadge>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <DropdownMenuContent align="end" className="w-72 overflow-hidden rounded-2xl p-0">
+          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3.5 px-4 py-3.5">
+            <Avatar className="size-11 grayscale">
+              {userImage ? <AvatarImage alt={accountName} src={userImage} /> : null}
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <span className="grid min-w-0">
+              <span className="truncate text-base font-bold leading-tight">
+                {accountName}
+              </span>
+              <span className="truncate text-sm leading-tight text-muted-foreground">
+                {accountEmail}
+              </span>
+            </span>
+          </div>
+          <DropdownMenuSeparator className="m-0" />
+          <DropdownMenuItem
+            className="min-h-12 gap-3 rounded-none px-4 py-3 text-base font-semibold"
+            onSelect={(event) => {
+              event.preventDefault();
+              onConnect();
+            }}
+          >
+            <LogInIcon />
+            <span>Iniciar sesión</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <TooltipContent className="mr-2" side="bottom" sideOffset={8}>{tooltipStatusLabel}</TooltipContent>
     </Tooltip>
   );
