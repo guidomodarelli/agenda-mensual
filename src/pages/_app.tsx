@@ -72,6 +72,7 @@ export default function App({
         <meta content="yes" name="apple-mobile-web-app-capable" />
         <meta content={APP_NAME} name="apple-mobile-web-app-title" />
         <meta content="default" name="apple-mobile-web-app-status-bar-style" />
+        <link href="/favicon.ico" rel="icon" />
         <link href="/manifest.webmanifest" rel="manifest" />
         <link href="/apple-touch-icon.png" rel="apple-touch-icon" />
       </Head>
