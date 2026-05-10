@@ -58,35 +58,305 @@
 }
 
 .sidebarHeader {
-  padding: 1rem 0.75rem 0.5rem;
+  padding: 1rem 0.875rem 0.75rem;
+}
+
+.sidebarBrand {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 1.75rem;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.sidebarBrandIcon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  color: white;
+  background: #2563eb;
+}
+
+.sidebarBrandIcon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.sidebarBrandText {
+  min-width: 0;
+}
+
+.sidebarSubtitle,
+.sidebarTitle {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebarTitle {
-  font-size: 0.95rem;
+  font-size: 0.925rem;
   font-weight: 700;
-  color: color-mix(in srgb, var(--sidebar-foreground) 92%, var(--sidebar-primary) 8%);
+  line-height: 1.15;
+  color: var(--sidebar-foreground);
 }
 
-.sidebarEdgeTriggerDock {
+.sidebarSubtitle {
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--sidebar-foreground) 72%, transparent 28%);
+}
+
+.sidebarHeaderTrigger {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--sidebar-foreground);
+}
+
+.sidebarGroup {
+  padding-inline: 0.875rem;
+}
+
+.sidebarGroupLabel {
+  height: 2rem;
+  padding-inline: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--sidebar-foreground) 64%, transparent 36%);
+}
+
+.sidebarMenu {
+  gap: 0.25rem;
+}
+
+.sidebarMenuButton {
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.925rem;
+  font-weight: 600;
+}
+
+.sidebarMenuButton svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.sidebarFooter {
+  padding: 0.875rem;
+}
+
+.sidebarAccount {
+  display: grid;
+  width: 100%;
+  min-height: 3.625rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 1rem;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-radius: 0.875rem;
+  color: var(--sidebar-foreground);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebarAccount:hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.sidebarAccountAvatar {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.sidebarAccountText {
+  display: grid;
+  min-width: 0;
+}
+
+.sidebarAccountName,
+.sidebarAccountEmail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarAccountName {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.sidebarAccountEmail {
+  margin-top: 0.1rem;
+  font-size: 0.8125rem;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--sidebar-foreground) 72%, transparent 28%);
+}
+
+.sidebarAccountChevron {
+  width: 1rem;
+  height: 1rem;
+}
+
+.sidebarAccountMenu {
+  width: 18rem;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent 12%);
+  background: var(--popover);
+}
+
+.sidebarAccountMenuHeader {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+}
+
+.sidebarAccountMenuAvatar {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.sidebarAccountMenuText {
+  display: grid;
+  min-width: 0;
+}
+
+.sidebarAccountMenuName,
+.sidebarAccountMenuEmail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarAccountMenuName {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--popover-foreground);
+}
+
+.sidebarAccountMenuEmail {
+  font-size: 0.875rem;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--popover-foreground) 64%, transparent 36%);
+}
+
+.sidebarAccountMenuSeparator {
+  margin: 0;
+}
+
+.sidebarAccountMenuItem {
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sidebarAccountMenuItem svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarHeader {
+  position: relative;
+  padding: 1rem 0 1.25rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarBrand {
+  display: flex;
+  justify-content: center;
+}
+
+:global([data-collapsible="icon"]) .sidebarBrandIcon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarBrandIcon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarHeaderTrigger {
   position: absolute;
-  right: -0.85rem;
-  top: 0.75rem;
-  z-index: 30;
+  top: 1.25rem;
+  left: calc(100% + 0.875rem);
+  width: 2rem;
+  height: 2rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarGroup {
+  padding-inline: 0;
+}
+
+:global([data-collapsible="icon"]) .sidebarMenu {
+  align-items: center;
+  gap: 0.625rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarMenuButton {
+  gap: 0;
+  justify-content: center;
+  padding: 0;
+}
+
+:global([data-collapsible="icon"]) .sidebarMenuButton[data-slot="sidebar-menu-button"] {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  min-height: 2.25rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarMenuButton svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarMenuButton span {
   display: none;
 }
 
-.sidebarEdgeTrigger {
-  border: 1px solid color-mix(in srgb, var(--sidebar-border) 78%, transparent 22%);
-  background: var(--sidebar);
-  box-shadow: 0 6px 16px -12px rgba(0, 0, 0, 0.55);
+:global([data-collapsible="icon"]) .sidebarFooter {
+  align-items: center;
+  padding: 0 0 1rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarAccount {
+  min-height: 2.25rem;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  grid-template-columns: 2.25rem;
+  gap: 0;
+  padding: 0;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+:global([data-collapsible="icon"]) .sidebarAccountText,
+:global([data-collapsible="icon"]) .sidebarAccountChevron {
+  display: none;
+}
+
+:global([data-collapsible="icon"]) .sidebarAccountAvatar {
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 @media (min-width: 768px) {
   .mobileSidebarTrigger {
     display: none;
-  }
-
-  .sidebarEdgeTriggerDock {
-    display: block;
   }
 }

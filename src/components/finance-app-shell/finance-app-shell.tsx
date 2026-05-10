@@ -5,16 +5,32 @@ import {
   IconBuildingBank,
   IconCalendarDollar,
   IconCashBanknote,
+  IconChevronDown,
+  IconLogout,
   IconReportMoney,
+  IconWallet,
 } from "@tabler/icons-react";
 
 import { GoogleAccountAvatar } from "@/components/auth/google-account-avatar";
 import { PwaUpdateControl } from "@/components/pwa/pwa-update-control";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -54,6 +70,7 @@ export function FinanceAppShell({
   const { data: session, status } = useSession();
   const sessionUserImage = session?.user?.image?.trim() || null;
   const sessionUserName = session?.user?.name?.trim() || null;
+  const sessionUserEmail = session?.user?.email?.trim() || "Sin cuenta de Google";
   const topBarStickySentinelRef = useRef<HTMLDivElement | null>(null);
   const [isTopBarStuck, setIsTopBarStuck] = useState(false);
 
@@ -106,19 +123,34 @@ export function FinanceAppShell({
 
   return (
     <SidebarProvider defaultOpen={initialSidebarOpen}>
-      <Sidebar className={styles.sidebarShell} collapsible="icon" variant="inset">
-        <SidebarHeader
-          className={`${styles.sidebarHeader} group-data-[collapsible=icon]:hidden`}
-        >
-          <p className={styles.sidebarTitle}>Control Mensual</p>
+      <Sidebar className={styles.sidebarShell} collapsible="icon" variant="sidebar">
+        <SidebarHeader className={styles.sidebarHeader}>
+          <div
+            className={`${styles.sidebarBrand} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`}
+          >
+            <span
+              className={`${styles.sidebarBrandIcon} group-data-[collapsible=icon]:hidden`}
+              aria-hidden="true"
+            >
+              <IconWallet />
+            </span>
+            <div
+              className={`${styles.sidebarBrandText} group-data-[collapsible=icon]:hidden`}
+            >
+              <p className={styles.sidebarTitle}>Control Mensual</p>
+              <p className={styles.sidebarSubtitle}>Panel de trabajo</p>
+            </div>
+            <SidebarTrigger className={styles.sidebarHeaderTrigger} />
+          </div>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Secciones</SidebarGroupLabel>
-            <SidebarMenu>
+          <SidebarGroup className={styles.sidebarGroup}>
+            <SidebarGroupLabel className={styles.sidebarGroupLabel}>Secciones</SidebarGroupLabel>
+            <SidebarMenu className={styles.sidebarMenu}>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  className={styles.sidebarMenuButton}
                   isActive={activeSection === "expenses"}
                   tooltip="Control mensual"
                 >
@@ -131,6 +163,7 @@ export function FinanceAppShell({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  className={styles.sidebarMenuButton}
                   isActive={activeSection === "exchange-rates"}
                   tooltip="Cotizaciones del dólar"
                 >
@@ -143,6 +176,7 @@ export function FinanceAppShell({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  className={styles.sidebarMenuButton}
                   isActive={activeSection === "lenders"}
                   tooltip="Prestamistas"
                 >
@@ -155,6 +189,7 @@ export function FinanceAppShell({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  className={styles.sidebarMenuButton}
                   isActive={activeSection === "debts"}
                   tooltip="Reporte de deudas"
                 >
@@ -167,9 +202,87 @@ export function FinanceAppShell({
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
-        <div className={styles.sidebarEdgeTriggerDock}>
-          <SidebarTrigger className={styles.sidebarEdgeTrigger} />
-        </div>
+        <SidebarFooter className={styles.sidebarFooter}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Cuenta activa"
+                className={`${styles.sidebarAccount} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`}
+                type="button"
+              >
+                <Avatar className={styles.sidebarAccountAvatar}>
+                  {sessionUserImage ? (
+                    <AvatarImage
+                      alt={sessionUserName ?? "Cuenta de Google"}
+                      src={sessionUserImage}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {sessionUserName
+                      ?.split(/\s+/)
+                      .slice(0, 2)
+                      .map((namePart) => namePart.charAt(0).toUpperCase())
+                      .join("") || "CM"}
+                  </AvatarFallback>
+                </Avatar>
+                <span
+                  className={`${styles.sidebarAccountText} group-data-[collapsible=icon]:hidden`}
+                >
+                  <span className={styles.sidebarAccountName}>
+                    {sessionUserName ?? "Control Mensual"}
+                  </span>
+                  <span className={styles.sidebarAccountEmail}>{sessionUserEmail}</span>
+                </span>
+                <IconChevronDown
+                  className={`${styles.sidebarAccountChevron} group-data-[collapsible=icon]:hidden`}
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className={styles.sidebarAccountMenu}
+              side="right"
+              sideOffset={8}
+            >
+              <div className={styles.sidebarAccountMenuHeader}>
+                <Avatar className={styles.sidebarAccountMenuAvatar}>
+                  {sessionUserImage ? (
+                    <AvatarImage
+                      alt={sessionUserName ?? "Cuenta de Google"}
+                      src={sessionUserImage}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {sessionUserName
+                      ?.split(/\s+/)
+                      .slice(0, 2)
+                      .map((namePart) => namePart.charAt(0).toUpperCase())
+                      .join("") || "CM"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={styles.sidebarAccountMenuText}>
+                  <span className={styles.sidebarAccountMenuName}>
+                    {sessionUserName ?? "Control Mensual"}
+                  </span>
+                  <span className={styles.sidebarAccountMenuEmail}>
+                    {sessionUserEmail}
+                  </span>
+                </span>
+              </div>
+              <DropdownMenuSeparator className={styles.sidebarAccountMenuSeparator} />
+              <DropdownMenuItem
+                className={styles.sidebarAccountMenuItem}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  handleGoogleAccountDisconnect();
+                }}
+              >
+                <IconLogout />
+                <span>Cerrar sesión</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
@@ -199,6 +312,7 @@ export function FinanceAppShell({
                 onConnect={handleGoogleAccountConnect}
                 onDisconnect={handleGoogleAccountDisconnect}
                 status={status}
+                userEmail={sessionUserEmail}
                 userImage={sessionUserImage}
                 userName={sessionUserName}
               />

@@ -1368,7 +1368,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(
       screen.getByRole("button", { name: "Cuenta de Google conectada" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Desconectar Google" }));
+    await user.click(screen.getByRole("menuitem", { name: "Cerrar sesión" }));
 
     expect(mockedSignOut).toHaveBeenCalledWith({
       callbackUrl: "/gastos",

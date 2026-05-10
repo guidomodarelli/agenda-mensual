@@ -1,4 +1,4 @@
-import { PlusIcon } from "lucide-react";
+import { LogOutIcon, PlusIcon } from "lucide-react";
 
 import {
   Avatar,
@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -24,6 +25,7 @@ interface GoogleAccountAvatarProps {
   onConnect: () => void;
   onDisconnect: () => void;
   status: GoogleAccountAvatarStatus;
+  userEmail?: string | null;
   userImage: string | null;
   userName: string | null;
 }
@@ -48,10 +50,13 @@ export function GoogleAccountAvatar({
   onConnect,
   onDisconnect,
   status,
+  userEmail,
   userImage,
   userName,
 }: GoogleAccountAvatarProps) {
   const initials = getUserInitials(userName);
+  const accountName = userName ?? "Control Mensual";
+  const accountEmail = userEmail?.trim() || "Sin cuenta de Google";
   const tooltipStatusLabel =
     status === "authenticated"
       ? "Google conectado"
@@ -77,14 +82,31 @@ export function GoogleAccountAvatar({
               </button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-72 overflow-hidden rounded-2xl p-0">
+            <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3.5 px-4 py-3.5">
+              <Avatar className="size-11">
+                {userImage ? <AvatarImage alt={accountName} src={userImage} /> : null}
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <span className="grid min-w-0">
+                <span className="truncate text-base font-bold leading-tight">
+                  {accountName}
+                </span>
+                <span className="truncate text-sm leading-tight text-muted-foreground">
+                  {accountEmail}
+                </span>
+              </span>
+            </div>
+            <DropdownMenuSeparator className="m-0" />
             <DropdownMenuItem
+              className="min-h-12 gap-3 rounded-none px-4 py-3 text-base font-semibold"
               onSelect={(event) => {
                 event.preventDefault();
                 onDisconnect();
               }}
             >
-              Desconectar Google
+              <LogOutIcon />
+              <span>Cerrar sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -47,6 +47,7 @@ describe("GoogleAccountAvatar", () => {
         onConnect: jest.fn(),
         onDisconnect,
         status: "authenticated",
+        userEmail: "gus@example.com",
         userImage: "https://example.com/avatar.png",
         userName: "Gus Example",
       },
@@ -55,7 +56,9 @@ describe("GoogleAccountAvatar", () => {
     await user.click(
       screen.getByRole("button", { name: "Cuenta de Google conectada" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Desconectar Google" }));
+    expect(screen.getByText("gus@example.com")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("menuitem", { name: "Cerrar sesión" }));
 
     expect(onDisconnect).toHaveBeenCalledTimes(1);
   });
