@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import {
   IconBuildingBank,
@@ -71,30 +71,6 @@ export function FinanceAppShell({
   const sessionUserImage = session?.user?.image?.trim() || null;
   const sessionUserName = session?.user?.name?.trim() || null;
   const sessionUserEmail = session?.user?.email?.trim() || "Sin cuenta de Google";
-  const topBarStickySentinelRef = useRef<HTMLDivElement | null>(null);
-  const [isTopBarStuck, setIsTopBarStuck] = useState(false);
-
-  useEffect(() => {
-    const sentinel = topBarStickySentinelRef.current;
-    if (!sentinel || typeof IntersectionObserver === "undefined") {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsTopBarStuck(!entry.isIntersecting);
-      },
-      {
-        threshold: 0,
-      }
-    );
-
-    observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
 
   const handleGoogleAccountConnect = () => {
     if (!isOAuthConfigured) {
@@ -292,14 +268,7 @@ export function FinanceAppShell({
       <SidebarInset>
         <main className={styles.page}>
           <div className={styles.layout}>
-            <div
-              aria-hidden="true"
-              className={styles.topBarStickySentinel}
-              ref={topBarStickySentinelRef}
-            />
-            <div
-              className={`${styles.topBar} ${isTopBarStuck ? styles.topBarStuck : ""}`.trim()}
-            >
+            <div className={styles.topBar}>
               <SidebarTrigger
                 aria-label="Abrir menu lateral"
                 className={styles.mobileSidebarTrigger}
