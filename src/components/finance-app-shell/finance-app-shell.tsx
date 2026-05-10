@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import {
@@ -8,7 +9,6 @@ import {
   IconChevronDown,
   IconLogout,
   IconReportMoney,
-  IconWallet,
 } from "@tabler/icons-react";
 
 import { GoogleAccountAvatar } from "@/components/auth/google-account-avatar";
@@ -125,14 +125,19 @@ export function FinanceAppShell({
     <SidebarProvider defaultOpen={initialSidebarOpen}>
       <Sidebar className={styles.sidebarShell} collapsible="icon" variant="sidebar">
         <SidebarHeader className={styles.sidebarHeader}>
-          <div
-            className={`${styles.sidebarBrand} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`}
-          >
+          <div className={styles.sidebarBrand}>
             <span
-              className={`${styles.sidebarBrandIcon} group-data-[collapsible=icon]:hidden`}
+              className={styles.sidebarBrandIcon}
               aria-hidden="true"
             >
-              <IconWallet />
+              <Image
+                alt=""
+                className={styles.sidebarBrandImage}
+                height={192}
+                priority
+                src="/icons/icon-192x192.png"
+                width={192}
+              />
             </span>
             <div
               className={`${styles.sidebarBrandText} group-data-[collapsible=icon]:hidden`}
@@ -140,7 +145,6 @@ export function FinanceAppShell({
               <p className={styles.sidebarTitle}>Control Mensual</p>
               <p className={styles.sidebarSubtitle}>Panel de trabajo</p>
             </div>
-            <SidebarTrigger className={styles.sidebarHeaderTrigger} />
           </div>
         </SidebarHeader>
         <SidebarContent>

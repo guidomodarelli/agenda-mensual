@@ -54,7 +54,7 @@ describe("FinanceAppShell", () => {
     expect(screen.getByText("Secciones")).toBeInTheDocument();
     expect(screen.getByText("admin@example.com")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Toggle Sidebar" }),
+      screen.getByRole("button", { name: "Abrir menu lateral" }),
     ).toBeInTheDocument();
   });
 

@@ -63,7 +63,7 @@
 
 .sidebarBrand {
   display: grid;
-  grid-template-columns: 2.25rem minmax(0, 1fr) 1.75rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
   align-items: center;
   gap: 0.7rem;
 }
@@ -79,9 +79,12 @@
   background: #2563eb;
 }
 
-.sidebarBrandIcon svg {
-  width: 1.2rem;
-  height: 1.2rem;
+.sidebarBrandImage {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  display: block;
+  object-fit: cover;
 }
 
 .sidebarBrandText {
@@ -98,7 +101,7 @@
 
 .sidebarTitle {
   font-size: 0.925rem;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.15;
   color: var(--sidebar-foreground);
 }
@@ -110,12 +113,6 @@
   color: color-mix(in srgb, var(--sidebar-foreground) 72%, transparent 28%);
 }
 
-.sidebarHeaderTrigger {
-  width: 1.75rem;
-  height: 1.75rem;
-  color: var(--sidebar-foreground);
-}
-
 .sidebarGroup {
   padding-inline: 0.875rem;
 }
@@ -124,7 +121,7 @@
   height: 2rem;
   padding-inline: 0;
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 500;
   color: color-mix(in srgb, var(--sidebar-foreground) 64%, transparent 36%);
 }
 
@@ -136,7 +133,11 @@
   min-height: 2.5rem;
   border-radius: 0.5rem;
   font-size: 0.925rem;
-  font-weight: 600;
+  font-weight: 400;
+}
+
+.sidebarMenuButton[data-active="true"] {
+  font-weight: 400;
 }
 
 .sidebarMenuButton svg {
@@ -269,14 +270,9 @@
   height: 1.25rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarHeader {
-  position: relative;
-  padding: 1rem 0 1.25rem;
-}
-
 :global([data-collapsible="icon"]) .sidebarBrand {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 :global([data-collapsible="icon"]) .sidebarBrandIcon {
@@ -286,26 +282,22 @@
   border-radius: 0.75rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarBrandIcon svg {
-  width: 1.125rem;
-  height: 1.125rem;
-}
-
-:global([data-collapsible="icon"]) .sidebarHeaderTrigger {
-  position: absolute;
-  top: 1.25rem;
-  left: calc(100% + 0.875rem);
-  width: 2rem;
-  height: 2rem;
-}
-
 :global([data-collapsible="icon"]) .sidebarGroup {
-  padding-inline: 0;
+  padding-inline: 0.875rem;
+}
+
+:global([data-collapsible="icon"]) .sidebarGroupLabel {
+  height: 0;
+  margin: 0;
+  opacity: 0;
+  padding: 0;
+  visibility: hidden;
+  transition: none;
 }
 
 :global([data-collapsible="icon"]) .sidebarMenu {
-  align-items: center;
-  gap: 0.625rem;
+  align-items: flex-start;
+  gap: 0.25rem;
 }
 
 :global([data-collapsible="icon"]) .sidebarMenuButton {
@@ -330,8 +322,8 @@
 }
 
 :global([data-collapsible="icon"]) .sidebarFooter {
-  align-items: center;
-  padding: 0 0 1rem;
+  align-items: flex-start;
+  padding: 0 0.875rem 1rem;
 }
 
 :global([data-collapsible="icon"]) .sidebarAccount {
@@ -357,6 +349,6 @@
 
 @media (min-width: 768px) {
   .mobileSidebarTrigger {
-    display: none;
+    display: inline-flex;
   }
 }
