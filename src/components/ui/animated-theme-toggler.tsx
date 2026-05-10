@@ -1,9 +1,36 @@
 import { useCallback, useRef, useSyncExternalStore } from "react";
-import { Moon, Sun, SunMoon } from "lucide-react";
+import { Monitor, Moon, Sun, SunMoon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { flushSync } from "react-dom";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+const THEME_OPTIONS = [
+  {
+    icon: Sun,
+    label: "Claro",
+    value: "light",
+  },
+  {
+    icon: Moon,
+    label: "Oscuro",
+    value: "dark",
+  },
+  {
+    icon: Monitor,
+    label: "Sistema",
+    value: "system",
+  },
+] as const;
+
+type ThemeOption = (typeof THEME_OPTIONS)[number]["value"];
 
 type ViewTransitionWithReady = {
   ready?: Promise<void>;
@@ -25,7 +52,7 @@ export const AnimatedThemeToggler = ({
   disabled,
   ...props
 }: AnimatedThemeTogglerProps) => {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme, theme } = useTheme();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const isHydrated = useSyncExternalStore(
     () => () => undefined,
@@ -36,9 +63,13 @@ export const AnimatedThemeToggler = ({
     isHydrated &&
     (resolvedTheme === "light" || resolvedTheme === "dark");
   const isDark = resolvedTheme === "dark";
+  const selectedTheme: ThemeOption =
+    theme === "light" || theme === "dark" || theme === "system"
+      ? theme
+      : "system";
   const isDisabled = !isThemeReady || disabled;
 
-  const toggleTheme = useCallback(() => {
+  const selectTheme = useCallback((nextTheme: ThemeOption) => {
     const button = buttonRef.current;
     if (!button || typeof document === "undefined" || isDisabled) {
       return;
@@ -53,7 +84,6 @@ export const AnimatedThemeToggler = ({
       Math.max(x, viewportWidth - x),
       Math.max(y, viewportHeight - y)
     );
-    const nextTheme = isDark ? "light" : "dark";
     const documentWithViewTransition = document as DocumentWithViewTransition;
 
     const applyTheme = () => {
@@ -87,19 +117,46 @@ export const AnimatedThemeToggler = ({
         );
       });
     }
-  }, [duration, isDark, isDisabled, setTheme]);
+  }, [duration, isDisabled, setTheme]);
 
   return (
-    <button
-      type="button"
-      ref={buttonRef}
-      onClick={toggleTheme}
-      disabled={isDisabled}
-      className={cn(className)}
-      {...props}
-    >
-      {!isThemeReady ? <SunMoon aria-hidden="true" /> : isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-      <span className="sr-only">Toggle theme</span>
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          ref={buttonRef}
+          disabled={isDisabled}
+          className={cn(className)}
+          {...props}
+        >
+          {!isThemeReady ? <SunMoon aria-hidden="true" /> : isDark ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />}
+          <span className="sr-only">Alternar tema</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-44 rounded-xl p-2"
+        side="bottom"
+        sideOffset={8}
+      >
+        <DropdownMenuRadioGroup
+          onValueChange={(nextTheme) => {
+            selectTheme(nextTheme as ThemeOption);
+          }}
+          value={selectedTheme}
+        >
+          {THEME_OPTIONS.map(({ icon: Icon, label, value }) => (
+            <DropdownMenuRadioItem
+              key={value}
+              className="h-11 gap-3 px-3 pr-9 text-base"
+              value={value}
+            >
+              <Icon aria-hidden="true" className="size-5" />
+              <span>{label}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

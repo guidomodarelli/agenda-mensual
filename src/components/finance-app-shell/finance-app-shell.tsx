@@ -210,7 +210,7 @@ export function FinanceAppShell({
                 aria-label="Alternar tema"
                 className={buttonVariants({
                   size: "icon-sm",
-                  variant: "outline",
+                  variant: "ghost",
                 })}
               />
               <GoogleAccountAvatar
