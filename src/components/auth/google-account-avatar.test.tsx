@@ -98,7 +98,7 @@ describe("GoogleAccountAvatar", () => {
     expect((await screen.findAllByText("Sin sesión")).length).toBeGreaterThan(0);
   });
 
-  it("shows connected status in tooltip", async () => {
+  it("shows user name in connected tooltip", async () => {
     const user = userEvent.setup();
 
     renderGoogleAccountAvatar({
@@ -113,6 +113,6 @@ describe("GoogleAccountAvatar", () => {
       screen.getByRole("button", { name: "Cuenta de Google conectada" }),
     );
 
-    expect((await screen.findAllByText("Google conectado")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Guido Modarelli")).length).toBeGreaterThan(0);
   });
 });

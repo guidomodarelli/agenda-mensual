@@ -49,7 +49,7 @@ export function GoogleAccountAvatar({
   const initials = getUserInitials(accountName);
   const tooltipStatusLabel =
     status === "authenticated"
-      ? "Google conectado"
+      ? accountName
       : status === "loading"
         ? "Verificando conexion de Google"
         : "Sin sesión";
