@@ -1046,6 +1046,22 @@
 }
 
 @media (max-width: 1024px) {
+  .selectionTableCell {
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--background);
+  }
+
+  .tableWrapper :global([data-slot="table-head"]:first-child) {
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
+  }
+
   .headerTopRow {
     flex-direction: column;
   }
