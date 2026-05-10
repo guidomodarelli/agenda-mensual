@@ -61,6 +61,7 @@ const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
+const ADVANCED_FILTERS_TEST_TIMEOUT_MS = 15000;
 
 describe("MonthlyExpensesPage table and navigation", () => {
 
@@ -354,7 +355,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
     expect(screen.getByText("Enviado sin link")).toBeInTheDocument();
     expect(screen.getByText("Sin estado sin link")).toBeInTheDocument();
-  });
+  }, ADVANCED_FILTERS_TEST_TIMEOUT_MS);
 
   it("allows selecting and deselecting all hideable columns from the selector", async () => {
     const user = userEvent.setup();

@@ -1,2 +1,2 @@
 export const VISIBLE_DRIVE_FOLDER_NAME =
-  "Comprobantes de pago (IMPORTANTE: NO BORRAR) | Mes en regla";
+  "Comprobantes de pago (IMPORTANTE: NO BORRAR) | Control Mensual";

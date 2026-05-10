@@ -6,9 +6,9 @@ import type { ReactElement } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 
-export const SIDEBAR_STORAGE_KEY = "mes-en-regla.sidebar.open";
+export const SIDEBAR_STORAGE_KEY = "control-mensual.sidebar.open";
 export const TABLE_PREFERENCES_STORAGE_KEY =
-  "mes-en-regla.monthly-expenses.table-preferences";
+  "control-mensual.monthly-expenses.table-preferences";
 
 export const bootstrap: StorageBootstrapResult = {
   architecture: {

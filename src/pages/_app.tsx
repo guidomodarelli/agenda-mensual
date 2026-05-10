@@ -28,7 +28,7 @@ type PagePropsWithSession = {
   session?: Session | null;
 };
 
-const APP_NAME = "Mes en regla";
+const APP_NAME = "Control Mensual";
 const APP_DESCRIPTION = "Gestiona tus compromisos mensuales: pagos, deudas, cuotas, prestamos, comprobantes y prestamistas, con reportes de seguimiento.";
 const APP_THEME_COLOR = "#121826";
 const PAGE_TITLE_BY_PATHNAME: Record<string, string> = {

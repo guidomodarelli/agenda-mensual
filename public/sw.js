@@ -1,5 +1,5 @@
-const CACHE_NAME = "mes-en-regla-static-v1";
-const SHARED_RECEIPT_PAYLOAD_CACHE_NAME = "mes-en-regla-shared-receipt-v1";
+const CACHE_NAME = "control-mensual-static-v1";
+const SHARED_RECEIPT_PAYLOAD_CACHE_NAME = "control-mensual-shared-receipt-v1";
 const SHARED_RECEIPT_PAYLOAD_CACHE_PATH = "/__pwa/shared-receipt/payload";
 const SHARE_TARGET_ACTION_PATH = "/recibir-comprobante";
 const SHARE_TARGET_RECEIPT_FIELD_NAME = "receipt";

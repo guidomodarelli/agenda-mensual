@@ -66,7 +66,7 @@ function createMockJsonResponse(payload: unknown): JsonResponseLike {
 
 describe("shared receipt payload cache", () => {
   const locationRef = {
-    origin: "https://mes-en-regla.test",
+    origin: "https://control-mensual.test",
   };
   const now = new Date("2026-03-17T14:00:00.000Z");
 

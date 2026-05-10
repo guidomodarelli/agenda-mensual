@@ -132,7 +132,7 @@ const LOAN_INSTALLMENT_START_COLUMN_ID = "loanInstallmentStart";
 const LOAN_INSTALLMENT_END_COLUMN_ID = "loanInstallmentEnd";
 const BULK_SELECTION_COLUMN_ID = "bulkSelection";
 const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
-  "mes-en-regla.monthly-expenses.table-preferences";
+  "control-mensual.monthly-expenses.table-preferences";
 const MOVE_COMPLETED_TO_END_LABEL = "Mover completados al final";
 const MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT =
   "Desactivado mientras haya un orden manual.";
