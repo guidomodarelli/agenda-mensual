@@ -3002,8 +3002,13 @@ export function MonthlyExpensesTable({
         ),
         meta: {
           cellClassName: styles.selectionTableCell,
+          headerClassName: styles.selectionTableCell,
           isClickable: true,
           label: "Selección",
+          onHeaderClick: (event: React.MouseEvent<HTMLTableCellElement>) => {
+            event.stopPropagation();
+            handleToggleAllVisibleRowsSelection();
+          },
         },
       },
       {

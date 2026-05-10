@@ -148,7 +148,9 @@ interface DataTableProps<TData, TValue> {
 interface DataTableColumnMeta {
   label?: string;
   cellClassName?: string;
+  headerClassName?: string;
   isClickable?: boolean;
+  onHeaderClick?: (event: React.MouseEvent<HTMLTableCellElement>) => void;
 }
 
 const DIACRITICS_PATTERN = /[\u0300-\u036f]/g;
@@ -1126,16 +1128,26 @@ export function DataTable<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const columnMeta = header.column.columnDef.meta as
+                    | DataTableColumnMeta
+                    | undefined;
+
+                  return (
+                    <TableHead
+                      className={columnMeta?.headerClassName}
+                      key={header.id}
+                      onClick={columnMeta?.onHeaderClick}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>

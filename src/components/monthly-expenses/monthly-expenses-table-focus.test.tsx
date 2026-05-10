@@ -121,6 +121,28 @@ async function openQuickEditDialog({
 }
 
 describe("MonthlyExpensesTable dialog autofocus", () => {
+  it("toggles visible row selection when clicking the header selection cell", async () => {
+    const user = userEvent.setup();
+
+    renderMonthlyExpensesTable([
+      createRow({ description: "Internet", id: "expense-1" }),
+      createRow({ description: "Luz", id: "expense-2" }),
+    ]);
+
+    await user.click(
+      screen.getByRole("columnheader", {
+        name: "Seleccionar todas las filas visibles",
+      }),
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: "Seleccionar compromiso Internet" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Seleccionar compromiso Luz" }),
+    ).toBeChecked();
+  });
+
   it("renders loan direction as its own column", () => {
     renderMonthlyExpensesTable([
       createRow({
