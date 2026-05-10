@@ -6,28 +6,14 @@ import {
   IconBuildingBank,
   IconCalendarDollar,
   IconCashBanknote,
-  IconChevronDown,
-  IconLogin,
-  IconLogout,
   IconReportMoney,
 } from "@tabler/icons-react";
 
+import { AccountMenu } from "@/components/auth/account-menu";
 import { GoogleAccountAvatar } from "@/components/auth/google-account-avatar";
 import { PwaUpdateControl } from "@/components/pwa/pwa-update-control";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -87,15 +73,6 @@ export function FinanceAppShell({
     void signOut({
       callbackUrl: authRedirectPath,
     });
-  };
-
-  const handleSidebarAccountAction = () => {
-    if (status === "authenticated") {
-      handleGoogleAccountDisconnect();
-      return;
-    }
-
-    handleGoogleAccountConnect();
   };
 
   const expensesHref = expensesMonth
@@ -193,87 +170,30 @@ export function FinanceAppShell({
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className={styles.sidebarFooter}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                aria-label="Cuenta activa"
-                className={`${styles.sidebarAccount} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`}
-                type="button"
-              >
-                <Avatar className={styles.sidebarAccountAvatar}>
-                  {sessionUserImage ? (
-                    <AvatarImage
-                      alt={sessionUserName}
-                      src={sessionUserImage}
-                    />
-                  ) : null}
-                  <AvatarFallback>
-                    {sessionUserName
-                      ?.split(/\s+/)
-                      .slice(0, 2)
-                      .map((namePart) => namePart.charAt(0).toUpperCase())
-                      .join("") || "CM"}
-                  </AvatarFallback>
-                </Avatar>
-                <span
-                  className={`${styles.sidebarAccountText} group-data-[collapsible=icon]:hidden`}
-                >
-                  <span className={styles.sidebarAccountName}>
-                    {sessionUserName}
-                  </span>
-                  <span className={styles.sidebarAccountEmail}>{sessionUserEmail}</span>
-                </span>
-                <IconChevronDown
-                  className={`${styles.sidebarAccountChevron} group-data-[collapsible=icon]:hidden`}
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className={styles.sidebarAccountMenu}
-              side="right"
-              sideOffset={8}
-            >
-              <div className={styles.sidebarAccountMenuHeader}>
-                <Avatar className={styles.sidebarAccountMenuAvatar}>
-                  {sessionUserImage ? (
-                    <AvatarImage
-                      alt={sessionUserName}
-                      src={sessionUserImage}
-                    />
-                  ) : null}
-                  <AvatarFallback>
-                    {sessionUserName
-                      ?.split(/\s+/)
-                      .slice(0, 2)
-                      .map((namePart) => namePart.charAt(0).toUpperCase())
-                      .join("") || "CM"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className={styles.sidebarAccountMenuText}>
-                  <span className={styles.sidebarAccountMenuName}>
-                    {sessionUserName}
-                  </span>
-                  <span className={styles.sidebarAccountMenuEmail}>
-                    {sessionUserEmail}
-                  </span>
-                </span>
-              </div>
-              <DropdownMenuSeparator className={styles.sidebarAccountMenuSeparator} />
-              <DropdownMenuItem
-                className={styles.sidebarAccountMenuItem}
-                onSelect={(event) => {
-                  event.preventDefault();
-                  handleSidebarAccountAction();
-                }}
-              >
-                {status === "authenticated" ? <IconLogout /> : <IconLogin />}
-                <span>
-                  {status === "authenticated" ? "Cerrar sesión" : "Iniciar sesión"}
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AccountMenu
+            accountEmail={sessionUserEmail}
+            accountName={sessionUserName}
+            align="end"
+            classNames={{
+              trigger: `${styles.sidebarAccount} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`,
+              triggerAvatar: styles.sidebarAccountAvatar,
+              triggerText: `${styles.sidebarAccountText} group-data-[collapsible=icon]:hidden`,
+              triggerName: styles.sidebarAccountName,
+              triggerEmail: styles.sidebarAccountEmail,
+              triggerChevron: `${styles.sidebarAccountChevron} group-data-[collapsible=icon]:hidden`,
+              connectedBadge: styles.sidebarAccountConnectedBadge,
+              disconnectedBadge: styles.sidebarAccountDisconnectedBadge,
+            }}
+            menuClassName={styles.sidebarAccountMenu}
+            onSignIn={handleGoogleAccountConnect}
+            onSignOut={handleGoogleAccountDisconnect}
+            side="right"
+            sideOffset={8}
+            status={status === "authenticated" ? "authenticated" : "unauthenticated"}
+            triggerAriaLabel="Cuenta activa"
+            triggerVariant="sidebar"
+            userImage={sessionUserImage}
+          />
         </SidebarFooter>
       </Sidebar>
 

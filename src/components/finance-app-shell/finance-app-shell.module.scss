@@ -163,6 +163,15 @@
   height: 2.5rem;
 }
 
+.sidebarAccountConnectedBadge {
+  background: #16a34a;
+}
+
+.sidebarAccountDisconnectedBadge {
+  background: color-mix(in srgb, var(--muted) 82%, var(--foreground) 18%);
+  color: var(--muted-foreground);
+}
+
 .sidebarAccountText {
   display: grid;
   min-width: 0;
