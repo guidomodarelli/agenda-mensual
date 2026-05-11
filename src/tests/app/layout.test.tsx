@@ -6,7 +6,7 @@ jest.mock("@/modules/auth/infrastructure/next-auth/auth-options", () => ({
   authOptions: {},
 }));
 
-import { getRootServerSession } from "./layout";
+import { getRootServerSession } from "@/app/layout";
 
 describe("getRootServerSession", () => {
   it("returns null without loading a session when auth is not configured", async () => {
