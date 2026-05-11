@@ -106,4 +106,12 @@ const monthlyExpensesCopyableMonthsApiHandler: NextApiHandler = async (
 
 const handler = createAppRouteHandler(monthlyExpensesCopyableMonthsApiHandler);
 
-export { handler as GET };
+export {
+  handler as DELETE,
+  handler as GET,
+  handler as HEAD,
+  handler as OPTIONS,
+  handler as PATCH,
+  handler as POST,
+  handler as PUT,
+};

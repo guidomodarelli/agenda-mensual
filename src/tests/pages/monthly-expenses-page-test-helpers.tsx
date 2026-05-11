@@ -68,6 +68,19 @@ type MockMonthlyExpensesRouter = ReturnType<typeof useRouter> & {
 
 let currentMonthlyExpensesRouter: MockMonthlyExpensesRouter | null = null;
 
+function syncCurrentMonthlyExpensesRouterWithUrl(url: string | URL | null | undefined) {
+  if (!url || !currentMonthlyExpensesRouter) {
+    return;
+  }
+
+  const nextUrl = new URL(String(url), window.location.href);
+
+  currentMonthlyExpensesRouter.pathname = nextUrl.pathname;
+  currentMonthlyExpensesRouter.query = Object.fromEntries(
+    nextUrl.searchParams.entries(),
+  );
+}
+
 function createReadonlySearchParams(
   query: Record<string, string | string[] | undefined>,
 ) {
@@ -444,6 +457,17 @@ export function registerMonthlyExpensesPageDefaultHooks(
     });
     global.fetch = jest.fn();
     window.localStorage.clear();
+    window.history.replaceState(null, "", "/gastos");
+    jest
+      .spyOn(window.history, "pushState")
+      .mockImplementation((state, unused, url) => {
+        History.prototype.pushState.call(window.history, state, unused, url);
+        syncCurrentMonthlyExpensesRouterWithUrl(url);
+      });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {

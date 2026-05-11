@@ -1409,13 +1409,10 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(fetchMock).not.toHaveBeenCalledWith("/api/storage/monthly-expenses-report");
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        "/gastos?month=2026-04&tab=expenses",
-        {
-          scroll: false,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
     expect(screen.getByText("Abril")).toBeInTheDocument();
@@ -1705,13 +1702,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        "/gastos?month=2026-04&tab=expenses",
-        {
-          scroll: false,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
@@ -1821,13 +1815,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        "/gastos?month=2026-04&tab=expenses",
-        {
-          scroll: false,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
     expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeDisabled();
@@ -2269,13 +2260,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        "/gastos?month=2026-04&tab=expenses",
-        {
-          scroll: false,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(mockedToast.error).not.toHaveBeenCalled();

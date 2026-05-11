@@ -4,7 +4,7 @@ import type {
   GetServerSidePropsContext,
 } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
@@ -1486,7 +1486,6 @@ export default function MonthlyExpensesPage({
   reportLoadErrorCode,
   reportLoadError,
 }: MonthlyExpensesPageProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isOAuthConfigured = bootstrap.authStatus === "configured";
@@ -1700,16 +1699,16 @@ export default function MonthlyExpensesPage({
   };
 
   const navigateToMonth = useCallback(
-    async (normalizedMonth: string, options?: { shallow?: boolean }) =>
-    {
+    async (normalizedMonth: string) => {
       const nextSearchParams = new URLSearchParams(searchParams?.toString());
       nextSearchParams.set("month", normalizedMonth);
-      router.push(`${pathname}?${nextSearchParams.toString()}`, {
-        scroll: false,
-      });
-      void options;
+      window.history.pushState(
+        null,
+        "",
+        `${pathname}?${nextSearchParams.toString()}`,
+      );
     },
-    [pathname, router, searchParams],
+    [pathname, searchParams],
   );
 
   const loadMonth = useCallback(
@@ -1744,7 +1743,7 @@ export default function MonthlyExpensesPage({
         }
 
         if (options.updateRoute ?? true) {
-          await navigateToMonth(normalizedMonth, { shallow: true });
+          await navigateToMonth(normalizedMonth);
 
           if (latestMonthLoadRequestIdRef.current !== requestId) {
             return;
