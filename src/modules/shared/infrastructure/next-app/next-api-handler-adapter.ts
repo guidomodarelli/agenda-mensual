@@ -38,7 +38,11 @@ async function getRequestBody(request: NextRequest): Promise<unknown> {
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
-    return request.json();
+    try {
+      return await request.json();
+    } catch {
+      return undefined;
+    }
   }
 
   const textBody = await request.text();

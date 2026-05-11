@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import type { ReactNode } from "react";
 
 import { authOptions } from "@/modules/auth/infrastructure/next-auth/auth-options";
+import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
 
 import { AppProviders } from "./providers";
 
@@ -66,12 +67,28 @@ export const viewport: Viewport = {
   themeColor: "#121826",
 };
 
+type GetRootServerSessionDependencies = {
+  getConfiguredAuthSession?: typeof getServerSession;
+  isAuthConfigured?: typeof isGoogleOAuthConfigured;
+};
+
+export async function getRootServerSession({
+  getConfiguredAuthSession = () => getServerSession(authOptions),
+  isAuthConfigured = isGoogleOAuthConfigured,
+}: GetRootServerSessionDependencies = {}) {
+  if (!isAuthConfigured()) {
+    return null;
+  }
+
+  return getConfiguredAuthSession();
+}
+
 export default async function RootLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await getRootServerSession();
 
   return (
     <html lang="es" suppressHydrationWarning>
