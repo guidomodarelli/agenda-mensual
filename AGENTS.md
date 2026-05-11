@@ -302,7 +302,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Testing rules
 
-- Never place test files inside `src/app`, because App Router will treat special files and route folders as routing surface.
+- Never place test files inside `src/app`, because App Router will treat special files and route folders as routing surface. Tests for App Router pages, layouts, loading states, route handlers, and related helpers must live under `src/tests/app/`.
 - When functionality changes, add or update the corresponding tests in the same work item.
 - Prefer mocks at the port boundary, not at low-level vendor internals, unless the test is explicitly for an adapter.
 
