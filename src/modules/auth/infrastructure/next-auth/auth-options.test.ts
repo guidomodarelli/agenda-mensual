@@ -244,4 +244,23 @@ describe("authOptions", () => {
       expect(errorSpy).not.toHaveBeenCalled();
     });
   });
+
+  it("keeps non-recoverable JWT session errors as error logs", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    warnSpy.mockClear();
+    errorSpy.mockClear();
+
+    await jest.isolateModulesAsync(async () => {
+      const { authOptions } = await import("./auth-options");
+
+      authOptions.logger?.error?.("JWT_SESSION_ERROR", {
+        error: new Error("Turso registration trace lookup failed"),
+      });
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
 });
