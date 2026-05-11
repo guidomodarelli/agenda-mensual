@@ -16,14 +16,13 @@ export const metadata: Metadata = {
 export default async function SignInPage() {
   let hasProviderError = false;
   let providers: ProviderMap = {};
+  const session = await getServerSession(authOptions);
+
+  if (session) {
+    redirect("/");
+  }
 
   try {
-    const session = await getServerSession(authOptions);
-
-    if (session) {
-      redirect("/");
-    }
-
     providers = ((await getProviders()) ?? {}) as ProviderMap;
   } catch {
     hasProviderError = true;
