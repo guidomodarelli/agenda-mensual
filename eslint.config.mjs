@@ -3,9 +3,25 @@ import boundaries from "eslint-plugin-boundaries";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+const APP_ROUTE_TEST_FILE_GLOBS = ["src/app/**/*.{test,spec}.{ts,tsx}"];
+const APP_ROUTE_TEST_FILE_MESSAGE =
+  "Place App Router tests under src/tests/app instead of src/app.";
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: APP_ROUTE_TEST_FILE_GLOBS,
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          message: APP_ROUTE_TEST_FILE_MESSAGE,
+          selector: "Program",
+        },
+      ],
+    },
+  },
   {
     files: ["src/**/*.{ts,tsx}"],
     plugins: {
