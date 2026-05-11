@@ -26,9 +26,7 @@ jest.mock("sonner", () => ({
 }));
 
 jest.mock("@/components/finance-app-shell/finance-app-shell", () => ({
-  FinanceAppShell: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  useFinanceAppShellNavigation: jest.fn(),
 }));
 
 jest.mock("@/components/ui/typing-animation", () => ({
@@ -86,5 +84,6 @@ describe("ReceiptShareTargetPage", () => {
 
     expect(screen.getByText("Solo se admiten comprobantes PDF, JPG, PNG, WEBP, HEIC o HEIF.")).toBeInTheDocument();
     expect(screen.getByTestId("receipt-file-uploader")).toBeInTheDocument();
+    expect(screen.queryByText("Secciones")).not.toBeInTheDocument();
   });
 });

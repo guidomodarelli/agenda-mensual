@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function OfflinePage() {
   return (
-    <main className={styles.page}>
+    <section className={styles.page}>
       <TypingAnimation
         aria-label="Sin conexión"
         as="h1"
@@ -53,6 +53,6 @@ export default function OfflinePage() {
           </Button>
         </CardFooter>
       </Card>
-    </main>
+    </section>
   );
 }

@@ -1324,64 +1324,6 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.queryByText("Google desconectado - Inactivo")).not.toBeInTheDocument();
   });
 
-  it("starts Google sign in when the disconnected avatar is clicked", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Conectar cuenta de Google" }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
-
-    expect(mockedSignIn).toHaveBeenCalledWith("google", {
-      callbackUrl: "/gastos",
-    });
-  });
-
-  it("allows disconnecting from the connected avatar menu", async () => {
-    const user = userEvent.setup();
-
-    mockedUseSession.mockReturnValue({
-      data: {
-        expires: "2099-01-01T00:00:00.000Z",
-        user: {
-          email: "gus@example.com",
-          name: "Gus",
-        },
-      },
-      status: "authenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Cuenta de Google conectada" }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: "Cerrar sesión" }));
-
-    expect(mockedSignOut).toHaveBeenCalledWith({
-      callbackUrl: "/gastos",
-    });
-  });
-
   it("opens the sheet preloaded for editing and marks pending field changes", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();

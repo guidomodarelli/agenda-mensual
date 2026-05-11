@@ -7,6 +7,10 @@ import {
   isGoogleAdminEmail,
 } from "@/modules/auth/infrastructure/next-auth/google-admin-allowlist";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
+import {
+  GoogleOAuthAuthenticationError,
+  GoogleOAuthConfigurationError,
+} from "@/modules/auth/infrastructure/oauth/google-oauth-token";
 import { GOOGLE_OAUTH_SCOPES } from "@/modules/auth/infrastructure/oauth/google-oauth-scopes";
 import {
   createMigratedTursoDatabase,
@@ -19,10 +23,6 @@ import {
   TECHNICAL_ERROR_CODES,
   type TechnicalErrorCode,
 } from "@/modules/shared/infrastructure/errors/technical-error-codes";
-import {
-  getRequestedSidebarOpen,
-  SIDEBAR_STATE_COOKIE_NAME,
-} from "@/modules/shared/infrastructure/pages/sidebar-state";
 import { getStorageBootstrap } from "@/modules/storage/application/queries/get-storage-bootstrap";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 
@@ -67,7 +67,6 @@ function getRequestedMonth(
 
 export interface ExchangeRatesRoutePageProps {
   bootstrap: StorageBootstrapResult;
-  initialSidebarOpen?: boolean;
   result: ExchangeRatesPageResult;
 }
 
@@ -103,15 +102,22 @@ async function getCanEditIibb(context: GetServerSidePropsContext): Promise<boole
   }
 }
 
+function isRecoverableGoogleOAuthError(error: unknown): boolean {
+  return (
+    error instanceof GoogleOAuthAuthenticationError ||
+    error instanceof GoogleOAuthConfigurationError ||
+    (error instanceof Error &&
+      (error.name === "GoogleOAuthAuthenticationError" ||
+        error.name === "GoogleOAuthConfigurationError"))
+  );
+}
+
 export async function getExchangeRatesServerSideProps(
   context: GetServerSidePropsContext,
 ): Promise<{ props: ExchangeRatesRoutePageProps }> {
   const currentMonth = getCurrentMonthIdentifier();
   const selectedMonth = getRequestedMonth(context.query.month, currentMonth);
   const requestContext = createRequestLogContext(context.req);
-  const initialSidebarOpen = getRequestedSidebarOpen(
-    context.req.cookies?.[SIDEBAR_STATE_COOKIE_NAME],
-  );
   const bootstrap = getStorageBootstrap({
     isGoogleOAuthConfigured: isGoogleOAuthConfigured(),
     requiredScopes: GOOGLE_OAUTH_SCOPES,
@@ -126,21 +132,38 @@ export async function getExchangeRatesServerSideProps(
     const exchangeRatesRepository = new AmbitoExchangeRatesRepository();
     const monthlyExchangeRateSnapshotsRepository =
       new DrizzleMonthlyExchangeRateSnapshotsRepository(database);
-    const { getAuthenticatedUserSubjectFromRequest } = await import(
-      "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
-    );
-    const userSubject = await getAuthenticatedUserSubjectFromRequest(context.req);
-    const oldestStoredMonth =
-      await new DrizzleMonthlyExpensesRepository(
-        database,
-        userSubject,
-      ).getOldestStoredMonth();
-    const minSelectableMonth = oldestStoredMonth ?? currentMonth;
+    let minSelectableMonth = currentMonth;
+
+    try {
+      const { getAuthenticatedUserSubjectFromRequest } = await import(
+        "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
+      );
+      const userSubject = await getAuthenticatedUserSubjectFromRequest(context.req);
+      const oldestStoredMonth =
+        await new DrizzleMonthlyExpensesRepository(
+          database,
+          userSubject,
+        ).getOldestStoredMonth();
+
+      minSelectableMonth = oldestStoredMonth ?? currentMonth;
+    } catch (error) {
+      if (!isRecoverableGoogleOAuthError(error)) {
+        throw error;
+      }
+
+      appLogger.warn("exchange-rates SSR skipped user month range", {
+        context: {
+          ...requestContext,
+          month: selectedMonth,
+          operation: "exchange-rates-ssr:skip-user-month-range",
+        },
+        error,
+      });
+    }
 
     return {
       props: {
         bootstrap,
-        initialSidebarOpen,
         result: await getExchangeRatesPageResult({
           canEditIibb,
           exchangeRatesRepository,
@@ -164,7 +187,6 @@ export async function getExchangeRatesServerSideProps(
     return {
       props: {
         bootstrap,
-        initialSidebarOpen,
         result: createFallbackExchangeRatesPageResult(
           canEditIibb,
           "No pudimos cargar las cotizaciones del dólar en este momento.",

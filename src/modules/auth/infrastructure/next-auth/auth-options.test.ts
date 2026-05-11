@@ -225,4 +225,23 @@ describe("authOptions", () => {
       expect(errorSpy).toHaveBeenCalled();
     });
   });
+
+  it("downgrades invalid JWT session cookies to warning logs", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    warnSpy.mockClear();
+    errorSpy.mockClear();
+
+    await jest.isolateModulesAsync(async () => {
+      const { authOptions } = await import("./auth-options");
+
+      authOptions.logger?.error?.("JWT_SESSION_ERROR", {
+        error: new Error("decryption operation failed"),
+      });
+
+      expect(warnSpy).toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+  });
 });

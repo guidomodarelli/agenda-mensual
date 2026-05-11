@@ -122,7 +122,7 @@ describe("ExchangeRatesPage", () => {
     global.fetch = originalFetch;
   });
 
-  it("renders the three exchange rate values and the new sidebar link order", () => {
+  it("renders the three exchange rate values without a local shell wrapper", () => {
     renderWithProviders(<ExchangeRatesPage {...basePageProps} />);
 
     expect(
@@ -132,16 +132,7 @@ describe("ExchangeRatesPage", () => {
     expect(screen.getByText(/\$.*1\.290,00/)).toBeInTheDocument();
     expect(screen.getByText(/\$.*1\.476,00/)).toBeInTheDocument();
     expect(screen.getByLabelText("Mes y año")).toHaveValue("2026-03");
-
-    const sidebarLinks = screen.getAllByRole("link");
-    const sidebarLabels = sidebarLinks.map((link) => link.textContent?.trim());
-
-    expect(sidebarLabels).toEqual([
-      "Control mensual",
-      "Cotizaciones del dólar",
-      "Prestamistas",
-      "Reporte de deudas",
-    ]);
+    expect(screen.queryByText("Secciones")).not.toBeInTheDocument();
   });
 
   it("shows the IIBB input only for admins and saves the updated value", async () => {

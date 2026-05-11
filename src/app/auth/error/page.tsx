@@ -32,7 +32,7 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
       : undefined;
 
   return (
-    <main className={styles.page}>
+    <section className={styles.page}>
       <TypingAnimation
         aria-label="Error de autenticación"
         as="h1"
@@ -62,6 +62,6 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
           </Button>
         </CardFooter>
       </Card>
-    </main>
+    </section>
   );
 }

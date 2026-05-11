@@ -14,6 +14,7 @@ import { appLogger } from "@/modules/shared/infrastructure/observability/app-log
 
 const googleOAuthServerConfig = getGoogleOAuthServerConfig();
 const MISSING_REGISTRATION_TRACE_ERROR = "MissingRegistrationTrace";
+const RECOVERABLE_JWT_SESSION_ERROR = "JWT_SESSION_ERROR";
 
 const googleProvider = googleOAuthServerConfig
   ? GoogleProvider({
@@ -172,6 +173,35 @@ export const authOptions: NextAuthOptions = {
           googleTokenError: "RefreshGoogleAccessTokenError",
         };
       }
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      const logContext = {
+        code,
+        operation: "next-auth:logger:error",
+      };
+
+      if (code === RECOVERABLE_JWT_SESSION_ERROR) {
+        appLogger.warn("next-auth received an invalid JWT session cookie", {
+          context: logContext,
+          error: metadata,
+        });
+        return;
+      }
+
+      appLogger.error("next-auth emitted an error", {
+        context: logContext,
+        error: metadata,
+      });
+    },
+    warn(code) {
+      appLogger.warn("next-auth emitted a warning", {
+        context: {
+          code,
+          operation: "next-auth:logger:warn",
+        },
+      });
     },
   },
   pages: {

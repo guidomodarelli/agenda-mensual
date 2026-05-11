@@ -11,7 +11,6 @@ import {
 } from "./monthly-expenses-server-props";
 
 const mockGetStorageBootstrap = jest.fn();
-const mockGetRequestedSidebarOpen = jest.fn();
 const mockCreateRequestLogContext = jest.fn();
 const mockGetMonthlyExpensesDocument = jest.fn();
 const mockGetLendersCatalog = jest.fn();
@@ -29,12 +28,6 @@ jest.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
 jest.mock("@/modules/storage/application/queries/get-storage-bootstrap", () => ({
   getStorageBootstrap: (...parameters: unknown[]) =>
     mockGetStorageBootstrap(...parameters),
-}));
-
-jest.mock("@/modules/shared/infrastructure/pages/sidebar-state", () => ({
-  SIDEBAR_STATE_COOKIE_NAME: "sidebar-state",
-  getRequestedSidebarOpen: (...parameters: unknown[]) =>
-    mockGetRequestedSidebarOpen(...parameters),
 }));
 
 jest.mock("@/modules/shared/infrastructure/observability/app-logger", () => ({
@@ -211,7 +204,6 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
           trackedLoanCount: 0,
         },
       },
-      initialSidebarOpen: false,
       lendersLoadErrorCode: null,
       lendersLoadError: null,
       loadErrorCode: null,
@@ -252,7 +244,6 @@ describe("getMonthlyExpensesServerSidePropsForTab", () => {
       ],
       storageTargets: [],
     });
-    mockGetRequestedSidebarOpen.mockReturnValue(false);
     mockCreateRequestLogContext.mockReturnValue({
       requestId: "request-id",
     });

@@ -8,7 +8,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
-import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
+import {
+  useFinanceAppShellNavigation,
+} from "@/components/finance-app-shell/finance-app-shell";
 import { ExpenseReceiptCoverageEditDialog } from "@/components/monthly-expenses/expense-receipt-coverage-edit-dialog";
 import { ExpenseReceiptUploadDialog } from "@/components/monthly-expenses/expense-receipt-upload-dialog";
 import {
@@ -92,7 +94,6 @@ import {
 
 export type MonthlyExpensesPageProps = {
   bootstrap: StorageBootstrapResult;
-  initialSidebarOpen?: boolean;
   initialCopyableMonths: MonthlyExpensesCopyableMonthsResult;
   initialDocument: MonthlyExpensesDocumentResult;
   initialActiveTab: MonthlyExpensesTabKey;
@@ -1473,7 +1474,6 @@ export function getReportProviderFilterOptions(
 
 export default function MonthlyExpensesPage({
   bootstrap,
-  initialSidebarOpen = true,
   initialCopyableMonths,
   initialDocument,
   initialActiveTab,
@@ -4028,15 +4028,13 @@ export default function MonthlyExpensesPage({
   };
 
   const pageHeading = getPageHeadingByTab(activeTab);
+  useFinanceAppShellNavigation({
+    activeSection: activeTab,
+    expensesMonth: formState.month,
+  });
 
   return (
-    <FinanceAppShell
-      activeSection={activeTab}
-      authRedirectPath="/gastos"
-      expensesMonth={formState.month}
-      initialSidebarOpen={initialSidebarOpen}
-      isOAuthConfigured={isOAuthConfigured}
-    >
+    <>
       <TypingAnimation
         aria-label={pageHeading}
         as="h1"
@@ -4200,6 +4198,6 @@ export default function MonthlyExpensesPage({
         onOpenChange={setIsLenderCreateModalOpen}
         onSubmit={handleLendersSubmit}
       />
-    </FinanceAppShell>
+    </>
   );
 }
