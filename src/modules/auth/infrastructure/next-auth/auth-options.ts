@@ -14,6 +14,16 @@ import { appLogger } from "@/modules/shared/infrastructure/observability/app-log
 
 const googleOAuthServerConfig = getGoogleOAuthServerConfig();
 const MISSING_REGISTRATION_TRACE_ERROR = "MissingRegistrationTrace";
+const JWT_SESSION_ERROR_CODE = "JWT_SESSION_ERROR";
+const RECOVERABLE_JWT_ERROR_CODES = new Set([
+  "ERR_JWE_DECRYPTION_FAILED",
+  "ERR_JWE_INVALID",
+  "ERR_JWT_INVALID",
+]);
+const RECOVERABLE_JWT_ERROR_MESSAGES = new Set([
+  "JWT invalid",
+  "decryption operation failed",
+]);
 
 const googleProvider = googleOAuthServerConfig
   ? GoogleProvider({
@@ -61,6 +71,41 @@ function invalidateSessionToken(token: AuthSessionToken): AuthSessionToken {
     registrationTraceVerifiedAtIso: undefined,
     sub: undefined,
   };
+}
+
+function getMetadataError(metadata: unknown): unknown {
+  if (metadata && typeof metadata === "object" && "error" in metadata) {
+    return (metadata as { error?: unknown }).error;
+  }
+
+  return metadata;
+}
+
+function getErrorProperty(error: unknown, propertyName: string): unknown {
+  if (!error || typeof error !== "object" || !(propertyName in error)) {
+    return undefined;
+  }
+
+  return (error as Record<string, unknown>)[propertyName];
+}
+
+function isRecoverableJwtSessionError(metadata: unknown): boolean {
+  const error = getMetadataError(metadata);
+  const errorCode = getErrorProperty(error, "code");
+  const errorMessage =
+    error instanceof Error ? error.message : getErrorProperty(error, "message");
+
+  if (
+    typeof errorCode === "string" &&
+    RECOVERABLE_JWT_ERROR_CODES.has(errorCode)
+  ) {
+    return true;
+  }
+
+  return (
+    typeof errorMessage === "string" &&
+    RECOVERABLE_JWT_ERROR_MESSAGES.has(errorMessage)
+  );
 }
 
 async function createRegistrationTracesRepository() {
@@ -172,6 +217,35 @@ export const authOptions: NextAuthOptions = {
           googleTokenError: "RefreshGoogleAccessTokenError",
         };
       }
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      const logContext = {
+        code,
+        operation: "next-auth:logger:error",
+      };
+
+      if (code === JWT_SESSION_ERROR_CODE && isRecoverableJwtSessionError(metadata)) {
+        appLogger.warn("next-auth received an invalid JWT session cookie", {
+          context: logContext,
+          error: metadata,
+        });
+        return;
+      }
+
+      appLogger.error("next-auth emitted an error", {
+        context: logContext,
+        error: metadata,
+      });
+    },
+    warn(code) {
+      appLogger.warn("next-auth emitted a warning", {
+        context: {
+          code,
+          operation: "next-auth:logger:warn",
+        },
+      });
     },
   },
   pages: {

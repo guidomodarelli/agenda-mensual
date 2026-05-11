@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signIn, type ClientSafeProvider } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ export function SignInPageClient({
   hasProviderError,
   providers,
 }: SignInPageClientProps) {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams?.get("callbackUrl")?.trim() || "/";
   const googleProvider = Object.values(providers).find(
     (provider) => provider.id === "google",
   );
@@ -36,11 +39,11 @@ export function SignInPageClient({
       return;
     }
 
-    void signIn(googleProvider.id, { callbackUrl: "/" });
+    void signIn(googleProvider.id, { callbackUrl });
   };
 
   return (
-    <main className={styles.page}>
+    <section className={styles.page}>
       <TypingAnimation
         aria-label="Ingreso a tu cuenta"
         as="h1"
@@ -90,6 +93,6 @@ export function SignInPageClient({
           </Button>
         </CardFooter>
       </Card>
-    </main>
+    </section>
   );
 }

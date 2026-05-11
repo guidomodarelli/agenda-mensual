@@ -3,11 +3,17 @@ import "@/styles/globals.scss";
 
 import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import type { ReactNode } from "react";
 
+import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
 import { authOptions } from "@/modules/auth/infrastructure/next-auth/auth-options";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
+import {
+  getRequestedSidebarOpen,
+  SIDEBAR_STATE_COOKIE_NAME,
+} from "@/modules/shared/infrastructure/pages/sidebar-state";
 
 import { AppProviders } from "./providers";
 
@@ -88,12 +94,26 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await getRootServerSession();
+  const isOAuthConfigured = isGoogleOAuthConfigured();
+  const session = await getRootServerSession({
+    isAuthConfigured: () => isOAuthConfigured,
+  });
+  const cookieStore = await cookies();
+  const initialSidebarOpen = getRequestedSidebarOpen(
+    cookieStore.get(SIDEBAR_STATE_COOKIE_NAME)?.value,
+  );
 
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={`${interSans.className} ${interSans.variable} ${geistMono.variable}`}>
-        <AppProviders session={session}>{children}</AppProviders>
+        <AppProviders session={session}>
+          <FinanceAppShell
+            initialSidebarOpen={initialSidebarOpen}
+            isOAuthConfigured={isOAuthConfigured}
+          >
+            {children}
+          </FinanceAppShell>
+        </AppProviders>
       </body>
     </html>
   );

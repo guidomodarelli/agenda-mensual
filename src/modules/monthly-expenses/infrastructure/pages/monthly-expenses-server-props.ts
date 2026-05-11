@@ -42,10 +42,6 @@ import {
 import {
   TECHNICAL_ERROR_CODES,
 } from "@/modules/shared/infrastructure/errors/technical-error-codes";
-import {
-  getRequestedSidebarOpen,
-  SIDEBAR_STATE_COOKIE_NAME,
-} from "@/modules/shared/infrastructure/pages/sidebar-state";
 
 import type {
   MonthlyExpensesPageProps,
@@ -106,9 +102,6 @@ export async function getMonthlyExpensesServerSidePropsForTab(
   initialActiveTab: MonthlyExpensesTabKey,
 ): Promise<{ props: MonthlyExpensesPageProps }> {
   const selectedMonth = getRequestedMonth(context.query.month);
-  const initialSidebarOpen = getRequestedSidebarOpen(
-    context.req.cookies?.[SIDEBAR_STATE_COOKIE_NAME],
-  );
   const requestContext = createRequestLogContext(context.req);
   const bootstrap = getStorageBootstrap({
     isGoogleOAuthConfigured: isGoogleOAuthConfigured(),
@@ -129,7 +122,6 @@ export async function getMonthlyExpensesServerSidePropsForTab(
     return {
       props: toSerializableMonthlyExpensesPageProps({
         bootstrap,
-        initialSidebarOpen,
         initialCopyableMonths:
           createEmptyMonthlyExpensesCopyableMonthsResult(selectedMonth),
         initialActiveTab,
@@ -288,7 +280,6 @@ export async function getMonthlyExpensesServerSidePropsForTab(
     return {
       props: toSerializableMonthlyExpensesPageProps({
         bootstrap,
-        initialSidebarOpen,
         initialCopyableMonths:
           copyableMonthsResult.status === "fulfilled"
             ? copyableMonthsResult.value
@@ -360,7 +351,6 @@ export async function getMonthlyExpensesServerSidePropsForTab(
     return {
       props: toSerializableMonthlyExpensesPageProps({
         bootstrap,
-        initialSidebarOpen,
         initialCopyableMonths:
           createEmptyMonthlyExpensesCopyableMonthsResult(selectedMonth),
         initialActiveTab,

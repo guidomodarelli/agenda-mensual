@@ -6,7 +6,9 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Image from "next/image";
 
-import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
+import {
+  useFinanceAppShellNavigation,
+} from "@/components/finance-app-shell/finance-app-shell";
 import { ReceiptFileUploader } from "@/components/monthly-expenses/receipt-file-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,6 +255,11 @@ export default function ReceiptShareTargetPage() {
 
     return remainingReceiptPayments;
   }, [coverageMode, partialCoveredPayments, remainingReceiptPayments]);
+
+  useFinanceAppShellNavigation({
+    activeSection: "expenses",
+    expensesMonth: selectedMonth,
+  });
 
   useEffect(() => {
     setIsIosDevice(isIosShareTargetUnsupported(window.navigator));
@@ -575,12 +582,7 @@ export default function ReceiptShareTargetPage() {
   };
 
   return (
-    <FinanceAppShell
-      activeSection="expenses"
-      authRedirectPath="/recibir-comprobante"
-      expensesMonth={selectedMonth}
-      isOAuthConfigured
-    >
+    <>
       <TypingAnimation
         aria-label="Recibir comprobante"
         as="h1"
@@ -851,6 +853,6 @@ export default function ReceiptShareTargetPage() {
           </Button>
         </div>
       </section>
-    </FinanceAppShell>
+    </>
   );
 }

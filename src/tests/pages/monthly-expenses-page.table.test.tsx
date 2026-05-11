@@ -19,7 +19,6 @@ import {
   getPersistedTablePreferences,
   registerMonthlyExpensesPageDefaultHooks,
   renderWithProviders,
-  SIDEBAR_STORAGE_KEY,
   TABLE_PREFERENCES_STORAGE_KEY,
 } from "./monthly-expenses-page-test-helpers";
 
@@ -1215,7 +1214,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).toBeInTheDocument();
   });
 
-  it("renders sidebar links for the section routes", () => {
+  it("renders monthly expenses content without a local shell wrapper", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -1226,93 +1225,11 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
+    expect(screen.getByRole("heading", { name: "Control mensual" })).toBeInTheDocument();
+    expect(screen.queryByText("Secciones")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Cotizaciones del dólar" }),
-    ).toHaveAttribute("href", "/cotizaciones");
-    expect(
-      screen.getByRole("link", { name: "Prestamistas" }),
-    ).toHaveAttribute("href", "/prestamistas");
-    expect(
-      screen.getByRole("link", { name: "Reporte de deudas" }),
-    ).toHaveAttribute("href", "/reportes/deudas");
-  });
-
-  it("keeps sidebar expanded by default when there is no persisted state", () => {
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    const sidebar = document.querySelector("[data-slot='sidebar'][data-state]");
-
-    expect(sidebar).not.toBeNull();
-    expect(sidebar).toHaveAttribute("data-state", "expanded");
-  });
-
-  it("renders a visible sidebar trigger attached to the sidebar edge", () => {
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    const sidebarTrigger = screen.getByRole("button", {
-      name: "Abrir menu lateral",
-    });
-
-    expect(sidebarTrigger).toHaveAttribute("data-sidebar", "trigger");
-  });
-
-  it("restores the sidebar state from localStorage", async () => {
-    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "false");
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await waitFor(() => {
-      const sidebar = document.querySelector("[data-slot='sidebar'][data-state]");
-
-      expect(sidebar).not.toBeNull();
-      expect(sidebar).toHaveAttribute("data-state", "collapsed");
-    });
-  });
-
-  it("persists sidebar state changes to localStorage when the trigger control is used", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Abrir menu lateral" }));
-
-    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("false");
-
-    await user.click(screen.getByRole("button", { name: "Abrir menu lateral" }));
-
-    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("true");
+      screen.queryByRole("button", { name: "Abrir menu lateral" }),
+    ).not.toBeInTheDocument();
   });
 
   it("loads the requested month client-side and updates the URL query without reloading SSR data", async () => {

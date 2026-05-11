@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { getProviders } from "next-auth/react";
 
 import SignInPage from "@/app/auth/signin/page";
 import { SignInPageClient } from "@/app/auth/signin/signin-page-client";
+import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
 
 jest.mock("next/navigation", () => ({
   redirect: jest.fn((destination: string) => {
@@ -15,26 +15,27 @@ jest.mock("next-auth", () => ({
   getServerSession: jest.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  getProviders: jest.fn(),
-}));
-
 jest.mock("@/modules/auth/infrastructure/next-auth/auth-options", () => ({
   authOptions: {},
+}));
+
+jest.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
+  isGoogleOAuthConfigured: jest.fn(),
 }));
 
 jest.mock("@/app/auth/signin/signin-page-client", () => ({
   SignInPageClient: jest.fn(() => null),
 }));
 
-const mockedGetProviders = jest.mocked(getProviders);
 const mockedGetServerSession = jest.mocked(getServerSession);
 const mockedRedirect = jest.mocked(redirect);
 const mockedSignInPageClient = jest.mocked(SignInPageClient);
+const mockedIsGoogleOAuthConfigured = jest.mocked(isGoogleOAuthConfigured);
 
 describe("SignInPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedIsGoogleOAuthConfigured.mockReturnValue(false);
   });
 
   it("redirects authenticated users before loading providers", async () => {
@@ -48,20 +49,39 @@ describe("SignInPage", () => {
     await expect(SignInPage()).rejects.toThrow("NEXT_REDIRECT:/");
 
     expect(mockedRedirect).toHaveBeenCalledWith("/");
-    expect(mockedGetProviders).not.toHaveBeenCalled();
   });
 
-  it("renders a controlled provider error when the server session cannot be loaded", async () => {
+  it("keeps Google provider available when the server session cannot be loaded", async () => {
     mockedGetServerSession.mockRejectedValue(new Error("Session lookup failed."));
+    mockedIsGoogleOAuthConfigured.mockReturnValue(true);
 
     const signInPageElement = await SignInPage();
 
     expect(signInPageElement.props).toEqual({
-      hasProviderError: true,
-      providers: {},
+      hasProviderError: false,
+      providers: {
+        google: {
+          callbackUrl: "/api/auth/callback/google",
+          id: "google",
+          name: "Google",
+          signinUrl: "/api/auth/signin/google",
+          type: "oauth",
+        },
+      },
     });
     expect(mockedSignInPageClient).not.toHaveBeenCalled();
     expect(mockedRedirect).not.toHaveBeenCalled();
-    expect(mockedGetProviders).not.toHaveBeenCalled();
+  });
+
+  it("renders no provider when Google OAuth is not configured", async () => {
+    mockedGetServerSession.mockResolvedValue(null);
+
+    const signInPageElement = await SignInPage();
+
+    expect(signInPageElement.props).toEqual({
+      hasProviderError: false,
+      providers: {},
+    });
+    expect(mockedRedirect).not.toHaveBeenCalled();
   });
 });

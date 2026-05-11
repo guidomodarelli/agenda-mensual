@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,8 +58,6 @@ function parseIibbRateDecimal(input: string): number | null {
 }
 
 export default function ExchangeRatesPage({
-  bootstrap,
-  initialSidebarOpen = true,
   result,
 }: ExchangeRatesRoutePageProps) {
   const router = useRouter();
@@ -74,7 +71,6 @@ export default function ExchangeRatesPage({
   const [feedbackErrorCode, setFeedbackErrorCode] = useState(result.loadErrorCode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isRatesAvailable = !currentResult.loadError;
-  const isOAuthConfigured = bootstrap.authStatus === "configured";
 
   useEffect(() => {
     setCurrentResult(result);
@@ -162,13 +158,7 @@ export default function ExchangeRatesPage({
   };
 
   return (
-    <FinanceAppShell
-      activeSection="exchange-rates"
-      authRedirectPath="/cotizaciones"
-      initialSidebarOpen={initialSidebarOpen}
-      isOAuthConfigured={isOAuthConfigured}
-    >
-      <section className={styles.section}>
+    <section className={styles.section}>
         <div className={styles.hero}>
           <p className={styles.eyebrow}>Mercado cambiario</p>
           <TypingAnimation
@@ -303,7 +293,6 @@ export default function ExchangeRatesPage({
             )}
           </CardContent>
         </Card>
-      </section>
-    </FinanceAppShell>
+    </section>
   );
 }
