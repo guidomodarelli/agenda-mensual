@@ -12,7 +12,7 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
   hostname: z.regexes.domain,
 });
 
-export const MAX_OCCURRENCES_UNIT_LENGTH = 40;
+export const MAX_OCCURRENCES_UNIT_LENGTH = 24;
 export const MONTHLY_EXPENSE_CURRENCIES = ["ARS", "USD"] as const;
 export const MONTHLY_EXPENSE_LOAN_DIRECTIONS = [
   "payable",

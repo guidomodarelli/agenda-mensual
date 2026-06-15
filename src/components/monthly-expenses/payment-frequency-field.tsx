@@ -181,7 +181,6 @@ export function PaymentFrequencyField({
             <Label htmlFor={occurrencesUnitSelectId}>Unidad</Label>
             <OccurrencesUnitSelect
               customInputAriaLabel="Unidad personalizada"
-              durationInputAriaLabel="Duración por ocurrencia"
               isChanged={isUnitChanged}
               onChange={onOccurrencesUnitChange}
               selectAriaLabel="Unidad"
