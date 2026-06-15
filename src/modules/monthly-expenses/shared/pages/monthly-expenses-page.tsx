@@ -4296,17 +4296,28 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    updateFormState((currentState) => ({
-      ...currentState,
-      rows: currentState.rows.map((row) =>
-        row.expenseFolderId === folderId
-          ? { ...row, expenseFolderId: "" }
-          : row,
-      ),
-    }));
     setFolderFilterId((currentFilter) =>
       currentFilter === folderId ? "" : currentFilter,
     );
+
+    const hasAssignedExpenses = formState.rows.some(
+      (row) => row.expenseFolderId === folderId,
+    );
+
+    if (!hasAssignedExpenses) {
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.expenseFolderId === folderId
+        ? { ...row, expenseFolderId: "" }
+        : row,
+    );
+
+    await persistMonthlyExpensesRows(nextRows, {
+      loading: "Quitando los compromisos de la carpeta eliminada...",
+      success: "Compromisos actualizados sin carpeta.",
+    });
   };
 
   const handleReportTypeFilterChange = (value: string) => {
