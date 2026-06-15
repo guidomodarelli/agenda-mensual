@@ -186,6 +186,13 @@ jobs:
           fi
 
           # Reaccion final + mensaje segun resultado.
+          #
+          # 👎 (-1) es la senal de "sugerencia incorrecta/no util" que Codex
+          # interpreta sobre SU comentario. Por eso solo se usa cuando el agente
+          # evaluo la sugerencia y concluyo que no requeria cambios. Si el fix no
+          # se pudo aplicar por una falla del propio Action (error de infra/agente),
+          # NO mandamos 👎: usamos 😕 (confused) para pedir atencion humana sin
+          # desvalorizar la sugerencia.
           if [ "$FIX_OUTCOME" = "success" ] && [ "$CHANGED" = "true" ]; then
             FINAL_REACTION="rocket"
             BODY="✅ Fix aplicado automáticamente en \`${AFTER_SHA}\`. Run: ${RUN_URL}"
@@ -193,8 +200,8 @@ jobs:
             FINAL_REACTION="-1"
             BODY="ℹ️ Revisé el comentario pero no requería cambios de código. Run: ${RUN_URL}"
           else
-            FINAL_REACTION="-1"
-            BODY="⚠️ No pude aplicar el fix automáticamente. Revisá el run: ${RUN_URL}"
+            FINAL_REACTION="confused"
+            BODY="⚠️ No pude aplicar el fix automáticamente (falla del Action, no de la sugerencia). Revisá el run: ${RUN_URL}"
           fi
 
           if [ -n "$REACTION_BASE" ]; then
