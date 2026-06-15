@@ -289,6 +289,64 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
   });
 
+  it("accepts an hourly subtotal unit in the request body", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-06",
+      name: "control-mensual-2026-junio.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Empleada doméstica",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            occurrencesUnit: "veces de 4h 30",
+            subtotal: 5000,
+            subtotalUnit: "hour",
+          },
+        ],
+        month: "2026-06",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(save).toHaveBeenCalledWith({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Empleada doméstica",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            occurrencesUnit: "veces de 4h 30",
+            subtotal: 5000,
+            subtotalUnit: "hour",
+          },
+        ],
+        month: "2026-06",
+      },
+      database,
+      request,
+      userSubject: "google-user-123",
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
   it("passes loan metadata to the save use case when a debt is included", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({

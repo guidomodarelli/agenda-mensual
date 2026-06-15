@@ -206,6 +206,7 @@ const monthlyExpenseItemSchema = z.object({
   receipts: z.array(monthlyExpenseReceiptSchema).optional(),
   sortOrder: z.number().int().nonnegative().nullable().optional(),
   subtotal: z.number().positive(),
+  subtotalUnit: z.enum(["occurrence", "hour"]).optional(),
 }).strict().superRefine((value, context) => {
   if (value.requiresReceiptShare === true && !value.receiptSharePhoneDigits) {
     context.addIssue({
