@@ -487,11 +487,16 @@
 }
 
 .paymentProgressBadge,
-.paymentProgressValue {
+.paymentProgressValue,
+.paymentProgressPlain {
   display: inline-flex;
   min-width: 4.5rem;
   justify-content: center;
   font-variant-numeric: tabular-nums;
+}
+
+.paymentProgressPlain {
+  font-weight: 500;
 }
 
 .paymentProgressValue {

@@ -3753,26 +3753,26 @@ export function MonthlyExpensesTable({
 
           if (coveredPayments >= requiredPayments) {
             return (
-              <Badge
+              <span
                 className={cn(
-                  styles.paymentProgressBadge,
-                  "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
+                  styles.paymentProgressPlain,
+                  "text-green-700 dark:text-green-300",
                 )}
               >
                 {coveredPayments} / {requiredPayments}
-              </Badge>
+              </span>
             );
           }
 
           return (
-            <Badge
+            <span
               className={cn(
-                styles.paymentProgressBadge,
-                "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+                styles.paymentProgressPlain,
+                "text-yellow-700 dark:text-yellow-300",
               )}
             >
               {normalizedCoveredPayments} / {requiredPayments}
-            </Badge>
+            </span>
           );
         },
         filterFn: (row, _columnId, filterValue) => {
