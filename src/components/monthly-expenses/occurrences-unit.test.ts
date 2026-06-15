@@ -1,5 +1,7 @@
 import {
   composeOccurrencesUnit,
+  formatOccurrenceDuration,
+  parseOccurrenceDuration,
   resolveOccurrencesUnitLabel,
   splitOccurrencesUnit,
 } from "./occurrences-unit";
@@ -42,6 +44,36 @@ describe("occurrences unit helpers", () => {
 
   it("falls back to the default label when no unit is stored", () => {
     expect(resolveOccurrencesUnitLabel("")).toBe("veces");
-    expect(resolveOccurrencesUnitLabel("veces de 30'")).toBe("veces de 30'");
+    expect(resolveOccurrencesUnitLabel("veces de 4h 30")).toBe("veces de 4h 30");
+  });
+
+  it("formats an hours/minutes pair into a canonical duration label", () => {
+    expect(formatOccurrenceDuration(4, 30)).toBe("4h 30");
+    expect(formatOccurrenceDuration(4, 0)).toBe("4h");
+    expect(formatOccurrenceDuration(0, 30)).toBe("30 min");
+    expect(formatOccurrenceDuration(0, 0)).toBe("");
+  });
+
+  it("carries extra minutes over into hours", () => {
+    expect(formatOccurrenceDuration(4, 90)).toBe("5h 30");
+  });
+
+  it("parses canonical and legacy duration labels back into hours/minutes", () => {
+    expect(parseOccurrenceDuration("4h 30")).toEqual({ hours: 4, minutes: 30 });
+    expect(parseOccurrenceDuration("4h")).toEqual({ hours: 4, minutes: 0 });
+    expect(parseOccurrenceDuration("30 min")).toEqual({ hours: 0, minutes: 30 });
+    expect(parseOccurrenceDuration("30'")).toEqual({ hours: 0, minutes: 30 });
+    expect(parseOccurrenceDuration("")).toEqual({ hours: 0, minutes: 0 });
+  });
+
+  it("round-trips a duration through format and parse inside the unit", () => {
+    const duration = formatOccurrenceDuration(4, 30);
+    const unit = composeOccurrencesUnit("veces", duration);
+
+    expect(unit).toBe("veces de 4h 30");
+    expect(parseOccurrenceDuration(splitOccurrencesUnit(unit).duration)).toEqual({
+      hours: 4,
+      minutes: 30,
+    });
   });
 });

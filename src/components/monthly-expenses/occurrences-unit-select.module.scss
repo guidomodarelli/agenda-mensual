@@ -5,10 +5,30 @@
 
 .durationField {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 
 .durationLabel {
+  font-size: 0.84rem;
+  color: var(--muted-foreground);
+}
+
+.durationInputs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.durationInput {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.durationInput input {
+  width: 4.5rem;
+}
+
+.durationUnit {
   font-size: 0.84rem;
   color: var(--muted-foreground);
 }

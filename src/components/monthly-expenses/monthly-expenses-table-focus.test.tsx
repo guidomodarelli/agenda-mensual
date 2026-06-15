@@ -293,10 +293,10 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
   it("shows the per-occurrence duration when the unit carries one", () => {
     renderMonthlyExpensesTable([
-      createRow({ occurrencesPerMonth: "9", occurrencesUnit: "veces de 30'" }),
+      createRow({ occurrencesPerMonth: "2", occurrencesUnit: "veces de 4h 30" }),
     ]);
 
-    expect(screen.getByText("× 9 veces de 30'")).toBeInTheDocument();
+    expect(screen.getByText("× 2 veces de 4h 30")).toBeInTheDocument();
   });
 
   it("hides the quantity multiplier when occurrences equal one", () => {

@@ -4770,7 +4770,8 @@ export function MonthlyExpensesTable({
                 <Label htmlFor="occurrences-unit-dialog-select">Unidad</Label>
                 <OccurrencesUnitSelect
                   customInputAriaLabel={`Unidad personalizada de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                  durationInputAriaLabel={`Duración por ocurrencia de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                  durationHoursAriaLabel={`Duración por ocurrencia en horas de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                  durationMinutesAriaLabel={`Duración por ocurrencia en minutos de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
                   hasError={occurrencesUnitDraftError != null}
                   onChange={(nextUnit) => {
                     setOccurrencesUnitDraftValue(nextUnit);

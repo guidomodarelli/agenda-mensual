@@ -21,7 +21,8 @@
 export const DEFAULT_OCCURRENCES_UNIT = "veces";
 export const MAX_OCCURRENCES_UNIT_LENGTH = 40;
 export const MAX_OCCURRENCES_PERIODICITY_LENGTH = 24;
-export const MAX_OCCURRENCES_DURATION_LENGTH = 12;
+export const MAX_OCCURRENCE_DURATION_HOURS = 99;
+export const MAX_OCCURRENCE_DURATION_MINUTES = 59;
 
 /** Separator between the periodicity unit and its optional per-occurrence duration. */
 export const OCCURRENCES_UNIT_DURATION_SEPARATOR = " de ";
@@ -48,14 +49,70 @@ export const OCCURRENCES_UNIT_OPTION_GROUPS: OccurrencesUnitOptionGroup[] = [
 export const OCCURRENCES_UNIT_OPTIONS: string[] =
   OCCURRENCES_UNIT_OPTION_GROUPS.flatMap((group) => group.options);
 
-/** Common per-occurrence durations suggested in the duration input. */
-export const OCCURRENCES_DURATION_SUGGESTIONS: string[] = [
-  "30'",
-  "45'",
-  "1h",
-  "1h 30",
-  "2h",
-];
+/**
+ * Formats an hours/minutes pair into the canonical duration label used inside
+ * the unit string. Extra minutes carry over into hours (e.g. 4h 90 → 5h 30).
+ *
+ * @param hours - Whole hours (>= 0).
+ * @param minutes - Whole minutes (>= 0).
+ * @returns "4h 30", "4h", "30 min", or "" when the duration is zero.
+ */
+export function formatOccurrenceDuration(
+  hours: number,
+  minutes: number,
+): string {
+  const safeHours = Number.isFinite(hours) ? Math.max(0, Math.trunc(hours)) : 0;
+  const safeMinutes = Number.isFinite(minutes)
+    ? Math.max(0, Math.trunc(minutes))
+    : 0;
+  const totalMinutes = safeHours * 60 + safeMinutes;
+
+  if (totalMinutes <= 0) {
+    return "";
+  }
+
+  const normalizedHours = Math.floor(totalMinutes / 60);
+  const normalizedMinutes = totalMinutes % 60;
+
+  if (normalizedHours > 0 && normalizedMinutes > 0) {
+    return `${normalizedHours}h ${normalizedMinutes}`;
+  }
+
+  if (normalizedHours > 0) {
+    return `${normalizedHours}h`;
+  }
+
+  return `${normalizedMinutes} min`;
+}
+
+/**
+ * Parses a stored duration label back into its hours/minutes parts. Tolerates
+ * the canonical formats ("4h 30", "4h", "30 min") and legacy values ("30'").
+ *
+ * @param duration - Duration label extracted from the unit string.
+ * @returns The hours and minutes parts (0 when absent).
+ */
+export function parseOccurrenceDuration(duration: string): {
+  hours: number;
+  minutes: number;
+} {
+  const normalizedDuration = duration.trim();
+
+  if (!normalizedDuration) {
+    return { hours: 0, minutes: 0 };
+  }
+
+  const hoursMatch = normalizedDuration.match(/(\d+)\s*h/i);
+  const hours = hoursMatch ? Number(hoursMatch[1]) : 0;
+
+  const minutesSource = hoursMatch
+    ? normalizedDuration.slice(hoursMatch.index! + hoursMatch[0].length)
+    : normalizedDuration;
+  const minutesMatch = minutesSource.match(/(\d+)/);
+  const minutes = minutesMatch ? Number(minutesMatch[1]) : 0;
+
+  return { hours, minutes };
+}
 
 /**
  * Resolves the unit to display next to the quantity multiplier, falling back to
