@@ -1,6 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { ExpenseFolderFilterBar } from "./expense-folder-organizer";
+import {
+  ExpenseFolderFilterBar,
+  ExpenseFolderRowBadge,
+} from "./expense-folder-organizer";
 
 const SAMPLE_FOLDERS = [
   { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },
@@ -47,5 +51,45 @@ describe("ExpenseFolderFilterBar", () => {
     expect(filterBarChildren.at(-1)).toBe(hint);
     expect(within(filterBarChildren[0] as HTMLElement).getByText("Todas"))
       .toBeInTheDocument();
+  });
+});
+
+describe("ExpenseFolderRowBadge", () => {
+  it("reassigns the expense folder by clicking the badge and picking another", async () => {
+    const user = userEvent.setup();
+    const onSelectFolder = jest.fn();
+
+    render(
+      <ExpenseFolderRowBadge
+        expenseId="expense-1"
+        folder={SAMPLE_FOLDERS[0]}
+        folders={SAMPLE_FOLDERS}
+        onSelectFolder={onSelectFolder}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /cambiar carpeta/i }));
+    await user.click(screen.getByRole("button", { name: "Compras" }));
+
+    expect(onSelectFolder).toHaveBeenCalledWith("folder-2");
+  });
+
+  it("clears the folder by choosing the unassigned option", async () => {
+    const user = userEvent.setup();
+    const onSelectFolder = jest.fn();
+
+    render(
+      <ExpenseFolderRowBadge
+        expenseId="expense-1"
+        folder={SAMPLE_FOLDERS[0]}
+        folders={SAMPLE_FOLDERS}
+        onSelectFolder={onSelectFolder}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /cambiar carpeta/i }));
+    await user.click(screen.getByRole("button", { name: "Sin carpeta" }));
+
+    expect(onSelectFolder).toHaveBeenCalledWith(null);
   });
 });

@@ -4,6 +4,11 @@ import {
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import type { ExpenseFolderOption } from "./expense-folder-picker";
@@ -43,20 +48,27 @@ function getDraggedFolderId(
 interface ExpenseFolderRowBadgeProps {
   expenseId: string;
   folder: ExpenseFolderOption | null;
+  folders: ExpenseFolderOption[];
+  onSelectFolder: (folderId: string | null) => void;
   unassignedLabel?: string;
 }
 
 /**
- * Draggable folder badge rendered inside an expense row. Dragging it onto a
- * folder chip reassigns the expense to that folder.
+ * Folder badge rendered inside an expense row. It can be dragged onto a folder
+ * chip to reassign the expense, or clicked to pick another folder (including the
+ * unassigned option) directly from a popover.
  */
 export function ExpenseFolderRowBadge({
   expenseId,
   folder,
+  folders,
+  onSelectFolder,
   unassignedLabel = "Sin carpeta",
 }: ExpenseFolderRowBadgeProps) {
-  const badgeRef = useRef<HTMLSpanElement | null>(null);
+  const badgeRef = useRef<HTMLButtonElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedFolderId = folder?.id ?? null;
 
   useEffect(() => {
     const element = badgeRef.current;
@@ -76,26 +88,80 @@ export function ExpenseFolderRowBadge({
     });
   }, [expenseId]);
 
+  const handleSelect = (folderId: string | null) => {
+    setIsOpen(false);
+    onSelectFolder(folderId);
+  };
+
   return (
-    <span
-      aria-label={`Mover ${folder?.name ?? unassignedLabel} a otra carpeta`}
-      className={cn(
-        styles.rowBadge,
-        isDragging && styles.rowBadgeDragging,
-        !folder && styles.rowBadgeUnassigned,
-      )}
-      ref={badgeRef}
-      style={
-        folder
-          ? { backgroundColor: resolveExpenseFolderColorHex(folder.color) }
-          : undefined
-      }
-    >
-      {folder ? (
-        <ExpenseFolderIconGlyph icon={folder.icon} size={12} stroke={2} />
-      ) : null}
-      {folder?.name ?? unassignedLabel}
-    </span>
+    <Popover onOpenChange={setIsOpen} open={isOpen}>
+      <PopoverTrigger asChild>
+        <button
+          aria-label={`Cambiar carpeta de ${folder?.name ?? unassignedLabel}`}
+          className={cn(
+            styles.rowBadge,
+            isDragging && styles.rowBadgeDragging,
+            !folder && styles.rowBadgeUnassigned,
+          )}
+          onClick={(event) => event.stopPropagation()}
+          ref={badgeRef}
+          style={
+            folder
+              ? { backgroundColor: resolveExpenseFolderColorHex(folder.color) }
+              : undefined
+          }
+          type="button"
+        >
+          {folder ? (
+            <ExpenseFolderIconGlyph icon={folder.icon} size={12} stroke={2} />
+          ) : null}
+          {folder?.name ?? unassignedLabel}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent align="start" className={styles.badgePopover}>
+        <button
+          className={cn(
+            styles.badgeOption,
+            selectedFolderId === null && styles.badgeOptionSelected,
+          )}
+          onClick={() => handleSelect(null)}
+          type="button"
+        >
+          <span className={styles.badgeOptionName}>{unassignedLabel}</span>
+        </button>
+
+        {folders.map((folderOption) => (
+          <button
+            className={cn(
+              styles.badgeOption,
+              folderOption.id === selectedFolderId &&
+                styles.badgeOptionSelected,
+            )}
+            key={folderOption.id}
+            onClick={() => handleSelect(folderOption.id)}
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              className={styles.badgeOptionSwatch}
+              style={{
+                backgroundColor: resolveExpenseFolderColorHex(
+                  folderOption.color,
+                ),
+              }}
+            >
+              <ExpenseFolderIconGlyph
+                icon={folderOption.icon}
+                size={12}
+                stroke={2}
+              />
+            </span>
+            <span className={styles.badgeOptionName}>{folderOption.name}</span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 

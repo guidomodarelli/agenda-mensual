@@ -3089,6 +3089,13 @@ export function MonthlyExpensesTable({
               <ExpenseFolderRowBadge
                 expenseId={row.original.id}
                 folder={folder}
+                folders={expenseFolders}
+                onSelectFolder={(folderId) =>
+                  onMoveExpenseToFolder({
+                    expenseId: row.original.id,
+                    folderId,
+                  })
+                }
               />
             ) : null;
           const filterValue = String(
@@ -4159,6 +4166,7 @@ export function MonthlyExpensesTable({
       onEditReceiptCoverage,
       onEditManualPaymentRecord,
       onEditExpense,
+      onMoveExpenseToFolder,
       onRegisterPaymentRecord,
       onUpdateReceiptShareStatus,
       compareRowsByDescriptionFilterRelevance,
