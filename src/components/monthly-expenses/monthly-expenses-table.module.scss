@@ -1093,9 +1093,7 @@
     position: sticky;
     left: var(--selection-column-width);
     z-index: 2;
-    box-shadow:
-      1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
-      12px 0 12px -12px color-mix(in srgb, var(--foreground) 16%, transparent);
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 
   .tableWrapper :global([data-slot="table-head"]:first-child) {
@@ -1111,9 +1109,7 @@
     position: sticky;
     left: var(--selection-column-width);
     z-index: 4;
-    box-shadow:
-      1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
-      12px 0 12px -12px color-mix(in srgb, var(--foreground) 16%, transparent);
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 }
 
