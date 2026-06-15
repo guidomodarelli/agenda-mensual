@@ -457,6 +457,27 @@
 .descriptionActions {
   flex-shrink: 0;
   margin-left: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.descriptionActions:focus-within,
+.descriptionActions:has([aria-expanded="true"]) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tableWrapper :global([data-slot="table-row"]:hover) .descriptionActions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .descriptionActions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .descriptionTextRow {
