@@ -1,8 +1,12 @@
 import { AsYouType, parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 
+import { MAX_OCCURRENCES_UNIT_LENGTH } from "./occurrences-unit";
+
 export const OCCURRENCES_PER_MONTH_VALIDATION_ERROR_MESSAGE =
   "Ingresá una cantidad mayor a 0.";
+export const OCCURRENCES_UNIT_VALIDATION_ERROR_MESSAGE =
+  `Usá una unidad de hasta ${MAX_OCCURRENCES_UNIT_LENGTH} caracteres.`;
 export const RECEIPT_SHARE_PHONE_REQUIRED_ERROR_MESSAGE =
   "Completá el número de WhatsApp.";
 export const RECEIPT_SHARE_PHONE_VALIDATION_ERROR_MESSAGE =
@@ -80,6 +84,14 @@ export function validateSubtotalAmount(value: number): string | null {
 export function validateOccurrencesPerMonth(value: number): string | null {
   if (!Number.isInteger(value) || value <= 0) {
     return OCCURRENCES_PER_MONTH_VALIDATION_ERROR_MESSAGE;
+  }
+
+  return null;
+}
+
+export function validateOccurrencesUnit(value: string): string | null {
+  if (value.trim().length > MAX_OCCURRENCES_UNIT_LENGTH) {
+    return OCCURRENCES_UNIT_VALIDATION_ERROR_MESSAGE;
   }
 
   return null;

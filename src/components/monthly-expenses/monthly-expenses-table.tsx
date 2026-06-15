@@ -115,9 +115,12 @@ import {
   normalizeReceiptSharePhoneDigits,
   RECEIPT_SHARE_PHONE_REQUIRED_ERROR_MESSAGE,
   validateOccurrencesPerMonth,
+  validateOccurrencesUnit,
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "./expense-edit-validation";
+import { OccurrencesUnitSelect } from "./occurrences-unit-select";
+import { resolveOccurrencesUnitLabel } from "./occurrences-unit";
 import {
   getValidPaymentLink as getValidPaymentLinkUrl,
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
@@ -153,7 +156,6 @@ const SORTABLE_COLUMN_IDS = new Set([
   "paymentsProgress",
   "paymentHistory",
   "subtotal",
-  "occurrencesPerMonth",
   "total",
   "usd",
   "paymentLink",
@@ -169,7 +171,6 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "paymentsProgress",
   "paymentHistory",
   "subtotal",
-  "occurrencesPerMonth",
   "total",
   "usd",
   "paymentLink",
@@ -236,11 +237,6 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
   {
     columnId: "subtotal",
     label: "Subtotal",
-    type: "numberRange",
-  },
-  {
-    columnId: "occurrencesPerMonth",
-    label: "por mes",
     type: "numberRange",
   },
   {
@@ -959,6 +955,7 @@ export interface MonthlyExpensesEditableRow {
   loanTotalInstallments: number | null;
   manualCoveredPayments: string;
   occurrencesPerMonth: string;
+  occurrencesUnit: string;
   paymentRecords?: MonthlyExpensesEditablePaymentRecord[];
   paymentLink: string;
   receiptShareMessage: string;
@@ -1086,9 +1083,10 @@ interface MonthlyExpensesTableProps {
     expenseId: string;
     paymentLink: string;
   }) => void | Promise<void>;
-  onUpdateExpenseOccurrencesPerMonth: (args: {
+  onUpdateExpenseOccurrences: (args: {
     expenseId: string;
     occurrencesPerMonth: number;
+    occurrencesUnit: string;
   }) => void | Promise<void>;
   onUpdateExpenseReceiptShare: (args: {
     expenseId: string;
@@ -2304,7 +2302,7 @@ export function MonthlyExpensesTable({
   onDeleteManualPaymentRecord,
   onEditManualPaymentRecord,
   onUpdatePaymentLink,
-  onUpdateExpenseOccurrencesPerMonth,
+  onUpdateExpenseOccurrences,
   onUpdateExpenseReceiptShare,
   onUpdateExpenseSubtotal,
   onUpdateReceiptShareStatus,
@@ -2349,7 +2347,10 @@ export function MonthlyExpensesTable({
   const [occurrencesDialogState, setOccurrencesDialogState] =
     useState<ExpenseOccurrencesDialogState | null>(null);
   const [occurrencesDraftValue, setOccurrencesDraftValue] = useState("");
+  const [occurrencesUnitDraftValue, setOccurrencesUnitDraftValue] = useState("");
   const [occurrencesDraftError, setOccurrencesDraftError] =
+    useState<string | null>(null);
+  const [occurrencesUnitDraftError, setOccurrencesUnitDraftError] =
     useState<string | null>(null);
   const [receiptShareDialogState, setReceiptShareDialogState] =
     useState<ExpenseReceiptShareDialogState | null>(null);
@@ -2812,23 +2813,29 @@ export function MonthlyExpensesTable({
     expenseDescription,
     expenseId,
     occurrencesPerMonth,
+    occurrencesUnit,
   }: {
     expenseDescription: string;
     expenseId: string;
     occurrencesPerMonth: string;
+    occurrencesUnit: string;
   }) => {
     setOccurrencesDialogState({
       expenseDescription,
       expenseId,
     });
     setOccurrencesDraftValue(occurrencesPerMonth);
+    setOccurrencesUnitDraftValue(occurrencesUnit);
     setOccurrencesDraftError(null);
+    setOccurrencesUnitDraftError(null);
   }, []);
 
   const handleCloseOccurrencesDialog = () => {
     setOccurrencesDialogState(null);
     setOccurrencesDraftValue("");
+    setOccurrencesUnitDraftValue("");
     setOccurrencesDraftError(null);
+    setOccurrencesUnitDraftError(null);
   };
 
   const handleSaveOccurrences = async () => {
@@ -2846,10 +2853,23 @@ export function MonthlyExpensesTable({
       return;
     }
 
+    const occurrencesUnitForSave =
+      normalizedOccurrences > 1 ? occurrencesUnitDraftValue.trim() : "";
+    const occurrencesUnitValidationError = validateOccurrencesUnit(
+      occurrencesUnitForSave,
+    );
+
+    if (occurrencesUnitValidationError) {
+      setOccurrencesUnitDraftError(occurrencesUnitValidationError);
+      return;
+    }
+
     setOccurrencesDraftError(null);
-    await onUpdateExpenseOccurrencesPerMonth({
+    setOccurrencesUnitDraftError(null);
+    await onUpdateExpenseOccurrences({
       expenseId: occurrencesDialogState.expenseId,
       occurrencesPerMonth: normalizedOccurrences,
+      occurrencesUnit: occurrencesUnitForSave,
     });
     handleCloseOccurrencesDialog();
   };
@@ -3170,29 +3190,77 @@ export function MonthlyExpensesTable({
         accessorKey: "subtotal",
         cell: ({ row }) => {
           const expenseDescription = row.original.description.trim() || "compromiso";
+          const occurrencesPerMonth = Number(row.original.occurrencesPerMonth);
+          const showMultiplier =
+            Number.isFinite(occurrencesPerMonth) && occurrencesPerMonth > 1;
 
           return (
             <div className={styles.quickEditCell}>
-              <span>
-                {formatArsWithUsdSecondary({
-                  exchangeRateSnapshot,
-                  rowCurrency: row.original.currency,
-                  value: row.original.subtotal,
-                })}
-              </span>
-              <QuickEditActionsMenu
-                actionDisabled={actionDisabled}
-                editActionLabel="Editar subtotal"
-                expenseDescription={expenseDescription}
-                onEdit={() =>
-                  handleOpenSubtotalDialog({
-                    currency: row.original.currency,
-                    expenseId: row.original.id,
-                    expenseDescription,
-                    subtotal: row.original.subtotal,
+              <div className={styles.subtotalCellContent}>
+                <span>
+                  {formatArsWithUsdSecondary({
+                    exchangeRateSnapshot,
+                    rowCurrency: row.original.currency,
+                    value: row.original.subtotal,
                   })}
-                triggerAriaLabel="Abrir acciones de subtotal"
-              />
+                </span>
+                {showMultiplier ? (
+                  <span className={styles.subtotalMultiplier}>
+                    {`× ${occurrencesPerMonth} ${resolveOccurrencesUnitLabel(
+                      row.original.occurrencesUnit,
+                    )}`}
+                  </span>
+                ) : null}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label={`Abrir acciones de subtotal y cantidad para ${expenseDescription}`}
+                    className={styles.paymentLinkActionButton}
+                    disabled={actionDisabled}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <MoreVertical
+                      aria-hidden="true"
+                      className={styles.paymentLinkIcon}
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      window.setTimeout(() => {
+                        handleOpenSubtotalDialog({
+                          currency: row.original.currency,
+                          expenseId: row.original.id,
+                          expenseDescription,
+                          subtotal: row.original.subtotal,
+                        });
+                      }, 0);
+                    }}
+                  >
+                    <Pencil aria-hidden="true" />
+                    Editar subtotal
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      window.setTimeout(() => {
+                        handleOpenOccurrencesDialog({
+                          expenseDescription,
+                          expenseId: row.original.id,
+                          occurrencesPerMonth: row.original.occurrencesPerMonth,
+                          occurrencesUnit: row.original.occurrencesUnit,
+                        });
+                      }, 0);
+                    }}
+                  >
+                    <Pencil aria-hidden="true" />
+                    Editar cantidad y unidad
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           );
         },
@@ -3230,54 +3298,6 @@ export function MonthlyExpensesTable({
               value: rowB.original.subtotal,
             }),
             sortDirection: getSortDirection("subtotal"),
-          });
-        },
-      },
-      {
-        accessorKey: "occurrencesPerMonth",
-        cell: ({ row }) => {
-          const expenseDescription = row.original.description.trim() || "compromiso";
-
-          return (
-            <div className={styles.quickEditCell}>
-              <span>{row.original.occurrencesPerMonth}</span>
-              <QuickEditActionsMenu
-                actionDisabled={actionDisabled}
-                editActionLabel="Editar pagos por mes"
-                expenseDescription={expenseDescription}
-                onEdit={() =>
-                  handleOpenOccurrencesDialog({
-                    expenseId: row.original.id,
-                    expenseDescription,
-                    occurrencesPerMonth: row.original.occurrencesPerMonth,
-                  })}
-                triggerAriaLabel="Abrir acciones de pagos por mes"
-              />
-            </div>
-          );
-        },
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedNumberRangeFilter(
-            filterValue,
-            Number(row.original.occurrencesPerMonth),
-          ),
-        header: getSortableHeader("por mes"),
-        meta: { label: "por mes" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) => leftValue - rightValue,
-            leftValue: Number(rowA.original.occurrencesPerMonth),
-            rightValue: Number(rowB.original.occurrencesPerMonth),
-            sortDirection: getSortDirection("occurrencesPerMonth"),
           });
         },
       },
@@ -4706,17 +4726,17 @@ export function MonthlyExpensesTable({
             size="sm"
           >
             <AlertDialogHeader>
-              <AlertDialogTitle>Editar pagos por mes</AlertDialogTitle>
+              <AlertDialogTitle>Editar cantidad y unidad</AlertDialogTitle>
               <AlertDialogDescription>
-                {`Actualizá la frecuencia mensual de ${occurrencesDialogState?.expenseDescription ?? "este compromiso"}.`}
+                {`Actualizá la cantidad mensual de ${occurrencesDialogState?.expenseDescription ?? "este compromiso"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
             <div className={styles.paymentLinkDialogField}>
-              <Label htmlFor="occurrences-dialog-input">Pagos por mes</Label>
+              <Label htmlFor="occurrences-dialog-input">Cantidad por mes</Label>
               <Input
                 aria-invalid={occurrencesDraftError ? "true" : "false"}
-                aria-label={`Pagos por mes de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                aria-label={`Cantidad por mes de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
                 autoFocus
                 id="occurrences-dialog-input"
                 inputMode="numeric"
@@ -4744,6 +4764,31 @@ export function MonthlyExpensesTable({
                 </p>
               ) : null}
             </div>
+
+            {Number(occurrencesDraftValue) > 1 ? (
+              <div className={styles.paymentLinkDialogField}>
+                <Label htmlFor="occurrences-unit-dialog-select">Unidad</Label>
+                <OccurrencesUnitSelect
+                  customInputAriaLabel={`Unidad personalizada de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                  hasError={occurrencesUnitDraftError != null}
+                  onChange={(nextUnit) => {
+                    setOccurrencesUnitDraftValue(nextUnit);
+
+                    if (occurrencesUnitDraftError) {
+                      setOccurrencesUnitDraftError(null);
+                    }
+                  }}
+                  selectAriaLabel={`Unidad de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                  selectId="occurrences-unit-dialog-select"
+                  value={occurrencesUnitDraftValue}
+                />
+                {occurrencesUnitDraftError ? (
+                  <p className={styles.paymentLinkDialogError} role="alert">
+                    {occurrencesUnitDraftError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <AlertDialogFooter className={styles.paymentLinkDialogActions}>
               <Button

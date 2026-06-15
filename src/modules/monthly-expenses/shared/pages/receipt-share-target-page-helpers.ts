@@ -3,6 +3,8 @@ import {
   getFuzzyMatchRank,
   normalizeSearchValue,
 } from "@/components/monthly-expenses/fuzzy-search";
+import type { SaveMonthlyExpensesCommand } from "@/modules/monthly-expenses/application/commands/save-monthly-expenses-command";
+import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
 
 const RECEIPT_NOISE_WORDS = new Set([
   "comprobante",
@@ -86,6 +88,104 @@ export function suggestExpenseIdForSharedReceipt({
   }
 
   return bestMatch?.expenseId ?? null;
+}
+
+/**
+ * Maps UI result items into the command shape persisted by a save operation,
+ * preserving every field that the repository stores (including occurrencesUnit).
+ *
+ * @param items - Result items currently displayed for the selected month.
+ * @returns Items ready to be saved without dropping persisted metadata.
+ */
+export function normalizeExpenseItemsForSave(
+  items: MonthlyExpensesDocumentResult["items"],
+): SaveMonthlyExpensesCommand["items"] {
+  return items.map((item) => ({
+    currency: item.currency,
+    description: item.description,
+    ...(item.folders
+      ? {
+          folders: {
+            allReceiptsFolderId: item.folders.allReceiptsFolderId,
+            allReceiptsFolderViewUrl: item.folders.allReceiptsFolderViewUrl,
+            monthlyFolderId: item.folders.monthlyFolderId,
+            monthlyFolderViewUrl: item.folders.monthlyFolderViewUrl,
+          },
+        }
+      : {}),
+    id: item.id,
+    ...(typeof item.isPaid === "boolean"
+      ? {
+          isPaid: item.isPaid,
+        }
+      : {}),
+    ...(item.loan
+      ? {
+          loan: {
+            direction: item.loan.direction ?? "payable",
+            installmentCount: item.loan.installmentCount,
+            ...(item.loan.lenderId ? { lenderId: item.loan.lenderId } : {}),
+            ...(item.loan.lenderName ? { lenderName: item.loan.lenderName } : {}),
+            startMonth: item.loan.startMonth,
+          },
+        }
+      : {}),
+    ...(typeof item.manualCoveredPayments === "number"
+      ? {
+          manualCoveredPayments: item.manualCoveredPayments,
+        }
+      : {}),
+    occurrencesPerMonth: item.occurrencesPerMonth,
+    ...(item.occurrencesUnit
+      ? {
+          occurrencesUnit: item.occurrencesUnit,
+        }
+      : {}),
+    ...(typeof item.paymentLink !== "undefined"
+      ? {
+          paymentLink: item.paymentLink,
+        }
+      : {}),
+    ...(typeof item.receiptShareMessage !== "undefined"
+      ? {
+          receiptShareMessage: item.receiptShareMessage,
+        }
+      : {}),
+    ...(typeof item.receiptSharePhoneDigits !== "undefined"
+      ? {
+          receiptSharePhoneDigits: item.receiptSharePhoneDigits,
+        }
+      : {}),
+    ...(typeof item.receiptShareStatus !== "undefined"
+      ? {
+          receiptShareStatus: item.receiptShareStatus,
+        }
+      : {}),
+    ...(typeof item.requiresReceiptShare === "boolean"
+      ? {
+          requiresReceiptShare: item.requiresReceiptShare,
+        }
+      : {}),
+    ...(item.receipts
+      ? {
+          receipts: item.receipts.map((receipt) => ({
+            allReceiptsFolderId: receipt.allReceiptsFolderId,
+            allReceiptsFolderViewUrl: receipt.allReceiptsFolderViewUrl,
+            ...(typeof receipt.coveredPayments === "number"
+              ? {
+                  coveredPayments: receipt.coveredPayments,
+                }
+              : {}),
+            fileId: receipt.fileId,
+            fileName: receipt.fileName,
+            fileViewUrl: receipt.fileViewUrl,
+            monthlyFolderId: receipt.monthlyFolderId,
+            monthlyFolderViewUrl: receipt.monthlyFolderViewUrl,
+          })),
+        }
+      : {}),
+    subtotal: item.subtotal,
+  }));
 }
 
 export function getRemainingReceiptPayments({

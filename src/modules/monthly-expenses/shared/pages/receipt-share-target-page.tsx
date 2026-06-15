@@ -42,6 +42,7 @@ import {
   deriveExpenseSearchQueryFromFileName,
   getCurrentMonthIdentifier,
   getRemainingReceiptPayments,
+  normalizeExpenseItemsForSave,
   suggestExpenseIdForSharedReceipt,
 } from "./receipt-share-target-page-helpers";
 import {
@@ -88,92 +89,6 @@ function normalizeMonth(value: string): string {
   return MONTH_PATTERN.test(normalizedMonth)
     ? normalizedMonth
     : getCurrentMonthIdentifier();
-}
-
-function normalizeExpenseItemsForSave(
-  items: MonthlyExpensesDocumentResult["items"],
-): SaveMonthlyExpensesCommand["items"] {
-  return items.map((item) => ({
-    currency: item.currency,
-    description: item.description,
-    ...(item.folders
-      ? {
-          folders: {
-            allReceiptsFolderId: item.folders.allReceiptsFolderId,
-            allReceiptsFolderViewUrl: item.folders.allReceiptsFolderViewUrl,
-            monthlyFolderId: item.folders.monthlyFolderId,
-            monthlyFolderViewUrl: item.folders.monthlyFolderViewUrl,
-          },
-        }
-      : {}),
-    id: item.id,
-    ...(typeof item.isPaid === "boolean"
-      ? {
-          isPaid: item.isPaid,
-        }
-      : {}),
-    ...(item.loan
-      ? {
-          loan: {
-            direction: item.loan.direction ?? "payable",
-            installmentCount: item.loan.installmentCount,
-            ...(item.loan.lenderId ? { lenderId: item.loan.lenderId } : {}),
-            ...(item.loan.lenderName ? { lenderName: item.loan.lenderName } : {}),
-            startMonth: item.loan.startMonth,
-          },
-        }
-      : {}),
-    ...(typeof item.manualCoveredPayments === "number"
-      ? {
-          manualCoveredPayments: item.manualCoveredPayments,
-        }
-      : {}),
-    occurrencesPerMonth: item.occurrencesPerMonth,
-    ...(typeof item.paymentLink !== "undefined"
-      ? {
-          paymentLink: item.paymentLink,
-        }
-      : {}),
-    ...(typeof item.receiptShareMessage !== "undefined"
-      ? {
-          receiptShareMessage: item.receiptShareMessage,
-        }
-      : {}),
-    ...(typeof item.receiptSharePhoneDigits !== "undefined"
-      ? {
-          receiptSharePhoneDigits: item.receiptSharePhoneDigits,
-        }
-      : {}),
-    ...(typeof item.receiptShareStatus !== "undefined"
-      ? {
-          receiptShareStatus: item.receiptShareStatus,
-        }
-      : {}),
-    ...(typeof item.requiresReceiptShare === "boolean"
-      ? {
-          requiresReceiptShare: item.requiresReceiptShare,
-        }
-      : {}),
-    ...(item.receipts
-      ? {
-          receipts: item.receipts.map((receipt) => ({
-            allReceiptsFolderId: receipt.allReceiptsFolderId,
-            allReceiptsFolderViewUrl: receipt.allReceiptsFolderViewUrl,
-            ...(typeof receipt.coveredPayments === "number"
-              ? {
-                  coveredPayments: receipt.coveredPayments,
-                }
-              : {}),
-            fileId: receipt.fileId,
-            fileName: receipt.fileName,
-            fileViewUrl: receipt.fileViewUrl,
-            monthlyFolderId: receipt.monthlyFolderId,
-            monthlyFolderViewUrl: receipt.monthlyFolderViewUrl,
-          })),
-        }
-      : {}),
-    subtotal: item.subtotal,
-  }));
 }
 
 export default function ReceiptShareTargetPage() {

@@ -1,7 +1,10 @@
+import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
+
 import {
   deriveExpenseSearchQueryFromFileName,
   getCurrentMonthIdentifier,
   getRemainingReceiptPayments,
+  normalizeExpenseItemsForSave,
   suggestExpenseIdForSharedReceipt,
   type ReceiptSuggestionExpense,
 } from "./receipt-share-target-page-helpers";
@@ -51,5 +54,35 @@ describe("receipt share target helpers", () => {
         occurrencesPerMonth: 2,
       }),
     ).toBe(0);
+  });
+
+  it("preserves the occurrences unit when normalizing items for save", () => {
+    const items: MonthlyExpensesDocumentResult["items"] = [
+      {
+        currency: "ARS",
+        description: "Clases de ingles",
+        id: "expense-1",
+        occurrencesPerMonth: 4,
+        occurrencesUnit: "semanas",
+        subtotal: 5000,
+        total: 20000,
+      },
+      {
+        currency: "ARS",
+        description: "Internet",
+        id: "expense-2",
+        occurrencesPerMonth: 1,
+        subtotal: 100,
+        total: 100,
+      },
+    ];
+
+    const normalizedItems = normalizeExpenseItemsForSave(items);
+
+    expect(normalizedItems[0]).toMatchObject({
+      occurrencesPerMonth: 4,
+      occurrencesUnit: "semanas",
+    });
+    expect(normalizedItems[1]).not.toHaveProperty("occurrencesUnit");
   });
 });

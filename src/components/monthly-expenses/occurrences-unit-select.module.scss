@@ -1,0 +1,14 @@
+.container {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.changedField {
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.invalidField {
+  border-color: color-mix(in srgb, var(--destructive) 75%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--destructive) 35%, transparent);
+}

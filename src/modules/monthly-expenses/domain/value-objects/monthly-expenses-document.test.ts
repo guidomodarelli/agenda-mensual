@@ -3,6 +3,7 @@ import {
   calculateLoanEndMonth,
   calculatePaidLoanInstallments,
   createMonthlyExpensesDocument,
+  MAX_OCCURRENCES_UNIT_LENGTH,
 } from "./monthly-expenses-document";
 
 describe("monthlyExpensesDocument", () => {
@@ -718,5 +719,71 @@ describe("monthlyExpensesDocument", () => {
       monthlyFolderId: "",
       monthlyFolderViewUrl: "",
     });
+  });
+
+  it("normalizes the occurrences unit and keeps the total based on the quantity only", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Clases de ingles",
+            id: "expense-1",
+            occurrencesPerMonth: 4,
+            occurrencesUnit: "  semanas  ",
+            subtotal: 5000,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.occurrencesUnit).toBe("semanas");
+    expect(result.items[0]?.total).toBe(20000);
+  });
+
+  it("omits the occurrences unit when it is empty or whitespace", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            occurrencesUnit: "   ",
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]).not.toHaveProperty("occurrencesUnit");
+  });
+
+  it("rejects an occurrences unit longer than the allowed maximum", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Clases",
+              id: "expense-1",
+              occurrencesPerMonth: 4,
+              occurrencesUnit: "x".repeat(MAX_OCCURRENCES_UNIT_LENGTH + 1),
+              subtotal: 5000,
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(
+      `Saving monthly expenses requires every occurrence unit to be at most ${MAX_OCCURRENCES_UNIT_LENGTH} characters.`,
+    );
   });
 });

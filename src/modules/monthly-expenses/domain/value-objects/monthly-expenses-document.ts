@@ -12,6 +12,7 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
   hostname: z.regexes.domain,
 });
 
+export const MAX_OCCURRENCES_UNIT_LENGTH = 24;
 export const MONTHLY_EXPENSE_CURRENCIES = ["ARS", "USD"] as const;
 export const MONTHLY_EXPENSE_LOAN_DIRECTIONS = [
   "payable",
@@ -90,6 +91,7 @@ export interface MonthlyExpenseItemInput {
   loan?: MonthlyExpenseLoanInput;
   manualCoveredPayments?: number;
   occurrencesPerMonth: number;
+  occurrencesUnit?: string | null;
   paymentRecords?: MonthlyExpensePaymentRecordInput[] | null;
   paymentLink?: string | null;
   receiptShareMessage?: string | null;
@@ -106,6 +108,7 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   folders?: MonthlyExpenseFolders;
   loan?: MonthlyExpenseLoan;
   manualCoveredPayments: number;
+  occurrencesUnit?: string;
   paymentLink?: string | null;
   paymentRecords?: MonthlyExpensePaymentRecord[];
   receiptShareMessage?: string | null;
@@ -645,6 +648,29 @@ function validateFolders(
   }
 }
 
+function normalizeOccurrencesUnit(
+  occurrencesUnit: string | null | undefined,
+  operationName: string,
+): string | null {
+  if (occurrencesUnit == null) {
+    return null;
+  }
+
+  const normalizedOccurrencesUnit = occurrencesUnit.trim();
+
+  if (!normalizedOccurrencesUnit) {
+    return null;
+  }
+
+  if (normalizedOccurrencesUnit.length > MAX_OCCURRENCES_UNIT_LENGTH) {
+    throw new Error(
+      `${operationName} requires every occurrence unit to be at most ${MAX_OCCURRENCES_UNIT_LENGTH} characters.`,
+    );
+  }
+
+  return normalizedOccurrencesUnit;
+}
+
 function normalizeExpenseFolderId(
   expenseFolderId: string | null | undefined,
 ): string | null {
@@ -685,6 +711,7 @@ function validateItem(
     isPaid,
     loan,
     manualCoveredPayments,
+    occurrencesUnit,
     paymentLink,
     receiptShareMessage,
     receiptSharePhoneDigits,
@@ -700,6 +727,10 @@ function validateItem(
     id: item.id.trim(),
   };
   const normalizedExpenseFolderId = normalizeExpenseFolderId(expenseFolderId);
+  const normalizedOccurrencesUnit = normalizeOccurrencesUnit(
+    occurrencesUnit,
+    operationName,
+  );
   const normalizedSortOrder = normalizeSortOrder(sortOrder, operationName);
   const normalizedFolders = validateFolders(folders, operationName);
   const normalizedPaymentLink = validatePaymentLink(paymentLink, operationName);
@@ -818,6 +849,9 @@ function validateItem(
     ...(normalizedIsPaid ? { isPaid: true } : {}),
     ...(loan ? { loan: validateLoan(loan, operationName, targetMonth) } : {}),
     manualCoveredPayments: normalizedManualCoveredPayments,
+    ...(normalizedOccurrencesUnit
+      ? { occurrencesUnit: normalizedOccurrencesUnit }
+      : {}),
     paymentLink: normalizedPaymentLink,
     ...(normalizedReceiptShareMessage
       ? { receiptShareMessage: normalizedReceiptShareMessage }
@@ -996,6 +1030,9 @@ export function toMonthlyExpensesDocumentInput(
           }
         : {}),
       occurrencesPerMonth: item.occurrencesPerMonth,
+      ...(item.occurrencesUnit
+        ? { occurrencesUnit: item.occurrencesUnit }
+        : {}),
       paymentLink: item.paymentLink,
       ...(item.receiptShareMessage
         ? {

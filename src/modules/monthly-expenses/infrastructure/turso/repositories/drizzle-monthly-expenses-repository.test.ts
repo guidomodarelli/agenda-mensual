@@ -3,6 +3,7 @@ import {
   createMonthlyExpensesDocument,
 } from "@/modules/monthly-expenses/domain/value-objects/monthly-expenses-document";
 import {
+  expenseMonthsTable,
   expensesTable,
   monthlyExpenseMonthsTable,
 } from "@/modules/shared/infrastructure/database/drizzle/schema";
@@ -336,5 +337,87 @@ describe("DrizzleMonthlyExpensesRepository", () => {
     const result = await repository.getByMonth("2026-04");
 
     expect(result).toEqual(normalizedDocument);
+  });
+
+  it("persists the occurrences unit for normalized expense months", async () => {
+    const insertedExpenseMonthRows: Array<{
+      expenseId: string;
+      occurrencesUnit: string | null;
+    }> = [];
+    const selectWhereMock = jest.fn().mockResolvedValue([]);
+    const selectFromMock = jest.fn().mockReturnValue({
+      where: selectWhereMock,
+    });
+    const selectMock = jest.fn().mockReturnValue({
+      from: selectFromMock,
+    });
+    const deleteWhereMock = jest.fn().mockResolvedValue(undefined);
+    const deleteMock = jest.fn().mockReturnValue({
+      where: deleteWhereMock,
+    });
+    const insertMock = jest.fn((table: unknown) => ({
+      values: jest.fn((payload: unknown) => {
+        if (
+          table === expenseMonthsTable &&
+          payload &&
+          typeof payload === "object" &&
+          "occurrencesUnit" in payload
+        ) {
+          insertedExpenseMonthRows.push(
+            payload as { expenseId: string; occurrencesUnit: string | null },
+          );
+        }
+
+        return {
+          onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+        };
+      }),
+    }));
+    const transactionExecutor = {
+      delete: deleteMock,
+      insert: insertMock,
+      select: selectMock,
+    };
+    const transactionMock = jest
+      .fn()
+      .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
+        callback(transactionExecutor),
+      );
+    const repository = new DrizzleMonthlyExpensesRepository(
+      { transaction: transactionMock } as never,
+      "user-subject",
+    );
+    const document = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Clases de ingles",
+            id: "with-unit",
+            occurrencesPerMonth: 4,
+            occurrencesUnit: "semanas",
+            subtotal: 5000,
+          },
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "without-unit",
+            occurrencesPerMonth: 1,
+            subtotal: 100,
+          },
+        ],
+        month: "2026-04",
+      },
+      "Testing occurrences unit persistence",
+    );
+
+    await repository.save(document);
+
+    const unitByExpenseId = new Map(
+      insertedExpenseMonthRows.map((row) => [row.expenseId, row.occurrencesUnit]),
+    );
+
+    expect(unitByExpenseId.get("with-unit")).toBe("semanas");
+    expect(unitByExpenseId.get("without-unit")).toBeNull();
   });
 });

@@ -778,6 +778,18 @@
   text-align: right;
 }
 
+.subtotalCellContent {
+  display: inline-grid;
+  gap: 0.1rem;
+  line-height: 1.15;
+}
+
+.subtotalMultiplier {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .receiptShareStatusValue {
   display: inline-flex;
   align-items: center;

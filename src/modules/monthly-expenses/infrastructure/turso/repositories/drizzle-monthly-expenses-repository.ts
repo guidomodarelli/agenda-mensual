@@ -43,6 +43,7 @@ interface NormalizedExpenseRow {
   monthlyFolderId: string | null;
   monthlyFolderViewUrl: string | null;
   occurrencesPerMonth: number;
+  occurrencesUnit: string | null;
   paymentLink: string | null;
   receiptShareMessage: string | null;
   receiptSharePhoneDigits: string | null;
@@ -409,6 +410,7 @@ export class DrizzleMonthlyExpensesRepository
           monthlyFolderId: monthlyFolder.id,
           monthlyFolderViewUrl: monthlyFolder.viewUrl,
           occurrencesPerMonth: item.occurrencesPerMonth,
+          occurrencesUnit: item.occurrencesUnit ?? null,
           receiptShareStatus: item.receiptShareStatus ?? null,
           subtotal: item.subtotal,
           updatedAtIso: nowIso,
@@ -427,6 +429,7 @@ export class DrizzleMonthlyExpensesRepository
             monthlyFolderId: monthlyFolder.id,
             monthlyFolderViewUrl: monthlyFolder.viewUrl,
             occurrencesPerMonth: item.occurrencesPerMonth,
+            occurrencesUnit: item.occurrencesUnit ?? null,
             receiptShareStatus: item.receiptShareStatus ?? null,
             subtotal: item.subtotal,
             updatedAtIso: nowIso,
@@ -574,6 +577,7 @@ export class DrizzleMonthlyExpensesRepository
         monthlyFolderId: expenseMonthsTable.monthlyFolderId,
         monthlyFolderViewUrl: expenseMonthsTable.monthlyFolderViewUrl,
         occurrencesPerMonth: expenseMonthsTable.occurrencesPerMonth,
+        occurrencesUnit: expenseMonthsTable.occurrencesUnit,
         paymentLink: expensesTable.paymentLink,
         receiptShareMessage: expensesTable.receiptShareMessage,
         receiptSharePhoneDigits: expensesTable.receiptSharePhoneDigits,
@@ -814,6 +818,9 @@ export class DrizzleMonthlyExpensesRepository
             ? { manualCoveredPayments: row.manualCoveredPayments }
             : {}),
           occurrencesPerMonth: row.occurrencesPerMonth,
+          ...(row.occurrencesUnit
+            ? { occurrencesUnit: row.occurrencesUnit }
+            : {}),
           ...(paymentRecordsByExpenseId.has(row.expenseId)
             ? {
                 paymentRecords:
