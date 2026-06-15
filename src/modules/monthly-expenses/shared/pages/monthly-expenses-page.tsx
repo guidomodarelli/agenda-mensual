@@ -2329,28 +2329,28 @@ export default function MonthlyExpensesPage({
     });
   };
 
-  const handleMoveExpenseToFolder = ({
+  const handleMoveExpenseToFolder = async ({
     expenseId,
     folderId,
   }: {
     expenseId: string;
     folderId: string | null;
   }) => {
-    updateFormState((currentState) => {
-      const targetRow = currentState.rows.find((row) => row.id === expenseId);
+    const targetRow = formState.rows.find((row) => row.id === expenseId);
 
-      if (!targetRow || targetRow.expenseFolderId === (folderId ?? "")) {
-        return currentState;
-      }
+    if (!targetRow || targetRow.expenseFolderId === (folderId ?? "")) {
+      return;
+    }
 
-      return {
-        ...currentState,
-        rows: currentState.rows.map((row) =>
-          row.id === expenseId
-            ? { ...row, expenseFolderId: folderId ?? "" }
-            : row,
-        ),
-      };
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? { ...row, expenseFolderId: folderId ?? "" }
+        : row,
+    );
+
+    await persistMonthlyExpensesRows(nextRows, {
+      loading: "Moviendo compromiso de carpeta...",
+      success: "Compromiso movido de carpeta correctamente.",
     });
   };
 
