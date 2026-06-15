@@ -4334,31 +4334,71 @@ export default function MonthlyExpensesPage({
     });
   };
 
+  /**
+   * Reorders folders optimistically: the new order is applied to local state
+   * immediately so the drag-and-drop result is reflected without waiting for the
+   * server, and the captured baseline order is restored if persistence fails.
+   */
   const handleReorderExpenseFolders = async (orderedFolderIds: string[]) => {
+    const baselineFolders = expenseFoldersState.folders;
     const foldersById = new Map(
-      expenseFoldersState.folders.map((folder) => [folder.id, folder]),
+      baselineFolders.map((folder) => [folder.id, folder]),
     );
     const reorderedFolders = orderedFolderIds
       .map((folderId) => foldersById.get(folderId))
       .filter((folder): folder is ExpenseFolderOption => folder !== undefined);
 
-    if (reorderedFolders.length !== expenseFoldersState.folders.length) {
+    if (reorderedFolders.length !== baselineFolders.length) {
       return;
     }
 
     const hasOrderChanged = reorderedFolders.some(
-      (folder, index) => folder.id !== expenseFoldersState.folders[index]?.id,
+      (folder, index) => folder.id !== baselineFolders[index]?.id,
     );
 
     if (!hasOrderChanged) {
       return;
     }
 
-    await persistExpenseFoldersCatalog(reorderedFolders, {
-      failure: "No pudimos reordenar las carpetas.",
-      loading: "Reordenando carpetas...",
-      success: "Carpetas reordenadas correctamente.",
-    });
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para guardar carpetas.");
+      return;
+    }
+
+    // Apply the new order optimistically before the request resolves.
+    updateExpenseFoldersState((currentState) => ({
+      ...currentState,
+      error: null,
+      errorCode: null,
+      folders: reorderedFolders,
+      successMessage: null,
+    }));
+
+    try {
+      await saveExpenseFoldersCatalogViaApi({
+        folders: reorderedFolders.map((folder, index) => ({
+          ...(folder.color ? { color: folder.color } : {}),
+          ...(folder.icon ? { icon: folder.icon } : {}),
+          id: folder.id,
+          name: folder.name,
+          position: index,
+        })),
+      });
+    } catch (error) {
+      // Roll back to the captured baseline order on failure.
+      const failureMessage = "No pudimos reordenar las carpetas.";
+
+      updateExpenseFoldersState((currentState) => ({
+        ...currentState,
+        error: failureMessage,
+        errorCode: getTechnicalErrorCode(error),
+        folders: baselineFolders,
+        successMessage: null,
+      }));
+      toast.error(
+        renderErrorWithCode(failureMessage, getTechnicalErrorCode(error)),
+      );
+    }
   };
 
   const handleReportTypeFilterChange = (value: string) => {

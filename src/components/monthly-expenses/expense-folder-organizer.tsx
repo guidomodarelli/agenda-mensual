@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   draggable,
   dropTargetForElements,
+  monitorForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 
 import {
@@ -171,12 +172,11 @@ interface ExpenseFolderChipProps {
   isSelected: boolean;
   onSelect: () => void;
   onDropExpense: (expenseId: string) => void;
-  onReorderFolder?: (args: {
+  onReorderPreview?: (args: {
     draggedFolderId: string;
     targetFolderId: string;
   }) => void;
   reorderableFolderId?: string;
-  targetFolderId: string | null;
 }
 
 function ExpenseFolderChip({
@@ -185,9 +185,8 @@ function ExpenseFolderChip({
   isSelected,
   onSelect,
   onDropExpense,
-  onReorderFolder,
+  onReorderPreview,
   reorderableFolderId,
-  targetFolderId,
 }: ExpenseFolderChipProps) {
   const chipRef = useRef<HTMLButtonElement | null>(null);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -233,18 +232,8 @@ function ExpenseFolderChip({
           draggedFolderId !== reorderableFolderId
         );
       },
-      getData: () => ({ targetFolderId }),
-      onDragEnter: () => setIsDraggedOver(true),
-      onDragLeave: () => setIsDraggedOver(false),
-      onDrop: ({ source }) => {
-        setIsDraggedOver(false);
-
-        const draggedExpenseId = getDraggedExpenseId(source.data);
-
-        if (draggedExpenseId !== null) {
-          onDropExpense(draggedExpenseId);
-          return;
-        }
+      onDragEnter: ({ source }) => {
+        setIsDraggedOver(true);
 
         const draggedFolderId = getDraggedFolderId(source.data);
 
@@ -253,14 +242,24 @@ function ExpenseFolderChip({
           reorderableFolderId !== undefined &&
           draggedFolderId !== reorderableFolderId
         ) {
-          onReorderFolder?.({
+          onReorderPreview?.({
             draggedFolderId,
             targetFolderId: reorderableFolderId,
           });
         }
       },
+      onDragLeave: () => setIsDraggedOver(false),
+      onDrop: ({ source }) => {
+        setIsDraggedOver(false);
+
+        const draggedExpenseId = getDraggedExpenseId(source.data);
+
+        if (draggedExpenseId !== null) {
+          onDropExpense(draggedExpenseId);
+        }
+      },
     });
-  }, [onDropExpense, onReorderFolder, reorderableFolderId, targetFolderId]);
+  }, [onDropExpense, onReorderPreview, reorderableFolderId]);
 
   return (
     <button
@@ -307,6 +306,11 @@ interface ExpenseFolderFilterBarProps {
 /**
  * Folder filter chips that double as drag-and-drop targets to reassign expenses
  * between folders and can be reordered by dragging one folder chip onto another.
+ *
+ * Reordering shows a live preview: while a chip is dragged, the remaining chips
+ * shift in place so the dropped position is visible before it is committed. The
+ * commit itself is applied optimistically by the parent and rolled back if the
+ * persistence request fails.
  */
 export function ExpenseFolderFilterBar({
   folders,
@@ -318,34 +322,84 @@ export function ExpenseFolderFilterBar({
   countsByFolderId,
   totalCount,
 }: ExpenseFolderFilterBarProps) {
+  const [previewOrderIds, setPreviewOrderIds] = useState<string[] | null>(null);
+  const previewOrderIdsRef = useRef<string[] | null>(null);
+  const foldersRef = useRef(folders);
+  const onReorderFoldersRef = useRef(onReorderFolders);
+
+  useEffect(() => {
+    previewOrderIdsRef.current = previewOrderIds;
+    foldersRef.current = folders;
+    onReorderFoldersRef.current = onReorderFolders;
+  });
+
+  useEffect(() => {
+    return monitorForElements({
+      canMonitor: ({ source }) => getDraggedFolderId(source.data) !== null,
+      onDrop: ({ location }) => {
+        const previewedOrder = previewOrderIdsRef.current;
+        setPreviewOrderIds(null);
+
+        if (!previewedOrder || location.current.dropTargets.length === 0) {
+          return;
+        }
+
+        const baselineOrder = foldersRef.current.map((folder) => folder.id);
+        const hasOrderChanged =
+          previewedOrder.length === baselineOrder.length &&
+          previewedOrder.some((id, index) => id !== baselineOrder[index]);
+
+        if (hasOrderChanged) {
+          onReorderFoldersRef.current(previewedOrder);
+        }
+      },
+    });
+  }, []);
+
+  const handleReorderPreview = useCallback(
+    ({
+      draggedFolderId,
+      targetFolderId,
+    }: {
+      draggedFolderId: string;
+      targetFolderId: string;
+    }) => {
+      setPreviewOrderIds((currentOrder) => {
+        const baseOrder =
+          currentOrder ?? foldersRef.current.map((folder) => folder.id);
+        const fromIndex = baseOrder.indexOf(draggedFolderId);
+        const toIndex = baseOrder.indexOf(targetFolderId);
+
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+          return currentOrder;
+        }
+
+        const nextOrder = [...baseOrder];
+        nextOrder.splice(fromIndex, 1);
+        nextOrder.splice(toIndex, 0, draggedFolderId);
+
+        return nextOrder;
+      });
+    },
+    [],
+  );
+
+  const orderedFolders = useMemo(() => {
+    if (!previewOrderIds) {
+      return folders;
+    }
+
+    const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+    const ordered = previewOrderIds
+      .map((id) => foldersById.get(id))
+      .filter((folder): folder is ExpenseFolderOption => folder !== undefined);
+
+    return ordered.length === folders.length ? ordered : folders;
+  }, [folders, previewOrderIds]);
+
   if (folders.length === 0) {
     return null;
   }
-
-  const handleReorderFolder = ({
-    draggedFolderId,
-    targetFolderId,
-  }: {
-    draggedFolderId: string;
-    targetFolderId: string;
-  }) => {
-    if (draggedFolderId === targetFolderId) {
-      return;
-    }
-
-    const orderedFolderIds = folders.map((folder) => folder.id);
-    const fromIndex = orderedFolderIds.indexOf(draggedFolderId);
-    const toIndex = orderedFolderIds.indexOf(targetFolderId);
-
-    if (fromIndex === -1 || toIndex === -1) {
-      return;
-    }
-
-    orderedFolderIds.splice(fromIndex, 1);
-    orderedFolderIds.splice(toIndex, 0, draggedFolderId);
-
-    onReorderFolders(orderedFolderIds);
-  };
 
   return (
     <div className={styles.filterBar}>
@@ -370,10 +424,9 @@ export function ExpenseFolderFilterBar({
             onMoveExpenseToFolder({ expenseId, folderId: null })
           }
           onSelect={() => onSelectFilter(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
-          targetFolderId={null}
         />
 
-        {folders.map((folder) => (
+        {orderedFolders.map((folder) => (
           <ExpenseFolderChip
             count={countsByFolderId[folder.id] ?? 0}
             folder={folder}
@@ -382,10 +435,9 @@ export function ExpenseFolderFilterBar({
             onDropExpense={(expenseId) =>
               onMoveExpenseToFolder({ expenseId, folderId: folder.id })
             }
-            onReorderFolder={handleReorderFolder}
+            onReorderPreview={handleReorderPreview}
             onSelect={() => onSelectFilter(folder.id)}
             reorderableFolderId={folder.id}
-            targetFolderId={folder.id}
           />
         ))}
       </div>
