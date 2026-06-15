@@ -158,6 +158,13 @@ jobs:
             6. Pusheá a la rama del PR (git push).
             7. Si no hiciste ningun cambio, explica por que en tu respuesta y
                no commitees nada.
+            8. Si aplicaste un fix (commiteaste + pusheaste), escribi en
+               `.codex-autofix/summary.txt` UNA sola linea en español que
+               resuma que cambio y su efecto. Ejemplo:
+               "normalizeExpenseItemsForSave ahora propaga occurrencesUnit; subir
+               un comprobante ya no borra la unidad guardada".
+               Ese archivo esta gitignored (estado de runtime): no lo commitees.
+               Si no hiciste cambios, no lo crees.
 
       - name: Cerrar comentario (reaccion final, reply y resolve)
         if: always()
@@ -173,6 +180,7 @@ jobs:
           REACTION_BASE: ${{ steps.progress.outputs.reaction_base }}
           REACTION_ID: ${{ steps.progress.outputs.reaction_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
           AFTER_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
           CHANGED=false
@@ -185,7 +193,8 @@ jobs:
             gh api -X DELETE "${REACTION_BASE}/reactions/${REACTION_ID}" || true
           fi
 
-          # Reaccion final + mensaje segun resultado.
+          # Reaccion final + mensaje segun resultado, usando un template fijo de
+          # comentario de cierre (mantener en paridad con docs/codex-autofix-loop.md).
           #
           # 👎 (-1) es la senal de "sugerencia incorrecta/no util" que Codex
           # interpreta sobre SU comentario. Por eso solo se usa cuando el agente
@@ -193,15 +202,24 @@ jobs:
           # se pudo aplicar por una falla del propio Action (error de infra/agente),
           # NO mandamos 👎: usamos 😕 (confused) para pedir atencion humana sin
           # desvalorizar la sugerencia.
+          SHORT_SHA="${AFTER_SHA:0:7}"
+          COMMIT_URL="${SERVER_URL}/${REPO}/commit/${AFTER_SHA}"
+          # Resumen de una linea que dejo el paso de fix (gitignored, runtime).
+          SUMMARY="$(head -n 1 .codex-autofix/summary.txt 2>/dev/null | tr -d '\r')"
+
           if [ "$FIX_OUTCOME" = "success" ] && [ "$CHANGED" = "true" ]; then
             FINAL_REACTION="rocket"
-            BODY="✅ Fix aplicado automáticamente en \`${AFTER_SHA}\`. Run: ${RUN_URL}"
+            if [ -n "$SUMMARY" ]; then
+              BODY="$(printf '✅ **Resuelto** en [`%s`](%s).\n\n**Qué cambió:** %s\n\n<sub>🤖 Fix automático en respuesta a este comentario de Codex · [run](%s)</sub>' "$SHORT_SHA" "$COMMIT_URL" "$SUMMARY" "$RUN_URL")"
+            else
+              BODY="$(printf '✅ **Resuelto** en [`%s`](%s).\n\n<sub>🤖 Fix automático en respuesta a este comentario de Codex · [run](%s)</sub>' "$SHORT_SHA" "$COMMIT_URL" "$RUN_URL")"
+            fi
           elif [ "$FIX_OUTCOME" = "success" ]; then
             FINAL_REACTION="-1"
-            BODY="ℹ️ Revisé el comentario pero no requería cambios de código. Run: ${RUN_URL}"
+            BODY="$(printf 'ℹ️ **Sin cambios.** Revisé la sugerencia pero no requería cambios de código.\n\n<sub>🤖 Auto-fix de Codex · [run](%s)</sub>' "$RUN_URL")"
           else
             FINAL_REACTION="confused"
-            BODY="⚠️ No pude aplicar el fix automáticamente (falla del Action, no de la sugerencia). Revisá el run: ${RUN_URL}"
+            BODY="$(printf '⚠️ **No pude aplicar el fix** (falla del Action, no de la sugerencia).\n\n<sub>🤖 Auto-fix de Codex · [run](%s)</sub>' "$RUN_URL")"
           fi
 
           if [ -n "$REACTION_BASE" ]; then

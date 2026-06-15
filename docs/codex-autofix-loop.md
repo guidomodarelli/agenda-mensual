@@ -46,9 +46,9 @@ Si OPEN, procesá:
 
 (4) CLOSEOUT en ÉXITO (push hecho). Definí el link al commit: COMMIT_URL=https://github.com/{{OWNER}}/{{REPO}}/commit/<sha>
    a. Reacción 🚀: `gh api -X POST repos/{{OWNER}}/{{REPO}}/pulls/comments/<id>/reactions -f content=rocket` (INLINE) o `.../issues/comments/<id>/reactions` (GENERAL).
-   b. Reply en el hilo CON LINK al commit (usá el sha corto de 7 chars como texto del link):
-      - INLINE: `gh api -X POST repos/{{OWNER}}/{{REPO}}/pulls/{{PR}}/comments/<id>/replies -f body="✅ Fix aplicado automáticamente en [\`<sha_corto>\`](<COMMIT_URL>)."`
-      - GENERAL: `gh pr comment {{PR}} --repo {{OWNER}}/{{REPO}} --body "✅ Fix aplicado automáticamente en [\`<sha_corto>\`](<COMMIT_URL>) (en respuesta a tu comentario)."`
+   b. Reply en el hilo con el **template de cierre** (ver «Plantilla de comentario de cierre» abajo). Definí `<resumen>` = UNA línea de qué cambió y su efecto, y usá el sha corto de 7 chars como texto del link:
+      - INLINE: `gh api -X POST repos/{{OWNER}}/{{REPO}}/pulls/{{PR}}/comments/<id>/replies -f body="$(printf '✅ **Resuelto** en [`%s`](%s).\n\n**Qué cambió:** %s\n\n<sub>🤖 Fix automático en respuesta a este comentario de Codex.</sub>' "<sha_corto>" "<COMMIT_URL>" "<resumen>")"`
+      - GENERAL: `gh pr comment {{PR}} --repo {{OWNER}}/{{REPO}} --body "$(printf '✅ **Resuelto** en [`%s`](%s) (en respuesta a tu comentario).\n\n**Qué cambió:** %s\n\n<sub>🤖 Fix automático de Codex.</sub>' "<sha_corto>" "<COMMIT_URL>" "<resumen>")"`
    c. SOLO INLINE — resolver el hilo vía GraphQL:
       THREAD_ID=$(gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{id comments(first:100){nodes{databaseId}}}}}}}' -F owner={{OWNER}} -F repo={{REPO}} -F pr={{PR}} --jq "[.data.repository.pullRequest.reviewThreads.nodes[] | select(any(.comments.nodes[]; .databaseId == <id>)) | .id] | first // empty")
       si THREAD_ID no vacío: gh api graphql -f query='mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{isResolved}}}' -F threadId="$THREAD_ID"
@@ -58,6 +58,39 @@ Si OPEN, procesá:
 
 (6) AL FINAL: si en esta vuelta fixeaste con éxito al menos 1 comentario nuevo (contador >= 1) y ya no quedan pendientes, posteá UN único comentario general `@codex review` para disparar una nueva revisión de Codex: `gh pr comment {{PR}} --repo {{OWNER}}/{{REPO}} --body "@codex review"`. Si NO fixeaste nada nuevo esta vuelta (contador == 0), NO postees nada (evitá spam).
 ```
+
+## Plantilla de comentario de cierre
+
+Tanto el loop local como el Action ([.github/workflows/codex-autofix.yml](../.github/workflows/codex-autofix.yml))
+cierran el hilo con el **mismo** formato. Placeholders: `{{sha_corto}}` (7 chars),
+`{{commit_url}}`, `{{resumen}}` (una línea), `{{run_url}}` (solo el Action).
+
+- **Éxito (fix aplicado) → 🚀**
+  ```text
+  ✅ **Resuelto** en [`{{sha_corto}}`]({{commit_url}}).
+
+  **Qué cambió:** {{resumen}}
+
+  <sub>🤖 Fix automático en respuesta a este comentario de Codex · [run]({{run_url}})</sub>
+  ```
+  (Si no hay resumen disponible, omitir la línea «Qué cambió».)
+
+- **Sin cambios (el agente evaluó y no hacía falta tocar código) → 👎**
+  ```text
+  ℹ️ **Sin cambios.** Revisé la sugerencia pero no requería cambios de código.
+
+  <sub>🤖 Auto-fix de Codex · [run]({{run_url}})</sub>
+  ```
+
+- **Falla del flujo (no se pudo aplicar; problema del Action/loop, no de la sugerencia) → 😕**
+  ```text
+  ⚠️ **No pude aplicar el fix** (falla del Action, no de la sugerencia).
+
+  <sub>🤖 Auto-fix de Codex · [run]({{run_url}})</sub>
+  ```
+
+> Regla de paridad: cualquier cambio a esta plantilla debe reflejarse en ambos
+> lados (este doc y el step «Cerrar comentario» del workflow).
 
 ## Notas
 
