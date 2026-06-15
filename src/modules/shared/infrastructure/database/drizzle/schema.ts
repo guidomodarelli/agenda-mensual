@@ -95,6 +95,7 @@ export const expenseMonthsTable = sqliteTable(
     occurrencesUnit: text("occurrences_unit"),
     receiptShareStatus: text("receipt_share_status"),
     subtotal: real("subtotal").notNull(),
+    subtotalUnit: text("subtotal_unit"),
     updatedAtIso: text("updated_at_iso").notNull(),
     userSubject: text("user_subject").notNull(),
   },

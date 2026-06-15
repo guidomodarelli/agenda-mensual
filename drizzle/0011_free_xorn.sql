@@ -1,0 +1,1 @@
+ALTER TABLE `expense_months` ADD `subtotal_unit` text;

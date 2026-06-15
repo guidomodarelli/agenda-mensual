@@ -40,6 +40,7 @@ function createRow(overrides: Partial<MonthlyExpensesEditableRow> = {}): Monthly
     receipts: [],
     startMonth: "",
     subtotal: "1000",
+    subtotalUnit: "occurrence",
     total: "1000",
     ...overrides,
   };
@@ -50,7 +51,7 @@ function renderMonthlyExpensesTable(
   overrides: Partial<
     Pick<
       ComponentProps<typeof MonthlyExpensesTable>,
-      "onUpdateExpenseOccurrences"
+      "onUpdateExpenseDetails"
     >
   > = {},
 ) {
@@ -107,10 +108,9 @@ function renderMonthlyExpensesTable(
         onSaveUnsavedChanges={jest.fn()}
         onUnsavedChangesClose={jest.fn()}
         onUnsavedChangesDiscard={jest.fn()}
-        onUpdateExpenseOccurrences={jest.fn()}
+        onUpdateExpenseDetails={jest.fn()}
         {...overrides}
         onUpdateExpenseReceiptShare={jest.fn()}
-        onUpdateExpenseSubtotal={jest.fn()}
         onUpdatePaymentLink={jest.fn()}
         onUpdateReceiptShareStatus={jest.fn()}
         pendingMonth={null}
@@ -200,11 +200,11 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     ).toHaveAttribute("type", "file");
   });
 
-  it("focuses subtotal input when opening subtotal edit dialog", async () => {
+  it("focuses subtotal input when opening the details edit dialog", async () => {
     renderMonthlyExpensesTable([createRow()]);
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar subtotal",
+      menuItemLabel: "Editar subtotal y cantidad",
       triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
@@ -213,17 +213,24 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     });
   });
 
-  it("focuses occurrences input when opening occurrences edit dialog", async () => {
+  it("renders subtotal, unit, quantity and duration fields in the details dialog", async () => {
     renderMonthlyExpensesTable([createRow()]);
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar cantidad y duración",
+      menuItemLabel: "Editar subtotal y cantidad",
       triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
-    await waitFor(() => {
-      expect(screen.getByLabelText("Cantidad por mes de Internet")).toHaveFocus();
-    });
+    expect(screen.getByLabelText("Subtotal de Internet")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Unidad del subtotal de Internet"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Cantidad por mes de Internet"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
+    ).toBeInTheDocument();
   });
 
   it("focuses payment link input when opening payment link dialog", async () => {
@@ -325,13 +332,13 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(screen.getByText("× 1 vez de 4h 30m")).toBeInTheDocument();
   });
 
-  it("does not render a unit select and keeps the duration field for a single occurrence", async () => {
+  it("keeps the duration field without a unit select for a single occurrence", async () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
     ]);
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar cantidad y duración",
+      menuItemLabel: "Editar subtotal y cantidad",
       triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
@@ -344,20 +351,28 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     ).toBeInTheDocument();
   });
 
-  it("saves the per-occurrence duration set for a single occurrence", async () => {
+  it("saves subtotal, unit, quantity and duration together from the details dialog", async () => {
     const user = userEvent.setup();
-    const onUpdateExpenseOccurrences = jest.fn();
+    const onUpdateExpenseDetails = jest.fn();
 
     renderMonthlyExpensesTable(
-      [createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" })],
-      { onUpdateExpenseOccurrences },
+      [
+        createRow({
+          occurrencesPerMonth: "1",
+          occurrencesUnit: "",
+          subtotal: "5000",
+        }),
+      ],
+      { onUpdateExpenseDetails },
     );
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar cantidad y duración",
+      menuItemLabel: "Editar subtotal y cantidad",
       triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
+    await user.clear(screen.getByLabelText("Cantidad por mes de Internet"));
+    await user.type(screen.getByLabelText("Cantidad por mes de Internet"), "2");
     await user.type(
       screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
       "4",
@@ -368,10 +383,45 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     );
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
-    expect(onUpdateExpenseOccurrences).toHaveBeenCalledWith({
+    expect(onUpdateExpenseDetails).toHaveBeenCalledWith({
       expenseId: "expense-1",
-      occurrencesPerMonth: 1,
+      occurrencesPerMonth: 2,
       occurrencesUnit: "veces de 4h 30",
+      subtotal: 5000,
+      subtotalUnit: "occurrence",
+    });
+  });
+
+  it("saves the hourly subtotal unit selected in the details dialog", async () => {
+    const user = userEvent.setup();
+    const onUpdateExpenseDetails = jest.fn();
+
+    renderMonthlyExpensesTable(
+      [
+        createRow({
+          occurrencesPerMonth: "2",
+          occurrencesUnit: "veces de 4h 30",
+          subtotal: "5000",
+        }),
+      ],
+      { onUpdateExpenseDetails },
+    );
+
+    await openQuickEditDialog({
+      menuItemLabel: "Editar subtotal y cantidad",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
+    });
+
+    await user.click(screen.getByLabelText("Unidad del subtotal de Internet"));
+    await user.click(screen.getByRole("option", { name: "Por hora" }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(onUpdateExpenseDetails).toHaveBeenCalledWith({
+      expenseId: "expense-1",
+      occurrencesPerMonth: 2,
+      occurrencesUnit: "veces de 4h 30",
+      subtotal: 5000,
+      subtotalUnit: "hour",
     });
   });
 });

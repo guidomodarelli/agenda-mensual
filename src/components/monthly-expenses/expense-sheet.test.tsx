@@ -37,6 +37,7 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     sortOrder: null,
     startMonth: "",
     subtotal: "100",
+    subtotalUnit: "occurrence",
     total: "100.00",
   };
 }

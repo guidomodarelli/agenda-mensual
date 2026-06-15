@@ -134,6 +134,7 @@ type TechnicalErrorCode = `E${number}${number}${number}${number}`;
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
 export type MonthlyExpenseLoanDirection = "payable" | "receivable";
+export type MonthlyExpenseSubtotalUnit = "occurrence" | "hour";
 type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
@@ -972,6 +973,7 @@ export interface MonthlyExpensesEditableRow {
   sortOrder: number | null;
   startMonth: string;
   subtotal: string;
+  subtotalUnit?: MonthlyExpenseSubtotalUnit;
   total: string;
 }
 
@@ -1086,19 +1088,17 @@ interface MonthlyExpensesTableProps {
     expenseId: string;
     paymentLink: string;
   }) => void | Promise<void>;
-  onUpdateExpenseOccurrences: (args: {
+  onUpdateExpenseDetails: (args: {
     expenseId: string;
     occurrencesPerMonth: number;
     occurrencesUnit: string;
+    subtotal: number;
+    subtotalUnit: MonthlyExpenseSubtotalUnit;
   }) => void | Promise<void>;
   onUpdateExpenseReceiptShare: (args: {
     expenseId: string;
     receiptShareMessage: string;
     receiptSharePhoneDigits: string;
-  }) => void | Promise<void>;
-  onUpdateExpenseSubtotal: (args: {
-    expenseId: string;
-    subtotal: number;
   }) => void | Promise<void>;
   onUpdateReceiptShareStatus: (args: {
     expenseId: string;
@@ -1125,13 +1125,8 @@ interface PaymentLinkDialogState {
   mode: "create" | "edit";
 }
 
-interface ExpenseSubtotalDialogState {
+interface ExpenseDetailsDialogState {
   currency: MonthlyExpenseCurrency;
-  expenseDescription: string;
-  expenseId: string;
-}
-
-interface ExpenseOccurrencesDialogState {
   expenseDescription: string;
   expenseId: string;
 }
@@ -2305,9 +2300,8 @@ export function MonthlyExpensesTable({
   onDeleteManualPaymentRecord,
   onEditManualPaymentRecord,
   onUpdatePaymentLink,
-  onUpdateExpenseOccurrences,
+  onUpdateExpenseDetails,
   onUpdateExpenseReceiptShare,
-  onUpdateExpenseSubtotal,
   onUpdateReceiptShareStatus,
   onMonthChange,
   onRequestCloseExpenseSheet,
@@ -2343,12 +2337,12 @@ export function MonthlyExpensesTable({
   const [paymentLinkDraftValue, setPaymentLinkDraftValue] = useState("");
   const [paymentLinkDraftError, setPaymentLinkDraftError] =
     useState<string | null>(null);
-  const [subtotalDialogState, setSubtotalDialogState] =
-    useState<ExpenseSubtotalDialogState | null>(null);
+  const [detailsDialogState, setDetailsDialogState] =
+    useState<ExpenseDetailsDialogState | null>(null);
   const [subtotalDraftValue, setSubtotalDraftValue] = useState("");
   const [subtotalDraftError, setSubtotalDraftError] = useState<string | null>(null);
-  const [occurrencesDialogState, setOccurrencesDialogState] =
-    useState<ExpenseOccurrencesDialogState | null>(null);
+  const [subtotalUnitDraftValue, setSubtotalUnitDraftValue] =
+    useState<MonthlyExpenseSubtotalUnit>("occurrence");
   const [occurrencesDraftValue, setOccurrencesDraftValue] = useState("");
   const [occurrencesUnitDraftValue, setOccurrencesUnitDraftValue] = useState("");
   const [occurrencesDraftError, setOccurrencesDraftError] =
@@ -2414,20 +2408,12 @@ export function MonthlyExpensesTable({
   }, []);
 
   useEffect(() => {
-    if (!subtotalDialogState) {
+    if (!detailsDialogState) {
       return;
     }
 
     return focusDialogInputById("subtotal-dialog-input");
-  }, [focusDialogInputById, subtotalDialogState]);
-
-  useEffect(() => {
-    if (!occurrencesDialogState) {
-      return;
-    }
-
-    return focusDialogInputById("occurrences-dialog-input");
-  }, [focusDialogInputById, occurrencesDialogState]);
+  }, [focusDialogInputById, detailsDialogState]);
 
   useEffect(() => {
     if (!receiptShareDialogState) {
@@ -2764,39 +2750,54 @@ export function MonthlyExpensesTable({
     handleClosePaymentLinkDialog();
   };
 
-  const handleOpenSubtotalDialog = useCallback(({
+  const handleOpenDetailsDialog = useCallback(({
     currency,
     expenseDescription,
     expenseId,
+    occurrencesPerMonth,
+    occurrencesUnit,
     subtotal,
+    subtotalUnit,
   }: {
     currency: MonthlyExpenseCurrency;
     expenseDescription: string;
     expenseId: string;
+    occurrencesPerMonth: string;
+    occurrencesUnit: string;
     subtotal: string;
+    subtotalUnit: MonthlyExpenseSubtotalUnit;
   }) => {
-    setSubtotalDialogState({
+    setDetailsDialogState({
       currency,
       expenseDescription,
       expenseId,
     });
     setSubtotalDraftValue(subtotal);
     setSubtotalDraftError(null);
+    setSubtotalUnitDraftValue(subtotalUnit);
+    setOccurrencesDraftValue(occurrencesPerMonth);
+    setOccurrencesUnitDraftValue(occurrencesUnit);
+    setOccurrencesDraftError(null);
+    setOccurrencesUnitDraftError(null);
   }, []);
 
-  const handleCloseSubtotalDialog = () => {
-    setSubtotalDialogState(null);
+  const handleCloseDetailsDialog = () => {
+    setDetailsDialogState(null);
     setSubtotalDraftValue("");
     setSubtotalDraftError(null);
+    setSubtotalUnitDraftValue("occurrence");
+    setOccurrencesDraftValue("");
+    setOccurrencesUnitDraftValue("");
+    setOccurrencesDraftError(null);
+    setOccurrencesUnitDraftError(null);
   };
 
-  const handleSaveSubtotal = async () => {
-    if (!subtotalDialogState) {
+  const handleSaveDetails = async () => {
+    if (!detailsDialogState) {
       return;
     }
 
     const normalizedSubtotal = Number(subtotalDraftValue);
-
     const subtotalValidationError = validateSubtotalAmount(normalizedSubtotal);
 
     if (subtotalValidationError) {
@@ -2805,49 +2806,8 @@ export function MonthlyExpensesTable({
     }
 
     setSubtotalDraftError(null);
-    await onUpdateExpenseSubtotal({
-      expenseId: subtotalDialogState.expenseId,
-      subtotal: normalizedSubtotal,
-    });
-    handleCloseSubtotalDialog();
-  };
-
-  const handleOpenOccurrencesDialog = useCallback(({
-    expenseDescription,
-    expenseId,
-    occurrencesPerMonth,
-    occurrencesUnit,
-  }: {
-    expenseDescription: string;
-    expenseId: string;
-    occurrencesPerMonth: string;
-    occurrencesUnit: string;
-  }) => {
-    setOccurrencesDialogState({
-      expenseDescription,
-      expenseId,
-    });
-    setOccurrencesDraftValue(occurrencesPerMonth);
-    setOccurrencesUnitDraftValue(occurrencesUnit);
-    setOccurrencesDraftError(null);
-    setOccurrencesUnitDraftError(null);
-  }, []);
-
-  const handleCloseOccurrencesDialog = () => {
-    setOccurrencesDialogState(null);
-    setOccurrencesDraftValue("");
-    setOccurrencesUnitDraftValue("");
-    setOccurrencesDraftError(null);
-    setOccurrencesUnitDraftError(null);
-  };
-
-  const handleSaveOccurrences = async () => {
-    if (!occurrencesDialogState) {
-      return;
-    }
 
     const normalizedOccurrences = Number(occurrencesDraftValue);
-
     const occurrencesValidationError =
       validateOccurrencesPerMonth(normalizedOccurrences);
 
@@ -2868,12 +2828,14 @@ export function MonthlyExpensesTable({
 
     setOccurrencesDraftError(null);
     setOccurrencesUnitDraftError(null);
-    await onUpdateExpenseOccurrences({
-      expenseId: occurrencesDialogState.expenseId,
+    await onUpdateExpenseDetails({
+      expenseId: detailsDialogState.expenseId,
       occurrencesPerMonth: normalizedOccurrences,
       occurrencesUnit: occurrencesUnitForSave,
+      subtotal: normalizedSubtotal,
+      subtotalUnit: subtotalUnitDraftValue,
     });
-    handleCloseOccurrencesDialog();
+    handleCloseDetailsDialog();
   };
 
   const handleOpenReceiptShareDialog = useCallback(({
@@ -3241,32 +3203,20 @@ export function MonthlyExpensesTable({
                   <DropdownMenuItem
                     onSelect={() => {
                       window.setTimeout(() => {
-                        handleOpenSubtotalDialog({
+                        handleOpenDetailsDialog({
                           currency: row.original.currency,
-                          expenseId: row.original.id,
-                          expenseDescription,
-                          subtotal: row.original.subtotal,
-                        });
-                      }, 0);
-                    }}
-                  >
-                    <Pencil aria-hidden="true" />
-                    Editar subtotal
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      window.setTimeout(() => {
-                        handleOpenOccurrencesDialog({
                           expenseDescription,
                           expenseId: row.original.id,
                           occurrencesPerMonth: row.original.occurrencesPerMonth,
                           occurrencesUnit: row.original.occurrencesUnit,
+                          subtotal: row.original.subtotal,
+                          subtotalUnit: row.original.subtotalUnit ?? "occurrence",
                         });
                       }, 0);
                     }}
                   >
                     <Pencil aria-hidden="true" />
-                    Editar cantidad y duración
+                    Editar subtotal y cantidad
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -4200,8 +4150,7 @@ export function MonthlyExpensesTable({
       onRegisterPaymentRecord,
       onUpdateReceiptShareStatus,
       compareRowsByDescriptionFilterRelevance,
-      handleOpenSubtotalDialog,
-      handleOpenOccurrencesDialog,
+      handleOpenDetailsDialog,
       handleOpenReceiptShareDialog,
       handleOpenPaymentLinkDialog,
       selectedExpenseIdsInCurrentRows,
@@ -4639,10 +4588,10 @@ export function MonthlyExpensesTable({
         <AlertDialog
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
-              handleCloseSubtotalDialog();
+              handleCloseDetailsDialog();
             }
           }}
-          open={subtotalDialogState != null}
+          open={detailsDialogState != null}
         >
           <AlertDialogContent
             className={styles.paymentLinkDialogContent}
@@ -4652,9 +4601,9 @@ export function MonthlyExpensesTable({
             size="sm"
           >
             <AlertDialogHeader>
-              <AlertDialogTitle>Editar subtotal</AlertDialogTitle>
+              <AlertDialogTitle>Editar subtotal y cantidad</AlertDialogTitle>
               <AlertDialogDescription>
-                {`Actualizá el subtotal de ${subtotalDialogState?.expenseDescription ?? "este compromiso"}.`}
+                {`Actualizá el subtotal, su unidad, la cantidad mensual y la duración por ocurrencia de ${detailsDialogState?.expenseDescription ?? "este compromiso"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -4662,11 +4611,11 @@ export function MonthlyExpensesTable({
               <Label htmlFor="subtotal-dialog-input">Subtotal</Label>
               <InputGroup>
                 <InputGroupAddon align="inline-start" aria-hidden="true">
-                  {subtotalDialogState?.currency === "USD" ? "US$" : "$"}
+                  {detailsDialogState?.currency === "USD" ? "US$" : "$"}
                 </InputGroupAddon>
                 <InputGroupInput
                   aria-invalid={subtotalDraftError ? "true" : "false"}
-                  aria-label={`Subtotal de ${subtotalDialogState?.expenseDescription ?? "compromiso"}`}
+                  aria-label={`Subtotal de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
                   autoFocus
                   id="subtotal-dialog-input"
                   inputMode="decimal"
@@ -4682,7 +4631,7 @@ export function MonthlyExpensesTable({
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
-                      void handleSaveSubtotal();
+                      void handleSaveDetails();
                     }
                   }}
                   placeholder="0"
@@ -4699,55 +4648,36 @@ export function MonthlyExpensesTable({
               ) : null}
             </div>
 
-            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
-              <Button
-                onClick={handleCloseSubtotalDialog}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled}
-                onClick={() => {
-                  void handleSaveSubtotal();
+            <div className={styles.paymentLinkDialogField}>
+              <Label htmlFor="subtotal-unit-dialog-select">
+                Unidad del subtotal
+              </Label>
+              <Select
+                onValueChange={(nextValue) => {
+                  setSubtotalUnitDraftValue(
+                    nextValue === "hour" ? "hour" : "occurrence",
+                  );
                 }}
-                type="button"
+                value={subtotalUnitDraftValue}
               >
-                Guardar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              handleCloseOccurrencesDialog();
-            }
-          }}
-          open={occurrencesDialogState != null}
-        >
-          <AlertDialogContent
-            className={styles.paymentLinkDialogContent}
-            onOpenAutoFocus={(event) => {
-              handleDialogInputAutoFocus(event, "occurrences-dialog-input");
-            }}
-            size="sm"
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle>Editar cantidad y duración</AlertDialogTitle>
-              <AlertDialogDescription>
-                {`Actualizá la cantidad mensual y la duración por ocurrencia de ${occurrencesDialogState?.expenseDescription ?? "este compromiso"}.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+                <SelectTrigger
+                  aria-label={`Unidad del subtotal de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  id="subtotal-unit-dialog-select"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="occurrence">Por ocurrencia</SelectItem>
+                  <SelectItem value="hour">Por hora</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="occurrences-dialog-input">Cantidad por mes</Label>
               <Input
                 aria-invalid={occurrencesDraftError ? "true" : "false"}
-                aria-label={`Cantidad por mes de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                autoFocus
+                aria-label={`Cantidad por mes de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
                 id="occurrences-dialog-input"
                 inputMode="numeric"
                 min="1"
@@ -4761,7 +4691,7 @@ export function MonthlyExpensesTable({
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    void handleSaveOccurrences();
+                    void handleSaveDetails();
                   }
                 }}
                 step="1"
@@ -4777,8 +4707,8 @@ export function MonthlyExpensesTable({
 
             <div className={styles.paymentLinkDialogField}>
               <OccurrenceDurationInput
-                durationHoursAriaLabel={`Duración por ocurrencia en horas de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                durationMinutesAriaLabel={`Duración por ocurrencia en minutos de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                durationHoursAriaLabel={`Duración por ocurrencia en horas de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                durationMinutesAriaLabel={`Duración por ocurrencia en minutos de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
                 onChange={(nextUnit) => {
                   setOccurrencesUnitDraftValue(nextUnit);
 
@@ -4797,7 +4727,7 @@ export function MonthlyExpensesTable({
 
             <AlertDialogFooter className={styles.paymentLinkDialogActions}>
               <Button
-                onClick={handleCloseOccurrencesDialog}
+                onClick={handleCloseDetailsDialog}
                 type="button"
                 variant="outline"
               >
@@ -4806,7 +4736,7 @@ export function MonthlyExpensesTable({
               <Button
                 disabled={actionDisabled}
                 onClick={() => {
-                  void handleSaveOccurrences();
+                  void handleSaveDetails();
                 }}
                 type="button"
               >

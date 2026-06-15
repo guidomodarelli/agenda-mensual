@@ -51,6 +51,7 @@ interface NormalizedExpenseRow {
   requiresReceiptShare: number;
   sortOrder: number | null;
   subtotal: number;
+  subtotalUnit: string | null;
 }
 
 interface MonthlyExpenseMonthRow {
@@ -413,6 +414,7 @@ export class DrizzleMonthlyExpensesRepository
           occurrencesUnit: item.occurrencesUnit ?? null,
           receiptShareStatus: item.receiptShareStatus ?? null,
           subtotal: item.subtotal,
+          subtotalUnit: item.subtotalUnit === "hour" ? "hour" : null,
           updatedAtIso: nowIso,
           userSubject: this.userSubject,
         })
@@ -432,6 +434,7 @@ export class DrizzleMonthlyExpensesRepository
             occurrencesUnit: item.occurrencesUnit ?? null,
             receiptShareStatus: item.receiptShareStatus ?? null,
             subtotal: item.subtotal,
+            subtotalUnit: item.subtotalUnit === "hour" ? "hour" : null,
             updatedAtIso: nowIso,
           },
           target: [
@@ -585,6 +588,7 @@ export class DrizzleMonthlyExpensesRepository
         requiresReceiptShare: expensesTable.requiresReceiptShare,
         sortOrder: expensesTable.sortOrder,
         subtotal: expenseMonthsTable.subtotal,
+        subtotalUnit: expenseMonthsTable.subtotalUnit,
       })
       .from(expenseMonthsTable)
       .innerJoin(
@@ -846,6 +850,9 @@ export class DrizzleMonthlyExpensesRepository
               }
             : {}),
           subtotal: row.subtotal,
+          ...(row.subtotalUnit === "hour"
+            ? { subtotalUnit: "hour" as const }
+            : {}),
         })),
         month,
       },

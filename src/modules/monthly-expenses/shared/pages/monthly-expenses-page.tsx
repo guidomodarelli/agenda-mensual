@@ -45,7 +45,12 @@ import {
   type MonthlyExpensesReplicableOption,
   type MonthlyExpenseLoanDirection,
   type MonthlyExpensesEditableRow,
+  type MonthlyExpenseSubtotalUnit,
 } from "@/components/monthly-expenses/monthly-expenses-table";
+import {
+  parseOccurrenceDuration,
+  splitOccurrencesUnit,
+} from "@/components/monthly-expenses/occurrences-unit";
 import {
   getValidPaymentLink,
   normalizePaymentLink,
@@ -360,7 +365,31 @@ function formatEditableNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toString();
 }
 
-function calculateRowTotal(subtotal: string, occurrencesPerMonth: string): string {
+/**
+ * Resolves the per-occurrence duration, in decimal hours, from a stored unit
+ * string such as "veces de 4h 30" (→ 4.5). Returns 0 when no duration is present.
+ *
+ * @param occurrencesUnit - Stored unit string (may carry a duration).
+ * @returns The per-occurrence duration in decimal hours.
+ */
+function resolveOccurrenceDurationHours(occurrencesUnit: string): number {
+  const { duration } = splitOccurrencesUnit(occurrencesUnit);
+  const { hours, minutes } = parseOccurrenceDuration(duration);
+
+  return hours + minutes / 60;
+}
+
+/**
+ * Calculates the editable-row total mirroring the domain rule: `occurrence`
+ * subtotals total `subtotal × cantidad`, while `hour` subtotals total
+ * `subtotal × cantidad × horas` (an empty duration counts as one hour).
+ */
+function calculateRowTotal(
+  subtotal: string,
+  occurrencesPerMonth: string,
+  subtotalUnit: MonthlyExpenseSubtotalUnit,
+  occurrencesUnit: string,
+): string {
   const subtotalValue = Number(subtotal);
   const occurrencesValue = Number(occurrencesPerMonth);
 
@@ -373,7 +402,13 @@ function calculateRowTotal(subtotal: string, occurrencesPerMonth: string): strin
     return "0.00";
   }
 
-  return Number((subtotalValue * occurrencesValue).toFixed(2)).toFixed(2);
+  const durationHours = resolveOccurrenceDurationHours(occurrencesUnit);
+  const effectiveHours =
+    subtotalUnit === "hour" ? (durationHours > 0 ? durationHours : 1) : 1;
+
+  return Number(
+    (subtotalValue * occurrencesValue * effectiveHours).toFixed(2),
+  ).toFixed(2);
 }
 
 function normalizeReceiptShareMessage(value: string): string {
@@ -425,6 +460,7 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     sortOrder: null,
     startMonth: "",
     subtotal: "",
+    subtotalUnit: "occurrence",
     total: "0.00",
   };
 }
@@ -690,6 +726,7 @@ export function toEditableRows(
     sortOrder: item.sortOrder ?? null,
     startMonth: item.loan?.startMonth ?? "",
     subtotal: formatEditableNumber(item.subtotal),
+    subtotalUnit: item.subtotalUnit ?? "occurrence",
     total: item.total.toFixed(2),
     });
   });
@@ -1056,7 +1093,12 @@ function normalizeEditableRows(
           loanTotalInstallments: null,
           startMonth: "",
         }),
-    total: calculateRowTotal(row.subtotal, row.occurrencesPerMonth),
+    total: calculateRowTotal(
+      row.subtotal,
+      row.occurrencesPerMonth,
+      row.subtotalUnit ?? "occurrence",
+      row.occurrencesUnit,
+    ),
   }));
 }
 
@@ -1465,6 +1507,9 @@ export function toSaveMonthlyExpensesCommand(
           ? { occurrencesUnit: row.occurrencesUnit.trim() }
           : {}),
         subtotal: Number(row.subtotal),
+        ...(row.subtotalUnit === "hour"
+          ? { subtotalUnit: "hour" as const }
+          : {}),
       };
     }),
     month: state.month.trim(),
@@ -3442,15 +3487,21 @@ export default function MonthlyExpensesPage({
     }
   };
 
-  const handleUpdateExpenseSubtotal = async ({
+  const handleUpdateExpenseDetails = async ({
     expenseId,
+    occurrencesPerMonth,
+    occurrencesUnit,
     subtotal,
+    subtotalUnit,
   }: {
     expenseId: string;
+    occurrencesPerMonth: number;
+    occurrencesUnit: string;
     subtotal: number;
+    subtotalUnit: MonthlyExpenseSubtotalUnit;
   }) => {
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para actualizar el subtotal.");
+      toast.warning("Conectate con Google para actualizar el compromiso.");
       return;
     }
 
@@ -3465,53 +3516,6 @@ export default function MonthlyExpensesPage({
 
     if (subtotalValidationError) {
       toast.warning(subtotalValidationError);
-      return;
-    }
-
-    if (Number(expenseRow.subtotal) === subtotal) {
-      return;
-    }
-
-    const nextRows = normalizeEditableRows(
-      formState.month,
-      formState.rows.map((row) =>
-        row.id === expenseId
-          ? {
-              ...row,
-              subtotal: formatEditableNumber(subtotal),
-            }
-          : row,
-      ),
-    );
-
-    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
-      loading: "Actualizando subtotal...",
-      success: "Subtotal actualizado.",
-    });
-
-    if (!wasSaved) {
-      toast.error("No pudimos actualizar el subtotal.");
-    }
-  };
-
-  const handleUpdateExpenseOccurrences = async ({
-    expenseId,
-    occurrencesPerMonth,
-    occurrencesUnit,
-  }: {
-    expenseId: string;
-    occurrencesPerMonth: number;
-    occurrencesUnit: string;
-  }) => {
-    if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para actualizar la cantidad por mes.");
-      return;
-    }
-
-    const expenseRow = formState.rows.find((row) => row.id === expenseId);
-
-    if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
       return;
     }
 
@@ -3545,6 +3549,8 @@ export default function MonthlyExpensesPage({
     }
 
     if (
+      Number(expenseRow.subtotal) === subtotal &&
+      (expenseRow.subtotalUnit ?? "occurrence") === subtotalUnit &&
       Number(expenseRow.occurrencesPerMonth) === occurrencesPerMonth &&
       expenseRow.occurrencesUnit === normalizedOccurrencesUnit
     ) {
@@ -3559,18 +3565,20 @@ export default function MonthlyExpensesPage({
               ...row,
               occurrencesPerMonth: formatEditableNumber(occurrencesPerMonth),
               occurrencesUnit: normalizedOccurrencesUnit,
+              subtotal: formatEditableNumber(subtotal),
+              subtotalUnit,
             }
           : row,
       ),
     );
 
     const wasSaved = await persistMonthlyExpensesRows(nextRows, {
-      loading: "Actualizando cantidad por mes...",
-      success: "Cantidad por mes actualizada.",
+      loading: "Actualizando compromiso...",
+      success: "Compromiso actualizado.",
     });
 
     if (!wasSaved) {
-      toast.error("No pudimos actualizar la cantidad por mes.");
+      toast.error("No pudimos actualizar el compromiso.");
     }
   };
 
@@ -4531,9 +4539,8 @@ export default function MonthlyExpensesPage({
                 onDeleteManualPaymentRecord={handleDeleteManualPaymentRecord}
                 onEditManualPaymentRecord={handleOpenManualPaymentRecordEditor}
                 onUpdatePaymentLink={handleUpdatePaymentLink}
-                onUpdateExpenseOccurrences={handleUpdateExpenseOccurrences}
+                onUpdateExpenseDetails={handleUpdateExpenseDetails}
                 onUpdateExpenseReceiptShare={handleUpdateExpenseReceiptShare}
-                onUpdateExpenseSubtotal={handleUpdateExpenseSubtotal}
                 onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
