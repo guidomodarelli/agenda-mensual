@@ -12,6 +12,7 @@ import {
   EXPENSE_FOLDER_COLOR_OPTIONS,
   EXPENSE_FOLDER_ICON_LABEL,
   EXPENSE_FOLDER_ICON_OPTIONS,
+  EXPENSE_FOLDER_PRESETS,
   ExpenseFolderIconGlyph,
   resolveExpenseFolderColorHex,
   DEFAULT_EXPENSE_FOLDER_COLOR,
@@ -189,6 +190,13 @@ export function ExpenseFoldersPanel({
     setEditingFolderId(null);
   };
 
+  const existingFolderNames = new Set(
+    folders.map((folder) => folder.name.toLocaleLowerCase()),
+  );
+  const availablePresets = EXPENSE_FOLDER_PRESETS.filter(
+    (preset) => !existingFolderNames.has(preset.name.toLocaleLowerCase()),
+  );
+
   return (
     <section className={styles.content}>
       <p className={styles.description}>
@@ -227,6 +235,51 @@ export function ExpenseFoldersPanel({
           </Button>
         </div>
       </div>
+
+      {availablePresets.length > 0 ? (
+        <div className={styles.presets}>
+          <span className={styles.fieldLabel}>Carpetas frecuentes</span>
+          <p className={styles.presetsHint}>
+            Agregá con un clic las categorías más comunes.
+          </p>
+          <div
+            aria-label="Carpetas frecuentes"
+            className={styles.presetGrid}
+            role="group"
+          >
+            {availablePresets.map((preset) => (
+              <button
+                className={styles.presetChip}
+                disabled={isSubmitting}
+                key={preset.name}
+                onClick={() =>
+                  onCreate({
+                    color: preset.color,
+                    icon: preset.icon,
+                    name: preset.name,
+                  })
+                }
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className={styles.presetSwatch}
+                  style={{
+                    backgroundColor: resolveExpenseFolderColorHex(preset.color),
+                  }}
+                >
+                  <ExpenseFolderIconGlyph
+                    icon={preset.icon}
+                    size={14}
+                    stroke={2}
+                  />
+                </span>
+                {preset.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className={styles.list}>
         {folders.length > 0 ? (

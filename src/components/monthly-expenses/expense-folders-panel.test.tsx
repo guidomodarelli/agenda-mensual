@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ExpenseFoldersPanel } from "./expense-folders-panel";
@@ -48,6 +48,32 @@ describe("ExpenseFoldersPanel", () => {
     expect(
       screen.getByRole("button", { name: "Agregar carpeta" }),
     ).toBeDisabled();
+  });
+
+  it("creates a folder from a frequent preset with a single click", async () => {
+    const user = userEvent.setup();
+    const onCreate = jest.fn();
+    renderPanel({ onCreate });
+
+    const presets = screen.getByRole("group", { name: "Carpetas frecuentes" });
+    await user.click(within(presets).getByRole("button", { name: "Tarjetas" }));
+
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Tarjetas", color: "violet", icon: "card" }),
+    );
+  });
+
+  it("hides presets that already exist as folders", () => {
+    renderPanel();
+
+    const presets = screen.getByRole("group", { name: "Carpetas frecuentes" });
+
+    expect(
+      within(presets).queryByRole("button", { name: "Hogar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(presets).getByRole("button", { name: "Servicios" }),
+    ).toBeInTheDocument();
   });
 
   it("reveals the editor and saves folder changes", async () => {
