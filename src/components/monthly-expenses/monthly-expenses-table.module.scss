@@ -458,16 +458,12 @@
   gap: 0.35rem;
 }
 
-.descriptionPaymentLink {
-  display: inline-flex;
-  align-items: center;
+.descriptionPaymentLinkChip {
   flex-shrink: 0;
+  gap: 0.25rem;
   color: var(--primary);
   text-decoration: none;
-}
-
-.descriptionPaymentLink:hover {
-  color: color-mix(in srgb, var(--primary) 82%, var(--foreground));
+  cursor: pointer;
 }
 
 .descriptionHighlight {

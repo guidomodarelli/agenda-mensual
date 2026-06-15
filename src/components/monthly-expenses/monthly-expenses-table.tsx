@@ -77,6 +77,7 @@ import {
   CircleX,
   EyeOff,
   ExternalLink,
+  Link2,
   Mail,
   MoreVertical,
   Paperclip,
@@ -3022,15 +3023,21 @@ export function MonthlyExpensesTable({
           const paymentLinkAnchor = paymentLinkUrl ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <a
-                  aria-label={`Abrir link de pago de ${expenseDescriptionLabel}`}
-                  className={styles.descriptionPaymentLink}
-                  href={paymentLinkUrl}
-                  rel="noopener noreferrer"
-                  target="_blank"
+                <Badge
+                  asChild
+                  className={styles.descriptionPaymentLinkChip}
+                  variant="outline"
                 >
-                  <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                </a>
+                  <a
+                    aria-label={`Abrir link de pago de ${expenseDescriptionLabel}`}
+                    href={paymentLinkUrl}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    <Link2 aria-hidden="true" />
+                    Link
+                  </a>
+                </Badge>
               </TooltipTrigger>
               <TooltipContent>Abrir página de pago</TooltipContent>
             </Tooltip>
