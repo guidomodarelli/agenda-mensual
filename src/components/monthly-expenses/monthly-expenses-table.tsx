@@ -151,6 +151,11 @@ const MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT =
 const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
+/**
+ * Cantidad máxima de caracteres que se muestran en la descripción de la fila
+ * antes de truncar con ellipsis y exponer el texto completo en un tooltip.
+ */
+const DESCRIPTION_TRUNCATE_CHAR_LIMIT = 32;
 const MONTHLY_EXPENSES_EMPTY_MESSAGE = "No hay gastos cargados para este mes.";
 const MONTHLY_EXPENSES_FILTERED_EMPTY_MESSAGE =
   "No hay resultados para los filtros actuales.";
@@ -3083,13 +3088,28 @@ export function MonthlyExpensesTable({
             </Tooltip>
           ) : null;
 
+          const isDescriptionTruncated =
+            description.length > DESCRIPTION_TRUNCATE_CHAR_LIMIT;
+          const descriptionTextNode = isDescriptionTruncated ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={styles.descriptionTruncated}>
+                  {descriptionContent}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{description}</TooltipContent>
+            </Tooltip>
+          ) : (
+            descriptionContent
+          );
+
           const descriptionTextContent = paymentLinkAnchor ? (
             <span className={styles.descriptionTextRow}>
-              <span>{descriptionContent}</span>
+              {descriptionTextNode}
               {paymentLinkAnchor}
             </span>
           ) : (
-            descriptionContent
+            descriptionTextNode
           );
 
           const expenseInformation = folderBadge ? (

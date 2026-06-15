@@ -483,15 +483,9 @@
 
 .descriptionTextRow {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
   min-width: 0;
-}
-
-.descriptionTextRow > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .descriptionPaymentLinkChip {
@@ -725,8 +719,15 @@
 .tableWrapper .stickyDescriptionCell {
   max-width: min(18rem, 60vw);
   padding-right: 2.25rem;
-  white-space: normal;
-  overflow-wrap: anywhere;
+}
+
+.descriptionTruncated {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tableWrapper :global([data-slot="table-head"]) {
