@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "push-migrations": "node scripts/push-migrations.mjs",
-    "build": "next build",
+    "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
