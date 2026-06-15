@@ -703,12 +703,22 @@
   background-color: color-mix(in srgb, #34a853 13%, var(--background));
 }
 
-.tableWrapper :global([data-slot="table-row"]:hover) {
-  border-bottom-color: color-mix(in srgb, var(--muted) 50%, var(--background));
+.tableWrapper :global([data-slot="table-body"] [data-slot="table-row"]) {
+  border-bottom: 0;
 }
 
-.tableWrapper .paidRow:hover {
-  border-bottom-color: color-mix(in srgb, #34a853 13%, var(--background));
+.tableWrapper :global([data-slot="table-body"] [data-slot="table-cell"]) {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.tableWrapper
+  :global([data-slot="table-body"] [data-slot="table-row"]:last-child [data-slot="table-cell"]) {
+  border-bottom: 0;
+}
+
+.tableWrapper
+  :global([data-slot="table-body"] [data-slot="table-row"]:hover [data-slot="table-cell"]) {
+  border-bottom-color: transparent;
 }
 
 .stickyDescriptionCell {
