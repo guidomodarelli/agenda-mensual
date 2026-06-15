@@ -114,6 +114,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Este workflow existe para reaccionar a comentarios del bot de Codex,
+          # por lo que hay que habilitar explicitamente ese actor no-humano.
+          allowed_bots: "chatgpt-codex-connector"
           claude_args: "--max-turns 30"
           prompt: |
             Sos un agente de fix automatico disparado por un comentario de Codex
