@@ -61,8 +61,11 @@ import {
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "./expense-edit-validation";
-import { resolveOccurrencesUnitLabel } from "./occurrences-unit";
-import type { MonthlyExpensesEditableRow } from "./monthly-expenses-table";
+import { splitOccurrencesUnit } from "./occurrences-unit";
+import type {
+  MonthlyExpensesEditableRow,
+  MonthlyExpenseSubtotalUnit,
+} from "./monthly-expenses-table";
 import styles from "./expense-sheet.module.scss";
 
 export type ExpenseEditableFieldName =
@@ -76,7 +79,8 @@ export type ExpenseEditableFieldName =
   | "receiptShareMessage"
   | "receiptSharePhoneDigits"
   | "startMonth"
-  | "subtotal";
+  | "subtotal"
+  | "subtotalUnit";
 
 interface ExpenseSheetProps {
   actionDisabled: boolean;
@@ -109,7 +113,7 @@ type ExpenseSheetContentProps = Omit<ExpenseSheetProps, "draft"> & {
 
 type ExpenseSheetFormFieldName = Exclude<
   ExpenseEditableFieldName,
-  "loanDirection" | "manualCoveredPayments" | "occurrencesUnit"
+  "loanDirection" | "manualCoveredPayments" | "occurrencesUnit" | "subtotalUnit"
 >;
 type ExpenseFieldErrorMap = Partial<Record<ExpenseSheetFormFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseSheetFormFieldName, string>;
@@ -262,11 +266,18 @@ function ExpenseSheetContent({
     "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.";
   const hasPendingChanges = changedFields.size > 0;
   const currencyPrefix = draft.currency === "USD" ? "US$" : "$";
+  const subtotalUnit: MonthlyExpenseSubtotalUnit =
+    draft.subtotalUnit ?? "occurrence";
   const totalFormulaSubtotalAmount =
     formatCurrencyDisplay(draft.subtotal).trim() || "X";
   const totalFormulaSubtotal = `${currencyPrefix} ${totalFormulaSubtotalAmount}`;
   const totalFormulaOccurrences = draft.occurrencesPerMonth.trim() || "Y";
-  const totalFormulaUnit = resolveOccurrencesUnitLabel(draft.occurrencesUnit);
+  const totalFormulaDuration =
+    splitOccurrencesUnit(draft.occurrencesUnit).duration || "1h";
+  const totalFormula =
+    subtotalUnit === "hour"
+      ? `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences} × ${totalFormulaDuration}`
+      : `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences}`;
   const isLoanToggleDisabled = mode === "edit";
   const shouldShowLoanSection = isCreateMode || draft.isLoan;
   const form = useForm<ExpenseSheetFormValues>({
@@ -503,6 +514,40 @@ function ExpenseSheetContent({
                     )}
                   />
 
+                  <div className={styles.fieldGroup}>
+                    <Label htmlFor="expense-subtotal-unit">
+                      {getFieldLabel(
+                        "Unidad del subtotal",
+                        changedFields.has("subtotalUnit"),
+                      )}
+                    </Label>
+                    <div className={styles.fieldControlWrapper}>
+                      <Select
+                        onValueChange={(value) =>
+                          onFieldChange("subtotalUnit", value)
+                        }
+                        value={subtotalUnit}
+                      >
+                        <SelectTrigger
+                          aria-label="Unidad del subtotal"
+                          className={cn(
+                            changedFields.has("subtotalUnit") &&
+                              styles.changedField,
+                          )}
+                          id="expense-subtotal-unit"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="occurrence">
+                            Por ocurrencia
+                          </SelectItem>
+                          <SelectItem value="hour">Por hora</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="occurrencesPerMonth"
@@ -544,8 +589,7 @@ function ExpenseSheetContent({
                     <Label className={styles.totalLabel} htmlFor="expense-total">
                       <span>Total</span>
                       <span className={styles.totalFormula}>
-                        (Subtotal {totalFormulaSubtotal} × {totalFormulaOccurrences}{" "}
-                        {totalFormulaUnit})
+                        ({totalFormula})
                       </span>
                     </Label>
                     <InputGroup className={styles.readOnlyInputGroup}>

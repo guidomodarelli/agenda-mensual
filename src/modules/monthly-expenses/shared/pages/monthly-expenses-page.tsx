@@ -2338,6 +2338,8 @@ export default function MonthlyExpensesPage({
                 ? (value as MonthlyExpenseCurrency)
                 : fieldName === "loanDirection"
                 ? (value as MonthlyExpenseLoanDirection)
+                : fieldName === "subtotalUnit"
+                ? (value as MonthlyExpenseSubtotalUnit)
                 : fieldName === "manualCoveredPayments"
                 ? value || "0"
                 : fieldName === "receiptSharePhoneDigits"

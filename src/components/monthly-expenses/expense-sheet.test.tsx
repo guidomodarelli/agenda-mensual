@@ -45,10 +45,12 @@ function createDraftRow(): MonthlyExpensesEditableRow {
 function renderExpenseSheet({
   draft = createDraftRow(),
   mode = "create",
+  onFieldChange = jest.fn(),
   onLoanToggle = jest.fn(),
 }: {
   draft?: MonthlyExpensesEditableRow;
   mode?: "create" | "edit";
+  onFieldChange?: (fieldName: string, value: string) => void;
   onLoanToggle?: (checked: boolean) => void;
 }) {
   return render(
@@ -63,7 +65,7 @@ function renderExpenseSheet({
         lenders={[]}
         mode={mode}
         onAddLender={jest.fn()}
-        onFieldChange={jest.fn()}
+        onFieldChange={onFieldChange}
         onFolderSelect={jest.fn()}
         onManageFolders={jest.fn()}
         onLenderSelect={jest.fn()}
@@ -94,23 +96,48 @@ describe("ExpenseSheet", () => {
     expect(screen.queryByText("Link de pago (Opcional)")).not.toBeInTheDocument();
   });
 
-  it("shows the unit select when the expense is paid multiple times per month", () => {
+  it("shows the per-occurrence duration when the expense is paid multiple times per month", () => {
     renderExpenseSheet({
       draft: {
         ...createDraftRow(),
         occurrencesPerMonth: "4",
-        occurrencesUnit: "semanas",
+        occurrencesUnit: "veces de 4h 30",
       },
       mode: "create",
     });
 
-    expect(screen.getByLabelText("Unidad")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Duración por ocurrencia en horas"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Unidad")).not.toBeInTheDocument();
   });
 
-  it("hides the unit select for a single monthly payment", () => {
+  it("hides the per-occurrence duration for a single monthly payment", () => {
     renderExpenseSheet({ mode: "create" });
 
-    expect(screen.queryByLabelText("Unidad")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Duración por ocurrencia en horas"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the subtotal unit select in create mode", () => {
+    renderExpenseSheet({ mode: "create" });
+
+    expect(
+      screen.getByLabelText("Unidad del subtotal"),
+    ).toBeInTheDocument();
+  });
+
+  it("changes the subtotal unit to hourly pricing", async () => {
+    const user = userEvent.setup();
+    const onFieldChange = jest.fn();
+
+    renderExpenseSheet({ mode: "create", onFieldChange });
+
+    await user.click(screen.getByLabelText("Unidad del subtotal"));
+    await user.click(screen.getByRole("option", { name: "Por hora" }));
+
+    expect(onFieldChange).toHaveBeenCalledWith("subtotalUnit", "hour");
   });
 
   it("hides duplicated inline-edit fields when editing an expense", () => {
