@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 
-import { OccurrencesUnitSelect } from "./occurrences-unit-select";
+import { OccurrenceDurationInput } from "./occurrence-duration-input";
 import styles from "./payment-frequency-field.module.scss";
 
 type PaymentFrequencyMode = "single" | "multiple";
@@ -57,7 +57,6 @@ export function PaymentFrequencyField({
   const singleOptionId = `${inputIdBase}-single`;
   const multipleOptionId = `${inputIdBase}-multiple`;
   const occurrencesInputId = `${inputIdBase}-occurrences`;
-  const occurrencesUnitSelectId = `${inputIdBase}-occurrences-unit`;
   const showOccurrencesInput = mode === "multiple";
 
   const handleModeChange = (nextMode: string) => {
@@ -178,15 +177,11 @@ export function PaymentFrequencyField({
           </div>
 
           <div className={styles.occurrencesField}>
-            <Label htmlFor={occurrencesUnitSelectId}>Unidad</Label>
-            <OccurrencesUnitSelect
-              customInputAriaLabel="Unidad personalizada"
+            <OccurrenceDurationInput
               durationHoursAriaLabel="Duración por ocurrencia en horas"
               durationMinutesAriaLabel="Duración por ocurrencia en minutos"
               isChanged={isUnitChanged}
               onChange={onOccurrencesUnitChange}
-              selectAriaLabel="Unidad"
-              selectId={occurrencesUnitSelectId}
               value={occurrencesUnit}
             />
           </div>
