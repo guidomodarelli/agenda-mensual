@@ -9,6 +9,7 @@ import {
   parseTechnicalErrorResponse,
 } from "@/modules/shared/infrastructure/errors/technical-error";
 
+import { MAX_OCCURRENCES_UNIT_LENGTH } from "../../domain/value-objects/monthly-expenses-document";
 import type { SaveMonthlyExpensesCommand } from "../../application/commands/save-monthly-expenses-command";
 import type { MonthlyExpensesDocumentResult } from "../../application/results/monthly-expenses-document-result";
 
@@ -180,6 +181,12 @@ const monthlyExpenseItemSchema = z.object({
     .optional(),
   manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
+  occurrencesUnit: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_OCCURRENCES_UNIT_LENGTH)
+    .optional(),
   paymentRecords: z.array(monthlyExpensePaymentRecordSchema).optional(),
   paymentLink: z
     .string()
@@ -272,6 +279,12 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
           .optional(),
         manualCoveredPayments: z.number().int().nonnegative().optional(),
         occurrencesPerMonth: z.number().int().positive(),
+        occurrencesUnit: z
+          .string()
+          .trim()
+          .min(1)
+          .max(MAX_OCCURRENCES_UNIT_LENGTH)
+          .optional(),
         paymentRecords: z.array(monthlyExpensePaymentRecordSchema).optional(),
         paymentLink: z
           .string()

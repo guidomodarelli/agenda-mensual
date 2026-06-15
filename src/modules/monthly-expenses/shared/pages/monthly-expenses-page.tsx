@@ -16,6 +16,7 @@ import { ExpenseReceiptUploadDialog } from "@/components/monthly-expenses/expens
 import {
   normalizeReceiptSharePhoneDigits,
   validateOccurrencesPerMonth,
+  validateOccurrencesUnit,
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "@/components/monthly-expenses/expense-edit-validation";
@@ -411,6 +412,7 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     loanTotalInstallments: null,
     manualCoveredPayments: "0",
     occurrencesPerMonth: "1",
+    occurrencesUnit: "",
     paymentRecords: [],
     paymentLink: "",
     receiptShareMessage: "",
@@ -665,6 +667,7 @@ export function toEditableRows(
       ? `${item.loan.paidInstallments} de ${item.loan.installmentCount} cuotas abonadas`
       : "",
     occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
+    occurrencesUnit: item.occurrencesUnit?.trim() ?? "",
     paymentRecords,
     paymentLink: item.paymentLink?.trim() ?? "",
     receiptShareMessage: item.receiptShareMessage?.trim() ?? "",
@@ -1244,6 +1247,10 @@ function getChangedExpenseFields(
     changedFields.add("occurrencesPerMonth");
   }
 
+  if (originalRow.occurrencesUnit !== draft.occurrencesUnit) {
+    changedFields.add("occurrencesUnit");
+  }
+
   if (originalRow.isLoan !== draft.isLoan) {
     changedFields.add("isLoan");
   }
@@ -1454,6 +1461,9 @@ export function toSaveMonthlyExpensesCommand(
             }
           : {}),
         occurrencesPerMonth: Number(row.occurrencesPerMonth),
+        ...(row.occurrencesUnit.trim()
+          ? { occurrencesUnit: row.occurrencesUnit.trim() }
+          : {}),
         subtotal: Number(row.subtotal),
       };
     }),
@@ -3484,15 +3494,17 @@ export default function MonthlyExpensesPage({
     }
   };
 
-  const handleUpdateExpenseOccurrencesPerMonth = async ({
+  const handleUpdateExpenseOccurrences = async ({
     expenseId,
     occurrencesPerMonth,
+    occurrencesUnit,
   }: {
     expenseId: string;
     occurrencesPerMonth: number;
+    occurrencesUnit: string;
   }) => {
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para actualizar pagos por mes.");
+      toast.warning("Conectate con Google para actualizar la cantidad por mes.");
       return;
     }
 
@@ -3511,6 +3523,17 @@ export default function MonthlyExpensesPage({
       return;
     }
 
+    const normalizedOccurrencesUnit =
+      occurrencesPerMonth > 1 ? occurrencesUnit.trim() : "";
+    const occurrencesUnitValidationError = validateOccurrencesUnit(
+      normalizedOccurrencesUnit,
+    );
+
+    if (occurrencesUnitValidationError) {
+      toast.warning(occurrencesUnitValidationError);
+      return;
+    }
+
     const currentCoveredPayments =
       getNormalizedManualCoveredPayments(expenseRow) +
       getCoveredPaymentsByReceipts(expenseRow);
@@ -3522,7 +3545,10 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    if (Number(expenseRow.occurrencesPerMonth) === occurrencesPerMonth) {
+    if (
+      Number(expenseRow.occurrencesPerMonth) === occurrencesPerMonth &&
+      expenseRow.occurrencesUnit === normalizedOccurrencesUnit
+    ) {
       return;
     }
 
@@ -3533,18 +3559,19 @@ export default function MonthlyExpensesPage({
           ? {
               ...row,
               occurrencesPerMonth: formatEditableNumber(occurrencesPerMonth),
+              occurrencesUnit: normalizedOccurrencesUnit,
             }
           : row,
       ),
     );
 
     const wasSaved = await persistMonthlyExpensesRows(nextRows, {
-      loading: "Actualizando pagos por mes...",
-      success: "Pagos por mes actualizados.",
+      loading: "Actualizando cantidad por mes...",
+      success: "Cantidad por mes actualizada.",
     });
 
     if (!wasSaved) {
-      toast.error("No pudimos actualizar pagos por mes.");
+      toast.error("No pudimos actualizar la cantidad por mes.");
     }
   };
 
@@ -4505,7 +4532,7 @@ export default function MonthlyExpensesPage({
                 onDeleteManualPaymentRecord={handleDeleteManualPaymentRecord}
                 onEditManualPaymentRecord={handleOpenManualPaymentRecordEditor}
                 onUpdatePaymentLink={handleUpdatePaymentLink}
-                onUpdateExpenseOccurrencesPerMonth={handleUpdateExpenseOccurrencesPerMonth}
+                onUpdateExpenseOccurrences={handleUpdateExpenseOccurrences}
                 onUpdateExpenseReceiptShare={handleUpdateExpenseReceiptShare}
                 onUpdateExpenseSubtotal={handleUpdateExpenseSubtotal}
                 onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 
+import { OccurrencesUnitSelect } from "./occurrences-unit-select";
 import styles from "./payment-frequency-field.module.scss";
 
 type PaymentFrequencyMode = "single" | "multiple";
@@ -12,8 +13,11 @@ type PaymentFrequencyMode = "single" | "multiple";
 interface PaymentFrequencyFieldProps {
   hasError: boolean;
   isChanged: boolean;
+  isUnitChanged: boolean;
   occurrencesPerMonth: string;
+  occurrencesUnit: string;
   onOccurrencesPerMonthChange: (value: string) => void;
+  onOccurrencesUnitChange: (value: string) => void;
 }
 
 function isPositiveInteger(value: string): boolean {
@@ -37,8 +41,11 @@ function getInitialMultipleOccurrences(occurrencesPerMonth: string): string {
 export function PaymentFrequencyField({
   hasError,
   isChanged,
+  isUnitChanged,
   occurrencesPerMonth,
+  occurrencesUnit,
   onOccurrencesPerMonthChange,
+  onOccurrencesUnitChange,
 }: PaymentFrequencyFieldProps) {
   const [mode, setMode] = useState<PaymentFrequencyMode>(() =>
     getInitialMode(occurrencesPerMonth),
@@ -50,6 +57,7 @@ export function PaymentFrequencyField({
   const singleOptionId = `${inputIdBase}-single`;
   const multipleOptionId = `${inputIdBase}-multiple`;
   const occurrencesInputId = `${inputIdBase}-occurrences`;
+  const occurrencesUnitSelectId = `${inputIdBase}-occurrences-unit`;
   const showOccurrencesInput = mode === "multiple";
 
   const handleModeChange = (nextMode: string) => {
@@ -68,6 +76,7 @@ export function PaymentFrequencyField({
 
     setMode("single");
     onOccurrencesPerMonthChange("1");
+    onOccurrencesUnitChange("");
   };
 
   const handleOccurrencesChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -149,23 +158,37 @@ export function PaymentFrequencyField({
       </RadioGroup>
 
       {showOccurrencesInput ? (
-        <div className={styles.occurrencesField}>
-          <Label htmlFor={occurrencesInputId}>Veces al mes</Label>
-          <Input
-            aria-label="Veces al mes"
-            className={cn(hasError && styles.invalidField, isChanged && styles.changedField)}
-            data-changed={isChanged ? "true" : "false"}
-            id={occurrencesInputId}
-            inputMode="numeric"
-            min="2"
-            onBlur={handleOccurrencesBlur}
-            onChange={handleOccurrencesChange}
-            placeholder="Ej: 8"
-            step="1"
-            type="number"
-            value={occurrencesPerMonth}
-          />
-        </div>
+        <>
+          <div className={styles.occurrencesField}>
+            <Label htmlFor={occurrencesInputId}>Veces al mes</Label>
+            <Input
+              aria-label="Veces al mes"
+              className={cn(hasError && styles.invalidField, isChanged && styles.changedField)}
+              data-changed={isChanged ? "true" : "false"}
+              id={occurrencesInputId}
+              inputMode="numeric"
+              min="2"
+              onBlur={handleOccurrencesBlur}
+              onChange={handleOccurrencesChange}
+              placeholder="Ej: 8"
+              step="1"
+              type="number"
+              value={occurrencesPerMonth}
+            />
+          </div>
+
+          <div className={styles.occurrencesField}>
+            <Label htmlFor={occurrencesUnitSelectId}>Unidad</Label>
+            <OccurrencesUnitSelect
+              customInputAriaLabel="Unidad personalizada"
+              isChanged={isUnitChanged}
+              onChange={onOccurrencesUnitChange}
+              selectAriaLabel="Unidad"
+              selectId={occurrencesUnitSelectId}
+              value={occurrencesUnit}
+            />
+          </div>
+        </>
       ) : null}
     </div>
   );

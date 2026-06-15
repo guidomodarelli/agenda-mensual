@@ -269,6 +269,55 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     expect(parsed.items[0]?.isPaid).toBe(true);
   });
 
+  it("serializes and parses the occurrences unit when provided", () => {
+    const serialized = mapMonthlyExpensesDocumentToGoogleDriveFile({
+      items: [
+        {
+          currency: "ARS",
+          description: "Clases de ingles",
+          id: "expense-1",
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 4,
+          occurrencesUnit: "semanas",
+          paymentLink: null,
+          receipts: [],
+          subtotal: 5000,
+          total: 20000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(serialized.content).toContain('"occurrencesUnit": "semanas"');
+
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      serialized.content,
+      "Loading monthly expenses",
+    );
+
+    expect(parsed.items[0]?.occurrencesUnit).toBe("semanas");
+  });
+
+  it("parses legacy content without an occurrences unit", () => {
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      JSON.stringify({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      }),
+      "Loading monthly expenses",
+    );
+
+    expect(parsed.items[0]).not.toHaveProperty("occurrencesUnit");
+  });
+
   it("throws when parsing an invalid paymentLink", () => {
     expect(() =>
       parseGoogleDriveMonthlyExpensesContent(

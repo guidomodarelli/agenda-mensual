@@ -1,0 +1,1 @@
+ALTER TABLE `expense_months` ADD `occurrences_unit` text;

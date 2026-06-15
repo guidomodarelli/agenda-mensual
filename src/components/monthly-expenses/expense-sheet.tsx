@@ -61,6 +61,7 @@ import {
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "./expense-edit-validation";
+import { resolveOccurrencesUnitLabel } from "./occurrences-unit";
 import type { MonthlyExpensesEditableRow } from "./monthly-expenses-table";
 import styles from "./expense-sheet.module.scss";
 
@@ -71,6 +72,7 @@ export type ExpenseEditableFieldName =
   | "loanDirection"
   | "manualCoveredPayments"
   | "occurrencesPerMonth"
+  | "occurrencesUnit"
   | "receiptShareMessage"
   | "receiptSharePhoneDigits"
   | "startMonth"
@@ -107,7 +109,7 @@ type ExpenseSheetContentProps = Omit<ExpenseSheetProps, "draft"> & {
 
 type ExpenseSheetFormFieldName = Exclude<
   ExpenseEditableFieldName,
-  "loanDirection" | "manualCoveredPayments"
+  "loanDirection" | "manualCoveredPayments" | "occurrencesUnit"
 >;
 type ExpenseFieldErrorMap = Partial<Record<ExpenseSheetFormFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseSheetFormFieldName, string>;
@@ -264,6 +266,7 @@ function ExpenseSheetContent({
     formatCurrencyDisplay(draft.subtotal).trim() || "X";
   const totalFormulaSubtotal = `${currencyPrefix} ${totalFormulaSubtotalAmount}`;
   const totalFormulaOccurrences = draft.occurrencesPerMonth.trim() || "Y";
+  const totalFormulaUnit = resolveOccurrencesUnitLabel(draft.occurrencesUnit);
   const isLoanToggleDisabled = mode === "edit";
   const shouldShowLoanSection = isCreateMode || draft.isLoan;
   const form = useForm<ExpenseSheetFormValues>({
@@ -520,9 +523,14 @@ function ExpenseSheetContent({
                                 Boolean(fieldErrors.occurrencesPerMonth)
                               }
                               isChanged={changedFields.has("occurrencesPerMonth")}
+                              isUnitChanged={changedFields.has("occurrencesUnit")}
                               occurrencesPerMonth={draft.occurrencesPerMonth}
+                              occurrencesUnit={draft.occurrencesUnit}
                               onOccurrencesPerMonthChange={(value) =>
                                 onFieldChange("occurrencesPerMonth", value)
+                              }
+                              onOccurrencesUnitChange={(value) =>
+                                onFieldChange("occurrencesUnit", value)
                               }
                             />
                           </FormControl>
@@ -536,8 +544,8 @@ function ExpenseSheetContent({
                     <Label className={styles.totalLabel} htmlFor="expense-total">
                       <span>Total</span>
                       <span className={styles.totalFormula}>
-                        (Subtotal {totalFormulaSubtotal} x {totalFormulaOccurrences} veces
-                        al mes)
+                        (Subtotal {totalFormulaSubtotal} × {totalFormulaOccurrences}{" "}
+                        {totalFormulaUnit})
                       </span>
                     </Label>
                     <InputGroup className={styles.readOnlyInputGroup}>

@@ -25,6 +25,7 @@ import {
   createTechnicalErrorEnvelope,
 } from "@/modules/shared/infrastructure/errors/technical-error";
 
+import { MAX_OCCURRENCES_UNIT_LENGTH } from "../../domain/value-objects/monthly-expenses-document";
 import type { SaveMonthlyExpensesCommand } from "../../application/commands/save-monthly-expenses-command";
 
 const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
@@ -184,6 +185,12 @@ const monthlyExpenseItemSchema = z.object({
     .optional(),
   manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
+  occurrencesUnit: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_OCCURRENCES_UNIT_LENGTH)
+    .optional(),
   paymentRecords: z.array(monthlyExpensePaymentRecordSchema).optional(),
   paymentLink: z
     .string()

@@ -1434,7 +1434,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Abrir acciones de subtotal para Agua" }),
+      screen.getByRole("button", { name: "Abrir acciones de subtotal y cantidad para Agua" }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Editar subtotal" }));
 
@@ -1681,7 +1681,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Abrir acciones de subtotal para Agua" }),
+      screen.getByRole("button", { name: "Abrir acciones de subtotal y cantidad para Agua" }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Editar subtotal" }));
 

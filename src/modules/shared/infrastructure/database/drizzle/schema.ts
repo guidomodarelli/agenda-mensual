@@ -92,6 +92,7 @@ export const expenseMonthsTable = sqliteTable(
     monthlyFolderId: text("monthly_folder_id"),
     monthlyFolderViewUrl: text("monthly_folder_view_url"),
     occurrencesPerMonth: integer("occurrences_per_month").notNull(),
+    occurrencesUnit: text("occurrences_unit"),
     receiptShareStatus: text("receipt_share_status"),
     subtotal: real("subtotal").notNull(),
     updatedAtIso: text("updated_at_iso").notNull(),

@@ -42,6 +42,7 @@ export interface MonthlyExpenseItemResult {
   loan?: MonthlyExpenseLoan;
   manualCoveredPayments?: number;
   occurrencesPerMonth: number;
+  occurrencesUnit?: string;
   paymentRecords?: MonthlyExpensePaymentRecord[];
   paymentLink?: string | null;
   receiptShareMessage?: string | null;

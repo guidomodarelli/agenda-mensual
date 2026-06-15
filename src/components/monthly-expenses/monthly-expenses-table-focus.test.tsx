@@ -30,6 +30,7 @@ function createRow(overrides: Partial<MonthlyExpensesEditableRow> = {}): Monthly
     monthlyFolderId: "",
     monthlyFolderViewUrl: "",
     occurrencesPerMonth: "1",
+    occurrencesUnit: "",
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
@@ -97,7 +98,7 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onSaveUnsavedChanges={jest.fn()}
         onUnsavedChangesClose={jest.fn()}
         onUnsavedChangesDiscard={jest.fn()}
-        onUpdateExpenseOccurrencesPerMonth={jest.fn()}
+        onUpdateExpenseOccurrences={jest.fn()}
         onUpdateExpenseReceiptShare={jest.fn()}
         onUpdateExpenseSubtotal={jest.fn()}
         onUpdatePaymentLink={jest.fn()}
@@ -194,7 +195,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
     await openQuickEditDialog({
       menuItemLabel: "Editar subtotal",
-      triggerLabel: "Abrir acciones de subtotal para Internet",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
     await waitFor(() => {
@@ -206,12 +207,12 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     renderMonthlyExpensesTable([createRow()]);
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar pagos por mes",
-      triggerLabel: "Abrir acciones de pagos por mes para Internet",
+      menuItemLabel: "Editar cantidad y unidad",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Pagos por mes de Internet")).toHaveFocus();
+      expect(screen.getByLabelText("Cantidad por mes de Internet")).toHaveFocus();
     });
   });
 
@@ -272,5 +273,53 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
         screen.getByLabelText("Número de WhatsApp de Internet"),
       ).toHaveFocus();
     });
+  });
+
+  it("shows the quantity multiplier with its unit when occurrences are greater than one", () => {
+    renderMonthlyExpensesTable([
+      createRow({ occurrencesPerMonth: "9", occurrencesUnit: "sesiones" }),
+    ]);
+
+    expect(screen.getByText("× 9 sesiones")).toBeInTheDocument();
+  });
+
+  it("falls back to the default unit when none is set", () => {
+    renderMonthlyExpensesTable([
+      createRow({ occurrencesPerMonth: "4", occurrencesUnit: "" }),
+    ]);
+
+    expect(screen.getByText("× 4 veces")).toBeInTheDocument();
+  });
+
+  it("hides the quantity multiplier when occurrences equal one", () => {
+    renderMonthlyExpensesTable([
+      createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
+    ]);
+
+    expect(screen.queryByText(/^×\s/)).not.toBeInTheDocument();
+  });
+
+  it("reveals the unit select in the quantity dialog and keeps it hidden for a single occurrence", async () => {
+    const user = userEvent.setup();
+
+    renderMonthlyExpensesTable([
+      createRow({ occurrencesPerMonth: "4", occurrencesUnit: "semanas" }),
+    ]);
+
+    await openQuickEditDialog({
+      menuItemLabel: "Editar cantidad y unidad",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
+    });
+
+    expect(
+      screen.getByLabelText("Unidad de Internet"),
+    ).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Cantidad por mes de Internet"));
+    await user.type(screen.getByLabelText("Cantidad por mes de Internet"), "1");
+
+    expect(
+      screen.queryByLabelText("Unidad de Internet"),
+    ).not.toBeInTheDocument();
   });
 });

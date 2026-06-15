@@ -4,6 +4,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import type { StoredMonthlyExpensesDocument } from "../../../domain/entities/stored-monthly-expenses-document";
 import {
   createMonthlyExpensesDocument,
+  MAX_OCCURRENCES_UNIT_LENGTH,
   type MonthlyExpensesDocument,
 } from "../../../domain/value-objects/monthly-expenses-document";
 import type { GoogleDriveMonthlyExpensesFileDto } from "./google-drive-monthly-expenses-file.dto";
@@ -177,6 +178,12 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
     .optional(),
   manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
+  occurrencesUnit: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_OCCURRENCES_UNIT_LENGTH)
+    .optional(),
   paymentRecords: z.array(monthlyExpensePaymentRecordSchema).optional(),
   paymentLink: z
     .string()
@@ -276,6 +283,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             loan,
             manualCoveredPayments,
             occurrencesPerMonth,
+            occurrencesUnit,
             paymentRecords,
             paymentLink,
             receiptShareMessage,
@@ -348,6 +356,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
               : {}),
             ...(isPaid === true ? { isPaid: true } : {}),
             occurrencesPerMonth,
+            ...(occurrencesUnit ? { occurrencesUnit } : {}),
             paymentLink,
             ...(receiptShareMessage
               ? { receiptShareMessage }
@@ -464,6 +473,9 @@ export function parseGoogleDriveMonthlyExpensesContent(
             ? { paymentRecords: item.paymentRecords }
             : {}),
           occurrencesPerMonth: item.occurrencesPerMonth,
+          ...(item.occurrencesUnit !== undefined
+            ? { occurrencesUnit: item.occurrencesUnit }
+            : {}),
           ...(item.paymentLink !== undefined
             ? { paymentLink: item.paymentLink }
             : {}),

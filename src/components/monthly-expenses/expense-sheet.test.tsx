@@ -27,6 +27,7 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     monthlyFolderId: "",
     monthlyFolderViewUrl: "",
     occurrencesPerMonth: "1",
+    occurrencesUnit: "",
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
@@ -90,6 +91,25 @@ describe("ExpenseSheet", () => {
     expect(screen.queryByLabelText("Pagos manuales")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Link de pago")).not.toBeInTheDocument();
     expect(screen.queryByText("Link de pago (Opcional)")).not.toBeInTheDocument();
+  });
+
+  it("shows the unit select when the expense is paid multiple times per month", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        occurrencesPerMonth: "4",
+        occurrencesUnit: "semanas",
+      },
+      mode: "create",
+    });
+
+    expect(screen.getByLabelText("Unidad")).toBeInTheDocument();
+  });
+
+  it("hides the unit select for a single monthly payment", () => {
+    renderExpenseSheet({ mode: "create" });
+
+    expect(screen.queryByLabelText("Unidad")).not.toBeInTheDocument();
   });
 
   it("hides duplicated inline-edit fields when editing an expense", () => {
