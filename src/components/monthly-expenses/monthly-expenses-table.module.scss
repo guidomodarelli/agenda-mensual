@@ -771,23 +771,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.35rem;
+  gap: 0.5rem;
   width: 100%;
-  max-width: 9rem;
-  margin-left: auto;
-  text-align: right;
 }
 
-.subtotalCellContent {
-  display: inline-grid;
-  gap: 0.1rem;
-  line-height: 1.15;
+.subtotalAmount {
+  text-align: left;
+}
+
+.subtotalTrailing {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 .subtotalMultiplier {
   color: var(--muted-foreground);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .receiptShareStatusValue {
