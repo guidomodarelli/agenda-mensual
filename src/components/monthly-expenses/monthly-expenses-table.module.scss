@@ -446,10 +446,17 @@
   min-width: 15rem;
 }
 
-.descriptionCell {
+.descriptionInfo {
   display: grid;
   gap: 0.1rem;
   justify-items: start;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.descriptionActions {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .descriptionTextRow {
@@ -665,11 +672,6 @@
   color: var(--muted-foreground);
 }
 
-.actionsCell {
-  width: 1%;
-  white-space: nowrap;
-}
-
 .paidRow :global([data-slot="table-cell"]) {
   background-color: color-mix(in srgb, #34a853 9%, var(--background));
 }
@@ -679,6 +681,9 @@
 }
 
 .stickyDescriptionCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   background: var(--background);
 }
 
@@ -712,43 +717,13 @@
   background: var(--muted);
 }
 
-.stickyActionsCell {
-  position: -webkit-sticky;
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  background: var(--background);
-  box-shadow:
-    -1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
-    -12px 0 12px -12px color-mix(in srgb, var(--foreground) 22%, transparent);
-}
-
-.tableWrapper :global([data-slot="table-head"]:last-child) {
-  position: -webkit-sticky;
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  background: var(--background);
-  box-shadow: -1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
-}
-
-.tableWrapper :global([data-slot="table-row"]:hover) .stickyActionsCell {
-  background: color-mix(in srgb, var(--muted) 70%, var(--background));
-}
-
-.tableWrapper :global([data-slot="table-row"][data-state="selected"]) .stickyActionsCell {
-  background: var(--muted);
-}
-
 .tableWrapper .paidRow .selectionTableCell,
-.tableWrapper .paidRow .stickyDescriptionCell,
-.tableWrapper .paidRow .stickyActionsCell {
+.tableWrapper .paidRow .stickyDescriptionCell {
   background: color-mix(in srgb, #34a853 9%, var(--background));
 }
 
 .tableWrapper .paidRow:hover .selectionTableCell,
-.tableWrapper .paidRow:hover .stickyDescriptionCell,
-.tableWrapper .paidRow:hover .stickyActionsCell {
+.tableWrapper .paidRow:hover .stickyDescriptionCell {
   background: color-mix(in srgb, #34a853 13%, var(--background));
 }
 

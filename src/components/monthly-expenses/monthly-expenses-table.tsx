@@ -3020,6 +3020,46 @@ export function MonthlyExpensesTable({
           const paymentLinkUrl = getValidPaymentLinkUrl(row.original.paymentLink);
           const expenseDescriptionLabel =
             row.original.description.trim() || "compromiso";
+          const monthlyFolderViewUrl = getValidHttpUrl(
+            row.original.monthlyFolderViewUrl,
+          );
+          const allReceiptsFolderViewUrl = getValidHttpUrl(
+            row.original.allReceiptsFolderViewUrl,
+          );
+          const canDeleteMonthlyFolderReference = isBrokenDriveStatus(
+            row.original.monthlyFolderStatus,
+          );
+          const canDeleteAllReceiptsFolderReference = isBrokenDriveStatus(
+            row.original.allReceiptsFolderStatus,
+          );
+          const hasPaymentLink = paymentLinkUrl != null;
+          const rowActions = (
+            <ExpenseRowActions
+              actionDisabled={actionDisabled}
+              allReceiptsFolderViewUrl={allReceiptsFolderViewUrl}
+              canDeleteAllReceiptsFolderReference={
+                canDeleteAllReceiptsFolderReference
+              }
+              canDeleteMonthlyFolderReference={canDeleteMonthlyFolderReference}
+              description={row.original.description}
+              hasPaymentLink={hasPaymentLink}
+              monthlyFolderViewUrl={monthlyFolderViewUrl}
+              onDelete={() => onDeleteExpense(row.original.id)}
+              onDeleteAllReceiptsFolderReference={() =>
+                onDeleteAllReceiptsFolderReference(row.original.id)}
+              onDeleteMonthlyFolderReference={() =>
+                onDeleteMonthlyFolderReference(row.original.id)}
+              onDeletePaymentLink={() => onDeletePaymentLink(row.original.id)}
+              onEdit={() => onEditExpense(row.original.id)}
+              onManagePaymentLink={() =>
+                handleOpenPaymentLinkDialog({
+                  expenseDescription: expenseDescriptionLabel,
+                  expenseId: row.original.id,
+                  mode: hasPaymentLink ? "edit" : "create",
+                  paymentLink: row.original.paymentLink,
+                })}
+            />
+          );
           const paymentLinkAnchor = paymentLinkUrl ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -3052,15 +3092,20 @@ export function MonthlyExpensesTable({
             descriptionContent
           );
 
-          if (!folderBadge) {
-            return descriptionTextContent;
-          }
-
-          return (
-            <span className={styles.descriptionCell}>
+          const expenseInformation = folderBadge ? (
+            <span className={styles.descriptionInfo}>
               {descriptionTextContent}
               {folderBadge}
             </span>
+          ) : (
+            descriptionTextContent
+          );
+
+          return (
+            <>
+              {expenseInformation}
+              <div className={styles.descriptionActions}>{rowActions}</div>
+            </>
           );
         },
         enableHiding: false,
@@ -3939,59 +3984,6 @@ export function MonthlyExpensesTable({
             sortDirection: getSortDirection(LOAN_DIRECTION_COLUMN_ID),
           });
         },
-      },
-      {
-        id: "actions",
-        cell: ({ row }) => {
-          const monthlyFolderViewUrl = getValidHttpUrl(row.original.monthlyFolderViewUrl);
-          const allReceiptsFolderViewUrl = getValidHttpUrl(
-            row.original.allReceiptsFolderViewUrl,
-          );
-          const canDeleteMonthlyFolderReference = isBrokenDriveStatus(
-            row.original.monthlyFolderStatus,
-          );
-          const canDeleteAllReceiptsFolderReference = isBrokenDriveStatus(
-            row.original.allReceiptsFolderStatus,
-          );
-          const hasPaymentLink =
-            getValidPaymentLinkUrl(row.original.paymentLink) != null;
-          const expenseDescription =
-            row.original.description.trim() || "compromiso";
-
-          return (
-            <div className={styles.actionsCell}>
-              <ExpenseRowActions
-                actionDisabled={actionDisabled}
-                allReceiptsFolderViewUrl={allReceiptsFolderViewUrl}
-                canDeleteAllReceiptsFolderReference={
-                  canDeleteAllReceiptsFolderReference
-                }
-                canDeleteMonthlyFolderReference={canDeleteMonthlyFolderReference}
-                description={row.original.description}
-                hasPaymentLink={hasPaymentLink}
-                monthlyFolderViewUrl={monthlyFolderViewUrl}
-                onDelete={() => onDeleteExpense(row.original.id)}
-                onDeleteAllReceiptsFolderReference={() =>
-                  onDeleteAllReceiptsFolderReference(row.original.id)}
-                onDeleteMonthlyFolderReference={() =>
-                  onDeleteMonthlyFolderReference(row.original.id)}
-                onDeletePaymentLink={() => onDeletePaymentLink(row.original.id)}
-                onEdit={() => onEditExpense(row.original.id)}
-                onManagePaymentLink={() =>
-                  handleOpenPaymentLinkDialog({
-                    expenseDescription,
-                    expenseId: row.original.id,
-                    mode: hasPaymentLink ? "edit" : "create",
-                    paymentLink: row.original.paymentLink,
-                  })}
-              />
-            </div>
-          );
-        },
-        enableHiding: false,
-        enableSorting: false,
-        header: () => null,
-        meta: { cellClassName: styles.stickyActionsCell },
       },
     ],
     [
