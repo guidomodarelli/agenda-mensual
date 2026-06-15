@@ -21,6 +21,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
   id-token: write
 
 jobs:
@@ -69,7 +70,38 @@ jobs:
         id: base
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Marcar comentario en progreso
+        id: progress
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # La API de reacciones difiere segun el tipo de comentario.
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            REACTION_BASE="repos/${REPO}/pulls/comments/${COMMENT_ID}"
+          else
+            REACTION_BASE="repos/${REPO}/issues/comments/${COMMENT_ID}"
+          fi
+          echo "reaction_base=$REACTION_BASE" >> "$GITHUB_OUTPUT"
+
+          # 👀 = "lo agarre, estoy trabajando".
+          REACTION_ID="$(gh api -X POST "${REACTION_BASE}/reactions" -f content=eyes --jq '.id' || true)"
+          echo "reaction_id=$REACTION_ID" >> "$GITHUB_OUTPUT"
+
+          # Comentario con el link al run para trazabilidad.
+          BODY="🤖 Procesando este comentario automáticamente. Seguí el progreso acá: ${RUN_URL}"
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            gh api -X POST "repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" -f body="$BODY"
+          else
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
+          fi
+
       - name: Aplicar fix con Claude Code
+        id: fix
         uses: anthropics/claude-code-action@v1
         env:
           # Contexto del comentario expuesto a la herramienta.
@@ -124,7 +156,8 @@ jobs:
             7. Si no hiciste ningun cambio, explica por que en tu respuesta y
                no commitees nada.
 
-      - name: Responder y resolver el hilo del comentario
+      - name: Cerrar comentario (reaccion final, reply y resolve)
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -133,37 +166,56 @@ jobs:
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           COMMENT_ID: ${{ github.event.comment.id }}
           BEFORE_SHA: ${{ steps.base.outputs.sha }}
+          FIX_OUTCOME: ${{ steps.fix.outcome }}
+          REACTION_BASE: ${{ steps.progress.outputs.reaction_base }}
+          REACTION_ID: ${{ steps.progress.outputs.reaction_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          AFTER_SHA="$(git rev-parse HEAD)"
-          if [ "$AFTER_SHA" = "$BEFORE_SHA" ]; then
-            echo "No se pushearon cambios; no se responde ni resuelve."
-            exit 0
-          fi
-          REPO_NAME="${REPO#*/}"
-          BODY="Apliqué un fix automático para este comentario en \`${AFTER_SHA}\`."
-
-          if [ "$EVENT_NAME" != "pull_request_review_comment" ]; then
-            # Comentario general del PR: no existe el concepto de resolver hilo.
-            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
-            exit 0
+          AFTER_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
+          CHANGED=false
+          if [ -n "$AFTER_SHA" ] && [ -n "$BEFORE_SHA" ] && [ "$AFTER_SHA" != "$BEFORE_SHA" ]; then
+            CHANGED=true
           fi
 
-          # Comentario inline de review: responde en el hilo y lo marca resuelto.
-          gh api -X POST \
-            "repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
-            -f body="$BODY"
-
-          THREAD_ID="$(gh api graphql \
-            -f query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{id comments(first:100){nodes{databaseId}}}}}}}' \
-            -F owner="$OWNER" -F repo="$REPO_NAME" -F pr="$PR_NUMBER" \
-            --jq "[.data.repository.pullRequest.reviewThreads.nodes[] | select(any(.comments.nodes[]; .databaseId == ${COMMENT_ID})) | .id] | first // empty")"
-
-          if [ -z "$THREAD_ID" ]; then
-            echo "No se encontró el thread para el comentario ${COMMENT_ID}."
-            exit 0
+          # Sacar el 👀 de "en progreso" si lo habiamos puesto.
+          if [ -n "$REACTION_BASE" ] && [ -n "$REACTION_ID" ]; then
+            gh api -X DELETE "${REACTION_BASE}/reactions/${REACTION_ID}" || true
           fi
 
-          gh api graphql \
-            -f query='mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}' \
-            -F threadId="$THREAD_ID"
-          echo "Hilo $THREAD_ID resuelto."
+          # Reaccion final + mensaje segun resultado.
+          if [ "$FIX_OUTCOME" = "success" ] && [ "$CHANGED" = "true" ]; then
+            FINAL_REACTION="rocket"
+            BODY="✅ Fix aplicado automáticamente en \`${AFTER_SHA}\`. Run: ${RUN_URL}"
+          elif [ "$FIX_OUTCOME" = "success" ]; then
+            FINAL_REACTION="-1"
+            BODY="ℹ️ Revisé el comentario pero no requería cambios de código. Run: ${RUN_URL}"
+          else
+            FINAL_REACTION="-1"
+            BODY="⚠️ No pude aplicar el fix automáticamente. Revisá el run: ${RUN_URL}"
+          fi
+
+          if [ -n "$REACTION_BASE" ]; then
+            gh api -X POST "${REACTION_BASE}/reactions" -f content="$FINAL_REACTION" || true
+          fi
+
+          # Reply con el resultado en el hilo / PR.
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            gh api -X POST "repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" -f body="$BODY" || true
+          else
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" || true
+          fi
+
+          # Resolver el hilo solo si es review inline y hubo cambios.
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ] && [ "$CHANGED" = "true" ]; then
+            REPO_NAME="${REPO#*/}"
+            THREAD_ID="$(gh api graphql \
+              -f query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{id comments(first:100){nodes{databaseId}}}}}}}' \
+              -F owner="$OWNER" -F repo="$REPO_NAME" -F pr="$PR_NUMBER" \
+              --jq "[.data.repository.pullRequest.reviewThreads.nodes[] | select(any(.comments.nodes[]; .databaseId == ${COMMENT_ID})) | .id] | first // empty" || true)"
+            if [ -n "$THREAD_ID" ]; then
+              gh api graphql \
+                -f query='mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}' \
+                -F threadId="$THREAD_ID" || true
+              echo "Hilo $THREAD_ID resuelto."
+            fi
+          fi
