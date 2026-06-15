@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import {
@@ -58,7 +63,6 @@ export function ExpenseFolderPicker({
 }: ExpenseFolderPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const rootRef = useRef<HTMLDivElement | null>(null);
   const selectedOption = options.find(
     (option) => option.id === selectedFolderId,
   );
@@ -74,120 +78,104 @@ export function ExpenseFolderPicker({
     );
   }, [options, searchValue]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+  const handleOpenChange = (nextIsOpen: boolean) => {
+    setIsOpen(nextIsOpen);
 
-    const handleDocumentMouseDown = (event: MouseEvent) => {
-      const target = event.target;
-
-      if (!rootRef.current || !(target instanceof Node)) {
-        return;
-      }
-
-      if (rootRef.current.contains(target)) {
-        return;
-      }
-
-      setIsOpen(false);
+    if (!nextIsOpen) {
       setSearchValue("");
-    };
+    }
+  };
 
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-    };
-  }, [isOpen]);
+  const closePanel = () => {
+    setIsOpen(false);
+    setSearchValue("");
+  };
 
   return (
-    <div className={cn(styles.root, className)} ref={rootRef}>
-      <Button
-        aria-expanded={isOpen}
-        className={styles.trigger}
-        onClick={() => setIsOpen((currentValue) => !currentValue)}
-        type="button"
-        variant="outline"
-      >
-        <span className={styles.triggerLabel}>
-          {selectedOption ? (
-            <ExpenseFolderSwatch
-              color={selectedOption.color}
-              icon={selectedOption.icon}
-            />
-          ) : null}
-          <span className={styles.triggerName}>
-            {selectedOption?.name ?? unassignedLabel}
+    <Popover onOpenChange={handleOpenChange} open={isOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          className={cn(styles.trigger, className)}
+          type="button"
+          variant="outline"
+        >
+          <span className={styles.triggerLabel}>
+            {selectedOption ? (
+              <ExpenseFolderSwatch
+                color={selectedOption.color}
+                icon={selectedOption.icon}
+              />
+            ) : null}
+            <span className={styles.triggerName}>
+              {selectedOption?.name ?? unassignedLabel}
+            </span>
           </span>
-        </span>
-      </Button>
+        </Button>
+      </PopoverTrigger>
 
-      {isOpen ? (
-        <div className={styles.panel}>
-          <Input
-            aria-label="Buscar carpeta"
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Buscar por nombre"
-            type="text"
-            value={searchValue}
-          />
+      <PopoverContent
+        align="start"
+        style={{ width: "var(--radix-popover-trigger-width)" }}
+      >
+        <Input
+          aria-label="Buscar carpeta"
+          onChange={(event) => setSearchValue(event.target.value)}
+          placeholder="Buscar por nombre"
+          type="text"
+          value={searchValue}
+        />
 
-          <div className={styles.options}>
-            <button
-              className={cn(
-                styles.option,
-                selectedFolderId === "" && styles.optionSelected,
-              )}
-              onClick={() => {
-                onSelect(null);
-                setIsOpen(false);
-                setSearchValue("");
-              }}
-              type="button"
-            >
-              <span className={styles.optionName}>{unassignedLabel}</span>
-            </button>
-
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
-                <button
-                  className={cn(
-                    styles.option,
-                    option.id === selectedFolderId && styles.optionSelected,
-                  )}
-                  key={option.id}
-                  onClick={() => {
-                    onSelect(option.id);
-                    setIsOpen(false);
-                    setSearchValue("");
-                  }}
-                  type="button"
-                >
-                  <ExpenseFolderSwatch color={option.color} icon={option.icon} />
-                  <span className={styles.optionName}>{option.name}</span>
-                </button>
-              ))
-            ) : (
-              <p className={styles.emptyMessage}>{emptyMessage}</p>
+        <div className={styles.options}>
+          <button
+            className={cn(
+              styles.option,
+              selectedFolderId === "" && styles.optionSelected,
             )}
-          </div>
-
-          <Button
-            className={styles.manageButton}
             onClick={() => {
-              onManageFolders();
-              setIsOpen(false);
-              setSearchValue("");
+              onSelect(null);
+              closePanel();
             }}
-            size="sm"
             type="button"
-            variant="outline"
           >
-            Administrar carpetas
-          </Button>
+            <span className={styles.optionName}>{unassignedLabel}</span>
+          </button>
+
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                className={cn(
+                  styles.option,
+                  option.id === selectedFolderId && styles.optionSelected,
+                )}
+                key={option.id}
+                onClick={() => {
+                  onSelect(option.id);
+                  closePanel();
+                }}
+                type="button"
+              >
+                <ExpenseFolderSwatch color={option.color} icon={option.icon} />
+                <span className={styles.optionName}>{option.name}</span>
+              </button>
+            ))
+          ) : (
+            <p className={styles.emptyMessage}>{emptyMessage}</p>
+          )}
         </div>
-      ) : null}
-    </div>
+
+        <Button
+          className={styles.manageButton}
+          onClick={() => {
+            onManageFolders();
+            closePanel();
+          }}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Administrar carpetas
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }
