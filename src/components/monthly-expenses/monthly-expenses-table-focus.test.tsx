@@ -86,6 +86,7 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onFolderFilterChange={jest.fn()}
         onManageFolders={jest.fn()}
         onMoveExpenseToFolder={jest.fn()}
+        onReorderFolders={jest.fn()}
         onExpenseLenderSelect={jest.fn()}
         onExpenseLoanToggle={jest.fn()}
         onExpenseReceiptShareToggle={jest.fn()}

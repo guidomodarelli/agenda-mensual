@@ -1056,6 +1056,7 @@ interface MonthlyExpensesTableProps {
     expenseId: string;
     folderId: string | null;
   }) => void;
+  onReorderFolders: (orderedFolderIds: string[]) => void;
   onExpenseLenderSelect: (lenderId: string | null) => void;
   onExpenseLoanToggle: (checked: boolean) => void;
   onExpenseReceiptShareToggle: (checked: boolean) => void;
@@ -2280,6 +2281,7 @@ export function MonthlyExpensesTable({
   onFolderFilterChange,
   onManageFolders,
   onMoveExpenseToFolder,
+  onReorderFolders,
   onCopyFromMonth,
   onCopyFromMonthDialogOpenChange,
   onConfirmCopyFromMonth,
@@ -4284,6 +4286,13 @@ export function MonthlyExpensesTable({
               >
                 Agregar compromiso
               </Button>
+              <Button
+                onClick={onManageFolders}
+                type="button"
+                variant="outline"
+              >
+                Administrar carpetas
+              </Button>
             </div>
           </div>
 
@@ -4354,6 +4363,7 @@ export function MonthlyExpensesTable({
               countsByFolderId={folderCounts.countsByFolderId}
               folders={expenseFolders}
               onMoveExpenseToFolder={onMoveExpenseToFolder}
+              onReorderFolders={onReorderFolders}
               onSelectFilter={onFolderFilterChange}
               selectedFilterId={folderFilterId}
               totalCount={folderCounts.totalCount}

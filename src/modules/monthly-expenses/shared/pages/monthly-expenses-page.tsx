@@ -4334,6 +4334,33 @@ export default function MonthlyExpensesPage({
     });
   };
 
+  const handleReorderExpenseFolders = async (orderedFolderIds: string[]) => {
+    const foldersById = new Map(
+      expenseFoldersState.folders.map((folder) => [folder.id, folder]),
+    );
+    const reorderedFolders = orderedFolderIds
+      .map((folderId) => foldersById.get(folderId))
+      .filter((folder): folder is ExpenseFolderOption => folder !== undefined);
+
+    if (reorderedFolders.length !== expenseFoldersState.folders.length) {
+      return;
+    }
+
+    const hasOrderChanged = reorderedFolders.some(
+      (folder, index) => folder.id !== expenseFoldersState.folders[index]?.id,
+    );
+
+    if (!hasOrderChanged) {
+      return;
+    }
+
+    await persistExpenseFoldersCatalog(reorderedFolders, {
+      failure: "No pudimos reordenar las carpetas.",
+      loading: "Reordenando carpetas...",
+      success: "Carpetas reordenadas correctamente.",
+    });
+  };
+
   const handleReportTypeFilterChange = (value: string) => {
     updateReportState((currentState) => ({
       ...currentState,
@@ -4426,6 +4453,7 @@ export default function MonthlyExpensesPage({
                 onFolderFilterChange={handleFolderFilterChange}
                 onManageFolders={handleOpenFoldersManager}
                 onMoveExpenseToFolder={handleMoveExpenseToFolder}
+                onReorderFolders={handleReorderExpenseFolders}
                 onExpenseLenderSelect={handleExpenseLenderSelect}
                 onExpenseLoanToggle={handleExpenseLoanToggle}
                 onExpenseReceiptShareToggle={handleExpenseReceiptShareToggle}

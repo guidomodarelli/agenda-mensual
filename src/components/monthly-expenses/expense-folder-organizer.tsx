@@ -15,12 +15,26 @@ import {
 import styles from "./expense-folder-organizer.module.scss";
 
 const EXPENSE_FOLDER_DRAG_TYPE = "expense-folder-row";
+const EXPENSE_FOLDER_CHIP_DRAG_TYPE = "expense-folder-chip";
 
 function getDraggedExpenseId(
   data: Record<string | symbol, unknown>,
 ): string | null {
   if (data.type === EXPENSE_FOLDER_DRAG_TYPE && typeof data.expenseId === "string") {
     return data.expenseId;
+  }
+
+  return null;
+}
+
+function getDraggedFolderId(
+  data: Record<string | symbol, unknown>,
+): string | null {
+  if (
+    data.type === EXPENSE_FOLDER_CHIP_DRAG_TYPE &&
+    typeof data.folderId === "string"
+  ) {
+    return data.folderId;
   }
 
   return null;
@@ -91,6 +105,11 @@ interface ExpenseFolderChipProps {
   isSelected: boolean;
   onSelect: () => void;
   onDropExpense: (expenseId: string) => void;
+  onReorderFolder?: (args: {
+    draggedFolderId: string;
+    targetFolderId: string;
+  }) => void;
+  reorderableFolderId?: string;
   targetFolderId: string | null;
 }
 
@@ -100,10 +119,31 @@ function ExpenseFolderChip({
   isSelected,
   onSelect,
   onDropExpense,
+  onReorderFolder,
+  reorderableFolderId,
   targetFolderId,
 }: ExpenseFolderChipProps) {
   const chipRef = useRef<HTMLButtonElement | null>(null);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+
+  useEffect(() => {
+    const element = chipRef.current;
+
+    if (!element || !reorderableFolderId) {
+      return;
+    }
+
+    return draggable({
+      element,
+      getInitialData: () => ({
+        folderId: reorderableFolderId,
+        type: EXPENSE_FOLDER_CHIP_DRAG_TYPE,
+      }),
+      onDragStart: () => setIsReordering(true),
+      onDrop: () => setIsReordering(false),
+    });
+  }, [reorderableFolderId]);
 
   useEffect(() => {
     const element = chipRef.current;
@@ -114,7 +154,19 @@ function ExpenseFolderChip({
 
     return dropTargetForElements({
       element,
-      canDrop: ({ source }) => getDraggedExpenseId(source.data) !== null,
+      canDrop: ({ source }) => {
+        if (getDraggedExpenseId(source.data) !== null) {
+          return true;
+        }
+
+        const draggedFolderId = getDraggedFolderId(source.data);
+
+        return (
+          reorderableFolderId !== undefined &&
+          draggedFolderId !== null &&
+          draggedFolderId !== reorderableFolderId
+        );
+      },
       getData: () => ({ targetFolderId }),
       onDragEnter: () => setIsDraggedOver(true),
       onDragLeave: () => setIsDraggedOver(false),
@@ -125,10 +177,24 @@ function ExpenseFolderChip({
 
         if (draggedExpenseId !== null) {
           onDropExpense(draggedExpenseId);
+          return;
+        }
+
+        const draggedFolderId = getDraggedFolderId(source.data);
+
+        if (
+          draggedFolderId !== null &&
+          reorderableFolderId !== undefined &&
+          draggedFolderId !== reorderableFolderId
+        ) {
+          onReorderFolder?.({
+            draggedFolderId,
+            targetFolderId: reorderableFolderId,
+          });
         }
       },
     });
-  }, [onDropExpense, targetFolderId]);
+  }, [onDropExpense, onReorderFolder, reorderableFolderId, targetFolderId]);
 
   return (
     <button
@@ -136,6 +202,8 @@ function ExpenseFolderChip({
         styles.chip,
         isSelected && styles.chipSelected,
         isDraggedOver && styles.chipDropTarget,
+        Boolean(reorderableFolderId) && styles.chipReorderable,
+        isReordering && styles.chipReordering,
       )}
       onClick={onSelect}
       ref={chipRef}
@@ -162,6 +230,7 @@ interface ExpenseFolderFilterBarProps {
     expenseId: string;
     folderId: string | null;
   }) => void;
+  onReorderFolders: (orderedFolderIds: string[]) => void;
   onSelectFilter: (folderId: string) => void;
   selectedFilterId: string;
   unassignedCount: number;
@@ -171,11 +240,12 @@ interface ExpenseFolderFilterBarProps {
 
 /**
  * Folder filter chips that double as drag-and-drop targets to reassign expenses
- * between folders.
+ * between folders and can be reordered by dragging one folder chip onto another.
  */
 export function ExpenseFolderFilterBar({
   folders,
   onMoveExpenseToFolder,
+  onReorderFolders,
   onSelectFilter,
   selectedFilterId,
   unassignedCount,
@@ -186,44 +256,77 @@ export function ExpenseFolderFilterBar({
     return null;
   }
 
+  const handleReorderFolder = ({
+    draggedFolderId,
+    targetFolderId,
+  }: {
+    draggedFolderId: string;
+    targetFolderId: string;
+  }) => {
+    if (draggedFolderId === targetFolderId) {
+      return;
+    }
+
+    const orderedFolderIds = folders.map((folder) => folder.id);
+    const fromIndex = orderedFolderIds.indexOf(draggedFolderId);
+    const toIndex = orderedFolderIds.indexOf(targetFolderId);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      return;
+    }
+
+    orderedFolderIds.splice(fromIndex, 1);
+    orderedFolderIds.splice(toIndex, 0, draggedFolderId);
+
+    onReorderFolders(orderedFolderIds);
+  };
+
   return (
     <div className={styles.filterBar}>
-      <button
-        className={cn(styles.chip, selectedFilterId === "" && styles.chipSelected)}
-        onClick={() => onSelectFilter("")}
-        type="button"
-      >
-        <span>Todas</span>
-        <span className={styles.chipCount}>{totalCount}</span>
-      </button>
+      <div className={styles.chipRow}>
+        <button
+          className={cn(
+            styles.chip,
+            selectedFilterId === "" && styles.chipSelected,
+          )}
+          onClick={() => onSelectFilter("")}
+          type="button"
+        >
+          <span>Todas</span>
+          <span className={styles.chipCount}>{totalCount}</span>
+        </button>
 
-      {folders.map((folder) => (
         <ExpenseFolderChip
-          count={countsByFolderId[folder.id] ?? 0}
-          folder={folder}
-          isSelected={selectedFilterId === folder.id}
-          key={folder.id}
+          count={unassignedCount}
+          folder={null}
+          isSelected={selectedFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID}
           onDropExpense={(expenseId) =>
-            onMoveExpenseToFolder({ expenseId, folderId: folder.id })
+            onMoveExpenseToFolder({ expenseId, folderId: null })
           }
-          onSelect={() => onSelectFilter(folder.id)}
-          targetFolderId={folder.id}
+          onSelect={() => onSelectFilter(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
+          targetFolderId={null}
         />
-      ))}
 
-      <ExpenseFolderChip
-        count={unassignedCount}
-        folder={null}
-        isSelected={selectedFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID}
-        onDropExpense={(expenseId) =>
-          onMoveExpenseToFolder({ expenseId, folderId: null })
-        }
-        onSelect={() => onSelectFilter(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
-        targetFolderId={null}
-      />
+        {folders.map((folder) => (
+          <ExpenseFolderChip
+            count={countsByFolderId[folder.id] ?? 0}
+            folder={folder}
+            isSelected={selectedFilterId === folder.id}
+            key={folder.id}
+            onDropExpense={(expenseId) =>
+              onMoveExpenseToFolder({ expenseId, folderId: folder.id })
+            }
+            onReorderFolder={handleReorderFolder}
+            onSelect={() => onSelectFilter(folder.id)}
+            reorderableFolderId={folder.id}
+            targetFolderId={folder.id}
+          />
+        ))}
+      </div>
 
       <p className={styles.filterHint}>
-        Arrastrá la etiqueta de carpeta de un gasto hacia un chip para moverlo.
+        Arrastrá la etiqueta de carpeta de un gasto hacia un chip para moverlo, o
+        arrastrá un chip de carpeta sobre otro para reordenarlos.
       </p>
     </div>
   );

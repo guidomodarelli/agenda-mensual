@@ -1,9 +1,15 @@
 .filterBar {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.chipRow {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
 }
 
 .filterHint {
@@ -33,6 +39,15 @@
 .chipDropTarget {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.chipReorderable {
+  cursor: grab;
+}
+
+.chipReordering {
+  opacity: 0.45;
+  cursor: grabbing;
 }
 
 .chipSwatch {
