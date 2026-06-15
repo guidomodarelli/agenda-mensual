@@ -3,6 +3,16 @@
   gap: 0.4rem;
 }
 
+.durationField {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.durationLabel {
+  font-size: 0.84rem;
+  color: var(--muted-foreground);
+}
+
 .changedField {
   border-color: color-mix(in srgb, var(--primary) 45%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);

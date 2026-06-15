@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,15 +14,20 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
+  composeOccurrencesUnit,
   CUSTOM_OCCURRENCES_UNIT_VALUE,
   isPredefinedOccurrencesUnit,
-  MAX_OCCURRENCES_UNIT_LENGTH,
+  MAX_OCCURRENCES_DURATION_LENGTH,
+  MAX_OCCURRENCES_PERIODICITY_LENGTH,
+  OCCURRENCES_DURATION_SUGGESTIONS,
   OCCURRENCES_UNIT_OPTION_GROUPS,
+  splitOccurrencesUnit,
 } from "./occurrences-unit";
 import styles from "./occurrences-unit-select.module.scss";
 
 interface OccurrencesUnitSelectProps {
   customInputAriaLabel: string;
+  durationInputAriaLabel: string;
   hasError?: boolean;
   isChanged?: boolean;
   onChange: (value: string) => void;
@@ -35,11 +41,14 @@ const CUSTOM_OPTION_LABEL = "Otra…";
 /**
  * Select to pick the unit that labels the monthly quantity multiplier.
  *
- * Offers grouped predefined units plus a free-text "Otra…" option. The unit is
- * only a display label; it never affects the monthly total.
+ * Offers grouped predefined periodicities plus a free-text "Otra…" option and an
+ * optional per-occurrence duration (e.g. "veces de 30'"). The unit is only a
+ * display label; it never affects the monthly total. The combined value is
+ * emitted as a single string through `onChange`.
  */
 export function OccurrencesUnitSelect({
   customInputAriaLabel,
+  durationInputAriaLabel,
   hasError = false,
   isChanged = false,
   onChange,
@@ -47,24 +56,46 @@ export function OccurrencesUnitSelect({
   selectId,
   value,
 }: OccurrencesUnitSelectProps) {
+  const initialParts = splitOccurrencesUnit(value);
+  const [periodicity, setPeriodicity] = useState(initialParts.periodicity);
+  const [duration, setDuration] = useState(initialParts.duration);
   const [isCustomMode, setIsCustomMode] = useState(
-    () => value.trim() !== "" && !isPredefinedOccurrencesUnit(value),
+    () =>
+      initialParts.periodicity !== "" &&
+      !isPredefinedOccurrencesUnit(initialParts.periodicity),
   );
+  const durationListId = useId();
   const selectValue = isCustomMode
     ? CUSTOM_OCCURRENCES_UNIT_VALUE
-    : isPredefinedOccurrencesUnit(value)
-      ? value.trim()
+    : isPredefinedOccurrencesUnit(periodicity)
+      ? periodicity
       : "";
+
+  const emit = (nextPeriodicity: string, nextDuration: string) => {
+    onChange(composeOccurrencesUnit(nextPeriodicity, nextDuration));
+  };
 
   const handleSelectValueChange = (nextValue: string) => {
     if (nextValue === CUSTOM_OCCURRENCES_UNIT_VALUE) {
       setIsCustomMode(true);
-      onChange("");
+      setPeriodicity("");
+      emit("", duration);
       return;
     }
 
     setIsCustomMode(false);
-    onChange(nextValue);
+    setPeriodicity(nextValue);
+    emit(nextValue, duration);
+  };
+
+  const handleCustomPeriodicityChange = (nextPeriodicity: string) => {
+    setPeriodicity(nextPeriodicity);
+    emit(nextPeriodicity, duration);
+  };
+
+  const handleDurationChange = (nextDuration: string) => {
+    setDuration(nextDuration);
+    emit(periodicity, nextDuration);
   };
 
   return (
@@ -101,13 +132,34 @@ export function OccurrencesUnitSelect({
           aria-invalid={hasError ? "true" : "false"}
           aria-label={customInputAriaLabel}
           className={cn(hasError && styles.invalidField)}
-          maxLength={MAX_OCCURRENCES_UNIT_LENGTH}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Ej: clases"
+          maxLength={MAX_OCCURRENCES_PERIODICITY_LENGTH}
+          onChange={(event) => handleCustomPeriodicityChange(event.target.value)}
+          placeholder="Ej: viajes"
           type="text"
-          value={value}
+          value={periodicity}
         />
       ) : null}
+
+      <div className={styles.durationField}>
+        <Label className={styles.durationLabel} htmlFor={`${durationListId}-input`}>
+          Duración por ocurrencia (opcional)
+        </Label>
+        <Input
+          aria-label={durationInputAriaLabel}
+          id={`${durationListId}-input`}
+          list={durationListId}
+          maxLength={MAX_OCCURRENCES_DURATION_LENGTH}
+          onChange={(event) => handleDurationChange(event.target.value)}
+          placeholder="Ej: 30', 1h, 1h 30"
+          type="text"
+          value={duration}
+        />
+        <datalist id={durationListId}>
+          {OCCURRENCES_DURATION_SUGGESTIONS.map((suggestion) => (
+            <option key={suggestion} value={suggestion} />
+          ))}
+        </datalist>
+      </div>
     </div>
   );
 }
