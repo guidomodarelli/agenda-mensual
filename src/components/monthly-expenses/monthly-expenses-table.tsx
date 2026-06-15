@@ -104,6 +104,12 @@ import {
 } from "./currency-input-format";
 import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
+import type { ExpenseFolderOption } from "./expense-folder-picker";
+import { UNASSIGNED_EXPENSE_FOLDER_FILTER_ID } from "./expense-folder-visuals";
+import {
+  ExpenseFolderFilterBar,
+  ExpenseFolderRowBadge,
+} from "./expense-folder-organizer";
 import {
   formatReceiptSharePhoneDisplay,
   normalizeReceiptSharePhoneDigits,
@@ -939,6 +945,7 @@ export interface MonthlyExpensesEditableRow {
   allReceiptsFolderViewUrl: string;
   currency: MonthlyExpenseCurrency;
   description: string;
+  expenseFolderId: string;
   id: string;
   installmentCount: string;
   isLoan: boolean;
@@ -962,6 +969,7 @@ export interface MonthlyExpensesEditableRow {
   monthlyFolderId: string;
   monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
   monthlyFolderViewUrl: string;
+  sortOrder: number | null;
   startMonth: string;
   subtotal: string;
   total: string;
@@ -1009,6 +1017,8 @@ interface MonthlyExpensesTableProps {
     officialRate: number;
     solidarityRate: number;
   } | null;
+  expenseFolders: ExpenseFolderOption[];
+  folderFilterId: string;
   feedbackMessage: string;
   feedbackErrorCode?: TechnicalErrorCode | null;
   feedbackTone: "default" | "error" | "success";
@@ -1039,6 +1049,13 @@ interface MonthlyExpensesTableProps {
     fieldName: ExpenseEditableFieldName,
     value: string,
   ) => void;
+  onExpenseFolderSelect: (folderId: string | null) => void;
+  onFolderFilterChange: (folderId: string) => void;
+  onManageFolders: () => void;
+  onMoveExpenseToFolder: (args: {
+    expenseId: string;
+    folderId: string | null;
+  }) => void;
   onExpenseLenderSelect: (lenderId: string | null) => void;
   onExpenseLoanToggle: (checked: boolean) => void;
   onExpenseReceiptShareToggle: (checked: boolean) => void;
@@ -2243,6 +2260,8 @@ export function MonthlyExpensesTable({
   draft,
   exchangeRateLoadError,
   exchangeRateSnapshot,
+  expenseFolders,
+  folderFilterId,
   feedbackMessage,
   feedbackErrorCode = null,
   feedbackTone,
@@ -2257,6 +2276,10 @@ export function MonthlyExpensesTable({
   pendingMonth,
   onAddExpense,
   onAddLender,
+  onExpenseFolderSelect,
+  onFolderFilterChange,
+  onManageFolders,
+  onMoveExpenseToFolder,
   onCopyFromMonth,
   onCopyFromMonthDialogOpenChange,
   onConfirmCopyFromMonth,
@@ -2496,13 +2519,26 @@ export function MonthlyExpensesTable({
     [nonEmptyExcludedDescriptionFilters, rows],
   );
   const hasManualSorting = sorting.length > 0;
-  const rowsForTable = useMemo(() => {
-    if (!moveCompletedToEnd || hasManualSorting) {
+  const rowsMatchingFolderFilter = useMemo(() => {
+    if (!folderFilterId) {
       return rowsExcludingDescriptions;
     }
 
-    return getRowsWithCompletedAtEnd(rowsExcludingDescriptions);
-  }, [hasManualSorting, moveCompletedToEnd, rowsExcludingDescriptions]);
+    if (folderFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID) {
+      return rowsExcludingDescriptions.filter((row) => !row.expenseFolderId);
+    }
+
+    return rowsExcludingDescriptions.filter(
+      (row) => row.expenseFolderId === folderFilterId,
+    );
+  }, [folderFilterId, rowsExcludingDescriptions]);
+  const rowsForTable = useMemo(() => {
+    if (!moveCompletedToEnd || hasManualSorting) {
+      return rowsMatchingFolderFilter;
+    }
+
+    return getRowsWithCompletedAtEnd(rowsMatchingFolderFilter);
+  }, [hasManualSorting, moveCompletedToEnd, rowsMatchingFolderFilter]);
   const selectedExpenseIdsInCurrentRows = useMemo(() => {
     const availableExpenseIds = new Set(rows.map((row) => row.id));
 
@@ -2952,6 +2988,32 @@ export function MonthlyExpensesTable({
     [primaryDescriptionFilter],
   );
 
+  const foldersById = useMemo(() => {
+    const folderMap = new Map<string, ExpenseFolderOption>();
+
+    for (const folder of expenseFolders) {
+      folderMap.set(folder.id, folder);
+    }
+
+    return folderMap;
+  }, [expenseFolders]);
+  const folderCounts = useMemo(() => {
+    const countsByFolderId: Record<string, number> = {};
+    let unassignedCount = 0;
+
+    for (const row of rows) {
+      if (row.expenseFolderId && foldersById.has(row.expenseFolderId)) {
+        countsByFolderId[row.expenseFolderId] =
+          (countsByFolderId[row.expenseFolderId] ?? 0) + 1;
+        continue;
+      }
+
+      unassignedCount += 1;
+    }
+
+    return { countsByFolderId, totalCount: rows.length, unassignedCount };
+  }, [foldersById, rows]);
+
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
       {
@@ -3015,25 +3077,44 @@ export function MonthlyExpensesTable({
         accessorKey: "description",
         cell: ({ row, table }) => {
           const description = row.original.description;
-
-          if (!description) {
-            return "Sin descripción";
-          }
-
+          const folder =
+            row.original.expenseFolderId &&
+            foldersById.has(row.original.expenseFolderId)
+              ? foldersById.get(row.original.expenseFolderId) ?? null
+              : null;
+          const folderBadge =
+            expenseFolders.length > 0 ? (
+              <ExpenseFolderRowBadge
+                expenseId={row.original.id}
+                folder={folder}
+              />
+            ) : null;
           const filterValue = String(
             table.getColumn("description")?.getFilterValue() ?? "",
           );
-          const matchIndices = getFuzzyMatchIndices(description, filterValue);
+          const matchIndices = description
+            ? getFuzzyMatchIndices(description, filterValue)
+            : null;
+          const descriptionContent = !description
+            ? "Sin descripción"
+            : matchIndices && matchIndices.length > 0
+            ? renderHighlightedText(
+                description,
+                matchIndices,
+                styles.descriptionHighlight,
+                "description",
+              )
+            : description;
 
-          if (!matchIndices || matchIndices.length === 0) {
-            return description;
+          if (!folderBadge) {
+            return descriptionContent;
           }
 
-          return renderHighlightedText(
-            description,
-            matchIndices,
-            styles.descriptionHighlight,
-            "description",
+          return (
+            <span className={styles.descriptionCell}>
+              <span>{descriptionContent}</span>
+              {folderBadge}
+            </span>
           );
         },
         enableHiding: false,
@@ -4084,6 +4165,8 @@ export function MonthlyExpensesTable({
       handleOpenReceiptShareDialog,
       handleOpenPaymentLinkDialog,
       selectedExpenseIdsInCurrentRows,
+      expenseFolders,
+      foldersById,
     ],
   );
 
@@ -4267,6 +4350,15 @@ export function MonthlyExpensesTable({
                 </div>
               </div>
             ) : null}
+            <ExpenseFolderFilterBar
+              countsByFolderId={folderCounts.countsByFolderId}
+              folders={expenseFolders}
+              onMoveExpenseToFolder={onMoveExpenseToFolder}
+              onSelectFilter={onFolderFilterChange}
+              selectedFilterId={folderFilterId}
+              totalCount={folderCounts.totalCount}
+              unassignedCount={folderCounts.unassignedCount}
+            />
             <DataTable
               advancedFiltersButtonLabel="Filtros avanzados"
               advancedFiltersConfig={MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG}
@@ -4475,12 +4567,15 @@ export function MonthlyExpensesTable({
           actionDisabled={actionDisabled || isSubmitting}
           changedFields={changedFields}
           draft={draft}
+          expenseFolders={expenseFolders}
           isOpen={isExpenseSheetOpen}
           isSubmitting={isSubmitting}
           lenders={lenders}
           mode={sheetMode}
           onAddLender={onAddLender}
           onFieldChange={onExpenseFieldChange}
+          onFolderSelect={onExpenseFolderSelect}
+          onManageFolders={onManageFolders}
           onLenderSelect={onExpenseLenderSelect}
           onLoanToggle={onExpenseLoanToggle}
           onReceiptShareToggle={onExpenseReceiptShareToggle}

@@ -39,6 +39,9 @@ export const basePageProps = {
     sourceMonths: [],
     targetMonth: "2026-03",
   },
+  initialExpenseFoldersCatalog: {
+    folders: [],
+  },
   initialLendersCatalog: {
     lenders: [],
   },
@@ -51,6 +54,8 @@ export const basePageProps = {
       trackedLoanCount: 0,
     },
   },
+  expenseFoldersLoadErrorCode: null,
+  expenseFoldersLoadError: null,
   lendersLoadErrorCode: null,
   lendersLoadError: null,
   loadErrorCode: null,

@@ -83,6 +83,7 @@ export type MonthlyExpenseFolders = MonthlyExpenseFoldersInput;
 export interface MonthlyExpenseItemInput {
   currency: MonthlyExpenseCurrency;
   description: string;
+  expenseFolderId?: string | null;
   folders?: MonthlyExpenseFoldersInput | null;
   id: string;
   isPaid?: boolean;
@@ -96,10 +97,12 @@ export interface MonthlyExpenseItemInput {
   receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
   requiresReceiptShare?: boolean;
   receipts?: MonthlyExpenseReceiptInput[] | null;
+  sortOrder?: number | null;
   subtotal: number;
 }
 
 export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
+  expenseFolderId?: string | null;
   folders?: MonthlyExpenseFolders;
   loan?: MonthlyExpenseLoan;
   manualCoveredPayments: number;
@@ -110,6 +113,7 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
   requiresReceiptShare?: boolean;
   receipts: MonthlyExpenseReceipt[];
+  sortOrder?: number | null;
   total: number;
 }
 
@@ -641,12 +645,42 @@ function validateFolders(
   }
 }
 
+function normalizeExpenseFolderId(
+  expenseFolderId: string | null | undefined,
+): string | null {
+  if (expenseFolderId == null) {
+    return null;
+  }
+
+  const normalizedExpenseFolderId = expenseFolderId.trim();
+
+  return normalizedExpenseFolderId.length > 0 ? normalizedExpenseFolderId : null;
+}
+
+function normalizeSortOrder(
+  sortOrder: number | null | undefined,
+  operationName: string,
+): number | null {
+  if (sortOrder == null) {
+    return null;
+  }
+
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    throw new Error(
+      `${operationName} requires every sort order to be an integer greater than or equal to 0.`,
+    );
+  }
+
+  return sortOrder;
+}
+
 function validateItem(
   item: MonthlyExpenseItemInput,
   operationName: string,
   targetMonth: string,
 ): MonthlyExpenseItem {
   const {
+    expenseFolderId,
     folders,
     isPaid,
     loan,
@@ -657,6 +691,7 @@ function validateItem(
     receiptShareStatus,
     requiresReceiptShare,
     receipts,
+    sortOrder,
     ...rawItem
   } = item;
   const normalizedItem = {
@@ -664,6 +699,8 @@ function validateItem(
     description: item.description.trim(),
     id: item.id.trim(),
   };
+  const normalizedExpenseFolderId = normalizeExpenseFolderId(expenseFolderId);
+  const normalizedSortOrder = normalizeSortOrder(sortOrder, operationName);
   const normalizedFolders = validateFolders(folders, operationName);
   const normalizedPaymentLink = validatePaymentLink(paymentLink, operationName);
   const normalizedReceiptSharePhoneDigits = validateReceiptSharePhoneDigits(
@@ -773,6 +810,10 @@ function validateItem(
 
   return {
     ...normalizedItem,
+    ...(normalizedExpenseFolderId
+      ? { expenseFolderId: normalizedExpenseFolderId }
+      : {}),
+    ...(normalizedSortOrder !== null ? { sortOrder: normalizedSortOrder } : {}),
     ...(normalizedFolders ? { folders: normalizedFolders } : {}),
     ...(normalizedIsPaid ? { isPaid: true } : {}),
     ...(loan ? { loan: validateLoan(loan, operationName, targetMonth) } : {}),
@@ -888,6 +929,12 @@ export function toMonthlyExpensesDocumentInput(
     items: document.items.map((item) => ({
       currency: item.currency,
       description: item.description,
+      ...(item.expenseFolderId
+        ? { expenseFolderId: item.expenseFolderId }
+        : {}),
+      ...(item.sortOrder !== null && item.sortOrder !== undefined
+        ? { sortOrder: item.sortOrder }
+        : {}),
       ...(item.folders
         ? {
             folders: {

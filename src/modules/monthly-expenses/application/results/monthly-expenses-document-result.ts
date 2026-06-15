@@ -35,6 +35,7 @@ export interface MonthlyExpenseFoldersResult extends MonthlyExpenseFolders {
 export interface MonthlyExpenseItemResult {
   currency: MonthlyExpenseCurrency;
   description: string;
+  expenseFolderId?: string | null;
   folders?: MonthlyExpenseFoldersResult;
   id: string;
   isPaid?: boolean;
@@ -48,6 +49,7 @@ export interface MonthlyExpenseItemResult {
   receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
   requiresReceiptShare?: boolean;
   receipts?: MonthlyExpenseReceiptResult[];
+  sortOrder?: number | null;
   subtotal: number;
   total: number;
 }

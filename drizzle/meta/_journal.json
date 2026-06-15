@@ -64,6 +64,13 @@
       "when": 1777341483872,
       "tag": "0008_first_shen",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1781484710991,
+      "tag": "0009_nosy_harpoon",
+      "breakpoints": true
     }
   ]
 }

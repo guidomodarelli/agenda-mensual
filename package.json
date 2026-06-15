@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "^1.8.1",
     "@hookform/resolvers": "^5.2.2",
     "@libsql/client": "^0.17.3",
     "@radix-ui/react-slot": "1.2.4",

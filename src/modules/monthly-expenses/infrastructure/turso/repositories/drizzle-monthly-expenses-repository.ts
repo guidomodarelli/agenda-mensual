@@ -30,6 +30,7 @@ interface NormalizedExpenseRow {
   exchangeRateMonth: string | null;
   exchangeRateOfficialRate: number | null;
   exchangeRateSolidarityRate: number | null;
+  expenseFolderId: string | null;
   expenseId: string;
   isPaid: number;
   loanDirection: string | null;
@@ -47,6 +48,7 @@ interface NormalizedExpenseRow {
   receiptSharePhoneDigits: string | null;
   receiptShareStatus: string | null;
   requiresReceiptShare: number;
+  sortOrder: number | null;
   subtotal: number;
 }
 
@@ -354,6 +356,7 @@ export class DrizzleMonthlyExpensesRepository
           createdAtIso,
           currency: item.currency,
           description: item.description,
+          expenseFolderId: item.expenseFolderId ?? null,
           expenseId: item.id,
           loanDirection: item.loan?.direction ?? "payable",
           loanInstallmentCount: item.loan?.installmentCount ?? null,
@@ -364,6 +367,7 @@ export class DrizzleMonthlyExpensesRepository
           receiptShareMessage: item.receiptShareMessage ?? null,
           receiptSharePhoneDigits: item.receiptSharePhoneDigits ?? null,
           requiresReceiptShare: toBooleanInteger(item.requiresReceiptShare === true),
+          sortOrder: item.sortOrder ?? itemIndex,
           updatedAtIso: nowIso,
           userSubject: this.userSubject,
         })
@@ -373,6 +377,7 @@ export class DrizzleMonthlyExpensesRepository
             allReceiptsFolderViewUrl: allReceiptsFolder.viewUrl,
             currency: item.currency,
             description: item.description,
+            expenseFolderId: item.expenseFolderId ?? null,
             loanDirection: item.loan?.direction ?? "payable",
             loanInstallmentCount: item.loan?.installmentCount ?? null,
             loanLenderId: item.loan?.lenderId ?? null,
@@ -382,6 +387,7 @@ export class DrizzleMonthlyExpensesRepository
             receiptShareMessage: item.receiptShareMessage ?? null,
             receiptSharePhoneDigits: item.receiptSharePhoneDigits ?? null,
             requiresReceiptShare: toBooleanInteger(item.requiresReceiptShare === true),
+            sortOrder: item.sortOrder ?? itemIndex,
             updatedAtIso: nowIso,
           },
           target: [expensesTable.userSubject, expensesTable.expenseId],
@@ -555,6 +561,7 @@ export class DrizzleMonthlyExpensesRepository
         exchangeRateMonth: expenseMonthsTable.exchangeRateMonth,
         exchangeRateOfficialRate: expenseMonthsTable.exchangeRateOfficialRate,
         exchangeRateSolidarityRate: expenseMonthsTable.exchangeRateSolidarityRate,
+        expenseFolderId: expensesTable.expenseFolderId,
         expenseId: expenseMonthsTable.expenseId,
         isPaid: expenseMonthsTable.isPaid,
         loanDirection: expensesTable.loanDirection,
@@ -572,6 +579,7 @@ export class DrizzleMonthlyExpensesRepository
         receiptSharePhoneDigits: expensesTable.receiptSharePhoneDigits,
         receiptShareStatus: expenseMonthsTable.receiptShareStatus,
         requiresReceiptShare: expensesTable.requiresReceiptShare,
+        sortOrder: expensesTable.sortOrder,
         subtotal: expenseMonthsTable.subtotal,
       })
       .from(expenseMonthsTable)
@@ -772,6 +780,10 @@ export class DrizzleMonthlyExpensesRepository
         items: normalizedRows.map((row) => ({
           currency: row.currency as "ARS" | "USD",
           description: row.description,
+          ...(row.expenseFolderId
+            ? { expenseFolderId: row.expenseFolderId }
+            : {}),
+          ...(row.sortOrder !== null ? { sortOrder: row.sortOrder } : {}),
           ...(row.allReceiptsFolderId && row.allReceiptsFolderViewUrl
             ? {
                 folders: {

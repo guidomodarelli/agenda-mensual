@@ -189,6 +189,9 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
         ],
         month: "2026-04",
       },
+      initialExpenseFoldersCatalog: {
+        folders: [],
+      },
       initialLendersCatalog: {
         lenders: [],
       },
@@ -204,6 +207,8 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
           trackedLoanCount: 0,
         },
       },
+      expenseFoldersLoadErrorCode: null,
+      expenseFoldersLoadError: null,
       lendersLoadErrorCode: null,
       lendersLoadError: null,
       loadErrorCode: null,

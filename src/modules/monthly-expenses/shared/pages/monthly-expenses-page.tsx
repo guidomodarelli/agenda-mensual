@@ -24,6 +24,18 @@ import {
 } from "@/components/monthly-expenses/lender-picker";
 import { LenderCreateDialog } from "@/components/monthly-expenses/lender-create-dialog";
 import { LendersPanel } from "@/components/monthly-expenses/lenders-panel";
+import type { ExpenseFolderOption } from "@/components/monthly-expenses/expense-folder-picker";
+import {
+  ExpenseFoldersPanel,
+  type ExpenseFolderAppearanceDraft,
+} from "@/components/monthly-expenses/expense-folders-panel";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MonthlyExpensesLoansReport } from "@/components/monthly-expenses/monthly-expenses-loans-report";
 import {
   MonthlyExpensesTable,
@@ -46,6 +58,12 @@ import {
 import {
   saveLendersCatalogViaApi,
 } from "@/modules/lenders/infrastructure/api/lenders-api";
+import {
+  type ExpenseFoldersCatalogDocumentResult,
+} from "@/modules/expense-folders/application/results/expense-folders-catalog-document-result";
+import {
+  saveExpenseFoldersCatalogViaApi,
+} from "@/modules/expense-folders/infrastructure/api/expense-folders-api";
 import type { SaveMonthlyExpensesCommand } from "@/modules/monthly-expenses/application/commands/save-monthly-expenses-command";
 import { getMonthlyExpenseLoanPreview } from "@/modules/monthly-expenses/application/queries/get-monthly-expense-loan-preview";
 import {
@@ -97,8 +115,11 @@ export type MonthlyExpensesPageProps = {
   initialCopyableMonths: MonthlyExpensesCopyableMonthsResult;
   initialDocument: MonthlyExpensesDocumentResult;
   initialActiveTab: MonthlyExpensesTabKey;
+  initialExpenseFoldersCatalog: ExpenseFoldersCatalogDocumentResult;
   initialLendersCatalog: LendersCatalogDocumentResult;
   initialLoansReport: MonthlyExpensesLoansReportResult;
+  expenseFoldersLoadErrorCode: TechnicalErrorCode | null;
+  expenseFoldersLoadError: string | null;
   lendersLoadErrorCode: TechnicalErrorCode | null;
   lendersLoadError: string | null;
   loadErrorCode: TechnicalErrorCode | null;
@@ -376,6 +397,7 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     allReceiptsFolderViewUrl: "",
     currency: "ARS",
     description: "",
+    expenseFolderId: "",
     id: createExpenseRowId(),
     installmentCount: "",
     isLoan: false,
@@ -398,6 +420,7 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     receipts: [],
     monthlyFolderId: "",
     monthlyFolderViewUrl: "",
+    sortOrder: null,
     startMonth: "",
     subtotal: "",
     total: "0.00",
@@ -628,6 +651,7 @@ export function toEditableRows(
         }),
     currency: item.currency,
     description: item.description,
+    expenseFolderId: item.expenseFolderId ?? "",
     id: item.id,
     installmentCount: item.loan
       ? formatEditableNumber(item.loan.installmentCount)
@@ -660,6 +684,7 @@ export function toEditableRows(
       item.folders?.monthlyFolderViewUrl,
       item.receipts?.[0]?.monthlyFolderViewUrl,
     ),
+    sortOrder: item.sortOrder ?? null,
     startMonth: item.loan?.startMonth ?? "",
     subtotal: formatEditableNumber(item.subtotal),
     total: item.total.toFixed(2),
@@ -890,6 +915,31 @@ function createLendersCatalogState(
     notes: "",
     successMessage: null,
     type: "family",
+  };
+}
+
+interface ExpenseFoldersCatalogState {
+  error: string | null;
+  errorCode: TechnicalErrorCode | null;
+  folders: ExpenseFolderOption[];
+  isSubmitting: boolean;
+  successMessage: string | null;
+}
+
+function createExpenseFoldersCatalogState(
+  catalog: ExpenseFoldersCatalogDocumentResult,
+): ExpenseFoldersCatalogState {
+  return {
+    error: null,
+    errorCode: null,
+    folders: catalog.folders.map(({ color, icon, id, name }) => ({
+      color: color ?? null,
+      icon: icon ?? null,
+      id,
+      name,
+    })),
+    isSubmitting: false,
+    successMessage: null,
   };
 }
 
@@ -1374,6 +1424,10 @@ export function toSaveMonthlyExpensesCommand(
           : {}),
         currency: row.currency,
         description: row.description.trim(),
+        ...(row.expenseFolderId
+          ? { expenseFolderId: row.expenseFolderId }
+          : {}),
+        ...(row.sortOrder !== null ? { sortOrder: row.sortOrder } : {}),
         id: row.id,
         ...(row.isLoan
           ? {
@@ -1491,8 +1545,11 @@ export default function MonthlyExpensesPage({
   initialCopyableMonths,
   initialDocument,
   initialActiveTab,
+  initialExpenseFoldersCatalog,
   initialLendersCatalog,
   initialLoansReport,
+  expenseFoldersLoadErrorCode,
+  expenseFoldersLoadError,
   lendersLoadErrorCode,
   lendersLoadError,
   loadErrorCode,
@@ -1511,6 +1568,12 @@ export default function MonthlyExpensesPage({
   const [lendersState, setLendersState] = useState<LendersCatalogState>(
     createLendersCatalogState(initialLendersCatalog),
   );
+  const [expenseFoldersState, setExpenseFoldersState] =
+    useState<ExpenseFoldersCatalogState>(
+      createExpenseFoldersCatalogState(initialExpenseFoldersCatalog),
+    );
+  const [folderFilterId, setFolderFilterId] = useState("");
+  const [isFoldersManagerOpen, setIsFoldersManagerOpen] = useState(false);
   const [reportState, setReportState] = useState<LoansReportState>(
     createLoansReportState(initialLoansReport, reportLoadError, reportLoadErrorCode),
   );
@@ -1618,6 +1681,19 @@ export default function MonthlyExpensesPage({
   const lendersFeedbackTone = lendersState.error || lendersLoadError
     ? "error"
     : "default";
+  const expenseFoldersFeedbackMessage =
+    expenseFoldersState.error ??
+    expenseFoldersState.successMessage ??
+    expenseFoldersLoadError ??
+    null;
+  const expenseFoldersFeedbackErrorCode =
+    expenseFoldersState.errorCode ?? expenseFoldersLoadErrorCode;
+  const expenseFoldersFeedbackTone: "default" | "error" | "success" =
+    expenseFoldersState.error || expenseFoldersLoadError
+      ? "error"
+      : expenseFoldersState.successMessage
+      ? "success"
+      : "default";
 
   const updateFormState = (
     updater: (currentState: MonthlyExpensesFormState) => MonthlyExpensesFormState,
@@ -1628,6 +1704,13 @@ export default function MonthlyExpensesPage({
     updater: (currentState: LendersCatalogState) => LendersCatalogState,
   ) => {
     setLendersState((currentState) => updater(currentState));
+  };
+  const updateExpenseFoldersState = (
+    updater: (
+      currentState: ExpenseFoldersCatalogState,
+    ) => ExpenseFoldersCatalogState,
+  ) => {
+    setExpenseFoldersState((currentState) => updater(currentState));
   };
   const updateReportState = (
     updater: (currentState: LoansReportState) => LoansReportState,
@@ -2228,6 +2311,55 @@ export default function MonthlyExpensesPage({
         ])[0],
       };
     });
+  };
+
+  const handleExpenseFolderSelect = (folderId: string | null) => {
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        draft: {
+          ...currentState.draft,
+          expenseFolderId: folderId ?? "",
+        },
+      };
+    });
+  };
+
+  const handleMoveExpenseToFolder = ({
+    expenseId,
+    folderId,
+  }: {
+    expenseId: string;
+    folderId: string | null;
+  }) => {
+    updateFormState((currentState) => {
+      const targetRow = currentState.rows.find((row) => row.id === expenseId);
+
+      if (!targetRow || targetRow.expenseFolderId === (folderId ?? "")) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        rows: currentState.rows.map((row) =>
+          row.id === expenseId
+            ? { ...row, expenseFolderId: folderId ?? "" }
+            : row,
+        ),
+      };
+    });
+  };
+
+  const handleFolderFilterChange = (folderId: string) => {
+    setFolderFilterId(folderId);
+  };
+
+  const handleOpenFoldersManager = () => {
+    setIsFoldersManagerOpen(true);
   };
 
   const handleExpenseLoanToggle = (checked: boolean) => {
@@ -4010,6 +4142,173 @@ export default function MonthlyExpensesPage({
     }
   };
 
+  const persistExpenseFoldersCatalog = async (
+    nextFolders: ExpenseFolderOption[],
+    feedback: { loading: string; success: string; failure: string },
+  ): Promise<boolean> => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para guardar carpetas.");
+      return false;
+    }
+
+    updateExpenseFoldersState((currentState) => ({
+      ...currentState,
+      error: null,
+      errorCode: null,
+      isSubmitting: true,
+      successMessage: null,
+    }));
+
+    try {
+      const savePromise = saveExpenseFoldersCatalogViaApi({
+        folders: nextFolders.map((folder, index) => ({
+          ...(folder.color ? { color: folder.color } : {}),
+          ...(folder.icon ? { icon: folder.icon } : {}),
+          id: folder.id,
+          name: folder.name,
+          position: index,
+        })),
+      });
+
+      void toast.promise(savePromise, {
+        error: (error) =>
+          renderErrorWithCode(feedback.failure, getTechnicalErrorCode(error)),
+        loading: feedback.loading,
+        success: feedback.success,
+      });
+      await savePromise;
+
+      updateExpenseFoldersState((currentState) => ({
+        ...currentState,
+        error: null,
+        errorCode: null,
+        folders: nextFolders,
+        isSubmitting: false,
+        successMessage: feedback.success,
+      }));
+      return true;
+    } catch (error) {
+      updateExpenseFoldersState((currentState) => ({
+        ...currentState,
+        error: feedback.failure,
+        errorCode: getTechnicalErrorCode(error),
+        isSubmitting: false,
+        successMessage: null,
+      }));
+      return false;
+    }
+  };
+
+  const handleCreateExpenseFolder = async (
+    draft: ExpenseFolderAppearanceDraft,
+  ) => {
+    const folderName = draft.name.trim();
+
+    if (!folderName) {
+      return;
+    }
+
+    if (
+      expenseFoldersState.folders.some(
+        (folder) =>
+          folder.name.toLocaleLowerCase() === folderName.toLocaleLowerCase(),
+      )
+    ) {
+      updateExpenseFoldersState((currentState) => ({
+        ...currentState,
+        error: "Ya existe una carpeta con ese nombre.",
+        errorCode: null,
+        successMessage: null,
+      }));
+      toast.warning("Ya existe una carpeta con ese nombre.");
+      return;
+    }
+
+    const nextFolders: ExpenseFolderOption[] = [
+      ...expenseFoldersState.folders,
+      {
+        color: draft.color,
+        icon: draft.icon,
+        id: createMonthlyExpenseId(),
+        name: folderName,
+      },
+    ];
+
+    await persistExpenseFoldersCatalog(nextFolders, {
+      failure: "No pudimos guardar la carpeta.",
+      loading: "Guardando carpeta...",
+      success: "Carpeta guardada correctamente.",
+    });
+  };
+
+  const handleUpdateExpenseFolder = async (
+    folderId: string,
+    draft: ExpenseFolderAppearanceDraft,
+  ) => {
+    const folderName = draft.name.trim();
+
+    if (!folderName) {
+      return;
+    }
+
+    if (
+      expenseFoldersState.folders.some(
+        (folder) =>
+          folder.id !== folderId &&
+          folder.name.toLocaleLowerCase() === folderName.toLocaleLowerCase(),
+      )
+    ) {
+      updateExpenseFoldersState((currentState) => ({
+        ...currentState,
+        error: "Ya existe una carpeta con ese nombre.",
+        errorCode: null,
+        successMessage: null,
+      }));
+      toast.warning("Ya existe una carpeta con ese nombre.");
+      return;
+    }
+
+    const nextFolders = expenseFoldersState.folders.map((folder) =>
+      folder.id === folderId
+        ? { ...folder, color: draft.color, icon: draft.icon, name: folderName }
+        : folder,
+    );
+
+    await persistExpenseFoldersCatalog(nextFolders, {
+      failure: "No pudimos actualizar la carpeta.",
+      loading: "Actualizando carpeta...",
+      success: "Carpeta actualizada correctamente.",
+    });
+  };
+
+  const handleDeleteExpenseFolder = async (folderId: string) => {
+    const nextFolders = expenseFoldersState.folders.filter(
+      (folder) => folder.id !== folderId,
+    );
+
+    const wasDeleted = await persistExpenseFoldersCatalog(nextFolders, {
+      failure: "No pudimos eliminar la carpeta.",
+      loading: "Eliminando carpeta...",
+      success: "Carpeta eliminada del catálogo.",
+    });
+
+    if (!wasDeleted) {
+      return;
+    }
+
+    updateFormState((currentState) => ({
+      ...currentState,
+      rows: currentState.rows.map((row) =>
+        row.expenseFolderId === folderId
+          ? { ...row, expenseFolderId: "" }
+          : row,
+      ),
+    }));
+    setFolderFilterId((currentFilter) =>
+      currentFilter === folderId ? "" : currentFilter,
+    );
+  };
+
   const handleReportTypeFilterChange = (value: string) => {
     updateReportState((currentState) => ({
       ...currentState,
@@ -4065,6 +4364,8 @@ export default function MonthlyExpensesPage({
                 draft={expenseSheetState.draft}
                 exchangeRateLoadError={formState.exchangeRateLoadError}
                 exchangeRateSnapshot={formState.exchangeRateSnapshot}
+                expenseFolders={expenseFoldersState.folders}
+                folderFilterId={folderFilterId}
                 feedbackMessage={feedbackMessage}
                 feedbackErrorCode={formState.errorCode}
                 feedbackTone={feedbackTone}
@@ -4096,6 +4397,10 @@ export default function MonthlyExpensesPage({
                 onEditReceiptCoverage={handleOpenReceiptCoverageEditor}
                 onEditExpense={handleEditExpense}
                 onExpenseFieldChange={handleExpenseFieldChange}
+                onExpenseFolderSelect={handleExpenseFolderSelect}
+                onFolderFilterChange={handleFolderFilterChange}
+                onManageFolders={handleOpenFoldersManager}
+                onMoveExpenseToFolder={handleMoveExpenseToFolder}
                 onExpenseLenderSelect={handleExpenseLenderSelect}
                 onExpenseLoanToggle={handleExpenseLoanToggle}
                 onExpenseReceiptShareToggle={handleExpenseReceiptShareToggle}
@@ -4195,6 +4500,27 @@ export default function MonthlyExpensesPage({
           receiptFileViewUrl={expenseReceiptCoverageEditState.receiptFileViewUrl}
         />
       ) : null}
+
+      <Dialog onOpenChange={setIsFoldersManagerOpen} open={isFoldersManagerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Administrar carpetas</DialogTitle>
+            <DialogDescription>
+              Creá, editá o eliminá carpetas para organizar tus gastos.
+            </DialogDescription>
+          </DialogHeader>
+          <ExpenseFoldersPanel
+            feedbackErrorCode={expenseFoldersFeedbackErrorCode}
+            feedbackMessage={expenseFoldersFeedbackMessage}
+            feedbackTone={expenseFoldersFeedbackTone}
+            folders={expenseFoldersState.folders}
+            isSubmitting={expenseFoldersState.isSubmitting}
+            onCreate={handleCreateExpenseFolder}
+            onDelete={handleDeleteExpenseFolder}
+            onUpdate={handleUpdateExpenseFolder}
+          />
+        </DialogContent>
+      </Dialog>
 
       <LenderCreateDialog
         feedbackMessage={lendersFeedbackMessage}
