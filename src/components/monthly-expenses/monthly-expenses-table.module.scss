@@ -828,6 +828,27 @@
   align-items: center;
   gap: 0.25rem;
   margin-left: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.subtotalTrailing:focus-within,
+.subtotalTrailing:has([aria-expanded="true"]) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tableWrapper :global([data-slot="table-row"]:hover) .subtotalTrailing {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .subtotalTrailing {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .subtotalMultiplier {
