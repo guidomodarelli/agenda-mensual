@@ -3196,14 +3196,14 @@ export function MonthlyExpensesTable({
 
           return (
             <div className={styles.quickEditCell}>
-              <span className={styles.subtotalAmount}>
-                {formatArsWithUsdSecondary({
-                  exchangeRateSnapshot,
-                  rowCurrency: row.original.currency,
-                  value: row.original.subtotal,
-                })}
-              </span>
-              <div className={styles.subtotalTrailing}>
+              <div className={styles.subtotalSummary}>
+                <span className={styles.subtotalAmount}>
+                  {formatArsWithUsdSecondary({
+                    exchangeRateSnapshot,
+                    rowCurrency: row.original.currency,
+                    value: row.original.subtotal,
+                  })}
+                </span>
                 {showMultiplier ? (
                   <span className={styles.subtotalMultiplier}>
                     {`× ${occurrencesPerMonth} ${resolveOccurrencesUnitLabel(
@@ -3211,6 +3211,8 @@ export function MonthlyExpensesTable({
                     )}`}
                   </span>
                 ) : null}
+              </div>
+              <div className={styles.subtotalTrailing}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
