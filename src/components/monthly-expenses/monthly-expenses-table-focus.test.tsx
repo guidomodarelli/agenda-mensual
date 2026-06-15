@@ -14,6 +14,8 @@ function createRow(overrides: Partial<MonthlyExpensesEditableRow> = {}): Monthly
     allReceiptsFolderViewUrl: "",
     currency: "ARS",
     description: "Internet",
+    expenseFolderId: "",
+    sortOrder: null,
     id: "expense-1",
     installmentCount: "",
     isLoan: false,
@@ -50,6 +52,8 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         draft={null}
         exchangeRateLoadError={null}
         exchangeRateSnapshot={null}
+        expenseFolders={[]}
+        folderFilterId=""
         feedbackMessage=""
         feedbackTone="default"
         isCopyFromDisabled={false}
@@ -78,6 +82,10 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onEditManualPaymentRecord={jest.fn()}
         onEditReceiptCoverage={jest.fn()}
         onExpenseFieldChange={jest.fn()}
+        onExpenseFolderSelect={jest.fn()}
+        onFolderFilterChange={jest.fn()}
+        onManageFolders={jest.fn()}
+        onMoveExpenseToFolder={jest.fn()}
         onExpenseLenderSelect={jest.fn()}
         onExpenseLoanToggle={jest.fn()}
         onExpenseReceiptShareToggle={jest.fn()}

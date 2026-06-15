@@ -12,6 +12,7 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     allReceiptsFolderViewUrl: "",
     currency: "ARS",
     description: "Internet",
+    expenseFolderId: "",
     id: "expense-1",
     installmentCount: "",
     isLoan: false,
@@ -32,6 +33,7 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     receiptShareStatus: "",
     requiresReceiptShare: false,
     receipts: [],
+    sortOrder: null,
     startMonth: "",
     subtotal: "100",
     total: "100.00",
@@ -53,12 +55,15 @@ function renderExpenseSheet({
         actionDisabled={false}
         changedFields={new Set()}
         draft={draft}
+        expenseFolders={[]}
         isOpen={true}
         isSubmitting={false}
         lenders={[]}
         mode={mode}
         onAddLender={jest.fn()}
         onFieldChange={jest.fn()}
+        onFolderSelect={jest.fn()}
+        onManageFolders={jest.fn()}
         onLenderSelect={jest.fn()}
         onLoanToggle={onLoanToggle}
         onReceiptShareToggle={jest.fn()}

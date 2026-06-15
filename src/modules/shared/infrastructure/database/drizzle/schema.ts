@@ -29,6 +29,25 @@ export const monthlyExpenseMonthsTable = sqliteTable(
   ],
 );
 
+export const expenseFoldersTable = sqliteTable(
+  "expense_folders",
+  {
+    color: text("color"),
+    createdAtIso: text("created_at_iso").notNull(),
+    expenseFolderId: text("expense_folder_id").notNull(),
+    icon: text("icon"),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    updatedAtIso: text("updated_at_iso").notNull(),
+    userSubject: text("user_subject").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.expenseFolderId],
+    }),
+  ],
+);
+
 export const expensesTable = sqliteTable(
   "expenses",
   {
@@ -37,6 +56,7 @@ export const expensesTable = sqliteTable(
     createdAtIso: text("created_at_iso").notNull(),
     currency: text("currency").notNull(),
     description: text("description").notNull(),
+    expenseFolderId: text("expense_folder_id"),
     expenseId: text("expense_id").notNull(),
     loanDirection: text("loan_direction").notNull().default("payable"),
     loanInstallmentCount: integer("loan_installment_count"),
@@ -47,6 +67,7 @@ export const expensesTable = sqliteTable(
     receiptShareMessage: text("receipt_share_message"),
     receiptSharePhoneDigits: text("receipt_share_phone_digits"),
     requiresReceiptShare: integer("requires_receipt_share").notNull().default(0),
+    sortOrder: integer("sort_order"),
     updatedAtIso: text("updated_at_iso").notNull(),
     userSubject: text("user_subject").notNull(),
   },

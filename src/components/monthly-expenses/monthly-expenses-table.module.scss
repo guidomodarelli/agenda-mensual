@@ -444,6 +444,12 @@
   min-width: 15rem;
 }
 
+.descriptionCell {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: start;
+}
+
 .descriptionHighlight {
   color: inherit;
   background: color-mix(in srgb, var(--primary) 30%, transparent);

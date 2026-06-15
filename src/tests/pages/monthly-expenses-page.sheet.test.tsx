@@ -1905,6 +1905,78 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
+  it("treats a folder-only edit as an unsaved change before discarding", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialExpenseFoldersCatalog={{
+          folders: [
+            {
+              color: "blue",
+              icon: "home",
+              id: "folder-1",
+              name: "Servicios",
+              position: 0,
+            },
+          ],
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10774.53,
+              total: 10774.53,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
+
+    // Cambiar solo la carpeta (único edit) desde el picker dentro del sheet.
+    const sheet = screen.getByRole("dialog");
+    await user.click(within(sheet).getByRole("button", { name: "Sin carpeta" }));
+    await user.click(within(sheet).getByRole("button", { name: "Servicios" }));
+
+    const overlay = document.querySelector("[data-slot='dialog-overlay']");
+    expect(overlay).not.toBeNull();
+    await user.click(overlay as HTMLElement);
+
+    expect(
+      screen.getByText("Tenés cambios sin guardar en este compromiso."),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Descartar los cambios" }),
+    );
+
+    expect(
+      screen.queryByText("Tenés cambios sin guardar en este compromiso."),
+    ).not.toBeInTheDocument();
+  });
+
   it("blocks sheet close on outside click when there are unsaved changes and can discard them", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();

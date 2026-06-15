@@ -45,3 +45,6 @@ next-env.d.ts
 
 *.bak
 .env*.local
+
+# Codex auto-fix local loop state
+.codex-autofix/

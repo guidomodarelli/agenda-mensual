@@ -49,6 +49,10 @@ import {
   LenderPicker,
   type LenderOption,
 } from "./lender-picker";
+import {
+  ExpenseFolderPicker,
+  type ExpenseFolderOption,
+} from "./expense-folder-picker";
 import { LoanInfoPopover } from "./loan-info-popover";
 import { PaymentFrequencyField } from "./payment-frequency-field";
 import {
@@ -76,13 +80,16 @@ interface ExpenseSheetProps {
   actionDisabled: boolean;
   changedFields: Set<string>;
   draft: MonthlyExpensesEditableRow | null;
+  expenseFolders: ExpenseFolderOption[];
   isOpen: boolean;
   isSubmitting: boolean;
   lenders: LenderOption[];
   mode: "create" | "edit";
   onAddLender: () => void;
   onFieldChange: (fieldName: ExpenseEditableFieldName, value: string) => void;
+  onFolderSelect: (folderId: string | null) => void;
   onLenderSelect: (lenderId: string | null) => void;
+  onManageFolders: () => void;
   onLoanToggle: (checked: boolean) => void;
   onReceiptShareToggle: (checked: boolean) => void;
   onRequestClose: () => void;
@@ -223,13 +230,16 @@ function ExpenseSheetContent({
   actionDisabled,
   changedFields,
   draft,
+  expenseFolders,
   isOpen,
   isSubmitting,
   lenders,
   mode,
   onAddLender,
   onFieldChange,
+  onFolderSelect,
   onLenderSelect,
+  onManageFolders,
   onLoanToggle,
   onReceiptShareToggle,
   onRequestClose,
@@ -550,6 +560,20 @@ function ExpenseSheetContent({
                   </div>
                 </div>
               ) : null}
+
+              <div className={styles.fieldGroup}>
+                <Label>
+                  {getFieldLabel("Carpeta", changedFields.has("expenseFolderId"))}
+                </Label>
+                <div className={styles.fieldControlWrapper}>
+                  <ExpenseFolderPicker
+                    onManageFolders={onManageFolders}
+                    onSelect={onFolderSelect}
+                    options={expenseFolders}
+                    selectedFolderId={draft.expenseFolderId}
+                  />
+                </div>
+              </div>
 
               {shouldShowLoanSection ? (
                 <div className={styles.loanSection}>

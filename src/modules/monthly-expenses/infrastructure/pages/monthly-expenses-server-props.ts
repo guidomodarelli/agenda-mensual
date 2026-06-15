@@ -14,6 +14,12 @@ import {
   getLendersCatalog,
 } from "@/modules/lenders/application/use-cases/get-lenders-catalog";
 import {
+  createEmptyExpenseFoldersCatalogDocumentResult,
+} from "@/modules/expense-folders/application/results/expense-folders-catalog-document-result";
+import {
+  getExpenseFoldersCatalog,
+} from "@/modules/expense-folders/application/use-cases/get-expense-folders-catalog";
+import {
   createEmptyMonthlyExpensesCopyableMonthsResult,
 } from "@/modules/monthly-expenses/application/results/monthly-expenses-copyable-months-result";
 import {
@@ -128,8 +134,12 @@ export async function getMonthlyExpensesServerSidePropsForTab(
         initialDocument: createEmptyMonthlyExpensesDocumentResult(
           selectedMonth,
         ),
+        initialExpenseFoldersCatalog:
+          createEmptyExpenseFoldersCatalogDocumentResult(),
         initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+        expenseFoldersLoadErrorCode: null,
+        expenseFoldersLoadError: null,
         lendersLoadErrorCode: null,
         lendersLoadError: null,
         loadErrorCode: null,
@@ -155,6 +165,9 @@ export async function getMonthlyExpensesServerSidePropsForTab(
     );
     const { DrizzleLendersRepository } = await import(
       "@/modules/lenders/infrastructure/turso/repositories/drizzle-lenders-repository"
+    );
+    const { DrizzleExpenseFoldersRepository } = await import(
+      "@/modules/expense-folders/infrastructure/turso/repositories/drizzle-expense-folders-repository"
     );
     const { getGoogleDriveClientFromRequest } = await import(
       "@/modules/auth/infrastructure/google-drive/google-drive-client"
@@ -196,8 +209,16 @@ export async function getMonthlyExpensesServerSidePropsForTab(
       userSubject,
     );
 
+    const expenseFoldersRepository = new DrizzleExpenseFoldersRepository(
+      database,
+      userSubject,
+    );
+
     const lendersCatalogPromise = getLendersCatalog({
       repository: lendersRepository,
+    });
+    const expenseFoldersCatalogPromise = getExpenseFoldersCatalog({
+      repository: expenseFoldersRepository,
     });
     const loansReportPromise =
       initialActiveTab === "debts"
@@ -208,26 +229,32 @@ export async function getMonthlyExpensesServerSidePropsForTab(
             }))
         : Promise.resolve(createEmptyMonthlyExpensesLoansReportResult());
 
-    const [documentResult, lendersResult, reportResult, copyableMonthsResult] =
-      await Promise.allSettled([
-        getMonthlyExpensesDocument({
-          getExchangeRateSnapshot,
-          query: {
-            includeDriveStatuses: false,
-            month: selectedMonth,
-          },
-          receiptsRepository,
-          repository: monthlyExpensesRepository,
-        }),
-        lendersCatalogPromise,
-        loansReportPromise,
-        getMonthlyExpensesCopyableMonths({
-          query: {
-            targetMonth: selectedMonth,
-          },
-          repository: monthlyExpensesRepository,
-        }),
-      ]);
+    const [
+      documentResult,
+      lendersResult,
+      reportResult,
+      copyableMonthsResult,
+      expenseFoldersResult,
+    ] = await Promise.allSettled([
+      getMonthlyExpensesDocument({
+        getExchangeRateSnapshot,
+        query: {
+          includeDriveStatuses: false,
+          month: selectedMonth,
+        },
+        receiptsRepository,
+        repository: monthlyExpensesRepository,
+      }),
+      lendersCatalogPromise,
+      loansReportPromise,
+      getMonthlyExpensesCopyableMonths({
+        query: {
+          targetMonth: selectedMonth,
+        },
+        repository: monthlyExpensesRepository,
+      }),
+      expenseFoldersCatalogPromise,
+    ]);
 
     if (documentResult.status === "rejected") {
       appLogger.error("monthly-expenses SSR failed to load document", {
@@ -277,6 +304,18 @@ export async function getMonthlyExpensesServerSidePropsForTab(
       });
     }
 
+    if (expenseFoldersResult.status === "rejected") {
+      appLogger.error("monthly-expenses SSR failed to load expense folders", {
+        context: {
+          ...requestContext,
+          initialActiveTab,
+          month: selectedMonth,
+          operation: "monthly-expenses-ssr:load-expense-folders",
+        },
+        error: expenseFoldersResult.reason,
+      });
+    }
+
     return {
       props: toSerializableMonthlyExpensesPageProps({
         bootstrap,
@@ -289,6 +328,10 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           documentResult.status === "fulfilled"
             ? documentResult.value
             : createEmptyMonthlyExpensesDocumentResult(selectedMonth),
+        initialExpenseFoldersCatalog:
+          expenseFoldersResult.status === "fulfilled"
+            ? expenseFoldersResult.value
+            : createEmptyExpenseFoldersCatalogDocumentResult(),
         initialLendersCatalog:
           lendersResult.status === "fulfilled"
             ? lendersResult.value
@@ -297,6 +340,14 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           reportResult.status === "fulfilled"
             ? reportResult.value
             : createEmptyMonthlyExpensesLoansReportResult(),
+        expenseFoldersLoadErrorCode:
+          expenseFoldersResult.status === "rejected"
+            ? TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_EXPENSE_FOLDERS_LOAD_ERROR
+            : null,
+        expenseFoldersLoadError:
+          expenseFoldersResult.status === "rejected"
+            ? "No pudimos cargar las carpetas de gastos desde la base de datos."
+            : null,
         lendersLoadErrorCode:
           lendersResult.status === "rejected"
             ? TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_LENDERS_LOAD_ERROR
@@ -357,8 +408,12 @@ export async function getMonthlyExpensesServerSidePropsForTab(
         initialDocument: createEmptyMonthlyExpensesDocumentResult(
           selectedMonth,
         ),
+        initialExpenseFoldersCatalog:
+          createEmptyExpenseFoldersCatalogDocumentResult(),
         initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+        expenseFoldersLoadErrorCode: null,
+        expenseFoldersLoadError: null,
         lendersLoadErrorCode: null,
         lendersLoadError: null,
         loadErrorCode: isRecoverableAuthenticationState

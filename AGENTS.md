@@ -331,7 +331,13 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 - Do not run provider-specific migration push commands directly when this script exists.
 - Keep provider selection inside `scripts/push-migrations.mjs` so the workflow stays consistent across providers.
 
-## 7. Implementation Checklist
+## 7. Automation: Codex auto-fix loop
+
+- A local loop can listen for Codex (`chatgpt-codex-connector[bot]`) review comments on a PR and auto-fix each one through the `fix-issue-efimeral-clone` skill (ephemeral clone → fix → push), then close out the thread (🚀 reaction + reply with the commit link + resolve inline threads).
+- **Before creating, relaunching, or modifying any Codex auto-fix loop, read [`docs/codex-autofix-loop.md`](docs/codex-autofix-loop.md) first** and follow its parameterizable prompt template, the per-PR state file convention (`.codex-autofix/processed-<PR>.json`), and the auto-cancellation guard (stop the loop when the PR is no longer `OPEN`).
+- The CI counterpart is [`.github/workflows/codex-autofix.yml`](.github/workflows/codex-autofix.yml), which is webhook-based and runs without an open Claude session. Prefer it for durable 24/7 coverage; the local loop only runs while Claude Code is open.
+
+## 8. Implementation Checklist
 
 - Does the change preserve hexagonal boundaries?
 - Is there any new or restored code under `src/server/`? If yes, move it into a module.

@@ -165,6 +165,7 @@ const monthlyExpenseFoldersResponseSchema = monthlyExpenseFoldersSchema.extend({
 const monthlyExpenseItemSchema = z.object({
   currency: z.enum(["ARS", "USD"]),
   description: z.string().trim().min(1),
+  expenseFolderId: z.string().trim().min(1).nullable().optional(),
   folders: monthlyExpenseFoldersSchema.nullable().optional(),
   id: z.string().trim().min(1),
   isPaid: z.boolean().optional(),
@@ -192,6 +193,7 @@ const monthlyExpenseItemSchema = z.object({
   receiptShareStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
   requiresReceiptShare: z.boolean().optional(),
   receipts: z.array(monthlyExpenseReceiptSchema).optional(),
+  sortOrder: z.number().int().nonnegative().nullable().optional(),
   subtotal: z.number().positive(),
 }).strict().superRefine((value, context) => {
   if (value.requiresReceiptShare === true && !value.receiptSharePhoneDigits) {
@@ -253,6 +255,7 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
       z.object({
         currency: z.enum(["ARS", "USD"]),
         description: z.string().trim().min(1),
+        expenseFolderId: z.string().trim().min(1).nullable().optional(),
         folders: monthlyExpenseFoldersResponseSchema.nullable().optional(),
         id: z.string().trim().min(1),
         isPaid: z.boolean().optional(),
@@ -282,6 +285,7 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
         receiptShareStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
         requiresReceiptShare: z.boolean().optional(),
         receipts: z.array(monthlyExpenseReceiptResponseSchema).optional(),
+        sortOrder: z.number().int().nonnegative().nullable().optional(),
         subtotal: z.number().positive(),
         total: z.number().nonnegative(),
       }).strict().superRefine((value, context) => {

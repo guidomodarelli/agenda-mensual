@@ -189,7 +189,7 @@ describe("monthly expenses page mappers", () => {
     ];
 
     const copiedRows = copyMonthlyExpenseTemplatesToMonth(
-      "2026-04",
+      "2026-05",
       toEditableRows(sourceDocument),
     );
 
