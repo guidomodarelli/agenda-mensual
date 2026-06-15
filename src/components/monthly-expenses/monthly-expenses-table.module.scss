@@ -450,13 +450,14 @@
   display: grid;
   gap: 0.1rem;
   justify-items: start;
-  flex: 1 1 auto;
   min-width: 0;
 }
 
 .descriptionActions {
-  flex-shrink: 0;
-  margin-left: auto;
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
@@ -482,8 +483,15 @@
 
 .descriptionTextRow {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
+  min-width: 0;
+}
+
+.descriptionTextRow > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .descriptionPaymentLinkChip {
@@ -710,10 +718,15 @@
 }
 
 .stickyDescriptionCell {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  position: relative;
   background: var(--background);
+}
+
+.tableWrapper .stickyDescriptionCell {
+  max-width: min(18rem, 60vw);
+  padding-right: 2.25rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .tableWrapper :global([data-slot="table-head"]) {
