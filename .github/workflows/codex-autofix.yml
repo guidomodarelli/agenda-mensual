@@ -1,0 +1,169 @@
+name: Codex Auto-Fix
+
+# Reacciona a comentarios de Codex (chatgpt-codex-connector[bot]) en PRs y
+# aplica un fix automatico commiteando+pusheando a la rama del PR.
+#
+# Cubre tanto comentarios generales del PR (issue_comment) como comentarios
+# inline de review sobre el diff (pull_request_review_comment).
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+# Evita que dos comentarios casi simultaneos en el mismo PR pisen el push del
+# otro: se serializan por PR.
+concurrency:
+  group: codex-autofix-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  codex-autofix:
+    # Solo corre si el autor del comentario es el bot de Codex y el comentario
+    # pertenece a un PR (no a un issue suelto).
+    if: >
+      github.event.comment.user.login == 'chatgpt-codex-connector[bot]' &&
+      (github.event.issue.pull_request != null || github.event.pull_request != null)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolver numero de PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_PR_NUMBER: ${{ github.event.issue.number }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          PR_NUMBER="${ISSUE_PR_NUMBER:-$REVIEW_PR_NUMBER}"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout rama del PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr checkout ${{ steps.pr.outputs.number }}
+          git config user.name "codex-autofix[bot]"
+          git config user.email "codex-autofix@users.noreply.github.com"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Capturar HEAD previo
+        id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Aplicar fix con Claude Code
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Contexto del comentario expuesto a la herramienta.
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_PATH: ${{ github.event.comment.path }}
+          COMMENT_LINE: ${{ github.event.comment.line }}
+          COMMENT_DIFF_HUNK: ${{ github.event.comment.diff_hunk }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--max-turns 30"
+          prompt: |
+            Sos un agente de fix automatico disparado por un comentario de Codex
+            en el PR #${{ steps.pr.outputs.number }}. El working tree ya esta en
+            la rama del PR (checkout efimero del runner). Tu objetivo es resolver
+            EXACTAMENTE lo que pide el comentario y dejar el cambio commiteado y
+            pusheado.
+
+            Comentario de Codex a resolver:
+            ---
+            ${{ github.event.comment.body }}
+            ---
+            Archivo referenciado (si aplica, comentario inline): ${{ github.event.comment.path }}
+            Linea: ${{ github.event.comment.line }}
+            Diff hunk de contexto:
+            ${{ github.event.comment.diff_hunk }}
+
+            Instrucciones:
+            1. Entende el comentario y localiza el codigo afectado. Si el
+               comentario es ambiguo o no es accionable (ej. una pregunta, un
+               elogio, o "LGTM"), NO hagas cambios: termina sin commitear.
+            2. Aplica el cambio minimo y enfocado que resuelve el comentario.
+               No hagas refactors no pedidos ni toques codigo no relacionado.
+            3. Respeta las convenciones del repo. Si agregas o cambias logica,
+               agrega o actualiza los tests correspondientes.
+            4. Valida antes de commitear que tu cambio no introduce fallas
+               nuevas:
+               - npm run lint
+               - npm run typecheck
+               - npm test
+               Solo te interesan las fallas causadas por tu cambio. Si hay
+               errores preexistentes ajenos al comentario, NO los persigas:
+               dejalos como estan y segui.
+            5. Commiteá con un mensaje claro en imperativo que referencie el
+               comentario, por ejemplo:
+               "fix: resolver comentario de Codex en <archivo>"
+               Incrustá al final del cuerpo del commit el link:
+               ${{ github.event.comment.html_url }}
+            6. Pusheá a la rama del PR (git push).
+            7. Si no hiciste ningun cambio, explica por que en tu respuesta y
+               no commitees nada.
+
+      - name: Responder y resolver el hilo del comentario
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          BEFORE_SHA: ${{ steps.base.outputs.sha }}
+        run: |
+          AFTER_SHA="$(git rev-parse HEAD)"
+          if [ "$AFTER_SHA" = "$BEFORE_SHA" ]; then
+            echo "No se pushearon cambios; no se responde ni resuelve."
+            exit 0
+          fi
+          REPO_NAME="${REPO#*/}"
+          BODY="Apliqué un fix automático para este comentario en \`${AFTER_SHA}\`."
+
+          if [ "$EVENT_NAME" != "pull_request_review_comment" ]; then
+            # Comentario general del PR: no existe el concepto de resolver hilo.
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
+            exit 0
+          fi
+
+          # Comentario inline de review: responde en el hilo y lo marca resuelto.
+          gh api -X POST \
+            "repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
+            -f body="$BODY"
+
+          THREAD_ID="$(gh api graphql \
+            -f query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100){nodes{id comments(first:100){nodes{databaseId}}}}}}}' \
+            -F owner="$OWNER" -F repo="$REPO_NAME" -F pr="$PR_NUMBER" \
+            --jq "[.data.repository.pullRequest.reviewThreads.nodes[] | select(any(.comments.nodes[]; .databaseId == ${COMMENT_ID})) | .id] | first // empty")"
+
+          if [ -z "$THREAD_ID" ]; then
+            echo "No se encontró el thread para el comentario ${COMMENT_ID}."
+            exit 0
+          fi
+
+          gh api graphql \
+            -f query='mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}' \
+            -F threadId="$THREAD_ID"
+          echo "Hilo $THREAD_ID resuelto."
