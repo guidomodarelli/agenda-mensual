@@ -5,6 +5,7 @@ import type {
   MonthlyExpensePaymentRecord,
   MonthlyExpenseReceipt,
   MonthlyExpenseReceiptShareStatus,
+  MonthlyExpenseSubtotalUnit,
   MonthlyExpensesExchangeRateSnapshot,
   MonthlyExpensesDocument,
 } from "../../domain/value-objects/monthly-expenses-document";
@@ -52,6 +53,7 @@ export interface MonthlyExpenseItemResult {
   receipts?: MonthlyExpenseReceiptResult[];
   sortOrder?: number | null;
   subtotal: number;
+  subtotalUnit?: MonthlyExpenseSubtotalUnit;
   total: number;
 }
 

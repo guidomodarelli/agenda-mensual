@@ -199,6 +199,7 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
   receipt: legacyMonthlyExpenseReceiptSchema.nullable().optional(),
   receipts: z.array(monthlyExpenseReceiptSchema).optional(),
   subtotal: z.number().positive(),
+  subtotalUnit: z.enum(["occurrence", "hour"]).optional(),
 }).strict().superRefine((value, context) => {
   if (value.requiresReceiptShare === true && !value.receiptSharePhoneDigits) {
     context.addIssue({
@@ -292,6 +293,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             requiresReceiptShare,
             receipts,
             subtotal,
+            subtotalUnit,
           }) => ({
             currency,
             description,
@@ -386,6 +388,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
                 }
               : {}),
             subtotal,
+            ...(subtotalUnit === "hour" ? { subtotalUnit } : {}),
           }),
         ),
         month: document.month,
@@ -493,6 +496,9 @@ export function parseGoogleDriveMonthlyExpensesContent(
             : {}),
           receipts: normalizedReceipts,
           subtotal: item.subtotal,
+          ...(item.subtotalUnit !== undefined
+            ? { subtotalUnit: item.subtotalUnit }
+            : {}),
         };
       }),
     };

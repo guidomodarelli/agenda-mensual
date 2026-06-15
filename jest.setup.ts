@@ -32,3 +32,11 @@ Object.defineProperty(globalThis, "matchMedia", {
 		removeEventListener: jest.fn(),
 	}),
 });
+
+// jsdom does not implement these pointer/scroll APIs, which Radix UI primitives
+// (e.g. Select) rely on to open and navigate their popovers in tests.
+if (typeof window !== "undefined") {
+	window.HTMLElement.prototype.hasPointerCapture = jest.fn();
+	window.HTMLElement.prototype.releasePointerCapture = jest.fn();
+	window.HTMLElement.prototype.scrollIntoView = jest.fn();
+}

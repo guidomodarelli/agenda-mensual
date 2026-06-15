@@ -4,6 +4,7 @@ import {
   calculatePaidLoanInstallments,
   createMonthlyExpensesDocument,
   MAX_OCCURRENCES_UNIT_LENGTH,
+  occurrenceDurationToHours,
 } from "./monthly-expenses-document";
 
 describe("monthlyExpensesDocument", () => {
@@ -50,6 +51,7 @@ describe("monthlyExpensesDocument", () => {
           paymentRecords: [],
           receipts: [],
           subtotal: 6000,
+          subtotalUnit: "occurrence",
           total: 48000,
         },
       ],
@@ -152,6 +154,94 @@ describe("monthlyExpensesDocument", () => {
     ).toBe(19.92);
   });
 
+  it("ignores the duration for occurrence-priced subtotals", () => {
+    expect(
+      calculateMonthlyExpenseTotal({
+        durationHours: 4.5,
+        occurrencesPerMonth: 2,
+        subtotal: 5000,
+        subtotalUnit: "occurrence",
+      }),
+    ).toBe(10000);
+  });
+
+  it("multiplies by the duration for hourly-priced subtotals", () => {
+    expect(
+      calculateMonthlyExpenseTotal({
+        durationHours: 4.5,
+        occurrencesPerMonth: 2,
+        subtotal: 5000,
+        subtotalUnit: "hour",
+      }),
+    ).toBe(45000);
+  });
+
+  it("treats a missing duration as one hour for hourly-priced subtotals", () => {
+    expect(
+      calculateMonthlyExpenseTotal({
+        durationHours: 0,
+        occurrencesPerMonth: 3,
+        subtotal: 5000,
+        subtotalUnit: "hour",
+      }),
+    ).toBe(15000);
+  });
+
+  it("parses the per-occurrence duration into decimal hours", () => {
+    expect(occurrenceDurationToHours("veces de 4h 30")).toBe(4.5);
+    expect(occurrenceDurationToHours("veces de 2h")).toBe(2);
+    expect(occurrenceDurationToHours("veces de 30 min")).toBe(0.5);
+    expect(occurrenceDurationToHours("veces de 30m")).toBe(0.5);
+    expect(occurrenceDurationToHours("veces")).toBe(0);
+    expect(occurrenceDurationToHours("")).toBe(0);
+    expect(occurrenceDurationToHours(null)).toBe(0);
+  });
+
+  it("derives the total from the subtotal unit and duration when normalizing a document", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Empleada doméstica",
+            id: "expense-hourly",
+            occurrencesPerMonth: 2,
+            occurrencesUnit: "veces de 4h 30",
+            subtotal: 5000,
+            subtotalUnit: "hour",
+          },
+        ],
+        month: "2026-06",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.subtotalUnit).toBe("hour");
+    expect(result.items[0]?.total).toBe(45000);
+  });
+
+  it("defaults the subtotal unit to occurrence when none is provided", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-occurrence",
+            occurrencesPerMonth: 2,
+            occurrencesUnit: "veces de 4h 30",
+            subtotal: 5000,
+          },
+        ],
+        month: "2026-06",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.subtotalUnit).toBe("occurrence");
+    expect(result.items[0]?.total).toBe(10000);
+  });
+
   it("calculates the loan end month from the start month and installments", () => {
     expect(
       calculateLoanEndMonth({
@@ -206,6 +296,7 @@ describe("monthlyExpensesDocument", () => {
       paymentRecords: [],
       receipts: [],
       subtotal: 2.49,
+      subtotalUnit: "occurrence",
       total: 2.49,
     });
   });

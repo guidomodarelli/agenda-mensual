@@ -1411,7 +1411,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  it("opens a dedicated subtotal modal from the subtotal actions menu", async () => {
+  it("opens a unified subtotal and quantity modal from the actions menu", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -1436,9 +1436,13 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones de subtotal y cantidad para Agua" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar subtotal" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Editar subtotal y cantidad" }),
+    );
 
-    expect(screen.getByRole("heading", { name: "Editar subtotal" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Editar subtotal y cantidad" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Editar compromiso" }),
     ).not.toBeInTheDocument();
@@ -1683,7 +1687,9 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones de subtotal y cantidad para Agua" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar subtotal" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Editar subtotal y cantidad" }),
+    );
 
     const subtotalInput = screen.getByLabelText("Subtotal de Agua");
 

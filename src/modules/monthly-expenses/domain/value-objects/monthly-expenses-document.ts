@@ -81,6 +81,17 @@ export interface MonthlyExpenseFoldersInput {
 
 export type MonthlyExpenseFolders = MonthlyExpenseFoldersInput;
 
+/**
+ * Determines how the subtotal feeds the monthly total.
+ *
+ * - `occurrence`: the subtotal is the price of a single occurrence, so the total
+ *   is `subtotal × occurrencesPerMonth` and the duration is purely informative.
+ * - `hour`: the subtotal is an hourly rate, so the total is
+ *   `subtotal × occurrencesPerMonth × hours`, where `hours` comes from the
+ *   per-occurrence duration (an empty duration is treated as one hour).
+ */
+export type MonthlyExpenseSubtotalUnit = "occurrence" | "hour";
+
 export interface MonthlyExpenseItemInput {
   currency: MonthlyExpenseCurrency;
   description: string;
@@ -101,6 +112,7 @@ export interface MonthlyExpenseItemInput {
   receipts?: MonthlyExpenseReceiptInput[] | null;
   sortOrder?: number | null;
   subtotal: number;
+  subtotalUnit?: MonthlyExpenseSubtotalUnit | null;
 }
 
 export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
@@ -117,6 +129,7 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   requiresReceiptShare?: boolean;
   receipts: MonthlyExpenseReceipt[];
   sortOrder?: number | null;
+  subtotalUnit?: MonthlyExpenseSubtotalUnit;
   total: number;
 }
 
@@ -144,14 +157,81 @@ export interface MonthlyExpensesDocument {
   month: string;
 }
 
+/** Separator between the periodicity unit and its optional per-occurrence duration. */
+const OCCURRENCE_DURATION_SEPARATOR = " de ";
+
+/**
+ * Extracts the per-occurrence duration, in decimal hours, from a stored unit
+ * string such as "veces de 4h 30" (→ 4.5). Tolerates the canonical formats
+ * ("4h 30", "4h", "30 min", "30m") and legacy values ("30'"). Returns 0 when the
+ * unit carries no duration.
+ *
+ * NOTE: duration parsing is intentionally duplicated from the UI helper in
+ * `components/monthly-expenses/occurrences-unit.ts`; the hexagonal boundary
+ * forbids the domain from importing UI code, so each layer owns its own parser.
+ *
+ * @param occurrencesUnit - Stored unit string (may be empty or carry a duration).
+ * @returns The per-occurrence duration in decimal hours (0 when absent).
+ */
+export function occurrenceDurationToHours(
+  occurrencesUnit: string | null | undefined,
+): number {
+  if (!occurrencesUnit) {
+    return 0;
+  }
+
+  const separatorIndex = occurrencesUnit.indexOf(OCCURRENCE_DURATION_SEPARATOR);
+  const duration =
+    separatorIndex === -1
+      ? ""
+      : occurrencesUnit
+          .slice(separatorIndex + OCCURRENCE_DURATION_SEPARATOR.length)
+          .trim();
+
+  if (!duration) {
+    return 0;
+  }
+
+  const hoursMatch = duration.match(/(\d+)\s*h/i);
+  const hours = hoursMatch ? Number(hoursMatch[1]) : 0;
+  const minutesSource = hoursMatch
+    ? duration.slice(hoursMatch.index! + hoursMatch[0].length)
+    : duration;
+  const minutesMatch = minutesSource.match(/(\d+)/);
+  const minutes = minutesMatch ? Number(minutesMatch[1]) : 0;
+
+  return hours + minutes / 60;
+}
+
+/**
+ * Calculates the monthly total for an expense item.
+ *
+ * The subtotal unit decides whether the per-occurrence duration participates:
+ * `occurrence` items total `subtotal × occurrencesPerMonth`, while `hour` items
+ * total `subtotal × occurrencesPerMonth × hours` (an empty duration counts as one
+ * hour so the hourly rate still produces a sensible total).
+ *
+ * @param subtotal - Price per subtotal unit.
+ * @param occurrencesPerMonth - Monthly quantity multiplier.
+ * @param subtotalUnit - How the subtotal feeds the total (defaults to `occurrence`).
+ * @param durationHours - Per-occurrence duration in decimal hours (used when `hour`).
+ * @returns The monthly total rounded to two decimals.
+ */
 export function calculateMonthlyExpenseTotal({
+  durationHours = 0,
   occurrencesPerMonth,
   subtotal,
+  subtotalUnit = "occurrence",
 }: {
+  durationHours?: number;
   occurrencesPerMonth: number;
   subtotal: number;
+  subtotalUnit?: MonthlyExpenseSubtotalUnit;
 }): number {
-  return Number((subtotal * occurrencesPerMonth).toFixed(2));
+  const effectiveHours =
+    subtotalUnit === "hour" ? (durationHours > 0 ? durationHours : 1) : 1;
+
+  return Number((subtotal * occurrencesPerMonth * effectiveHours).toFixed(2));
 }
 
 function parseMonthIdentifier(month: string) {
@@ -719,6 +799,7 @@ function validateItem(
     requiresReceiptShare,
     receipts,
     sortOrder,
+    subtotalUnit,
     ...rawItem
   } = item;
   const normalizedItem = {
@@ -731,6 +812,8 @@ function validateItem(
     occurrencesUnit,
     operationName,
   );
+  const normalizedSubtotalUnit: MonthlyExpenseSubtotalUnit =
+    subtotalUnit === "hour" ? "hour" : "occurrence";
   const normalizedSortOrder = normalizeSortOrder(sortOrder, operationName);
   const normalizedFolders = validateFolders(folders, operationName);
   const normalizedPaymentLink = validatePaymentLink(paymentLink, operationName);
@@ -865,7 +948,13 @@ function validateItem(
     ...(normalizedRequiresReceiptShare ? { requiresReceiptShare: true } : {}),
     paymentRecords: normalizedPaymentRecords,
     receipts: normalizedReceiptsFromPaymentRecords,
-    total: calculateMonthlyExpenseTotal(normalizedItem),
+    subtotalUnit: normalizedSubtotalUnit,
+    total: calculateMonthlyExpenseTotal({
+      durationHours: occurrenceDurationToHours(normalizedOccurrencesUnit),
+      occurrencesPerMonth: normalizedItem.occurrencesPerMonth,
+      subtotal: normalizedItem.subtotal,
+      subtotalUnit: normalizedSubtotalUnit,
+    }),
   };
 }
 
@@ -1068,6 +1157,9 @@ export function toMonthlyExpensesDocumentInput(
           }
         : {}),
       subtotal: item.subtotal,
+      ...(item.subtotalUnit === "hour"
+        ? { subtotalUnit: item.subtotalUnit }
+        : {}),
     })),
     month: document.month,
   };
