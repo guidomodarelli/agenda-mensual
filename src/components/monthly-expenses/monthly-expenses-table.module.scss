@@ -701,6 +701,14 @@
   background-color: color-mix(in srgb, #34a853 13%, var(--background));
 }
 
+.tableWrapper :global([data-slot="table-row"]:hover) {
+  border-bottom-color: color-mix(in srgb, var(--muted) 50%, var(--background));
+}
+
+.tableWrapper .paidRow:hover {
+  border-bottom-color: color-mix(in srgb, #34a853 13%, var(--background));
+}
+
 .stickyDescriptionCell {
   display: flex;
   align-items: center;
