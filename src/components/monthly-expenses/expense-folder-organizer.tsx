@@ -336,14 +336,18 @@ export function ExpenseFolderFilterBar({
   useEffect(() => {
     return monitorForElements({
       canMonitor: ({ source }) => getDraggedFolderId(source.data) !== null,
-      onDrop: ({ location }) => {
+      onDrop: () => {
         const previewedOrder = previewOrderIdsRef.current;
         setPreviewOrderIds(null);
 
-        if (!previewedOrder || location.current.dropTargets.length === 0) {
+        if (!previewedOrder) {
           return;
         }
 
+        // The dragged chip is moved under the cursor during the live preview, so
+        // the drop rarely lands on another drop target. Commit whenever the
+        // previewed order differs from the baseline instead of relying on the
+        // drop landing on a specific chip.
         const baselineOrder = foldersRef.current.map((folder) => folder.id);
         const hasOrderChanged =
           previewedOrder.length === baselineOrder.length &&
