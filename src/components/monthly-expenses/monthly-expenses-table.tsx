@@ -119,8 +119,11 @@ import {
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "./expense-edit-validation";
-import { OccurrencesUnitSelect } from "./occurrences-unit-select";
-import { resolveOccurrencesUnitLabel } from "./occurrences-unit";
+import { OccurrenceDurationInput } from "./occurrence-duration-input";
+import {
+  resolveOccurrencesUnitLabel,
+  splitOccurrencesUnit,
+} from "./occurrences-unit";
 import {
   getValidPaymentLink as getValidPaymentLinkUrl,
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
@@ -2853,8 +2856,7 @@ export function MonthlyExpensesTable({
       return;
     }
 
-    const occurrencesUnitForSave =
-      normalizedOccurrences > 1 ? occurrencesUnitDraftValue.trim() : "";
+    const occurrencesUnitForSave = occurrencesUnitDraftValue.trim();
     const occurrencesUnitValidationError = validateOccurrencesUnit(
       occurrencesUnitForSave,
     );
@@ -3193,6 +3195,10 @@ export function MonthlyExpensesTable({
           const occurrencesPerMonth = Number(row.original.occurrencesPerMonth);
           const showMultiplier =
             Number.isFinite(occurrencesPerMonth) && occurrencesPerMonth > 1;
+          const { duration: occurrenceDuration } = splitOccurrencesUnit(
+            row.original.occurrencesUnit,
+          );
+          const showDurationOnly = !showMultiplier && occurrenceDuration !== "";
 
           return (
             <div className={styles.quickEditCell}>
@@ -3209,6 +3215,10 @@ export function MonthlyExpensesTable({
                     {`× ${occurrencesPerMonth} ${resolveOccurrencesUnitLabel(
                       row.original.occurrencesUnit,
                     )}`}
+                  </span>
+                ) : showDurationOnly ? (
+                  <span className={styles.subtotalMultiplier}>
+                    {occurrenceDuration}
                   </span>
                 ) : null}
               </div>
@@ -3258,7 +3268,7 @@ export function MonthlyExpensesTable({
                     }}
                   >
                     <Pencil aria-hidden="true" />
-                    Editar cantidad y unidad
+                    Editar cantidad y duración
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -4728,9 +4738,9 @@ export function MonthlyExpensesTable({
             size="sm"
           >
             <AlertDialogHeader>
-              <AlertDialogTitle>Editar cantidad y unidad</AlertDialogTitle>
+              <AlertDialogTitle>Editar cantidad y duración</AlertDialogTitle>
               <AlertDialogDescription>
-                {`Actualizá la cantidad mensual de ${occurrencesDialogState?.expenseDescription ?? "este compromiso"}.`}
+                {`Actualizá la cantidad mensual y la duración por ocurrencia de ${occurrencesDialogState?.expenseDescription ?? "este compromiso"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -4767,32 +4777,25 @@ export function MonthlyExpensesTable({
               ) : null}
             </div>
 
-            {Number(occurrencesDraftValue) > 1 ? (
-              <div className={styles.paymentLinkDialogField}>
-                <Label htmlFor="occurrences-unit-dialog-select">Unidad</Label>
-                <OccurrencesUnitSelect
-                  customInputAriaLabel={`Unidad personalizada de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                  durationHoursAriaLabel={`Duración por ocurrencia en horas de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                  durationMinutesAriaLabel={`Duración por ocurrencia en minutos de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                  hasError={occurrencesUnitDraftError != null}
-                  onChange={(nextUnit) => {
-                    setOccurrencesUnitDraftValue(nextUnit);
+            <div className={styles.paymentLinkDialogField}>
+              <OccurrenceDurationInput
+                durationHoursAriaLabel={`Duración por ocurrencia en horas de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                durationMinutesAriaLabel={`Duración por ocurrencia en minutos de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
+                onChange={(nextUnit) => {
+                  setOccurrencesUnitDraftValue(nextUnit);
 
-                    if (occurrencesUnitDraftError) {
-                      setOccurrencesUnitDraftError(null);
-                    }
-                  }}
-                  selectAriaLabel={`Unidad de ${occurrencesDialogState?.expenseDescription ?? "compromiso"}`}
-                  selectId="occurrences-unit-dialog-select"
-                  value={occurrencesUnitDraftValue}
-                />
-                {occurrencesUnitDraftError ? (
-                  <p className={styles.paymentLinkDialogError} role="alert">
-                    {occurrencesUnitDraftError}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
+                  if (occurrencesUnitDraftError) {
+                    setOccurrencesUnitDraftError(null);
+                  }
+                }}
+                value={occurrencesUnitDraftValue}
+              />
+              {occurrencesUnitDraftError ? (
+                <p className={styles.paymentLinkDialogError} role="alert">
+                  {occurrencesUnitDraftError}
+                </p>
+              ) : null}
+            </div>
 
             <AlertDialogFooter className={styles.paymentLinkDialogActions}>
               <Button

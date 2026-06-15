@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -44,7 +45,15 @@ function createRow(overrides: Partial<MonthlyExpensesEditableRow> = {}): Monthly
   };
 }
 
-function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
+function renderMonthlyExpensesTable(
+  rows: MonthlyExpensesEditableRow[],
+  overrides: Partial<
+    Pick<
+      ComponentProps<typeof MonthlyExpensesTable>,
+      "onUpdateExpenseOccurrences"
+    >
+  > = {},
+) {
   return render(
     <TooltipProvider>
       <MonthlyExpensesTable
@@ -99,6 +108,7 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onUnsavedChangesClose={jest.fn()}
         onUnsavedChangesDiscard={jest.fn()}
         onUpdateExpenseOccurrences={jest.fn()}
+        {...overrides}
         onUpdateExpenseReceiptShare={jest.fn()}
         onUpdateExpenseSubtotal={jest.fn()}
         onUpdatePaymentLink={jest.fn()}
@@ -207,7 +217,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     renderMonthlyExpensesTable([createRow()]);
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar cantidad y unidad",
+      menuItemLabel: "Editar cantidad y duración",
       triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
@@ -299,7 +309,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(screen.getByText("× 2 veces de 4h 30")).toBeInTheDocument();
   });
 
-  it("hides the quantity multiplier when occurrences equal one", () => {
+  it("hides the quantity multiplier when occurrences equal one without a duration", () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
     ]);
@@ -307,27 +317,62 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(screen.queryByText(/^×\s/)).not.toBeInTheDocument();
   });
 
-  it("reveals the unit select in the quantity dialog and keeps it hidden for a single occurrence", async () => {
-    const user = userEvent.setup();
-
+  it("shows only the duration when occurrences equal one but carry a duration", () => {
     renderMonthlyExpensesTable([
-      createRow({ occurrencesPerMonth: "4", occurrencesUnit: "semanas" }),
+      createRow({ occurrencesPerMonth: "1", occurrencesUnit: "veces de 4h 30" }),
+    ]);
+
+    expect(screen.getByText("4h 30")).toBeInTheDocument();
+    expect(screen.queryByText(/^×\s/)).not.toBeInTheDocument();
+  });
+
+  it("does not render a unit select and keeps the duration field for a single occurrence", async () => {
+    renderMonthlyExpensesTable([
+      createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
     ]);
 
     await openQuickEditDialog({
-      menuItemLabel: "Editar cantidad y unidad",
+      menuItemLabel: "Editar cantidad y duración",
       triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
     });
 
+    expect(screen.queryByLabelText("Unidad de Internet")).not.toBeInTheDocument();
     expect(
-      screen.getByLabelText("Unidad de Internet"),
+      screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
     ).toBeInTheDocument();
-
-    await user.clear(screen.getByLabelText("Cantidad por mes de Internet"));
-    await user.type(screen.getByLabelText("Cantidad por mes de Internet"), "1");
-
     expect(
-      screen.queryByLabelText("Unidad de Internet"),
-    ).not.toBeInTheDocument();
+      screen.getByLabelText("Duración por ocurrencia en minutos de Internet"),
+    ).toBeInTheDocument();
+  });
+
+  it("saves the per-occurrence duration set for a single occurrence", async () => {
+    const user = userEvent.setup();
+    const onUpdateExpenseOccurrences = jest.fn();
+
+    renderMonthlyExpensesTable(
+      [createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" })],
+      { onUpdateExpenseOccurrences },
+    );
+
+    await openQuickEditDialog({
+      menuItemLabel: "Editar cantidad y duración",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
+    });
+
+    await user.type(
+      screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
+      "4",
+    );
+    await user.type(
+      screen.getByLabelText("Duración por ocurrencia en minutos de Internet"),
+      "30",
+    );
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(onUpdateExpenseOccurrences).toHaveBeenCalledWith({
+      expenseId: "expense-1",
+      occurrencesPerMonth: 1,
+      occurrencesUnit: "veces de 4h 30",
+    });
   });
 });
