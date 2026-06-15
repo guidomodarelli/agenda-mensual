@@ -2363,6 +2363,15 @@ export default function MonthlyExpensesPage({
   };
 
   const handleOpenFoldersManager = () => {
+    // When the manager is opened from the folder picker inside the expense
+    // sheet, its interactions would otherwise count as outside clicks for the
+    // sheet and close/discard the active draft. Guard the next close like the
+    // lender create flow does. Only needed while the sheet is open, since the
+    // manager can also be opened from the table outside any sheet.
+    if (expenseSheetState.isOpen) {
+      shouldIgnoreNextExpenseSheetCloseRef.current = true;
+    }
+
     setIsFoldersManagerOpen(true);
   };
 
@@ -3815,7 +3824,8 @@ export default function MonthlyExpensesPage({
   const handleRequestCloseExpenseSheet = () => {
     if (
       shouldIgnoreNextExpenseSheetCloseRef.current ||
-      isLenderCreateModalOpen
+      isLenderCreateModalOpen ||
+      isFoldersManagerOpen
     ) {
       shouldIgnoreNextExpenseSheetCloseRef.current = false;
       return;
