@@ -65,8 +65,21 @@ function executePushCommand(commandConfig) {
         : ["-lc", commandConfig.args[0]]
       : commandConfig.args;
 
-  const executionResult = spawnSync(commandConfig.command, args, {
+  // On Windows, executables resolved via PATHEXT (e.g. `npx.cmd`) are only
+  // found by spawnSync when it goes through the shell. The custom-command path
+  // already builds an explicit `cmd`/`sh` invocation, so it must not double-wrap.
+  const useShell = !commandConfig.usesShell && isWindows;
+
+  // With `shell: true`, passing args separately triggers DEP0190; join them into
+  // the command string instead. Args here are static, not external input.
+  const spawnCommand = useShell
+    ? [commandConfig.command, ...args].join(" ")
+    : commandConfig.command;
+  const spawnArgs = useShell ? [] : args;
+
+  const executionResult = spawnSync(spawnCommand, spawnArgs, {
     env: process.env,
+    shell: useShell,
     stdio: "inherit",
   });
 
