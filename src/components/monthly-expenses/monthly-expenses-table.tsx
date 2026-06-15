@@ -2233,6 +2233,9 @@ export function MonthlyExpensesTable({
   validationMessage,
 }: MonthlyExpensesTableProps) {
   const hasSkippedInitialPersistence = useRef(false);
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [isTableHorizontallyScrolled, setIsTableHorizontallyScrolled] =
+    useState(false);
   const [loanSortMode, setLoanSortMode] =
     useState<LoanSortMode>(DEFAULT_LOAN_SORT_MODE);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -2318,6 +2321,48 @@ export function MonthlyExpensesTable({
 
     return () => {
       window.clearTimeout(focusTimeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const wrapper = tableWrapperRef.current;
+
+    if (!wrapper) {
+      return;
+    }
+
+    const scrollContainer = wrapper.querySelector<HTMLElement>(
+      '[data-slot="table-container"]',
+    );
+
+    if (!scrollContainer) {
+      return;
+    }
+
+    const updateHorizontalScrollState = () => {
+      setIsTableHorizontallyScrolled(scrollContainer.scrollLeft > 0);
+    };
+
+    updateHorizontalScrollState();
+    scrollContainer.addEventListener("scroll", updateHorizontalScrollState, {
+      passive: true,
+    });
+
+    const resizeObserver = new ResizeObserver(updateHorizontalScrollState);
+    resizeObserver.observe(scrollContainer);
+
+    const tableElement = scrollContainer.querySelector("table");
+
+    if (tableElement) {
+      resizeObserver.observe(tableElement);
+    }
+
+    return () => {
+      scrollContainer.removeEventListener(
+        "scroll",
+        updateHorizontalScrollState,
+      );
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -4164,7 +4209,13 @@ export function MonthlyExpensesTable({
             </div>
           </div>
 
-          <div className={styles.tableWrapper}>
+          <div
+            className={cn(
+              styles.tableWrapper,
+              isTableHorizontallyScrolled && styles.tableWrapperScrolled,
+            )}
+            ref={tableWrapperRef}
+          >
             {completedPendingReceiptShareCount > 0 ? (
               <div
                 aria-live="polite"

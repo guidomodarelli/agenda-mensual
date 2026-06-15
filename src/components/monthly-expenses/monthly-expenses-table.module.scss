@@ -1114,7 +1114,6 @@
     position: sticky;
     left: var(--selection-column-width);
     z-index: 2;
-    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 
   .tableWrapper :global([data-slot="table-head"]:first-child) {
@@ -1122,7 +1121,6 @@
     position: sticky;
     left: 0;
     z-index: 4;
-    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 
   .tableWrapper :global([data-slot="table-head"]:nth-child(2)) {
@@ -1130,6 +1128,11 @@
     position: sticky;
     left: var(--selection-column-width);
     z-index: 4;
+  }
+
+  .tableWrapperScrolled .stickyDescriptionCell,
+  .tableWrapperScrolled :global([data-slot="table-head"]:first-child),
+  .tableWrapperScrolled :global([data-slot="table-head"]:nth-child(2)) {
     box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 }
@@ -1148,6 +1151,9 @@
     position: sticky;
     left: 0;
     z-index: 4;
+  }
+
+  .tableWrapperScrolled :global([data-slot="table-head"]:first-child) {
     box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 
