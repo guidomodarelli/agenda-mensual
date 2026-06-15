@@ -21,9 +21,9 @@ inline).
    .codex-autofix/processed-{{PR}}.json  ->  {"pr":{{PR}},"processedCommentIds":[]}
    ```
    (`.codex-autofix/` está gitignored: es estado de runtime, no se commitea.)
-3. Lanzá el loop pegando el prompt con un intervalo, p. ej. cada 10 min:
+3. Lanzá el loop pegando el prompt con un intervalo, p. ej. cada 5 min:
    ```
-   /loop 10m <pegá acá el prompt ya completado>
+   /loop 5m <pegá acá el prompt ya completado>
    ```
    O, más simple, decile a Claude: «relanzá el loop de Codex para el PR {{PR}}
    usando docs/codex-autofix-loop.md» y completa la plantilla por vos.
@@ -39,7 +39,7 @@ Loop de auto-fix de comentarios de Codex en el PR #{{PR}} de {{OWNER}}/{{REPO}} 
 GUARD DE AUTO-CANCELACIÓN (hacelo SIEMPRE primero). Obtené el estado del PR:
   estado=$(gh pr view {{PR}} --repo {{OWNER}}/{{REPO}} --json state -q .state 2>/dev/null)
 - "OPEN" -> seguí. - "MERGED"/"CLOSED" -> auto-cancelá. - vacío/falla (404 PR o repo borrado) -> confirmá una vez con `gh api repos/{{OWNER}}/{{REPO}}/pulls/{{PR}} --jq .state 2>&1`; si vuelve a fallar o "closed", auto-cancelá; si "open", seguí (error transitorio).
-Auto-cancelar = CronList, identificá el job de ESTE loop (cron `*/10 * * * *`, auto-fix de Codex en PR #{{PR}}), borralo con CronDelete por id, PushNotification de una línea avisando el motivo, y terminá sin procesar.
+Auto-cancelar = CronList, identificá el job de ESTE loop (cron `*/5 * * * *`, auto-fix de Codex en PR #{{PR}}), borralo con CronDelete por id, PushNotification de una línea avisando el motivo, y terminá sin procesar.
 
 Si OPEN, procesá:
 (1) Leé processedCommentIds desde .codex-autofix/processed-{{PR}}.json. (2) Traé comentarios de chatgpt-codex-connector[bot]: inline `gh api repos/{{OWNER}}/{{REPO}}/pulls/{{PR}}/comments`, generales `gh api repos/{{OWNER}}/{{REPO}}/issues/{{PR}}/comments`. (3) Por cada comentario cuyo id NO esté en processedCommentIds, de a uno en orden (secuencial, nunca en paralelo): invocá el skill fix-issue-efimeral-clone con el cuerpo + path + line, resolvé en clone efímero y pusheá a {{BRANCH}}. GUARDÁ el sha COMPLETO del commit pusheado. Llevá un contador de cuántos comentarios fixeaste con éxito esta vuelta.
