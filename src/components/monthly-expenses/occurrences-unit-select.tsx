@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,15 +14,23 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
+  composeOccurrencesUnit,
   CUSTOM_OCCURRENCES_UNIT_VALUE,
+  formatOccurrenceDuration,
   isPredefinedOccurrencesUnit,
-  MAX_OCCURRENCES_UNIT_LENGTH,
+  MAX_OCCURRENCE_DURATION_HOURS,
+  MAX_OCCURRENCE_DURATION_MINUTES,
+  MAX_OCCURRENCES_PERIODICITY_LENGTH,
   OCCURRENCES_UNIT_OPTION_GROUPS,
+  parseOccurrenceDuration,
+  splitOccurrencesUnit,
 } from "./occurrences-unit";
 import styles from "./occurrences-unit-select.module.scss";
 
 interface OccurrencesUnitSelectProps {
   customInputAriaLabel: string;
+  durationHoursAriaLabel: string;
+  durationMinutesAriaLabel: string;
   hasError?: boolean;
   isChanged?: boolean;
   onChange: (value: string) => void;
@@ -32,14 +41,22 @@ interface OccurrencesUnitSelectProps {
 
 const CUSTOM_OPTION_LABEL = "Otra…";
 
+function toDurationInputValue(part: number): string {
+  return part > 0 ? String(part) : "";
+}
+
 /**
  * Select to pick the unit that labels the monthly quantity multiplier.
  *
- * Offers grouped predefined units plus a free-text "Otra…" option. The unit is
- * only a display label; it never affects the monthly total.
+ * Offers grouped predefined periodicities plus a free-text "Otra…" option and an
+ * optional per-occurrence duration entered with two numeric inputs (hours and
+ * minutes), e.g. "veces de 4h 30". The unit is only a display label; it never
+ * affects the monthly total. The combined value is emitted as a single string.
  */
 export function OccurrencesUnitSelect({
   customInputAriaLabel,
+  durationHoursAriaLabel,
+  durationMinutesAriaLabel,
   hasError = false,
   isChanged = false,
   onChange,
@@ -47,24 +64,66 @@ export function OccurrencesUnitSelect({
   selectId,
   value,
 }: OccurrencesUnitSelectProps) {
-  const [isCustomMode, setIsCustomMode] = useState(
-    () => value.trim() !== "" && !isPredefinedOccurrencesUnit(value),
+  const initialParts = splitOccurrencesUnit(value);
+  const initialDuration = parseOccurrenceDuration(initialParts.duration);
+  const [periodicity, setPeriodicity] = useState(initialParts.periodicity);
+  const [hours, setHours] = useState(() =>
+    toDurationInputValue(initialDuration.hours),
   );
+  const [minutes, setMinutes] = useState(() =>
+    toDurationInputValue(initialDuration.minutes),
+  );
+  const [isCustomMode, setIsCustomMode] = useState(
+    () =>
+      initialParts.periodicity !== "" &&
+      !isPredefinedOccurrencesUnit(initialParts.periodicity),
+  );
+  const fieldId = useId();
   const selectValue = isCustomMode
     ? CUSTOM_OCCURRENCES_UNIT_VALUE
-    : isPredefinedOccurrencesUnit(value)
-      ? value.trim()
+    : isPredefinedOccurrencesUnit(periodicity)
+      ? periodicity
       : "";
+
+  const emit = (
+    nextPeriodicity: string,
+    nextHours: string,
+    nextMinutes: string,
+  ) => {
+    const duration = formatOccurrenceDuration(
+      Number(nextHours) || 0,
+      Number(nextMinutes) || 0,
+    );
+
+    onChange(composeOccurrencesUnit(nextPeriodicity, duration));
+  };
 
   const handleSelectValueChange = (nextValue: string) => {
     if (nextValue === CUSTOM_OCCURRENCES_UNIT_VALUE) {
       setIsCustomMode(true);
-      onChange("");
+      setPeriodicity("");
+      emit("", hours, minutes);
       return;
     }
 
     setIsCustomMode(false);
-    onChange(nextValue);
+    setPeriodicity(nextValue);
+    emit(nextValue, hours, minutes);
+  };
+
+  const handleCustomPeriodicityChange = (nextPeriodicity: string) => {
+    setPeriodicity(nextPeriodicity);
+    emit(nextPeriodicity, hours, minutes);
+  };
+
+  const handleHoursChange = (nextHours: string) => {
+    setHours(nextHours);
+    emit(periodicity, nextHours, minutes);
+  };
+
+  const handleMinutesChange = (nextMinutes: string) => {
+    setMinutes(nextMinutes);
+    emit(periodicity, hours, nextMinutes);
   };
 
   return (
@@ -101,13 +160,58 @@ export function OccurrencesUnitSelect({
           aria-invalid={hasError ? "true" : "false"}
           aria-label={customInputAriaLabel}
           className={cn(hasError && styles.invalidField)}
-          maxLength={MAX_OCCURRENCES_UNIT_LENGTH}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Ej: clases"
+          maxLength={MAX_OCCURRENCES_PERIODICITY_LENGTH}
+          onChange={(event) => handleCustomPeriodicityChange(event.target.value)}
+          placeholder="Ej: viajes"
           type="text"
-          value={value}
+          value={periodicity}
         />
       ) : null}
+
+      <div className={styles.durationField}>
+        <span className={styles.durationLabel}>
+          Duración por ocurrencia (opcional)
+        </span>
+        <div className={styles.durationInputs}>
+          <div className={styles.durationInput}>
+            <Input
+              aria-label={durationHoursAriaLabel}
+              id={`${fieldId}-hours`}
+              inputMode="numeric"
+              max={MAX_OCCURRENCE_DURATION_HOURS}
+              min="0"
+              onChange={(event) => handleHoursChange(event.target.value)}
+              placeholder="0"
+              step="1"
+              type="number"
+              value={hours}
+            />
+            <Label className={styles.durationUnit} htmlFor={`${fieldId}-hours`}>
+              h
+            </Label>
+          </div>
+          <div className={styles.durationInput}>
+            <Input
+              aria-label={durationMinutesAriaLabel}
+              id={`${fieldId}-minutes`}
+              inputMode="numeric"
+              max={MAX_OCCURRENCE_DURATION_MINUTES}
+              min="0"
+              onChange={(event) => handleMinutesChange(event.target.value)}
+              placeholder="0"
+              step="1"
+              type="number"
+              value={minutes}
+            />
+            <Label
+              className={styles.durationUnit}
+              htmlFor={`${fieldId}-minutes`}
+            >
+              min
+            </Label>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
