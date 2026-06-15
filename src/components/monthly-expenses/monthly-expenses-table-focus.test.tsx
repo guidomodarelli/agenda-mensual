@@ -306,7 +306,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
       createRow({ occurrencesPerMonth: "2", occurrencesUnit: "veces de 4h 30" }),
     ]);
 
-    expect(screen.getByText("× 2 veces de 4h 30")).toBeInTheDocument();
+    expect(screen.getByText("× 2 veces de 4h 30m")).toBeInTheDocument();
   });
 
   it("hides the quantity multiplier when occurrences equal one without a duration", () => {
@@ -317,13 +317,12 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(screen.queryByText(/^×\s/)).not.toBeInTheDocument();
   });
 
-  it("shows only the duration when occurrences equal one but carry a duration", () => {
+  it("shows the singular multiplier with duration when occurrences equal one", () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "1", occurrencesUnit: "veces de 4h 30" }),
     ]);
 
-    expect(screen.getByText("4h 30")).toBeInTheDocument();
-    expect(screen.queryByText(/^×\s/)).not.toBeInTheDocument();
+    expect(screen.getByText("× 1 vez de 4h 30m")).toBeInTheDocument();
   });
 
   it("does not render a unit select and keeps the duration field for a single occurrence", async () => {

@@ -1,6 +1,7 @@
 import {
   composeOccurrencesUnit,
   formatOccurrenceDuration,
+  formatOccurrencesMultiplierLabel,
   parseOccurrenceDuration,
   resolveOccurrencesUnitLabel,
   splitOccurrencesUnit,
@@ -45,6 +46,29 @@ describe("occurrences unit helpers", () => {
   it("falls back to the default label when no unit is stored", () => {
     expect(resolveOccurrencesUnitLabel("")).toBe("veces");
     expect(resolveOccurrencesUnitLabel("veces de 4h 30")).toBe("veces de 4h 30");
+  });
+
+  it("builds the quantity multiplier label with a duration suffixed by minutes", () => {
+    expect(formatOccurrencesMultiplierLabel(2, "veces de 4h 30")).toBe(
+      "× 2 veces de 4h 30m",
+    );
+    expect(formatOccurrencesMultiplierLabel(2, "veces de 30'")).toBe(
+      "× 2 veces de 30m",
+    );
+    expect(formatOccurrencesMultiplierLabel(3, "veces de 2h")).toBe(
+      "× 3 veces de 2h",
+    );
+  });
+
+  it("pluralizes the default unit by count and keeps custom units as stored", () => {
+    expect(formatOccurrencesMultiplierLabel(1, "veces de 4h 30")).toBe(
+      "× 1 vez de 4h 30m",
+    );
+    expect(formatOccurrencesMultiplierLabel(1, "")).toBe("× 1 vez");
+    expect(formatOccurrencesMultiplierLabel(4, "")).toBe("× 4 veces");
+    expect(formatOccurrencesMultiplierLabel(9, "sesiones")).toBe(
+      "× 9 sesiones",
+    );
   });
 
   it("formats an hours/minutes pair into a canonical duration label", () => {

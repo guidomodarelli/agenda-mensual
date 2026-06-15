@@ -19,6 +19,7 @@
  */
 
 export const DEFAULT_OCCURRENCES_UNIT = "veces";
+export const DEFAULT_OCCURRENCES_UNIT_SINGULAR = "vez";
 export const MAX_OCCURRENCES_UNIT_LENGTH = 40;
 export const MAX_OCCURRENCES_PERIODICITY_LENGTH = 24;
 export const MAX_OCCURRENCE_DURATION_HOURS = 99;
@@ -125,6 +126,60 @@ export function resolveOccurrencesUnitLabel(occurrencesUnit: string): string {
   const normalizedOccurrencesUnit = occurrencesUnit.trim();
 
   return normalizedOccurrencesUnit || DEFAULT_OCCURRENCES_UNIT;
+}
+
+/**
+ * Formats a stored duration into its display label, suffixing minutes with "m"
+ * (e.g. "4h 30m", "4h", "30m"). Returns "" when there is no duration.
+ *
+ * @param duration - Duration part extracted from the unit string.
+ * @returns The human-readable duration label.
+ */
+function formatOccurrenceDurationDisplay(duration: string): string {
+  const { hours, minutes } = parseOccurrenceDuration(duration);
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+
+  return "";
+}
+
+/**
+ * Builds the full quantity-multiplier label shown next to the subtotal, e.g.
+ * "× 2 veces de 4h 30m" or "× 1 vez de 4h 30m". The default unit is pluralized
+ * by count ("vez" when the quantity is one, "veces" otherwise); custom units are
+ * rendered as stored. The optional per-occurrence duration is appended after a
+ * " de " separator. The duration never affects the monthly total.
+ *
+ * @param occurrencesPerMonth - Monthly quantity multiplier.
+ * @param occurrencesUnit - Stored unit string (may carry a duration).
+ * @returns The label to render in the UI.
+ */
+export function formatOccurrencesMultiplierLabel(
+  occurrencesPerMonth: number,
+  occurrencesUnit: string,
+): string {
+  const { duration, periodicity } = splitOccurrencesUnit(occurrencesUnit);
+  const resolvedPeriodicity = periodicity || DEFAULT_OCCURRENCES_UNIT;
+  const periodicityLabel =
+    resolvedPeriodicity === DEFAULT_OCCURRENCES_UNIT && occurrencesPerMonth === 1
+      ? DEFAULT_OCCURRENCES_UNIT_SINGULAR
+      : resolvedPeriodicity;
+  const durationLabel = formatOccurrenceDurationDisplay(duration);
+  const multiplierLabel = `× ${occurrencesPerMonth} ${periodicityLabel}`;
+
+  return durationLabel
+    ? `${multiplierLabel}${OCCURRENCES_UNIT_DURATION_SEPARATOR}${durationLabel}`
+    : multiplierLabel;
 }
 
 /**

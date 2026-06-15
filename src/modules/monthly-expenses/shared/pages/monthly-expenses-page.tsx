@@ -3523,8 +3523,7 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    const normalizedOccurrencesUnit =
-      occurrencesPerMonth > 1 ? occurrencesUnit.trim() : "";
+    const normalizedOccurrencesUnit = occurrencesUnit.trim();
     const occurrencesUnitValidationError = validateOccurrencesUnit(
       normalizedOccurrencesUnit,
     );

@@ -121,7 +121,7 @@ import {
 } from "./expense-edit-validation";
 import { OccurrenceDurationInput } from "./occurrence-duration-input";
 import {
-  resolveOccurrencesUnitLabel,
+  formatOccurrencesMultiplierLabel,
   splitOccurrencesUnit,
 } from "./occurrences-unit";
 import {
@@ -3193,12 +3193,13 @@ export function MonthlyExpensesTable({
         cell: ({ row }) => {
           const expenseDescription = row.original.description.trim() || "compromiso";
           const occurrencesPerMonth = Number(row.original.occurrencesPerMonth);
-          const showMultiplier =
-            Number.isFinite(occurrencesPerMonth) && occurrencesPerMonth > 1;
           const { duration: occurrenceDuration } = splitOccurrencesUnit(
             row.original.occurrencesUnit,
           );
-          const showDurationOnly = !showMultiplier && occurrenceDuration !== "";
+          const showMultiplier =
+            Number.isFinite(occurrencesPerMonth) &&
+            (occurrencesPerMonth > 1 ||
+              (occurrencesPerMonth === 1 && occurrenceDuration !== ""));
 
           return (
             <div className={styles.quickEditCell}>
@@ -3212,13 +3213,10 @@ export function MonthlyExpensesTable({
                 </span>
                 {showMultiplier ? (
                   <span className={styles.subtotalMultiplier}>
-                    {`× ${occurrencesPerMonth} ${resolveOccurrencesUnitLabel(
+                    {formatOccurrencesMultiplierLabel(
+                      occurrencesPerMonth,
                       row.original.occurrencesUnit,
-                    )}`}
-                  </span>
-                ) : showDurationOnly ? (
-                  <span className={styles.subtotalMultiplier}>
-                    {occurrenceDuration}
+                    )}
                   </span>
                 ) : null}
               </div>
