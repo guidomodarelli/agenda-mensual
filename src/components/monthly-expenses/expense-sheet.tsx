@@ -57,10 +57,12 @@ import { LoanInfoPopover } from "./loan-info-popover";
 import { PaymentFrequencyField } from "./payment-frequency-field";
 import {
   formatReceiptSharePhoneDisplay,
+  validateHourDuration,
   validateOccurrencesPerMonth,
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "./expense-edit-validation";
+import { OccurrenceDurationInput } from "./occurrence-duration-input";
 import { splitOccurrencesUnit } from "./occurrences-unit";
 import type {
   MonthlyExpensesEditableRow,
@@ -268,6 +270,11 @@ function ExpenseSheetContent({
   const currencyPrefix = draft.currency === "USD" ? "US$" : "$";
   const subtotalUnit: MonthlyExpenseSubtotalUnit =
     draft.subtotalUnit ?? "occurrence";
+  const isHourlySubtotal = subtotalUnit === "hour";
+  const hourDurationError =
+    isCreateMode && isHourlySubtotal
+      ? validateHourDuration(draft.occurrencesUnit)
+      : null;
   const totalFormulaSubtotalAmount =
     formatCurrencyDisplay(draft.subtotal).trim() || "X";
   const totalFormulaSubtotal = `${currencyPrefix} ${totalFormulaSubtotalAmount}`;
@@ -276,8 +283,8 @@ function ExpenseSheetContent({
     splitOccurrencesUnit(draft.occurrencesUnit).duration || "1h";
   const totalFormula =
     subtotalUnit === "hour"
-      ? `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences} × ${totalFormulaDuration}`
-      : `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences}`;
+      ? `Subtotal ${totalFormulaSubtotal}/h × ${totalFormulaDuration}/mes`
+      : `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences}/mes`;
   const isLoanToggleDisabled = mode === "edit";
   const shouldShowLoanSection = isCreateMode || draft.isLoan;
   const form = useForm<ExpenseSheetFormValues>({
@@ -291,7 +298,10 @@ function ExpenseSheetContent({
     shouldShowValidation && lenderIsMissing
       ? "Seleccioná un prestamista."
       : null;
-  const hasFieldErrors = Object.keys(fieldErrors).length > 0 || lenderIsMissing;
+  const hasFieldErrors =
+    Object.keys(fieldErrors).length > 0 ||
+    lenderIsMissing ||
+    Boolean(hourDurationError);
   const shouldShowGlobalValidation =
     shouldShowValidation && Boolean(validationMessage) && !hasFieldErrors;
 
@@ -507,6 +517,14 @@ function ExpenseSheetContent({
                                 )}
                               />
                             </FormControl>
+                            {subtotalUnit === "hour" ? (
+                              <InputGroupAddon
+                                align="inline-end"
+                                aria-hidden="true"
+                              >
+                                /h
+                              </InputGroupAddon>
+                            ) : null}
                           </InputGroup>
                           <FormMessage className={styles.fieldErrorText} />
                         </div>
@@ -548,42 +566,65 @@ function ExpenseSheetContent({
                     </div>
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="occurrencesPerMonth"
-                    render={() => (
-                      <FormItem className={styles.fieldGroup}>
-                        <FormLabel>
-                          {getFieldLabel(
-                            "Frecuencia de pago",
-                            changedFields.has("occurrencesPerMonth"),
-                          )}
-                        </FormLabel>
-                        <div className={styles.fieldControlWrapper}>
-                          <FormControl>
-                            <PaymentFrequencyField
-                              key={draft.id}
-                              hasError={
-                                shouldShowValidation &&
-                                Boolean(fieldErrors.occurrencesPerMonth)
-                              }
-                              isChanged={changedFields.has("occurrencesPerMonth")}
-                              isUnitChanged={changedFields.has("occurrencesUnit")}
-                              occurrencesPerMonth={draft.occurrencesPerMonth}
-                              occurrencesUnit={draft.occurrencesUnit}
-                              onOccurrencesPerMonthChange={(value) =>
-                                onFieldChange("occurrencesPerMonth", value)
-                              }
-                              onOccurrencesUnitChange={(value) =>
-                                onFieldChange("occurrencesUnit", value)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage className={styles.fieldErrorText} />
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                  {isHourlySubtotal ? (
+                    <div className={styles.fieldGroup}>
+                      <div className={styles.fieldControlWrapper}>
+                        <OccurrenceDurationInput
+                          key={draft.id}
+                          durationHoursAriaLabel="Duración mensual en horas"
+                          durationMinutesAriaLabel="Duración mensual en minutos"
+                          isChanged={changedFields.has("occurrencesUnit")}
+                          label="Duración mensual"
+                          onChange={(value) =>
+                            onFieldChange("occurrencesUnit", value)
+                          }
+                          value={draft.occurrencesUnit}
+                        />
+                        {shouldShowValidation && hourDurationError ? (
+                          <p className={styles.fieldErrorText} role="alert">
+                            {hourDurationError}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="occurrencesPerMonth"
+                      render={() => (
+                        <FormItem className={styles.fieldGroup}>
+                          <FormLabel>
+                            {getFieldLabel(
+                              "Frecuencia de pago",
+                              changedFields.has("occurrencesPerMonth"),
+                            )}
+                          </FormLabel>
+                          <div className={styles.fieldControlWrapper}>
+                            <FormControl>
+                              <PaymentFrequencyField
+                                key={draft.id}
+                                hasError={
+                                  shouldShowValidation &&
+                                  Boolean(fieldErrors.occurrencesPerMonth)
+                                }
+                                isChanged={changedFields.has("occurrencesPerMonth")}
+                                isUnitChanged={changedFields.has("occurrencesUnit")}
+                                occurrencesPerMonth={draft.occurrencesPerMonth}
+                                occurrencesUnit={draft.occurrencesUnit}
+                                onOccurrencesPerMonthChange={(value) =>
+                                  onFieldChange("occurrencesPerMonth", value)
+                                }
+                                onOccurrencesUnitChange={(value) =>
+                                  onFieldChange("occurrencesUnit", value)
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage className={styles.fieldErrorText} />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className={styles.fieldGroup}>
                     <Label className={styles.totalLabel} htmlFor="expense-total">

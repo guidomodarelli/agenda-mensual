@@ -31,6 +31,16 @@ export const OCCURRENCES_UNIT_DURATION_SEPARATOR = " de ";
 /** Sentinel value for the "Otra…" (free text) option inside the unit select. */
 export const CUSTOM_OCCURRENCES_UNIT_VALUE = "__custom__";
 
+/**
+ * Suffix appended to the subtotal multiplier to make explicit that the figure is
+ * a monthly cadence, regardless of the subtotal unit (e.g. "× 8 veces/mes",
+ * "× 2h/mes").
+ */
+export const MONTHLY_CADENCE_SUFFIX = "/mes";
+
+/** Fallback duration used to label an hourly subtotal that carries no duration. */
+export const DEFAULT_HOUR_DURATION_LABEL = "1h";
+
 export interface OccurrencesUnitOptionGroup {
   label: string;
   options: string[];
@@ -154,32 +164,44 @@ function formatOccurrenceDurationDisplay(duration: string): string {
 }
 
 /**
- * Builds the full quantity-multiplier label shown next to the subtotal, e.g.
- * "× 2 veces de 4h 30m" or "× 1 vez de 4h 30m". The default unit is pluralized
- * by count ("vez" when the quantity is one, "veces" otherwise); custom units are
- * rendered as stored. The optional per-occurrence duration is appended after a
- * " de " separator. The duration never affects the monthly total.
+ * Builds the subtotal multiplier label shown under the subtotal amount, always
+ * suffixed with the monthly cadence ("/mes") so the figure reads as a monthly
+ * quantity. The shape depends on the subtotal unit:
+ *
+ * - `occurrence`: "× {quantity} {unit}/mes" (e.g. "× 1 vez/mes", "× 8 veces/mes",
+ *   "× 9 sesiones/mes"). The default unit is pluralized by count ("vez" when the
+ *   quantity is one, "veces" otherwise); custom units are rendered as stored. The
+ *   per-occurrence duration is intentionally omitted because it is not billable.
+ * - `hour`: "× {duration}/mes" (e.g. "× 2h/mes", "× 4h 30m/mes"). The quantity and
+ *   periodicity are omitted because the billable quantity is the duration itself;
+ *   a missing duration falls back to "1h" to mirror the total calculation.
  *
  * @param occurrencesPerMonth - Monthly quantity multiplier.
  * @param occurrencesUnit - Stored unit string (may carry a duration).
- * @returns The label to render in the UI.
+ * @param subtotalUnit - How the subtotal feeds the total ("occurrence" | "hour").
+ * @returns The label to render under the subtotal amount.
  */
-export function formatOccurrencesMultiplierLabel(
+export function formatSubtotalMultiplierLabel(
   occurrencesPerMonth: number,
   occurrencesUnit: string,
+  subtotalUnit: "occurrence" | "hour",
 ): string {
   const { duration, periodicity } = splitOccurrencesUnit(occurrencesUnit);
+
+  if (subtotalUnit === "hour") {
+    const durationLabel =
+      formatOccurrenceDurationDisplay(duration) || DEFAULT_HOUR_DURATION_LABEL;
+
+    return `× ${durationLabel}${MONTHLY_CADENCE_SUFFIX}`;
+  }
+
   const resolvedPeriodicity = periodicity || DEFAULT_OCCURRENCES_UNIT;
   const periodicityLabel =
     resolvedPeriodicity === DEFAULT_OCCURRENCES_UNIT && occurrencesPerMonth === 1
       ? DEFAULT_OCCURRENCES_UNIT_SINGULAR
       : resolvedPeriodicity;
-  const durationLabel = formatOccurrenceDurationDisplay(duration);
-  const multiplierLabel = `× ${occurrencesPerMonth} ${periodicityLabel}`;
 
-  return durationLabel
-    ? `${multiplierLabel}${OCCURRENCES_UNIT_DURATION_SEPARATOR}${durationLabel}`
-    : multiplierLabel;
+  return `× ${occurrencesPerMonth} ${periodicityLabel}${MONTHLY_CADENCE_SUFFIX}`;
 }
 
 /**

@@ -213,7 +213,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     });
   });
 
-  it("renders subtotal, unit, quantity and duration fields in the details dialog", async () => {
+  it("renders subtotal, unit and quantity fields without duration for an occurrence subtotal", async () => {
     renderMonthlyExpensesTable([createRow()]);
 
     await openQuickEditDialog({
@@ -229,8 +229,30 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
       screen.getByLabelText("Cantidad por mes de Internet"),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
+      screen.queryByLabelText("Duración mensual en horas de Internet"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("swaps quantity for the monthly duration when the subtotal is hourly", async () => {
+    const user = userEvent.setup();
+
+    renderMonthlyExpensesTable([createRow()]);
+
+    await openQuickEditDialog({
+      menuItemLabel: "Editar subtotal y cantidad",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
+    });
+
+    await user.click(screen.getByLabelText("Unidad del subtotal de Internet"));
+    await user.click(screen.getByRole("option", { name: "Por hora" }));
+
+    expect(
+      screen.queryByLabelText("Cantidad por mes de Internet"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Duración mensual en horas de Internet"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Duración mensual")).toBeInTheDocument();
   });
 
   it("focuses payment link input when opening payment link dialog", async () => {
@@ -292,12 +314,12 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     });
   });
 
-  it("shows the quantity multiplier with its unit when occurrences are greater than one", () => {
+  it("shows the quantity multiplier with its unit and a monthly cadence", () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "9", occurrencesUnit: "sesiones" }),
     ]);
 
-    expect(screen.getByText("× 9 sesiones")).toBeInTheDocument();
+    expect(screen.getByText("× 9 sesiones/mes")).toBeInTheDocument();
   });
 
   it("falls back to the default unit when none is set", () => {
@@ -305,53 +327,40 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
       createRow({ occurrencesPerMonth: "4", occurrencesUnit: "" }),
     ]);
 
-    expect(screen.getByText("× 4 veces")).toBeInTheDocument();
+    expect(screen.getByText("× 4 veces/mes")).toBeInTheDocument();
   });
 
-  it("shows the per-occurrence duration when the unit carries one", () => {
+  it("omits the per-occurrence duration from an occurrence multiplier", () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "2", occurrencesUnit: "veces de 4h 30" }),
     ]);
 
-    expect(screen.getByText("× 2 veces de 4h 30m")).toBeInTheDocument();
+    expect(screen.getByText("× 2 veces/mes")).toBeInTheDocument();
+    expect(screen.queryByText(/4h 30m/)).not.toBeInTheDocument();
   });
 
-  it("hides the quantity multiplier when occurrences equal one without a duration", () => {
+  it("shows the singular multiplier with a monthly cadence for a single occurrence", () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
     ]);
 
-    expect(screen.queryByText(/^×\s/)).not.toBeInTheDocument();
+    expect(screen.getByText("× 1 vez/mes")).toBeInTheDocument();
   });
 
-  it("shows the singular multiplier with duration when occurrences equal one", () => {
+  it("shows the hourly rate suffix and the monthly duration for an hourly subtotal", () => {
     renderMonthlyExpensesTable([
-      createRow({ occurrencesPerMonth: "1", occurrencesUnit: "veces de 4h 30" }),
+      createRow({
+        occurrencesPerMonth: "1",
+        occurrencesUnit: "veces de 2h",
+        subtotalUnit: "hour",
+      }),
     ]);
 
-    expect(screen.getByText("× 1 vez de 4h 30m")).toBeInTheDocument();
+    expect(screen.getByText("/h")).toBeInTheDocument();
+    expect(screen.getByText("× 2h/mes")).toBeInTheDocument();
   });
 
-  it("keeps the duration field without a unit select for a single occurrence", async () => {
-    renderMonthlyExpensesTable([
-      createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
-    ]);
-
-    await openQuickEditDialog({
-      menuItemLabel: "Editar subtotal y cantidad",
-      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
-    });
-
-    expect(screen.queryByLabelText("Unidad de Internet")).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Duración por ocurrencia en minutos de Internet"),
-    ).toBeInTheDocument();
-  });
-
-  it("saves subtotal, unit, quantity and duration together from the details dialog", async () => {
+  it("saves subtotal and quantity from the details dialog for an occurrence subtotal", async () => {
     const user = userEvent.setup();
     const onUpdateExpenseDetails = jest.fn();
 
@@ -373,26 +382,18 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
     await user.clear(screen.getByLabelText("Cantidad por mes de Internet"));
     await user.type(screen.getByLabelText("Cantidad por mes de Internet"), "2");
-    await user.type(
-      screen.getByLabelText("Duración por ocurrencia en horas de Internet"),
-      "4",
-    );
-    await user.type(
-      screen.getByLabelText("Duración por ocurrencia en minutos de Internet"),
-      "30",
-    );
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     expect(onUpdateExpenseDetails).toHaveBeenCalledWith({
       expenseId: "expense-1",
       occurrencesPerMonth: 2,
-      occurrencesUnit: "veces de 4h 30",
+      occurrencesUnit: "",
       subtotal: 5000,
       subtotalUnit: "occurrence",
     });
   });
 
-  it("saves the hourly subtotal unit selected in the details dialog", async () => {
+  it("fixes the quantity to one and keeps the duration when saving an hourly subtotal", async () => {
     const user = userEvent.setup();
     const onUpdateExpenseDetails = jest.fn();
 
@@ -418,10 +419,38 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
     expect(onUpdateExpenseDetails).toHaveBeenCalledWith({
       expenseId: "expense-1",
-      occurrencesPerMonth: 2,
+      occurrencesPerMonth: 1,
       occurrencesUnit: "veces de 4h 30",
       subtotal: 5000,
       subtotalUnit: "hour",
     });
+  });
+
+  it("blocks saving an hourly subtotal without a monthly duration", async () => {
+    const user = userEvent.setup();
+    const onUpdateExpenseDetails = jest.fn();
+
+    renderMonthlyExpensesTable(
+      [
+        createRow({
+          occurrencesPerMonth: "1",
+          occurrencesUnit: "",
+          subtotal: "5000",
+        }),
+      ],
+      { onUpdateExpenseDetails },
+    );
+
+    await openQuickEditDialog({
+      menuItemLabel: "Editar subtotal y cantidad",
+      triggerLabel: "Abrir acciones de subtotal y cantidad para Internet",
+    });
+
+    await user.click(screen.getByLabelText("Unidad del subtotal de Internet"));
+    await user.click(screen.getByRole("option", { name: "Por hora" }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(onUpdateExpenseDetails).not.toHaveBeenCalled();
+    expect(screen.getByText("Completá la duración mensual.")).toBeInTheDocument();
   });
 });

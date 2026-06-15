@@ -140,6 +140,42 @@ describe("ExpenseSheet", () => {
     expect(onFieldChange).toHaveBeenCalledWith("subtotalUnit", "hour");
   });
 
+  it("shows the monthly duration instead of the frequency field for an hourly subtotal", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        occurrencesUnit: "veces de 2h",
+        subtotalUnit: "hour",
+      },
+      mode: "create",
+    });
+
+    expect(screen.getByText("Duración mensual")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Duración mensual en horas"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Frecuencia de pago")).not.toBeInTheDocument();
+  });
+
+  it("requires a monthly duration before saving an hourly subtotal", async () => {
+    const user = userEvent.setup();
+
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        occurrencesUnit: "",
+        subtotalUnit: "hour",
+      },
+      mode: "create",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(
+      screen.getByText("Completá la duración mensual."),
+    ).toBeInTheDocument();
+  });
+
   it("hides duplicated inline-edit fields when editing an expense", () => {
     renderExpenseSheet({
       draft: {

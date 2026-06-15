@@ -15,6 +15,7 @@ import { ExpenseReceiptCoverageEditDialog } from "@/components/monthly-expenses/
 import { ExpenseReceiptUploadDialog } from "@/components/monthly-expenses/expense-receipt-upload-dialog";
 import {
   normalizeReceiptSharePhoneDigits,
+  validateHourDuration,
   validateOccurrencesPerMonth,
   validateOccurrencesUnit,
   validateReceiptSharePhoneDigits,
@@ -1256,6 +1257,13 @@ export function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
+  if (
+    (row.subtotalUnit ?? "occurrence") === "hour" &&
+    validateHourDuration(row.occurrencesUnit) !== null
+  ) {
+    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
+  }
+
   return null;
 }
 
@@ -2328,11 +2336,17 @@ export default function MonthlyExpensesPage({
         return currentState;
       }
 
+      // Hourly subtotals are billed once per month and multiplied by the monthly
+      // duration, so the occurrence count collapses to 1 when switching to "hour".
+      const forcesSingleOccurrence =
+        fieldName === "subtotalUnit" && value === "hour";
+
       return {
         ...currentState,
         draft: normalizeEditableRows(formState.month, [
           {
             ...currentState.draft,
+            ...(forcesSingleOccurrence ? { occurrencesPerMonth: "1" } : {}),
             [fieldName]:
               fieldName === "currency"
                 ? (value as MonthlyExpenseCurrency)

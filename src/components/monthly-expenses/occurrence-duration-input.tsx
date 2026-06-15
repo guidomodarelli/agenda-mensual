@@ -14,10 +14,13 @@ import {
 } from "./occurrences-unit";
 import styles from "./occurrence-duration-input.module.scss";
 
+const DEFAULT_DURATION_LABEL = "Duración por ocurrencia (opcional)";
+
 interface OccurrenceDurationInputProps {
   durationHoursAriaLabel: string;
   durationMinutesAriaLabel: string;
   isChanged?: boolean;
+  label?: string;
   onChange: (value: string) => void;
   value: string;
 }
@@ -41,6 +44,7 @@ export function OccurrenceDurationInput({
   durationHoursAriaLabel,
   durationMinutesAriaLabel,
   isChanged = false,
+  label = DEFAULT_DURATION_LABEL,
   onChange,
   value,
 }: OccurrenceDurationInputProps) {
@@ -76,9 +80,7 @@ export function OccurrenceDurationInput({
 
   return (
     <div className={styles.container}>
-      <span className={styles.durationLabel}>
-        Duración por ocurrencia (opcional)
-      </span>
+      <span className={styles.durationLabel}>{label}</span>
       <div className={styles.durationInputs}>
         <div className={styles.durationInput}>
           <Input

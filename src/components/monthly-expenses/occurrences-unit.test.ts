@@ -1,7 +1,7 @@
 import {
   composeOccurrencesUnit,
   formatOccurrenceDuration,
-  formatOccurrencesMultiplierLabel,
+  formatSubtotalMultiplierLabel,
   parseOccurrenceDuration,
   resolveOccurrencesUnitLabel,
   splitOccurrencesUnit,
@@ -48,27 +48,36 @@ describe("occurrences unit helpers", () => {
     expect(resolveOccurrencesUnitLabel("veces de 4h 30")).toBe("veces de 4h 30");
   });
 
-  it("builds the quantity multiplier label with a duration suffixed by minutes", () => {
-    expect(formatOccurrencesMultiplierLabel(2, "veces de 4h 30")).toBe(
-      "× 2 veces de 4h 30m",
+  it("builds the occurrence multiplier with a monthly cadence and no duration", () => {
+    expect(
+      formatSubtotalMultiplierLabel(2, "veces de 4h 30", "occurrence"),
+    ).toBe("× 2 veces/mes");
+    expect(formatSubtotalMultiplierLabel(1, "", "occurrence")).toBe(
+      "× 1 vez/mes",
     );
-    expect(formatOccurrencesMultiplierLabel(2, "veces de 30'")).toBe(
-      "× 2 veces de 30m",
+    expect(formatSubtotalMultiplierLabel(4, "", "occurrence")).toBe(
+      "× 4 veces/mes",
     );
-    expect(formatOccurrencesMultiplierLabel(3, "veces de 2h")).toBe(
-      "× 3 veces de 2h",
+    expect(formatSubtotalMultiplierLabel(9, "sesiones", "occurrence")).toBe(
+      "× 9 sesiones/mes",
     );
   });
 
-  it("pluralizes the default unit by count and keeps custom units as stored", () => {
-    expect(formatOccurrencesMultiplierLabel(1, "veces de 4h 30")).toBe(
-      "× 1 vez de 4h 30m",
+  it("builds the hourly multiplier from the duration with a monthly cadence", () => {
+    expect(formatSubtotalMultiplierLabel(1, "veces de 2h", "hour")).toBe(
+      "× 2h/mes",
     );
-    expect(formatOccurrencesMultiplierLabel(1, "")).toBe("× 1 vez");
-    expect(formatOccurrencesMultiplierLabel(4, "")).toBe("× 4 veces");
-    expect(formatOccurrencesMultiplierLabel(9, "sesiones")).toBe(
-      "× 9 sesiones",
+    expect(formatSubtotalMultiplierLabel(1, "veces de 4h 30", "hour")).toBe(
+      "× 4h 30m/mes",
     );
+    expect(formatSubtotalMultiplierLabel(1, "veces de 30'", "hour")).toBe(
+      "× 30m/mes",
+    );
+  });
+
+  it("falls back to a one-hour label for an hourly subtotal without a duration", () => {
+    expect(formatSubtotalMultiplierLabel(1, "", "hour")).toBe("× 1h/mes");
+    expect(formatSubtotalMultiplierLabel(3, "veces", "hour")).toBe("× 1h/mes");
   });
 
   it("formats an hours/minutes pair into a canonical duration label", () => {

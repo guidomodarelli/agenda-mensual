@@ -786,6 +786,11 @@
   text-align: left;
 }
 
+.subtotalRateSuffix {
+  color: var(--muted-foreground);
+  font-size: 0.85em;
+}
+
 .subtotalTrailing {
   display: flex;
   align-items: center;

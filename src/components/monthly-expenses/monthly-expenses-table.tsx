@@ -114,16 +114,14 @@ import {
   formatReceiptSharePhoneDisplay,
   normalizeReceiptSharePhoneDigits,
   RECEIPT_SHARE_PHONE_REQUIRED_ERROR_MESSAGE,
+  validateHourDuration,
   validateOccurrencesPerMonth,
   validateOccurrencesUnit,
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
 } from "./expense-edit-validation";
 import { OccurrenceDurationInput } from "./occurrence-duration-input";
-import {
-  formatOccurrencesMultiplierLabel,
-  splitOccurrencesUnit,
-} from "./occurrences-unit";
+import { formatSubtotalMultiplierLabel } from "./occurrences-unit";
 import {
   getValidPaymentLink as getValidPaymentLinkUrl,
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
@@ -2807,19 +2805,28 @@ export function MonthlyExpensesTable({
 
     setSubtotalDraftError(null);
 
-    const normalizedOccurrences = Number(occurrencesDraftValue);
-    const occurrencesValidationError =
-      validateOccurrencesPerMonth(normalizedOccurrences);
+    const isHourlySubtotal = subtotalUnitDraftValue === "hour";
+    // Hourly subtotals are billed once per month and multiplied by the monthly
+    // duration, so the occurrence count is fixed at 1 and the editable quantity
+    // becomes the duration instead.
+    const normalizedOccurrences = isHourlySubtotal
+      ? 1
+      : Number(occurrencesDraftValue);
 
-    if (occurrencesValidationError) {
-      setOccurrencesDraftError(occurrencesValidationError);
-      return;
+    if (!isHourlySubtotal) {
+      const occurrencesValidationError =
+        validateOccurrencesPerMonth(normalizedOccurrences);
+
+      if (occurrencesValidationError) {
+        setOccurrencesDraftError(occurrencesValidationError);
+        return;
+      }
     }
 
     const occurrencesUnitForSave = occurrencesUnitDraftValue.trim();
-    const occurrencesUnitValidationError = validateOccurrencesUnit(
-      occurrencesUnitForSave,
-    );
+    const occurrencesUnitValidationError =
+      validateOccurrencesUnit(occurrencesUnitForSave) ??
+      (isHourlySubtotal ? validateHourDuration(occurrencesUnitForSave) : null);
 
     if (occurrencesUnitValidationError) {
       setOccurrencesUnitDraftError(occurrencesUnitValidationError);
@@ -3155,13 +3162,8 @@ export function MonthlyExpensesTable({
         cell: ({ row }) => {
           const expenseDescription = row.original.description.trim() || "compromiso";
           const occurrencesPerMonth = Number(row.original.occurrencesPerMonth);
-          const { duration: occurrenceDuration } = splitOccurrencesUnit(
-            row.original.occurrencesUnit,
-          );
-          const showMultiplier =
-            Number.isFinite(occurrencesPerMonth) &&
-            (occurrencesPerMonth > 1 ||
-              (occurrencesPerMonth === 1 && occurrenceDuration !== ""));
+          const subtotalUnit = row.original.subtotalUnit ?? "occurrence";
+          const showMultiplier = Number.isFinite(occurrencesPerMonth);
 
           return (
             <div className={styles.quickEditCell}>
@@ -3172,12 +3174,16 @@ export function MonthlyExpensesTable({
                     rowCurrency: row.original.currency,
                     value: row.original.subtotal,
                   })}
+                  {subtotalUnit === "hour" ? (
+                    <span className={styles.subtotalRateSuffix}>/h</span>
+                  ) : null}
                 </span>
                 {showMultiplier ? (
                   <span className={styles.subtotalMultiplier}>
-                    {formatOccurrencesMultiplierLabel(
+                    {formatSubtotalMultiplierLabel(
                       occurrencesPerMonth,
                       row.original.occurrencesUnit,
+                      subtotalUnit,
                     )}
                   </span>
                 ) : null}
@@ -4603,7 +4609,9 @@ export function MonthlyExpensesTable({
             <AlertDialogHeader>
               <AlertDialogTitle>Editar subtotal y cantidad</AlertDialogTitle>
               <AlertDialogDescription>
-                {`Actualizá el subtotal, su unidad, la cantidad mensual y la duración por ocurrencia de ${detailsDialogState?.expenseDescription ?? "este compromiso"}.`}
+                {subtotalUnitDraftValue === "hour"
+                  ? `Actualizá el subtotal por hora y la duración mensual de ${detailsDialogState?.expenseDescription ?? "este compromiso"}.`
+                  : `Actualizá el subtotal, su unidad y la cantidad mensual de ${detailsDialogState?.expenseDescription ?? "este compromiso"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -4640,6 +4648,11 @@ export function MonthlyExpensesTable({
                     preserveExplicitFractionDigits: true,
                   })}
                 />
+                {subtotalUnitDraftValue === "hour" ? (
+                  <InputGroupAddon align="inline-end" aria-hidden="true">
+                    /h
+                  </InputGroupAddon>
+                ) : null}
               </InputGroup>
               {subtotalDraftError ? (
                 <p className={styles.paymentLinkDialogError} role="alert">
@@ -4673,57 +4686,60 @@ export function MonthlyExpensesTable({
               </Select>
             </div>
 
-            <div className={styles.paymentLinkDialogField}>
-              <Label htmlFor="occurrences-dialog-input">Cantidad por mes</Label>
-              <Input
-                aria-invalid={occurrencesDraftError ? "true" : "false"}
-                aria-label={`Cantidad por mes de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
-                id="occurrences-dialog-input"
-                inputMode="numeric"
-                min="1"
-                onChange={(event) => {
-                  setOccurrencesDraftValue(event.target.value);
+            {subtotalUnitDraftValue === "hour" ? (
+              <div className={styles.paymentLinkDialogField}>
+                <OccurrenceDurationInput
+                  durationHoursAriaLabel={`Duración mensual en horas de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  durationMinutesAriaLabel={`Duración mensual en minutos de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  label="Duración mensual"
+                  onChange={(nextUnit) => {
+                    setOccurrencesUnitDraftValue(nextUnit);
 
-                  if (occurrencesDraftError) {
-                    setOccurrencesDraftError(null);
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleSaveDetails();
-                  }
-                }}
-                step="1"
-                type="number"
-                value={occurrencesDraftValue}
-              />
-              {occurrencesDraftError ? (
-                <p className={styles.paymentLinkDialogError} role="alert">
-                  {occurrencesDraftError}
-                </p>
-              ) : null}
-            </div>
+                    if (occurrencesUnitDraftError) {
+                      setOccurrencesUnitDraftError(null);
+                    }
+                  }}
+                  value={occurrencesUnitDraftValue}
+                />
+                {occurrencesUnitDraftError ? (
+                  <p className={styles.paymentLinkDialogError} role="alert">
+                    {occurrencesUnitDraftError}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className={styles.paymentLinkDialogField}>
+                <Label htmlFor="occurrences-dialog-input">Cantidad por mes</Label>
+                <Input
+                  aria-invalid={occurrencesDraftError ? "true" : "false"}
+                  aria-label={`Cantidad por mes de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  id="occurrences-dialog-input"
+                  inputMode="numeric"
+                  min="1"
+                  onChange={(event) => {
+                    setOccurrencesDraftValue(event.target.value);
 
-            <div className={styles.paymentLinkDialogField}>
-              <OccurrenceDurationInput
-                durationHoursAriaLabel={`Duración por ocurrencia en horas de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
-                durationMinutesAriaLabel={`Duración por ocurrencia en minutos de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
-                onChange={(nextUnit) => {
-                  setOccurrencesUnitDraftValue(nextUnit);
-
-                  if (occurrencesUnitDraftError) {
-                    setOccurrencesUnitDraftError(null);
-                  }
-                }}
-                value={occurrencesUnitDraftValue}
-              />
-              {occurrencesUnitDraftError ? (
-                <p className={styles.paymentLinkDialogError} role="alert">
-                  {occurrencesUnitDraftError}
-                </p>
-              ) : null}
-            </div>
+                    if (occurrencesDraftError) {
+                      setOccurrencesDraftError(null);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSaveDetails();
+                    }
+                  }}
+                  step="1"
+                  type="number"
+                  value={occurrencesDraftValue}
+                />
+                {occurrencesDraftError ? (
+                  <p className={styles.paymentLinkDialogError} role="alert">
+                    {occurrencesDraftError}
+                  </p>
+                ) : null}
+              </div>
+            )}
 
             <AlertDialogFooter className={styles.paymentLinkDialogActions}>
               <Button

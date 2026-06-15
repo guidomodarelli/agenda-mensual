@@ -1,7 +1,11 @@
 import { AsYouType, parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 
-import { MAX_OCCURRENCES_UNIT_LENGTH } from "./occurrences-unit";
+import {
+  MAX_OCCURRENCES_UNIT_LENGTH,
+  parseOccurrenceDuration,
+  splitOccurrencesUnit,
+} from "./occurrences-unit";
 
 export const OCCURRENCES_PER_MONTH_VALIDATION_ERROR_MESSAGE =
   "Ingresá una cantidad mayor a 0.";
@@ -13,6 +17,8 @@ export const RECEIPT_SHARE_PHONE_VALIDATION_ERROR_MESSAGE =
   "Ingresá un número de WhatsApp internacional válido.";
 export const SUBTOTAL_VALIDATION_ERROR_MESSAGE =
   "Ingresá un subtotal mayor a 0.";
+export const HOUR_DURATION_REQUIRED_ERROR_MESSAGE =
+  "Completá la duración mensual.";
 
 const receiptSharePhoneSchema = z
   .string()
@@ -92,6 +98,25 @@ export function validateOccurrencesPerMonth(value: number): string | null {
 export function validateOccurrencesUnit(value: string): string | null {
   if (value.trim().length > MAX_OCCURRENCES_UNIT_LENGTH) {
     return OCCURRENCES_UNIT_VALIDATION_ERROR_MESSAGE;
+  }
+
+  return null;
+}
+
+/**
+ * Validates that an hourly subtotal carries a billable monthly duration, since
+ * the duration is the multiplier that feeds the total when the subtotal unit is
+ * "hour".
+ *
+ * @param occurrencesUnit - Stored unit string that may carry a duration.
+ * @returns An error message when the duration is missing, otherwise null.
+ */
+export function validateHourDuration(occurrencesUnit: string): string | null {
+  const { duration } = splitOccurrencesUnit(occurrencesUnit);
+  const { hours, minutes } = parseOccurrenceDuration(duration);
+
+  if (hours <= 0 && minutes <= 0) {
+    return HOUR_DURATION_REQUIRED_ERROR_MESSAGE;
   }
 
   return null;
