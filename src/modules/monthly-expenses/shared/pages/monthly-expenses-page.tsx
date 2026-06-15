@@ -1232,6 +1232,10 @@ function getChangedExpenseFields(
     changedFields.add("currency");
   }
 
+  if (originalRow.expenseFolderId !== draft.expenseFolderId) {
+    changedFields.add("expenseFolderId");
+  }
+
   if (originalRow.subtotal !== draft.subtotal) {
     changedFields.add("subtotal");
   }
