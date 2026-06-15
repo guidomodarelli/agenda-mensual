@@ -1026,9 +1026,23 @@ export function copyMonthlyExpenseTemplatesToMonth(
     })),
   );
 
-  return normalizedRowsToCopy.filter(
-    (row) => !row.isLoan || row.loanRemainingInstallments !== 0,
-  );
+  return normalizedRowsToCopy.filter((row) => {
+    if (!row.isLoan) {
+      return true;
+    }
+
+    // Copiamos una deuda mientras conserve una cuota en el mes destino. La
+    // última cuota cae sobre el mes de fin (ej. "6 de 6") y debe copiarse; los
+    // meses posteriores al fin (ej. "7 de 6") ya no tienen cuota y se excluyen.
+    // No alcanza con mirar las cuotas restantes: tanto la última cuota como un
+    // mes posterior al fin dan cero restantes, así que comparamos contra el mes
+    // de fin del préstamo.
+    if (row.loanEndMonth === "") {
+      return true;
+    }
+
+    return month.trim() <= row.loanEndMonth;
+  });
 }
 
 function normalizeTextForReplicationComparison(value: string): string {

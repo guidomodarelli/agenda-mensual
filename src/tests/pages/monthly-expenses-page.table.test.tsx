@@ -3506,4 +3506,78 @@ registerMonthlyExpensesPageDefaultHooks({
       "Servicio",
     ]);
   });
+
+  it("copies a loan on its last installment month (e.g. 6 de 6)", () => {
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth("2026-06", [
+      {
+        allReceiptsFolderId: "",
+        allReceiptsFolderViewUrl: "",
+        currency: "ARS",
+        description: "Última cuota",
+        id: "last-installment-loan",
+        installmentCount: "6",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Banco",
+        loanEndMonth: "2026-06",
+        loanPaidInstallments: 5,
+        loanProgress: "5 de 6 cuotas abonadas",
+        loanRemainingInstallments: 1,
+        loanTotalInstallments: 6,
+        manualCoveredPayments: "0",
+        monthlyFolderId: "",
+        monthlyFolderViewUrl: "",
+        occurrencesPerMonth: "1",
+        paymentLink: "",
+        receiptShareMessage: "",
+        receiptSharePhoneDigits: "",
+        receiptShareStatus: "",
+        requiresReceiptShare: false,
+        receipts: [],
+        startMonth: "2026-01",
+        subtotal: "1000",
+        total: "1000.00",
+      },
+    ]);
+
+    expect(copiedRows).toHaveLength(1);
+    expect(copiedRows[0]?.description).toBe("Última cuota");
+    expect(copiedRows[0]?.loanProgress).toBe("6 de 6 cuotas abonadas");
+  });
+
+  it("does not copy a loan past its end month (e.g. 7 de 6)", () => {
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth("2026-07", [
+      {
+        allReceiptsFolderId: "",
+        allReceiptsFolderViewUrl: "",
+        currency: "ARS",
+        description: "Deuda vencida",
+        id: "past-end-loan",
+        installmentCount: "6",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Banco",
+        loanEndMonth: "2026-06",
+        loanPaidInstallments: 6,
+        loanProgress: "6 de 6 cuotas abonadas",
+        loanRemainingInstallments: 0,
+        loanTotalInstallments: 6,
+        manualCoveredPayments: "0",
+        monthlyFolderId: "",
+        monthlyFolderViewUrl: "",
+        occurrencesPerMonth: "1",
+        paymentLink: "",
+        receiptShareMessage: "",
+        receiptSharePhoneDigits: "",
+        receiptShareStatus: "",
+        requiresReceiptShare: false,
+        receipts: [],
+        startMonth: "2026-01",
+        subtotal: "1000",
+        total: "1000.00",
+      },
+    ]);
+
+    expect(copiedRows).toHaveLength(0);
+  });
 });
