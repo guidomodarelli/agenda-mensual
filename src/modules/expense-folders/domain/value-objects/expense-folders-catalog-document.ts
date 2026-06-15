@@ -63,6 +63,20 @@ export interface ExpenseFoldersCatalogDocument {
   folders: ExpenseFolder[];
 }
 
+/**
+ * Raised when an expense folders catalog payload fails domain validation, such
+ * as missing or duplicate ids/names, unsupported color or icon tokens, or
+ * invalid positions. These are known, client-correctable validation errors and
+ * must be surfaced as 4xx responses, never confused with technical/server
+ * failures (which carry a cataloged technical error code instead).
+ */
+export class ExpenseFoldersCatalogValidationError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ExpenseFoldersCatalogValidationError";
+  }
+}
+
 function isValidExpenseFolderColor(
   value: string,
 ): value is ExpenseFolderColor {
@@ -88,7 +102,7 @@ function validateExpenseFolderColor(
   }
 
   if (!isValidExpenseFolderColor(normalizedColor)) {
-    throw new Error(
+    throw new ExpenseFoldersCatalogValidationError(
       `${operationName} requires every folder color to be one of the supported palette tokens.`,
     );
   }
@@ -111,7 +125,7 @@ function validateExpenseFolderIcon(
   }
 
   if (!isValidExpenseFolderIcon(normalizedIcon)) {
-    throw new Error(
+    throw new ExpenseFoldersCatalogValidationError(
       `${operationName} requires every folder icon to be one of the supported icon keys.`,
     );
   }
@@ -128,13 +142,13 @@ function validateExpenseFolder(
   const normalizedName = folder.name.trim();
 
   if (!normalizedId) {
-    throw new Error(
+    throw new ExpenseFoldersCatalogValidationError(
       `${operationName} requires every folder to include an id.`,
     );
   }
 
   if (!normalizedName) {
-    throw new Error(
+    throw new ExpenseFoldersCatalogValidationError(
       `${operationName} requires every folder to include a name.`,
     );
   }
@@ -142,7 +156,7 @@ function validateExpenseFolder(
   const resolvedPosition = folder.position ?? fallbackPosition;
 
   if (!Number.isInteger(resolvedPosition) || resolvedPosition < 0) {
-    throw new Error(
+    throw new ExpenseFoldersCatalogValidationError(
       `${operationName} requires every folder position to be an integer greater than or equal to 0.`,
     );
   }
@@ -170,13 +184,13 @@ export function createExpenseFoldersCatalogDocument(
     const normalizedName = folder.name.toLocaleLowerCase();
 
     if (uniqueNames.has(normalizedName)) {
-      throw new Error(
+      throw new ExpenseFoldersCatalogValidationError(
         `${operationName} requires folder names to be unique.`,
       );
     }
 
     if (uniqueIds.has(folder.id)) {
-      throw new Error(
+      throw new ExpenseFoldersCatalogValidationError(
         `${operationName} requires folder ids to be unique.`,
       );
     }

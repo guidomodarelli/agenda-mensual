@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
+import { ExpenseFoldersCatalogValidationError } from "@/modules/expense-folders/domain/value-objects/expense-folders-catalog-document";
+import { TECHNICAL_ERROR_CODES } from "@/modules/shared/infrastructure/errors/technical-error-codes";
+
 import { createExpenseFoldersApiHandler } from "./create-expense-folders-api-handler";
 
 interface MockJsonResponse {
@@ -159,7 +162,7 @@ describe("createExpenseFoldersApiHandler", () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it("logs and returns 400 when save fails with a domain error", async () => {
+  it("logs and returns 400 when save fails with a domain validation error", async () => {
     const errorSpy = jest
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
@@ -168,7 +171,13 @@ describe("createExpenseFoldersApiHandler", () => {
       get: jest.fn(),
       getDatabase: jest.fn().mockReturnValue(database),
       getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn().mockRejectedValue(new Error("invalid folders payload")),
+      save: jest
+        .fn()
+        .mockRejectedValue(
+          new ExpenseFoldersCatalogValidationError(
+            "Saving expense folders catalog requires folder names to be unique.",
+          ),
+        ),
     });
 
     const request = {
@@ -188,8 +197,67 @@ describe("createExpenseFoldersApiHandler", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.body).toEqual({
-      error: "invalid folders payload",
+      error: "Saving expense folders catalog requires folder names to be unique.",
     });
     expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it("returns a 500 cataloged envelope when save throws an unexpected technical error", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const database = {} as TursoDatabase;
+    const handler = createExpenseFoldersApiHandler({
+      get: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save: jest
+        .fn()
+        .mockRejectedValue(new Error("SQLITE_ERROR: no such table: expense_folders")),
+    });
+
+    const request = {
+      body: {
+        folders: [
+          {
+            id: "folder-1",
+            name: "Hogar",
+          },
+        ],
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toEqual({
+      error: "We could not manage expense folders right now. Try again later.",
+      errorCode: TECHNICAL_ERROR_CODES.EXPENSE_FOLDERS_API_UNEXPECTED_ERROR,
+    });
+  });
+
+  it("returns a 500 cataloged envelope when GET throws an unexpected technical error", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const handler = createExpenseFoldersApiHandler({
+      get: jest
+        .fn()
+        .mockRejectedValue(new Error("SQLITE_ERROR: database is locked")),
+      getDatabase: jest.fn().mockReturnValue({} as TursoDatabase),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save: jest.fn(),
+    });
+
+    const request = {
+      method: "GET",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toEqual({
+      error: "We could not manage expense folders right now. Try again later.",
+      errorCode: TECHNICAL_ERROR_CODES.EXPENSE_FOLDERS_API_UNEXPECTED_ERROR,
+    });
   });
 });

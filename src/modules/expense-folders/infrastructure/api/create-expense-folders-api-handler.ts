@@ -20,6 +20,7 @@ import {
 import {
   EXPENSE_FOLDER_COLORS,
   EXPENSE_FOLDER_ICONS,
+  ExpenseFoldersCatalogValidationError,
 } from "@/modules/expense-folders/domain/value-objects/expense-folders-catalog-document";
 
 const expenseFolderSchema = z.object({
@@ -161,7 +162,14 @@ export function createExpenseFoldersApiHandler<TGetResult, TSaveResult>({
         });
       }
 
-      if (error instanceof Error) {
+      // Known catalog validation failures on a write are client-correctable, so
+      // they keep returning a 4xx with the validation message. The same error on
+      // a GET means stored data is corrupt, which is a server problem and falls
+      // through to the cataloged technical envelope below.
+      if (
+        error instanceof ExpenseFoldersCatalogValidationError &&
+        request.method === "POST"
+      ) {
         return response.status(400).json({
           error: error.message,
         });
