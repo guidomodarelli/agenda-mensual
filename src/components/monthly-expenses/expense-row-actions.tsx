@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Folder, FolderX, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Folder, FolderX, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -29,11 +29,14 @@ interface ExpenseRowActionsProps {
   canDeleteAllReceiptsFolderReference: boolean;
   canDeleteMonthlyFolderReference: boolean;
   description: string;
+  hasPaymentLink: boolean;
   monthlyFolderViewUrl: string | null;
   onDeleteAllReceiptsFolderReference: () => void;
   onDelete: () => void;
   onDeleteMonthlyFolderReference: () => void;
+  onDeletePaymentLink: () => void;
   onEdit: () => void;
+  onManagePaymentLink: () => void;
 }
 
 export function ExpenseRowActions({
@@ -42,17 +45,21 @@ export function ExpenseRowActions({
   canDeleteAllReceiptsFolderReference,
   canDeleteMonthlyFolderReference,
   description,
+  hasPaymentLink,
   monthlyFolderViewUrl,
   onDeleteAllReceiptsFolderReference,
   onDelete,
   onDeleteMonthlyFolderReference,
+  onDeletePaymentLink,
   onEdit,
+  onManagePaymentLink,
 }: ExpenseRowActionsProps) {
   const normalizedDescription = description.trim() || "este compromiso";
   const [confirmActionType, setConfirmActionType] = useState<
     | "deleteExpense"
     | "deleteMonthlyFolderReference"
     | "deleteAllReceiptsFolderReference"
+    | "deletePaymentLink"
     | null
   >(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -90,7 +97,16 @@ export function ExpenseRowActions({
               onConfirm: onDeleteAllReceiptsFolderReference,
               title: "¿Querés quitar la referencia de carpeta de comprobantes?",
             }
-          : null;
+          : confirmActionType === "deletePaymentLink"
+            ? {
+                actionLabel: "Eliminar",
+                ariaLabel: `Confirmar eliminación de link de pago para ${normalizedDescription}`,
+                description:
+                  "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
+                onConfirm: onDeletePaymentLink,
+                title: "¿Querés eliminar este link de pago?",
+              }
+            : null;
 
   return (
     <AlertDialog
@@ -138,6 +154,51 @@ export function ExpenseRowActions({
               Eliminar
             </span>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Link de pago</DropdownMenuLabel>
+          {hasPaymentLink ? (
+            <>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setIsMenuOpen(false);
+                  window.setTimeout(() => {
+                    onManagePaymentLink();
+                  }, 0);
+                }}
+              >
+                <span className={styles.menuItem}>
+                  <Pencil aria-hidden="true" />
+                  Editar link de pago
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setIsMenuOpen(false);
+                  setConfirmActionType("deletePaymentLink");
+                }}
+                variant="destructive"
+              >
+                <span className={styles.menuItem}>
+                  <Trash2 aria-hidden="true" className={styles.destructiveIcon} />
+                  Eliminar link de pago
+                </span>
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuItem
+              onSelect={() => {
+                setIsMenuOpen(false);
+                window.setTimeout(() => {
+                  onManagePaymentLink();
+                }, 0);
+              }}
+            >
+              <span className={styles.menuItem}>
+                <Plus aria-hidden="true" />
+                Agregar link de pago
+              </span>
+            </DropdownMenuItem>
+          )}
           {shouldRenderFoldersSection ? (
             <>
               <DropdownMenuSeparator />

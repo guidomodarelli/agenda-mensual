@@ -452,6 +452,24 @@
   justify-items: start;
 }
 
+.descriptionTextRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.descriptionPaymentLink {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.descriptionPaymentLink:hover {
+  color: color-mix(in srgb, var(--primary) 82%, var(--foreground));
+}
+
 .descriptionHighlight {
   color: inherit;
   background: color-mix(in srgb, var(--primary) 30%, transparent);

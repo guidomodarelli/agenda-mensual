@@ -258,11 +258,10 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
   it("focuses payment link input when opening payment link dialog", async () => {
     renderMonthlyExpensesTable([createRow()]);
 
-    const user = userEvent.setup();
-
-    await user.click(
-      screen.getByRole("button", { name: "Agregar link de pago para Internet" }),
-    );
+    await openQuickEditDialog({
+      menuItemLabel: "Agregar link de pago",
+      triggerLabel: "Abrir acciones para Internet",
+    });
 
     await waitFor(() => {
       expect(screen.getByLabelText("Link de pago de Internet")).toHaveFocus();
@@ -278,7 +277,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
     await openQuickEditDialog({
       menuItemLabel: "Editar link de pago",
-      triggerLabel: "Abrir acciones de link de pago para Internet",
+      triggerLabel: "Abrir acciones para Internet",
     });
 
     await waitFor(() => {

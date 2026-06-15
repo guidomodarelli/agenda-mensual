@@ -160,7 +160,6 @@ const SORTABLE_COLUMN_IDS = new Set([
   "subtotal",
   "total",
   "usd",
-  "paymentLink",
   "receiptShareStatus",
   "receiptShareLink",
   LOAN_SORT_COLUMN_ID,
@@ -175,7 +174,6 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "subtotal",
   "total",
   "usd",
-  "paymentLink",
   "receiptShareStatus",
   "receiptShareLink",
   LOAN_SORT_COLUMN_ID,
@@ -250,11 +248,6 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
     columnId: "usd",
     label: "USD",
     type: "numberRange",
-  },
-  {
-    columnId: "paymentLink",
-    label: "Link",
-    type: "presence",
   },
   {
     columnId: "receiptShareStatus",
@@ -496,13 +489,6 @@ interface LoanSortColumnHeaderProps {
   }) => void;
 }
 
-interface PaymentLinkActionsMenuProps {
-  actionDisabled: boolean;
-  expenseDescription: string;
-  onDelete: () => void | Promise<void>;
-  onEdit: () => void;
-}
-
 interface PaymentRecordActionsMenuProps {
   actionDisabled: boolean;
   confirmDeleteActionAriaLabel: string;
@@ -526,82 +512,6 @@ interface QuickEditActionsMenuProps {
   onDelete?: () => void | Promise<void>;
   onEdit: () => void;
   triggerAriaLabel: string;
-}
-
-function PaymentLinkActionsMenu({
-  actionDisabled,
-  expenseDescription,
-  onDelete,
-  onEdit,
-}: PaymentLinkActionsMenuProps) {
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const normalizedExpenseDescription = expenseDescription.trim() || "compromiso";
-
-  return (
-    <AlertDialog onOpenChange={setIsConfirmDialogOpen} open={isConfirmDialogOpen}>
-      <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label={`Abrir acciones de link de pago para ${normalizedExpenseDescription}`}
-            className={styles.paymentLinkActionButton}
-            disabled={actionDisabled}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <MoreVertical aria-hidden="true" className={styles.paymentLinkIcon} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              window.setTimeout(() => {
-                onEdit();
-              }, 0);
-            }}
-          >
-            <Pencil aria-hidden="true" />
-            Editar link de pago
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              window.setTimeout(() => {
-                setIsConfirmDialogOpen(true);
-              }, 0);
-            }}
-            variant="destructive"
-          >
-            <Trash2 aria-hidden="true" />
-            Eliminar link de pago
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Querés eliminar este link de pago?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta acción guarda el cambio inmediatamente en tu archivo mensual.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            aria-label={`Confirmar eliminación de link de pago para ${normalizedExpenseDescription}`}
-            onClick={() => {
-              setIsConfirmDialogOpen(false);
-              void onDelete();
-            }}
-            variant="destructive"
-          >
-            Eliminar
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
 }
 
 function QuickEditActionsMenu({
@@ -3106,13 +3016,42 @@ export function MonthlyExpensesTable({
               )
             : description;
 
+          const paymentLinkUrl = getValidPaymentLinkUrl(row.original.paymentLink);
+          const expenseDescriptionLabel =
+            row.original.description.trim() || "compromiso";
+          const paymentLinkAnchor = paymentLinkUrl ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  aria-label={`Abrir link de pago de ${expenseDescriptionLabel}`}
+                  className={styles.descriptionPaymentLink}
+                  href={paymentLinkUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>Abrir página de pago</TooltipContent>
+            </Tooltip>
+          ) : null;
+
+          const descriptionTextContent = paymentLinkAnchor ? (
+            <span className={styles.descriptionTextRow}>
+              <span>{descriptionContent}</span>
+              {paymentLinkAnchor}
+            </span>
+          ) : (
+            descriptionContent
+          );
+
           if (!folderBadge) {
-            return descriptionContent;
+            return descriptionTextContent;
           }
 
           return (
             <span className={styles.descriptionCell}>
-              <span>{descriptionContent}</span>
+              {descriptionTextContent}
               {folderBadge}
             </span>
           );
@@ -3394,102 +3333,6 @@ export function MonthlyExpensesTable({
             leftValue: leftAmount,
             rightValue: rightAmount,
             sortDirection: getSortDirection("usd"),
-          });
-        },
-      },
-      {
-        accessorKey: "paymentLink",
-        cell: ({ row }) => {
-          const paymentLink = getValidPaymentLinkUrl(row.original.paymentLink);
-          const expenseDescription = row.original.description.trim() || "compromiso";
-
-          if (!paymentLink) {
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label={`Agregar link de pago para ${expenseDescription}`}
-                    className={styles.paymentLinkActionButton}
-                    disabled={actionDisabled}
-                    onClick={() =>
-                      handleOpenPaymentLinkDialog({
-                        expenseDescription,
-                        expenseId: row.original.id,
-                        mode: "create",
-                        paymentLink: row.original.paymentLink,
-                      })}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Plus aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Agregar link de pago</TooltipContent>
-              </Tooltip>
-            );
-          }
-
-          return (
-            <div className={styles.paymentLinkActionsRow}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    className={styles.paymentLinkAction}
-                    href={paymentLink}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Abrir
-                    <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>Abrir página de pago</TooltipContent>
-              </Tooltip>
-
-              <PaymentLinkActionsMenu
-                actionDisabled={actionDisabled}
-                expenseDescription={expenseDescription}
-                onDelete={() => onDeletePaymentLink(row.original.id)}
-                onEdit={() =>
-                  handleOpenPaymentLinkDialog({
-                    expenseDescription,
-                    expenseId: row.original.id,
-                    mode: "edit",
-                    paymentLink: row.original.paymentLink,
-                  })}
-              />
-            </div>
-          );
-        },
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedPresenceFilter(
-            filterValue,
-            getValidPaymentLinkUrl(row.original.paymentLink) != null,
-          ),
-        header: getSortableHeader("Link"),
-        meta: { label: "Link" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          const leftPaymentLink = getValidPaymentLinkUrl(rowA.original.paymentLink);
-          const rightPaymentLink = getValidPaymentLinkUrl(rowB.original.paymentLink);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) =>
-              leftValue.localeCompare(rightValue, "es", {
-                sensitivity: "base",
-              }),
-            leftValue: leftPaymentLink,
-            rightValue: rightPaymentLink,
-            sortDirection: getSortDirection("paymentLink"),
           });
         },
       },
@@ -4103,6 +3946,10 @@ export function MonthlyExpensesTable({
           const canDeleteAllReceiptsFolderReference = isBrokenDriveStatus(
             row.original.allReceiptsFolderStatus,
           );
+          const hasPaymentLink =
+            getValidPaymentLinkUrl(row.original.paymentLink) != null;
+          const expenseDescription =
+            row.original.description.trim() || "compromiso";
 
           return (
             <div className={styles.actionsCell}>
@@ -4114,13 +3961,22 @@ export function MonthlyExpensesTable({
                 }
                 canDeleteMonthlyFolderReference={canDeleteMonthlyFolderReference}
                 description={row.original.description}
+                hasPaymentLink={hasPaymentLink}
                 monthlyFolderViewUrl={monthlyFolderViewUrl}
                 onDelete={() => onDeleteExpense(row.original.id)}
                 onDeleteAllReceiptsFolderReference={() =>
                   onDeleteAllReceiptsFolderReference(row.original.id)}
                 onDeleteMonthlyFolderReference={() =>
                   onDeleteMonthlyFolderReference(row.original.id)}
+                onDeletePaymentLink={() => onDeletePaymentLink(row.original.id)}
                 onEdit={() => onEditExpense(row.original.id)}
+                onManagePaymentLink={() =>
+                  handleOpenPaymentLinkDialog({
+                    expenseDescription,
+                    expenseId: row.original.id,
+                    mode: hasPaymentLink ? "edit" : "create",
+                    paymentLink: row.original.paymentLink,
+                  })}
               />
             </div>
           );

@@ -328,23 +328,16 @@ registerMonthlyExpensesPageDefaultHooks({
     );
   });
 
-  it("renders the Link column after USD when USD is enabled and opens payment links in a new tab", async () => {
+  it("opens the inline payment link in a new tab from the description cell", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
         initialDocument={{
-          exchangeRateLoadError: null,
-          exchangeRateSnapshot: {
-            blueRate: 1290,
-            month: "2026-03",
-            officialRate: 1200,
-            solidarityRate: 1476,
-          },
           items: [
             {
-              currency: "USD",
+              currency: "ARS",
               description: "Electricidad",
               id: "expense-1",
               occurrencesPerMonth: 1,
@@ -358,20 +351,9 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitemcheckbox", { name: /USD/i }));
-    await user.keyboard("{Escape}");
-
-    const headers = screen
-      .getAllByRole("columnheader")
-      .map((header) => header.textContent?.trim() ?? "");
-    const usdHeaderIndex = headers.indexOf("USD");
-    const linkHeaderIndex = headers.indexOf("Link");
-
-    expect(usdHeaderIndex).toBeGreaterThanOrEqual(0);
-    expect(linkHeaderIndex).toBe(usdHeaderIndex + 1);
-
-    const paymentLink = screen.getByRole("link", { name: "Abrir" });
+    const paymentLink = screen.getByRole("link", {
+      name: "Abrir link de pago de Electricidad",
+    });
 
     expect(paymentLink).toHaveAttribute(
       "href",
@@ -1764,7 +1746,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  it("renders Estado de envío, Enviar, Pagos, and Registro de pagos columns after Link", () => {
+  it("renders Estado de envío, Enviar, Pagos, and Registro de pagos columns in order", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -1795,17 +1777,16 @@ registerMonthlyExpensesPageDefaultHooks({
     const headers = screen
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
-    const linkHeaderIndex = headers.indexOf("Link");
     const receiptShareStatusHeaderIndex = headers.indexOf("Estado de envío");
     const receiptShareLinkHeaderIndex = headers.indexOf("Enviar");
     const paidHeaderIndex = headers.indexOf("Pagos");
     const paymentHistoryHeaderIndex = headers.indexOf("Registro de pagos");
 
-    expect(linkHeaderIndex).toBeGreaterThanOrEqual(0);
-    expect(receiptShareStatusHeaderIndex).toBe(linkHeaderIndex + 1);
+    expect(receiptShareStatusHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(receiptShareLinkHeaderIndex).toBe(receiptShareStatusHeaderIndex + 1);
     expect(paidHeaderIndex).toBe(receiptShareLinkHeaderIndex + 1);
     expect(paymentHistoryHeaderIndex).toBe(paidHeaderIndex + 1);
+    expect(headers).not.toContain("Link");
     expect(headers).not.toContain("Carpeta del mes actual");
     expect(headers).not.toContain("Carpeta de comprobantes");
   });
@@ -2289,64 +2270,6 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(getMonthlyExpensesSavePayload(fetchMock).items[0]?.folders).toBeUndefined();
-  });
-
-  it("sorts Link keeping empty values at the end in both directions", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Con link A",
-              id: "expense-1",
-              occurrencesPerMonth: 1,
-              paymentLink: "aaa.com",
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Con link Z",
-              id: "expense-2",
-              occurrencesPerMonth: 1,
-              paymentLink: "zzz.com",
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Sin link",
-              id: "expense-3",
-              occurrencesPerMonth: 1,
-              paymentLink: "",
-              subtotal: 100,
-              total: 100,
-            },
-          ],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Ordenar Link" }));
-
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Con link A",
-      "Con link Z",
-      "Sin link",
-    ]);
-
-    await user.click(screen.getByRole("button", { name: "Ordenar Link" }));
-
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Con link Z",
-      "Con link A",
-      "Sin link",
-    ]);
   });
 
   it("sorts Estado de envío with N/A rows always at the end", async () => {

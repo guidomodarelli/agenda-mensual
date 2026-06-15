@@ -339,8 +339,6 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.type(screen.getByRole("spinbutton", { name: "Subtotal Mínimo" }), "150");
     await user.click(screen.getByRole("combobox", { name: "Estado de envío" }));
     await user.click(screen.getByRole("option", { name: "Enviado" }));
-    await user.click(screen.getByRole("combobox", { name: "Link" }));
-    await user.click(screen.getByRole("option", { name: "Sin valor" }));
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
     expect(screen.queryByText("Pendiente con link")).not.toBeInTheDocument();
@@ -400,7 +398,6 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Subtotal" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("columnheader", { name: "Link" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     await user.click(screen.getByRole("menuitem", { name: "Restablecer" }));
@@ -408,7 +405,6 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("columnheader", { name: "Subtotal" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Link" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "USD" })).not.toBeInTheDocument();
   });
 
@@ -707,7 +703,6 @@ registerMonthlyExpensesPageDefaultHooks({
       JSON.stringify({
         columnVisibility: {
           subtotal: false,
-          paymentLink: false,
         },
         loanSortMode: "paidInstallments",
         sorting: [
@@ -765,9 +760,6 @@ registerMonthlyExpensesPageDefaultHooks({
     await waitFor(() => {
       expect(
         screen.queryByRole("columnheader", { name: "Subtotal" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("columnheader", { name: "Link" }),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("columnheader", { name: "USD" }),

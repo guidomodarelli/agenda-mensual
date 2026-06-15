@@ -445,7 +445,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
   }, 15000);
 
-  it("adds a payment link from the Link column plus button, normalizes protocol, and persists", async () => {
+  it("adds a payment link from the row actions menu, normalizes protocol, and persists", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -484,8 +484,11 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(
       screen.getByRole("button", {
-        name: "Agregar link de pago para Electricidad",
+        name: "Abrir acciones para Electricidad",
       }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
     );
     await user.type(screen.getByLabelText("Link de pago de Electricidad"), "google.com");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
@@ -506,13 +509,12 @@ registerMonthlyExpensesPageDefaultHooks({
       });
     });
 
-    expect(screen.getByRole("link", { name: "Abrir" })).toHaveAttribute(
-      "href",
-      "https://google.com",
-    );
+    expect(
+      screen.getByRole("link", { name: "Abrir link de pago de Electricidad" }),
+    ).toHaveAttribute("href", "https://google.com");
   });
 
-  it("edits an existing payment link from the Link column pencil button and persists", async () => {
+  it("edits an existing payment link from the row actions menu and persists", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -551,7 +553,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(
       screen.getByRole("button", {
-        name: "Abrir acciones de link de pago para Electricidad",
+        name: "Abrir acciones para Electricidad",
       }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Editar link de pago" }));
@@ -582,7 +584,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
   });
 
-  it("deletes an existing payment link from the Link column trash button only after confirmation and shows plus again", async () => {
+  it("deletes an existing payment link from the row actions menu only after confirmation", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -621,7 +623,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(
       screen.getByRole("button", {
-        name: "Abrir acciones de link de pago para Electricidad",
+        name: "Abrir acciones para Electricidad",
       }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Eliminar link de pago" }));
@@ -659,9 +661,19 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(
-      screen.getByRole("button", {
-        name: "Agregar link de pago para Electricidad",
+      screen.queryByRole("link", {
+        name: "Abrir link de pago de Electricidad",
       }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Abrir acciones para Electricidad",
+      }),
+    );
+
+    expect(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
     ).toBeInTheDocument();
   });
 
@@ -704,7 +716,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(
       screen.getByRole("button", {
-        name: "Abrir acciones de link de pago para Electricidad",
+        name: "Abrir acciones para Electricidad",
       }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Eliminar link de pago" }));
@@ -719,7 +731,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(
       screen.getByRole("link", {
-        name: "Abrir",
+        name: "Abrir link de pago de Electricidad",
       }),
     ).toHaveAttribute("href", "https://pagos.empresa-energia.com");
   });
@@ -763,8 +775,11 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(
       screen.getByRole("button", {
-        name: "Agregar link de pago para Electricidad",
+        name: "Abrir acciones para Electricidad",
       }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
     );
     await user.type(screen.getByLabelText("Link de pago de Electricidad"), "asdads");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
