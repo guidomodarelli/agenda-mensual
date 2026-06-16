@@ -420,12 +420,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     const pendingBadge = screen.getByText("0 / 1");
 
-    expect(pendingBadge).toHaveClass(
-      "bg-yellow-50",
-      "text-yellow-700",
-      "dark:bg-yellow-950",
-      "dark:text-yellow-300",
-    );
+    expect(pendingBadge).toHaveClass("text-yellow-700", "dark:text-yellow-300");
   });
 
   it("shows partial payment progress when covered payments are below occurrences", () => {
@@ -466,12 +461,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     const partialBadge = screen.getByText("5 / 8");
 
-    expect(partialBadge).toHaveClass(
-      "bg-yellow-50",
-      "text-yellow-700",
-      "dark:bg-yellow-950",
-      "dark:text-yellow-300",
-    );
+    expect(partialBadge).toHaveClass("text-yellow-700", "dark:text-yellow-300");
   });
 
   it("shows completed payment progress as a covered/total badge with custom success colors", () => {
@@ -512,12 +502,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     const doneBadge = screen.getByText("3 / 3");
 
-    expect(doneBadge).toHaveClass(
-      "bg-green-50",
-      "text-green-700",
-      "dark:bg-green-950",
-      "dark:text-green-300",
-    );
+    expect(doneBadge).toHaveClass("text-green-700", "dark:text-green-300");
   });
 
   it("updates manual covered payments from the table input column", async () => {

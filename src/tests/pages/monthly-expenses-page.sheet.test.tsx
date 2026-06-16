@@ -2008,7 +2008,9 @@ registerMonthlyExpensesPageDefaultHooks({
     // Cambiar solo la carpeta (único edit) desde el picker dentro del sheet.
     const sheet = screen.getByRole("dialog");
     await user.click(within(sheet).getByRole("button", { name: "Sin carpeta" }));
-    await user.click(within(sheet).getByRole("button", { name: "Servicios" }));
+    // El picker abre sus opciones en un Popover portaleado fuera del dialog, así
+    // que la opción "Servicios" se busca a nivel documento, no dentro del sheet.
+    await user.click(await screen.findByRole("button", { name: "Servicios" }));
 
     const overlay = document.querySelector("[data-slot='dialog-overlay']");
     expect(overlay).not.toBeNull();
