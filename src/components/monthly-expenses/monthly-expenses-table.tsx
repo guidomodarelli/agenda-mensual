@@ -3523,8 +3523,7 @@ export function MonthlyExpensesTable({
                               row.original.occurrencesPerMonth,
                             occurrencesUnit: row.original.occurrencesUnit,
                             subtotal: row.original.subtotal,
-                            subtotalUnit:
-                              row.original.subtotalUnit ?? "occurrence",
+                            subtotalUnit,
                           });
                         }, 0);
                       }}
@@ -3674,9 +3673,6 @@ export function MonthlyExpensesTable({
             requiredPayments > 0
               ? normalizedCoveredPayments / requiredPayments
               : 0;
-          const displayedCoveredPayments = isComplete
-            ? coveredPayments
-            : normalizedCoveredPayments;
 
           return (
             <span
@@ -3688,7 +3684,7 @@ export function MonthlyExpensesTable({
               )}
             >
               <PaymentProgressRing fraction={completionFraction} />
-              {displayedCoveredPayments} / {requiredPayments}
+              {normalizedCoveredPayments} / {requiredPayments}
             </span>
           );
         },
