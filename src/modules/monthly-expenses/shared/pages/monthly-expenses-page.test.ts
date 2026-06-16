@@ -449,7 +449,33 @@ describe("monthly expenses page mappers", () => {
       month: "2026-03",
     })[0];
 
-    expect(getExpenseValidationMessage("2026-03", editableRow, "edit")).toBeNull();
+    // Sharing was already enabled on the original row, so an empty legacy phone
+    // is tolerated while editing other fields.
+    expect(
+      getExpenseValidationMessage("2026-03", editableRow, "edit", editableRow),
+    ).toBeNull();
+  });
+
+  it("blocks edit mode when sharing is newly enabled without a phone", () => {
+    const originalRow = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          requiresReceiptShare: false,
+          subtotal: 100,
+          total: 100,
+        },
+      ],
+      month: "2026-03",
+    })[0];
+    const draft = { ...originalRow, requiresReceiptShare: true };
+
+    expect(
+      getExpenseValidationMessage("2026-03", draft, "edit", originalRow),
+    ).toBe("Corregí los errores antes de continuar.");
   });
 
   it("blocks edit mode when the entered receipt share phone is invalid", () => {
