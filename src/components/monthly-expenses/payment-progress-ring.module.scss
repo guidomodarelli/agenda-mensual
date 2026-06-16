@@ -1,0 +1,8 @@
+.paymentProgressRing {
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+
+.paymentProgressRingTrack {
+  stroke: color-mix(in srgb, var(--border) 70%, transparent);
+}

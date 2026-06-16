@@ -123,6 +123,7 @@ import {
 } from "./expense-edit-validation";
 import { OccurrenceDurationInput } from "./occurrence-duration-input";
 import { formatSubtotalMultiplierLabel } from "./occurrences-unit";
+import { PaymentProgressRing } from "./payment-progress-ring";
 import {
   getValidPaymentLink as getValidPaymentLinkUrl,
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
@@ -1066,53 +1067,6 @@ function getSortableHeader(label: string) {
       </span>
     );
   };
-}
-
-const PAYMENT_PROGRESS_RING_RADIUS = 7;
-const PAYMENT_PROGRESS_RING_CIRCUMFERENCE =
-  2 * Math.PI * PAYMENT_PROGRESS_RING_RADIUS;
-
-/**
- * Compact circular progress indicator for the payments column. The arc inherits
- * the surrounding text color (green when complete, yellow when pending) through
- * `currentColor`, so it stays in sync with the numeric label without extra props.
- */
-function PaymentProgressRing({ fraction }: { fraction: number }) {
-  const clampedFraction = Math.min(Math.max(fraction, 0), 1);
-  const dashOffset =
-    PAYMENT_PROGRESS_RING_CIRCUMFERENCE * (1 - clampedFraction);
-
-  return (
-    <svg
-      aria-hidden="true"
-      className={styles.paymentProgressRing}
-      height="18"
-      viewBox="0 0 18 18"
-      width="18"
-    >
-      <circle
-        className={styles.paymentProgressRingTrack}
-        cx="9"
-        cy="9"
-        fill="none"
-        r={PAYMENT_PROGRESS_RING_RADIUS}
-        strokeWidth="2.5"
-      />
-      {clampedFraction > 0 ? (
-        <circle
-          cx="9"
-          cy="9"
-          fill="none"
-          r={PAYMENT_PROGRESS_RING_RADIUS}
-          stroke="currentColor"
-          strokeDasharray={PAYMENT_PROGRESS_RING_CIRCUMFERENCE}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          strokeWidth="2.5"
-        />
-      ) : null}
-    </svg>
-  );
 }
 
 /**
