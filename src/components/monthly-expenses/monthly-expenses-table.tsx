@@ -76,7 +76,6 @@ import {
   ChevronDown,
   ChevronUp,
   CircleX,
-  EyeOff,
   ExternalLink,
   Link2,
   Mail,
@@ -697,7 +696,6 @@ function SortModeColumnHeader<TMode extends string>({
   sortOptions,
 }: SortModeColumnHeaderProps<TMode>) {
   const canSort = column.getCanSort();
-  const canHide = column.getCanHide();
   const currentSortDirection = column.getIsSorted() === "desc" ? "desc" : "asc";
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [draftSortMode, setDraftSortMode] = useState<TMode>(sortMode);
@@ -718,16 +716,6 @@ function SortModeColumnHeader<TMode extends string>({
     return (
       <span className={styles.sortableHeader}>
         <span className={styles.headLabel}>{label}</span>
-        {canHide ? (
-          <button
-            aria-label={`Ocultar columna ${label}`}
-            className={styles.sortIconButton}
-            onClick={() => column.toggleVisibility(false)}
-            type="button"
-          >
-            <EyeOff aria-hidden="true" />
-          </button>
-        ) : null}
       </span>
     );
   }
@@ -836,16 +824,6 @@ function SortModeColumnHeader<TMode extends string>({
             </div>
           </PopoverContent>
         </Popover>
-        {canHide ? (
-          <button
-            aria-label={`Ocultar columna ${label}`}
-            className={styles.sortIconButton}
-            onClick={() => column.toggleVisibility(false)}
-            type="button"
-          >
-            <EyeOff aria-hidden="true" />
-          </button>
-        ) : null}
       </span>
     </div>
   );
@@ -1062,22 +1040,10 @@ function getSortableHeader(label: string) {
       toggleVisibility: (value?: boolean) => void;
     };
   }) {
-    const canHide = column.getCanHide();
-
     if (!column.getCanSort()) {
       return (
         <span className={styles.sortableHeader}>
           <span className={styles.headLabel}>{label}</span>
-          {canHide ? (
-            <button
-              aria-label={`Ocultar columna ${label}`}
-              className={styles.sortIconButton}
-              onClick={() => column.toggleVisibility(false)}
-              type="button"
-            >
-              <EyeOff aria-hidden="true" />
-            </button>
-          ) : null}
         </span>
       );
     }
@@ -1097,16 +1063,6 @@ function getSortableHeader(label: string) {
         >
           <SortIcon aria-hidden="true" />
         </button>
-        {canHide ? (
-          <button
-            aria-label={`Ocultar columna ${label}`}
-            className={styles.sortIconButton}
-            onClick={() => column.toggleVisibility(false)}
-            type="button"
-          >
-            <EyeOff aria-hidden="true" />
-          </button>
-        ) : null}
       </span>
     );
   };

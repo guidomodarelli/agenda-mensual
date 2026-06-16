@@ -280,8 +280,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
   });
 
-  it("shows hide icons only for hideable headers and hides columns from the header controls", async () => {
-    const user = userEvent.setup();
+  it("does not expose hide controls in column headers", async () => {
 
     renderWithProviders(
       <MonthlyExpensesPage
@@ -317,32 +316,8 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.queryByRole("button", { name: "Ocultar columna Descripción" }),
+      screen.queryByRole("button", { name: /^Ocultar columna/ }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Ocultar columna Subtotal" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Ocultar columna Deuda / cuotas" }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Ocultar columna Subtotal" }));
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole("columnheader", { name: "Subtotal" }),
-      ).not.toBeInTheDocument();
-    });
-
-    await user.click(
-      screen.getByRole("button", { name: "Ocultar columna Deuda / cuotas" }),
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole("columnheader", { name: "Deuda / cuotas" }),
-      ).not.toBeInTheDocument();
-    });
   });
 
   // The "Estado de envío" enum advanced filter was removed in the refactor (send
