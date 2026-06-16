@@ -56,7 +56,20 @@ import {
 
 type PresenceFilterValue = "hasValue" | "noValue";
 
-export type DataTableAdvancedFilterType = "numberRange" | "enum" | "presence";
+/**
+ * Modos de un filtro de rango de año-mes:
+ * - `hasValue` / `noValue`: presencia (con fechas / sin fechas).
+ * - `range`: acota por cota inferior y superior.
+ * - `from`: solo cota inferior.
+ * - `to`: solo cota superior.
+ */
+type YearMonthRangeFilterMode = "hasValue" | "noValue" | "range" | "from" | "to";
+
+export type DataTableAdvancedFilterType =
+  | "numberRange"
+  | "enum"
+  | "presence"
+  | "yearMonthRange";
 
 export interface DataTableAdvancedEnumOption {
   label: string;
@@ -83,6 +96,12 @@ export type DataTableColumnFilterValue =
   | {
       kind: "presence";
       value: PresenceFilterValue;
+    }
+  | {
+      kind: "yearMonthRange";
+      mode: YearMonthRangeFilterMode;
+      max?: number;
+      min?: number;
     };
 
 type DataTableAdvancedFilterDraftValue =
@@ -98,6 +117,12 @@ type DataTableAdvancedFilterDraftValue =
   | {
       kind: "presence";
       value: PresenceFilterValue | "";
+    }
+  | {
+      kind: "yearMonthRange";
+      mode: YearMonthRangeFilterMode | "";
+      max: string;
+      min: string;
     };
 
 interface DataTableProps<TData, TValue> {
@@ -178,7 +203,97 @@ const ADVANCED_FILTERS_INVALID_MIN_MESSAGE = "Ingresá un mínimo válido.";
 const ADVANCED_FILTERS_INVALID_MAX_MESSAGE = "Ingresá un máximo válido.";
 const ADVANCED_FILTERS_INVALID_RANGE_MESSAGE =
   "El mínimo no puede ser mayor que el máximo.";
+const ADVANCED_FILTERS_YEAR_MONTH_ALL_OPTION = "Todos";
+const ADVANCED_FILTERS_YEAR_MONTH_HAS_OPTION = "Con fechas";
+const ADVANCED_FILTERS_YEAR_MONTH_HAS_NOT_OPTION = "Sin fechas";
+const ADVANCED_FILTERS_YEAR_MONTH_RANGE_OPTION = "Rango";
+const ADVANCED_FILTERS_YEAR_MONTH_FROM_OPTION = "Desde";
+const ADVANCED_FILTERS_YEAR_MONTH_TO_OPTION = "Hasta";
+const ADVANCED_FILTERS_YEAR_MONTH_FROM_LABEL = "Desde (MM/AAAA)";
+const ADVANCED_FILTERS_YEAR_MONTH_TO_LABEL = "Hasta (MM/AAAA)";
+const ADVANCED_FILTERS_YEAR_MONTH_PLACEHOLDER = "MM/AAAA";
+const ADVANCED_FILTERS_INVALID_YEAR_MONTH_FROM_MESSAGE =
+  "Ingresá un desde válido (MM/AAAA).";
+const ADVANCED_FILTERS_INVALID_YEAR_MONTH_TO_MESSAGE =
+  "Ingresá un hasta válido (MM/AAAA).";
+const ADVANCED_FILTERS_INVALID_YEAR_MONTH_RANGE_MESSAGE =
+  "El desde no puede ser mayor que el hasta.";
+const YEAR_MONTH_INPUT_PATTERN = /^(0[1-9]|1[0-2])\/(\d{4})$/;
 const EMPTY_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] = [];
+
+/**
+ * Parsea un texto `MM/AAAA` a su valor numérico comparable `AAAAMM`
+ * (por ejemplo `06/2026` → `202606`). Devuelve `null` cuando el texto no es
+ * un mes-año válido.
+ */
+export function parseYearMonthFilterInput(value: string): number | null {
+  const match = YEAR_MONTH_INPUT_PATTERN.exec(value.trim());
+
+  if (!match) {
+    return null;
+  }
+
+  const [, month, year] = match;
+
+  return Number(`${year}${month}`);
+}
+
+/**
+ * Formatea un valor numérico `AAAAMM` de vuelta a `MM/AAAA` para rehidratar
+ * los inputs del filtro al reabrir el diálogo.
+ */
+function formatYearMonthFilterInput(value: number): string {
+  const year = Math.floor(value / 100);
+  const month = value % 100;
+
+  return `${String(month).padStart(2, "0")}/${year}`;
+}
+
+/**
+ * Evalúa un filtro de rango de año-mes contra el valor numérico `AAAAMM` de una
+ * fila (`null` cuando la fila no tiene fecha). Devuelve `true` cuando el filtro
+ * no aplica, replicando el contrato de los demás matchers de la tabla.
+ */
+export function matchesAdvancedYearMonthRangeFilter(
+  columnFilterValue: unknown,
+  value: number | null,
+): boolean {
+  if (
+    !columnFilterValue ||
+    typeof columnFilterValue !== "object" ||
+    (columnFilterValue as DataTableColumnFilterValue).kind !== "yearMonthRange"
+  ) {
+    return true;
+  }
+
+  const filterValue = columnFilterValue as Extract<
+    DataTableColumnFilterValue,
+    { kind: "yearMonthRange" }
+  >;
+  const hasValue = value != null && Number.isFinite(value);
+
+  if (filterValue.mode === "hasValue") {
+    return hasValue;
+  }
+
+  if (filterValue.mode === "noValue") {
+    return !hasValue;
+  }
+
+  if (!hasValue) {
+    return false;
+  }
+
+  if (filterValue.min != null && (value as number) < filterValue.min) {
+    return false;
+  }
+
+  if (filterValue.max != null && (value as number) > filterValue.max) {
+    return false;
+  }
+
+  return true;
+}
 
 function normalizeFilterToken(value: string): string {
   return value
@@ -219,6 +334,15 @@ function getDefaultAdvancedFilterDraftValue(
     };
   }
 
+  if (filterType === "yearMonthRange") {
+    return {
+      kind: "yearMonthRange",
+      max: "",
+      min: "",
+      mode: "",
+    };
+  }
+
   return {
     kind: "presence",
     value: "",
@@ -244,6 +368,10 @@ function isAdvancedFilterDraftValueActive(
     return (
       filterValue.min.trim().length > 0 || filterValue.max.trim().length > 0
     );
+  }
+
+  if (filterValue.kind === "yearMonthRange") {
+    return filterValue.mode !== "";
   }
 
   return filterValue.value !== "";
@@ -586,6 +714,42 @@ export function DataTable<TData, TValue>({
         advancedFiltersDraftByColumn[advancedFilterConfig.columnId] ??
         getDefaultAdvancedFilterDraftValue(advancedFilterConfig.type);
 
+      if (
+        advancedFilterConfig.type === "yearMonthRange" &&
+        draftValue.kind === "yearMonthRange"
+      ) {
+        const requiresMin =
+          draftValue.mode === "range" || draftValue.mode === "from";
+        const requiresMax =
+          draftValue.mode === "range" || draftValue.mode === "to";
+        const parsedFromValue = parseYearMonthFilterInput(draftValue.min);
+        const parsedToValue = parseYearMonthFilterInput(draftValue.max);
+
+        if (requiresMin && parsedFromValue == null) {
+          nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
+            ADVANCED_FILTERS_INVALID_YEAR_MONTH_FROM_MESSAGE;
+          continue;
+        }
+
+        if (requiresMax && parsedToValue == null) {
+          nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
+            ADVANCED_FILTERS_INVALID_YEAR_MONTH_TO_MESSAGE;
+          continue;
+        }
+
+        if (
+          draftValue.mode === "range" &&
+          parsedFromValue != null &&
+          parsedToValue != null &&
+          parsedFromValue > parsedToValue
+        ) {
+          nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
+            ADVANCED_FILTERS_INVALID_YEAR_MONTH_RANGE_MESSAGE;
+        }
+
+        continue;
+      }
+
       if (advancedFilterConfig.type !== "numberRange" || draftValue.kind !== "numberRange") {
         continue;
       }
@@ -652,6 +816,27 @@ export function DataTable<TData, TValue>({
         continue;
       }
 
+      if (advancedFilterConfig.type === "yearMonthRange") {
+        const appliedYearMonthRange =
+          appliedFilterValue?.kind === "yearMonthRange"
+            ? appliedFilterValue
+            : null;
+
+        nextDraftByColumn[advancedFilterConfig.columnId] = {
+          kind: "yearMonthRange",
+          max:
+            appliedYearMonthRange?.max != null
+              ? formatYearMonthFilterInput(appliedYearMonthRange.max)
+              : "",
+          min:
+            appliedYearMonthRange?.min != null
+              ? formatYearMonthFilterInput(appliedYearMonthRange.min)
+              : "",
+          mode: appliedYearMonthRange?.mode ?? "",
+        };
+        continue;
+      }
+
       nextDraftByColumn[advancedFilterConfig.columnId] = {
         kind: "presence",
         value:
@@ -701,6 +886,63 @@ export function DataTable<TData, TValue>({
         nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
           kind: "enum",
           value: draftFilterValue.value,
+        };
+        continue;
+      }
+
+      if (draftFilterValue.kind === "yearMonthRange") {
+        const { mode } = draftFilterValue;
+
+        if (mode === "") {
+          continue;
+        }
+
+        if (mode === "hasValue" || mode === "noValue") {
+          nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
+            kind: "yearMonthRange",
+            mode,
+          };
+          continue;
+        }
+
+        const parsedFromValue = parseYearMonthFilterInput(draftFilterValue.min);
+        const parsedToValue = parseYearMonthFilterInput(draftFilterValue.max);
+
+        if (mode === "range") {
+          if (parsedFromValue == null || parsedToValue == null) {
+            continue;
+          }
+
+          nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
+            kind: "yearMonthRange",
+            max: parsedToValue,
+            min: parsedFromValue,
+            mode,
+          };
+          continue;
+        }
+
+        if (mode === "from") {
+          if (parsedFromValue == null) {
+            continue;
+          }
+
+          nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
+            kind: "yearMonthRange",
+            min: parsedFromValue,
+            mode,
+          };
+          continue;
+        }
+
+        if (parsedToValue == null) {
+          continue;
+        }
+
+        nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
+          kind: "yearMonthRange",
+          max: parsedToValue,
+          mode,
         };
         continue;
       }
@@ -1364,6 +1606,137 @@ export function DataTable<TData, TValue>({
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                    ) : null}
+
+                    {advancedFilterConfig.type === "yearMonthRange" &&
+                    draftFilterValue.kind === "yearMonthRange" ? (
+                      <div className="grid gap-2">
+                        <Select
+                          onValueChange={(nextValue) => {
+                            setAdvancedFiltersDraftByColumn((previousState) => {
+                              const previousDraftValue =
+                                previousState[advancedFilterConfig.columnId];
+
+                              return {
+                                ...previousState,
+                                [advancedFilterConfig.columnId]: {
+                                  kind: "yearMonthRange",
+                                  max:
+                                    previousDraftValue?.kind === "yearMonthRange"
+                                      ? previousDraftValue.max
+                                      : "",
+                                  min:
+                                    previousDraftValue?.kind === "yearMonthRange"
+                                      ? previousDraftValue.min
+                                      : "",
+                                  mode:
+                                    nextValue === ADVANCED_FILTERS_ALL_VALUE
+                                      ? ""
+                                      : (nextValue as YearMonthRangeFilterMode),
+                                },
+                              };
+                            });
+                          }}
+                          value={
+                            draftFilterValue.mode === ""
+                              ? ADVANCED_FILTERS_ALL_VALUE
+                              : draftFilterValue.mode
+                          }
+                        >
+                          <SelectTrigger
+                            aria-label={advancedFilterConfig.label}
+                            className="w-full"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={ADVANCED_FILTERS_ALL_VALUE}>
+                              {ADVANCED_FILTERS_YEAR_MONTH_ALL_OPTION}
+                            </SelectItem>
+                            <SelectItem value="hasValue">
+                              {ADVANCED_FILTERS_YEAR_MONTH_HAS_OPTION}
+                            </SelectItem>
+                            <SelectItem value="noValue">
+                              {ADVANCED_FILTERS_YEAR_MONTH_HAS_NOT_OPTION}
+                            </SelectItem>
+                            <SelectItem value="range">
+                              {ADVANCED_FILTERS_YEAR_MONTH_RANGE_OPTION}
+                            </SelectItem>
+                            <SelectItem value="from">
+                              {ADVANCED_FILTERS_YEAR_MONTH_FROM_OPTION}
+                            </SelectItem>
+                            <SelectItem value="to">
+                              {ADVANCED_FILTERS_YEAR_MONTH_TO_OPTION}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {draftFilterValue.mode === "range" ||
+                        draftFilterValue.mode === "from" ? (
+                          <Input
+                            aria-label={`${advancedFilterConfig.label} ${ADVANCED_FILTERS_YEAR_MONTH_FROM_LABEL}`}
+                            onChange={(event) => {
+                              const nextValue = event.target.value;
+
+                              setAdvancedFiltersDraftByColumn((previousState) => {
+                                const previousDraftValue =
+                                  previousState[advancedFilterConfig.columnId];
+
+                                return {
+                                  ...previousState,
+                                  [advancedFilterConfig.columnId]: {
+                                    kind: "yearMonthRange",
+                                    max:
+                                      previousDraftValue?.kind === "yearMonthRange"
+                                        ? previousDraftValue.max
+                                        : "",
+                                    min: nextValue,
+                                    mode:
+                                      previousDraftValue?.kind === "yearMonthRange"
+                                        ? previousDraftValue.mode
+                                        : "",
+                                  },
+                                };
+                              });
+                            }}
+                            placeholder={ADVANCED_FILTERS_YEAR_MONTH_PLACEHOLDER}
+                            value={draftFilterValue.min}
+                          />
+                        ) : null}
+
+                        {draftFilterValue.mode === "range" ||
+                        draftFilterValue.mode === "to" ? (
+                          <Input
+                            aria-label={`${advancedFilterConfig.label} ${ADVANCED_FILTERS_YEAR_MONTH_TO_LABEL}`}
+                            onChange={(event) => {
+                              const nextValue = event.target.value;
+
+                              setAdvancedFiltersDraftByColumn((previousState) => {
+                                const previousDraftValue =
+                                  previousState[advancedFilterConfig.columnId];
+
+                                return {
+                                  ...previousState,
+                                  [advancedFilterConfig.columnId]: {
+                                    kind: "yearMonthRange",
+                                    max: nextValue,
+                                    min:
+                                      previousDraftValue?.kind === "yearMonthRange"
+                                        ? previousDraftValue.min
+                                        : "",
+                                    mode:
+                                      previousDraftValue?.kind === "yearMonthRange"
+                                        ? previousDraftValue.mode
+                                        : "",
+                                  },
+                                };
+                              });
+                            }}
+                            placeholder={ADVANCED_FILTERS_YEAR_MONTH_PLACEHOLDER}
+                            value={draftFilterValue.max}
+                          />
+                        ) : null}
+                      </div>
                     ) : null}
 
                     {columnValidationMessage ? (

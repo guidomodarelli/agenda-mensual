@@ -20,6 +20,7 @@ import {
   DataTable,
   type DataTableAdvancedFilterConfig,
   type DataTableColumnFilterValue,
+  matchesAdvancedYearMonthRangeFilter,
 } from "@/components/ui/data-table";
 import {
   DropdownMenu,
@@ -138,10 +139,14 @@ type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
-const LOAN_DIRECTION_COLUMN_ID = "loanDirection";
+/**
+ * Criterio de orden de la columna unificada «Vigencia»: por mes de inicio o
+ * por mes de fin de cuota.
+ */
+type VigenciaSortMode = "startMonth" | "endMonth";
+const DEFAULT_VIGENCIA_SORT_MODE: VigenciaSortMode = "startMonth";
 const LOAN_SORT_COLUMN_ID = "loanProgress";
-const LOAN_INSTALLMENT_START_COLUMN_ID = "loanInstallmentStart";
-const LOAN_INSTALLMENT_END_COLUMN_ID = "loanInstallmentEnd";
+const LOAN_INSTALLMENT_RANGE_COLUMN_ID = "loanInstallmentRange";
 const BULK_SELECTION_COLUMN_ID = "bulkSelection";
 const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
   "control-mensual.monthly-expenses.table-preferences";
@@ -168,9 +173,7 @@ const SORTABLE_COLUMN_IDS = new Set([
   "usd",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
-  LOAN_INSTALLMENT_START_COLUMN_ID,
-  LOAN_INSTALLMENT_END_COLUMN_ID,
-  LOAN_DIRECTION_COLUMN_ID,
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
 ]);
 const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "paymentsProgress",
@@ -180,9 +183,7 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "usd",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
-  LOAN_INSTALLMENT_START_COLUMN_ID,
-  LOAN_INSTALLMENT_END_COLUMN_ID,
-  LOAN_DIRECTION_COLUMN_ID,
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
 ]);
 const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
   {
@@ -209,6 +210,30 @@ const LOAN_SORT_DIRECTION_OPTIONS: Array<{
   {
     label: "Descendente",
     value: "desc",
+  },
+];
+const VIGENCIA_SORT_OPTIONS: Array<{ label: string; value: VigenciaSortMode }> = [
+  {
+    label: "Inicio cuota",
+    value: "startMonth",
+  },
+  {
+    label: "Fin cuota",
+    value: "endMonth",
+  },
+];
+const LOAN_DIRECTION_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
+  {
+    label: "Yo debo",
+    value: "payable",
+  },
+  {
+    label: "Me deben",
+    value: "receivable",
+  },
+  {
+    label: "Sin deuda/préstamo",
+    value: "none",
   },
 ];
 
@@ -268,37 +293,14 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
   },
   {
     columnId: "lenderName",
-    label: "Prestamista",
-    type: "presence",
-  },
-  {
-    columnId: LOAN_INSTALLMENT_START_COLUMN_ID,
-    label: "Inicio cuota",
-    type: "presence",
-  },
-  {
-    columnId: LOAN_INSTALLMENT_END_COLUMN_ID,
-    label: "Fin cuota",
-    type: "presence",
-  },
-  {
-    columnId: LOAN_DIRECTION_COLUMN_ID,
-    enumOptions: [
-      {
-        label: "Yo debo",
-        value: "payable",
-      },
-      {
-        label: "Me deben",
-        value: "receivable",
-      },
-      {
-        label: "Sin deuda/préstamo",
-        value: "none",
-      },
-    ],
+    enumOptions: LOAN_DIRECTION_FILTER_OPTIONS,
     label: "Dirección",
     type: "enum",
+  },
+  {
+    columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+    label: "Vigencia",
+    type: "yearMonthRange",
   },
 ];
 
@@ -311,11 +313,21 @@ function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
   ];
 }
 
+function buildVigenciaSortingState(direction: "asc" | "desc"): SortingState {
+  return [
+    {
+      desc: direction === "desc",
+      id: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+    },
+  ];
+}
+
 interface MonthlyExpensesTablePreferences {
   columnVisibility: VisibilityState;
   loanSortMode: LoanSortMode;
   moveCompletedToEnd: boolean;
   sorting: SortingState;
+  vigenciaSortMode: VigenciaSortMode;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -328,6 +340,14 @@ function parsePersistedLoanSortMode(value: unknown): LoanSortMode | null {
     value !== "remainingInstallments" &&
     value !== "totalInstallments"
   ) {
+    return null;
+  }
+
+  return value;
+}
+
+function parsePersistedVigenciaSortMode(value: unknown): VigenciaSortMode | null {
+  if (value !== "startMonth" && value !== "endMonth") {
     return null;
   }
 
@@ -414,6 +434,9 @@ function getPersistedMonthlyExpensesTablePreferences(): MonthlyExpensesTablePref
     const loanSortMode =
       parsePersistedLoanSortMode(parsedPreferences.loanSortMode) ??
       DEFAULT_LOAN_SORT_MODE;
+    const vigenciaSortMode =
+      parsePersistedVigenciaSortMode(parsedPreferences.vigenciaSortMode) ??
+      DEFAULT_VIGENCIA_SORT_MODE;
     const moveCompletedToEnd = parsePersistedMoveCompletedToEnd(
       parsedPreferences.moveCompletedToEnd,
     );
@@ -430,6 +453,7 @@ function getPersistedMonthlyExpensesTablePreferences(): MonthlyExpensesTablePref
       loanSortMode,
       moveCompletedToEnd,
       sorting,
+      vigenciaSortMode,
     };
   } catch {
     return null;
@@ -453,18 +477,18 @@ function persistMonthlyExpensesTablePreferences(
   }
 }
 
-interface LoanSortColumnHeaderProps {
+interface SortModeColumnHeaderProps<TMode extends string> {
   column: {
     getCanHide: () => boolean;
     getCanSort: () => boolean;
     getIsSorted: () => false | "asc" | "desc";
     toggleVisibility: (value?: boolean) => void;
   };
-  loanSortMode: LoanSortMode;
-  onApplyLoanSort: (args: {
-    direction: "asc" | "desc";
-    mode: LoanSortMode;
-  }) => void;
+  label: string;
+  onApplySort: (args: { direction: "asc" | "desc"; mode: TMode }) => void;
+  optionIdPrefix: string;
+  sortMode: TMode;
+  sortOptions: ReadonlyArray<{ label: string; value: TMode }>;
 }
 
 interface PaymentRecordActionsMenuProps {
@@ -664,25 +688,27 @@ function PaymentRecordActionsMenu({
   );
 }
 
-function LoanSortColumnHeader({
+function SortModeColumnHeader<TMode extends string>({
   column,
-  loanSortMode,
-  onApplyLoanSort,
-}: LoanSortColumnHeaderProps) {
+  label,
+  onApplySort,
+  optionIdPrefix,
+  sortMode,
+  sortOptions,
+}: SortModeColumnHeaderProps<TMode>) {
   const canSort = column.getCanSort();
   const canHide = column.getCanHide();
   const currentSortDirection = column.getIsSorted() === "desc" ? "desc" : "asc";
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [draftLoanSortMode, setDraftLoanSortMode] =
-    useState<LoanSortMode>(loanSortMode);
-  const [draftLoanSortDirection, setDraftLoanSortDirection] = useState<
-    "asc" | "desc"
-  >(currentSortDirection);
+  const [draftSortMode, setDraftSortMode] = useState<TMode>(sortMode);
+  const [draftSortDirection, setDraftSortDirection] = useState<"asc" | "desc">(
+    currentSortDirection,
+  );
 
   function handlePopoverOpenChange(nextOpen: boolean) {
     if (nextOpen) {
-      setDraftLoanSortMode(loanSortMode);
-      setDraftLoanSortDirection(currentSortDirection);
+      setDraftSortMode(sortMode);
+      setDraftSortDirection(currentSortDirection);
     }
 
     setIsPopoverOpen(nextOpen);
@@ -691,10 +717,10 @@ function LoanSortColumnHeader({
   if (!canSort) {
     return (
       <span className={styles.sortableHeader}>
-        <span className={styles.headLabel}>Deuda / cuotas</span>
+        <span className={styles.headLabel}>{label}</span>
         {canHide ? (
           <button
-            aria-label="Ocultar columna Deuda / cuotas"
+            aria-label={`Ocultar columna ${label}`}
             className={styles.sortIconButton}
             onClick={() => column.toggleVisibility(false)}
             type="button"
@@ -713,11 +739,11 @@ function LoanSortColumnHeader({
   return (
     <div className={styles.loanSortHeader}>
       <span className={styles.sortableHeader}>
-        <span className={styles.headLabel}>Deuda / cuotas</span>
+        <span className={styles.headLabel}>{label}</span>
         <Popover onOpenChange={handlePopoverOpenChange} open={isPopoverOpen}>
           <PopoverTrigger asChild>
             <button
-              aria-label="Ordenar Deuda / cuotas"
+              aria-label={`Ordenar ${label}`}
               className={styles.sortIconButton}
               type="button"
             >
@@ -728,13 +754,13 @@ function LoanSortColumnHeader({
             <p className={styles.loanSortPopoverTitle}>Criterio</p>
 
             <RadioGroup
-              aria-label="Criterio de orden para Deuda / cuotas"
+              aria-label={`Criterio de orden para ${label}`}
               className={styles.loanSortOptions}
-              onValueChange={(value) => setDraftLoanSortMode(value as LoanSortMode)}
-              value={draftLoanSortMode}
+              onValueChange={(value) => setDraftSortMode(value as TMode)}
+              value={draftSortMode}
             >
-              {LOAN_SORT_OPTIONS.map((option) => {
-                const radioId = `loan-sort-mode-${option.value}`;
+              {sortOptions.map((option) => {
+                const radioId = `${optionIdPrefix}-mode-${option.value}`;
 
                 return (
                   <div className={styles.loanSortOption} key={option.value}>
@@ -754,15 +780,15 @@ function LoanSortColumnHeader({
             <p className={styles.loanSortPopoverTitle}>Dirección</p>
 
             <RadioGroup
-              aria-label="Dirección de orden para Deuda / cuotas"
+              aria-label={`Dirección de orden para ${label}`}
               className={styles.loanSortOptions}
               onValueChange={(value) =>
-                setDraftLoanSortDirection(value as "asc" | "desc")
+                setDraftSortDirection(value as "asc" | "desc")
               }
-              value={draftLoanSortDirection}
+              value={draftSortDirection}
             >
               {LOAN_SORT_DIRECTION_OPTIONS.map((option) => {
-                const radioId = `loan-sort-direction-${option.value}`;
+                const radioId = `${optionIdPrefix}-direction-${option.value}`;
 
                 return (
                   <div className={styles.loanSortOption} key={option.value}>
@@ -796,9 +822,9 @@ function LoanSortColumnHeader({
               <Button
                 className={styles.loanSortApplyButton}
                 onClick={() => {
-                  onApplyLoanSort({
-                    direction: draftLoanSortDirection,
-                    mode: draftLoanSortMode,
+                  onApplySort({
+                    direction: draftSortDirection,
+                    mode: draftSortMode,
                   });
                   setIsPopoverOpen(false);
                 }}
@@ -812,7 +838,7 @@ function LoanSortColumnHeader({
         </Popover>
         {canHide ? (
           <button
-            aria-label="Ocultar columna Deuda / cuotas"
+            aria-label={`Ocultar columna ${label}`}
             className={styles.sortIconButton}
             onClick={() => column.toggleVisibility(false)}
             type="button"
@@ -1091,6 +1117,18 @@ function getLoanSortModeLabel(loanSortMode: LoanSortMode): string {
 
   if (!option) {
     return "Cuotas pagadas";
+  }
+
+  return option.label;
+}
+
+function getVigenciaSortModeLabel(vigenciaSortMode: VigenciaSortMode): string {
+  const option = VIGENCIA_SORT_OPTIONS.find(
+    (entry) => entry.value === vigenciaSortMode,
+  );
+
+  if (!option) {
+    return "Inicio cuota";
   }
 
   return option.label;
@@ -1405,11 +1443,9 @@ function getLoanDirectionLabel(
   return direction === "payable" ? "Yo debo" : "Me deben";
 }
 
-function getLoanDirectionSortValue(
-  row: MonthlyExpensesEditableRow,
-): string | null {
+function getLoanDirectionFilterValue(row: MonthlyExpensesEditableRow): string {
   if (!row.isLoan) {
-    return null;
+    return "none";
   }
 
   return row.loanDirection ?? "payable";
@@ -1423,6 +1459,15 @@ function getYearMonthSortValue(value: string): number | null {
   }
 
   return Number(`${parsedValue.year}${parsedValue.month}`);
+}
+
+function getVigenciaSortValue(
+  row: MonthlyExpensesEditableRow,
+  vigenciaSortMode: VigenciaSortMode,
+): number | null {
+  return getYearMonthSortValue(
+    vigenciaSortMode === "endMonth" ? row.loanEndMonth : row.startMonth,
+  );
 }
 
 function getLoanSortValue(
@@ -2418,6 +2463,9 @@ export function MonthlyExpensesTable({
     useState(false);
   const [loanSortMode, setLoanSortMode] =
     useState<LoanSortMode>(DEFAULT_LOAN_SORT_MODE);
+  const [vigenciaSortMode, setVigenciaSortMode] = useState<VigenciaSortMode>(
+    DEFAULT_VIGENCIA_SORT_MODE,
+  );
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY,
@@ -2576,6 +2624,7 @@ export function MonthlyExpensesTable({
     const restoreFrameId = window.requestAnimationFrame(() => {
       if (persistedPreferences) {
         setLoanSortMode(persistedPreferences.loanSortMode);
+        setVigenciaSortMode(persistedPreferences.vigenciaSortMode);
         setMoveCompletedToEnd(persistedPreferences.moveCompletedToEnd);
         setSorting(persistedPreferences.sorting);
         setColumnVisibility(persistedPreferences.columnVisibility);
@@ -2600,20 +2649,17 @@ export function MonthlyExpensesTable({
       loanSortMode,
       moveCompletedToEnd,
       sorting,
+      vigenciaSortMode,
     });
-  }, [columnVisibility, loanSortMode, moveCompletedToEnd, sorting]);
+  }, [columnVisibility, loanSortMode, moveCompletedToEnd, sorting, vigenciaSortMode]);
 
   const getSortDirection = useCallback(
     (columnId: string) => getColumnSortDirection(sorting, columnId),
     [sorting],
   );
-  const loanInstallmentStartSortDirection = getColumnSortDirection(
+  const loanInstallmentRangeSortDirection = getColumnSortDirection(
     sorting,
-    LOAN_INSTALLMENT_START_COLUMN_ID,
-  );
-  const loanInstallmentEndSortDirection = getColumnSortDirection(
-    sorting,
-    LOAN_INSTALLMENT_END_COLUMN_ID,
+    LOAN_INSTALLMENT_RANGE_COLUMN_ID,
   );
   const nonEmptyExcludedDescriptionFilters = useMemo(
     () => getNonEmptyDescriptionFilters(excludedDescriptionFilters),
@@ -3779,9 +3825,28 @@ export function MonthlyExpensesTable({
             return "Completá datos de la deuda";
           }
 
+          const paidInstallments = row.original.loanPaidInstallments ?? 0;
+          const totalInstallments = row.original.loanTotalInstallments ?? 0;
+          const progressPercent =
+            totalInstallments > 0
+              ? Math.min(
+                  100,
+                  Math.round((paidInstallments / totalInstallments) * 100),
+                )
+              : 0;
+
           return (
             <div className={styles.loanProgressCell}>
               <span>{row.original.loanProgress}</span>
+              <div
+                aria-hidden="true"
+                className={styles.loanProgressBarTrack}
+              >
+                <div
+                  className={styles.loanProgressBarFill}
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
               <span className={styles.loanProgressRemaining}>
                 {`${row.original.loanRemainingInstallments ?? 0} cuotas restantes`}
               </span>
@@ -3794,13 +3859,16 @@ export function MonthlyExpensesTable({
             row.original.isLoan && row.original.loanProgress.trim().length > 0,
           ),
         header: ({ column }) => (
-          <LoanSortColumnHeader
+          <SortModeColumnHeader
             column={column}
-            loanSortMode={loanSortMode}
-            onApplyLoanSort={({ direction, mode }) => {
+            label="Deuda / cuotas"
+            onApplySort={({ direction, mode }) => {
               setLoanSortMode(mode);
               setSorting(buildLoanSortingState(direction));
             }}
+            optionIdPrefix="loan-sort"
+            sortMode={loanSortMode}
+            sortOptions={LOAN_SORT_OPTIONS}
           />
         ),
         meta: { label: "Deuda / cuotas" },
@@ -3845,12 +3913,23 @@ export function MonthlyExpensesTable({
         cell: ({ row }) => {
           const lenderName = row.original.lenderName.trim();
 
-          return lenderName.length > 0 ? lenderName : "-";
+          return (
+            <div className={styles.lenderCell}>
+              <span className={styles.lenderName}>
+                {lenderName.length > 0 ? lenderName : "-"}
+              </span>
+              {row.original.isLoan ? (
+                <Badge className={styles.lenderDirectionBadge} variant="outline">
+                  {getLoanDirectionLabel(row.original.loanDirection ?? "payable")}
+                </Badge>
+              ) : null}
+            </div>
+          );
         },
         filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedPresenceFilter(
+          matchesAdvancedEnumFilter(
             filterValue,
-            row.original.lenderName.trim().length > 0,
+            getLoanDirectionFilterValue(row.original),
           ),
         header: getSortableHeader("Prestamista"),
         meta: { label: "Prestamista" },
@@ -3876,114 +3955,48 @@ export function MonthlyExpensesTable({
         },
       },
       {
-        id: LOAN_INSTALLMENT_START_COLUMN_ID,
-        accessorFn: (row) => row.startMonth,
-        cell: ({ row }) => formatYearMonth(row.original.startMonth),
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedPresenceFilter(
-            filterValue,
-            parseYearMonth(row.original.startMonth) != null,
-          ),
-        header: getSortableHeader("Inicio cuota"),
-        meta: { label: "Inicio cuota" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          const leftValue = getYearMonthSortValue(rowA.original.startMonth);
-          const rightValue = getYearMonthSortValue(rowB.original.startMonth);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftNumericValue, rightNumericValue) => {
-              const difference = leftNumericValue - rightNumericValue;
-
-              if (difference !== 0) {
-                return difference;
-              }
-
-              return rowA.original.description.localeCompare(
-                rowB.original.description,
-                "es",
-              );
-            },
-            leftValue,
-            rightValue,
-            sortDirection: loanInstallmentStartSortDirection,
-          });
-        },
-      },
-      {
-        id: LOAN_INSTALLMENT_END_COLUMN_ID,
-        accessorFn: (row) => row.loanEndMonth,
-        cell: ({ row }) => formatYearMonth(row.original.loanEndMonth),
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedPresenceFilter(
-            filterValue,
-            parseYearMonth(row.original.loanEndMonth) != null,
-          ),
-        header: getSortableHeader("Fin cuota"),
-        meta: { label: "Fin cuota" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          const leftValue = getYearMonthSortValue(rowA.original.loanEndMonth);
-          const rightValue = getYearMonthSortValue(rowB.original.loanEndMonth);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftNumericValue, rightNumericValue) => {
-              const difference = leftNumericValue - rightNumericValue;
-
-              if (difference !== 0) {
-                return difference;
-              }
-
-              return rowA.original.description.localeCompare(
-                rowB.original.description,
-                "es",
-              );
-            },
-            leftValue,
-            rightValue,
-            sortDirection: loanInstallmentEndSortDirection,
-          });
-        },
-      },
-      {
-        id: LOAN_DIRECTION_COLUMN_ID,
-        accessorFn: (row) => getLoanDirectionSortValue(row),
+        id: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+        accessorFn: (row) => getVigenciaSortValue(row, vigenciaSortMode),
         cell: ({ row }) => {
-          if (!row.original.isLoan) {
+          const startLabel = formatYearMonth(row.original.startMonth);
+          const endLabel = formatYearMonth(row.original.loanEndMonth);
+
+          if (startLabel === "-" && endLabel === "-") {
             return "-";
           }
 
           return (
-            <Badge variant="outline">
-              {getLoanDirectionLabel(row.original.loanDirection ?? "payable")}
-            </Badge>
+            <span className={styles.loanInstallmentRangeCell}>
+              <span>{startLabel}</span>
+              <span
+                aria-hidden="true"
+                className={styles.loanInstallmentRangeArrow}
+              >
+                →
+              </span>
+              <span>{endLabel}</span>
+            </span>
           );
         },
         filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedEnumFilter(
+          matchesAdvancedYearMonthRangeFilter(
             filterValue,
-            row.original.isLoan
-              ? row.original.loanDirection ?? "payable"
-              : "none",
+            getVigenciaSortValue(row.original, vigenciaSortMode),
           ),
-        header: getSortableHeader("Dirección"),
-        meta: { label: "Dirección" },
+        header: ({ column }) => (
+          <SortModeColumnHeader
+            column={column}
+            label="Vigencia"
+            onApplySort={({ direction, mode }) => {
+              setVigenciaSortMode(mode);
+              setSorting(buildVigenciaSortingState(direction));
+            }}
+            optionIdPrefix="vigencia-sort"
+            sortMode={vigenciaSortMode}
+            sortOptions={VIGENCIA_SORT_OPTIONS}
+          />
+        ),
+        meta: { label: "Vigencia" },
         sortingFn: (rowA, rowB) => {
           const relevanceComparison = compareRowsByDescriptionFilterRelevance(
             rowA.original,
@@ -3994,14 +4007,25 @@ export function MonthlyExpensesTable({
             return relevanceComparison;
           }
 
+          const leftValue = getVigenciaSortValue(rowA.original, vigenciaSortMode);
+          const rightValue = getVigenciaSortValue(rowB.original, vigenciaSortMode);
+
           return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) =>
-              leftValue.localeCompare(rightValue, "es", {
-                sensitivity: "base",
-              }),
-            leftValue: getLoanDirectionSortValue(rowA.original),
-            rightValue: getLoanDirectionSortValue(rowB.original),
-            sortDirection: getSortDirection(LOAN_DIRECTION_COLUMN_ID),
+            compareValidValues: (leftNumericValue, rightNumericValue) => {
+              const difference = leftNumericValue - rightNumericValue;
+
+              if (difference !== 0) {
+                return difference;
+              }
+
+              return rowA.original.description.localeCompare(
+                rowB.original.description,
+                "es",
+              );
+            },
+            leftValue,
+            rightValue,
+            sortDirection: loanInstallmentRangeSortDirection,
           });
         },
       },
@@ -4014,8 +4038,7 @@ export function MonthlyExpensesTable({
       getSortDirection,
       handleToggleAllVisibleRowsSelection,
       handleToggleExpenseSelection,
-      loanInstallmentEndSortDirection,
-      loanInstallmentStartSortDirection,
+      loanInstallmentRangeSortDirection,
       loanSortMode,
       onDeleteAllReceiptsFolderReference,
       onDeleteExpense,
@@ -4037,6 +4060,7 @@ export function MonthlyExpensesTable({
       selectedExpenseIdsInCurrentRows,
       expenseFolders,
       foldersById,
+      vigenciaSortMode,
     ],
   );
 
@@ -4311,6 +4335,7 @@ export function MonthlyExpensesTable({
               showColumnVisibilityToggle={true}
               sortingBadgeLabelOverrides={{
                 [LOAN_SORT_COLUMN_ID]: `Deuda / cuotas (${getLoanSortModeLabel(loanSortMode)})`,
+                [LOAN_INSTALLMENT_RANGE_COLUMN_ID]: `Vigencia (${getVigenciaSortModeLabel(vigenciaSortMode)})`,
               }}
               sorting={sorting}
               toolbarActions={

@@ -2640,7 +2640,7 @@ registerMonthlyExpensesPageDefaultHooks({
     }
   }, REPORTS_SORT_TEST_TIMEOUT_MS);
 
-  it("renders Prestamista followed by Inicio cuota and Fin cuota, then Dirección as the last column", () => {
+  it("renders Prestamista followed by the merged Vigencia column", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -2665,33 +2665,23 @@ registerMonthlyExpensesPageDefaultHooks({
       .map((header) => header.textContent?.trim() ?? "");
     const loanHeaderIndex = headers.indexOf("Deuda / cuotas");
     const lenderHeaderIndex = headers.indexOf("Prestamista");
-    const installmentStartHeaderIndex = headers.indexOf("Inicio cuota");
-    const installmentEndHeaderIndex = headers.indexOf("Fin cuota");
-    const loanDirectionHeaderIndex = headers.indexOf("Dirección");
+    const vigenciaHeaderIndex = headers.indexOf("Vigencia");
 
     expect(loanHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(lenderHeaderIndex).toBe(loanHeaderIndex + 1);
-    expect(installmentStartHeaderIndex).toBe(lenderHeaderIndex + 1);
-    expect(installmentEndHeaderIndex).toBe(installmentStartHeaderIndex + 1);
-    expect(loanDirectionHeaderIndex).toBe(installmentEndHeaderIndex + 1);
-    expect(loanDirectionHeaderIndex).toBe(headers.length - 1);
+    expect(vigenciaHeaderIndex).toBe(lenderHeaderIndex + 1);
+    expect(headers.indexOf("Inicio cuota")).toBe(-1);
+    expect(headers.indexOf("Fin cuota")).toBe(-1);
+    expect(headers.indexOf("Dirección")).toBe(-1);
 
     const expenseRow = screen.getByRole("row", { name: /Prestamo tarjeta/i });
     const expenseCells = within(expenseRow).getAllByRole("cell");
 
     expect(expenseCells.at(lenderHeaderIndex)?.textContent?.trim()).toBe("-");
-    expect(expenseCells.at(installmentStartHeaderIndex)?.textContent?.trim()).toBe(
-      "-",
-    );
-    expect(expenseCells.at(installmentEndHeaderIndex)?.textContent?.trim()).toBe(
-      "-",
-    );
-    expect(expenseCells.at(loanDirectionHeaderIndex)?.textContent?.trim()).toBe(
-      "-",
-    );
+    expect(expenseCells.at(vigenciaHeaderIndex)?.textContent?.trim()).toBe("-");
   });
 
-  it("renders Inicio cuota and Fin cuota as MM/YYYY and sorts both columns by month-year", async () => {
+  it("renders the merged Vigencia column as MM/YYYY and sorts by inicio or fin", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -2772,11 +2762,18 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(monthlyExpensesTable).toBeDefined();
 
-    await user.click(
-      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
-        name: "Ordenar Inicio cuota",
-      }),
-    );
+    async function applyVigenciaSort(criterio: string, direccion: string) {
+      await user.click(
+        within(monthlyExpensesTable as HTMLElement).getByRole("button", {
+          name: "Ordenar Vigencia",
+        }),
+      );
+      await user.click(screen.getByRole("radio", { name: criterio }));
+      await user.click(screen.getByRole("radio", { name: direccion }));
+      await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    }
+
+    await applyVigenciaSort("Inicio cuota", "Ascendente");
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo noviembre",
@@ -2785,11 +2782,7 @@ registerMonthlyExpensesPageDefaultHooks({
       "Sin deuda",
     ]);
 
-    await user.click(
-      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
-        name: "Ordenar Inicio cuota",
-      }),
-    );
+    await applyVigenciaSort("Inicio cuota", "Descendente");
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo marzo",
@@ -2798,11 +2791,7 @@ registerMonthlyExpensesPageDefaultHooks({
       "Sin deuda",
     ]);
 
-    await user.click(
-      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
-        name: "Ordenar Fin cuota",
-      }),
-    );
+    await applyVigenciaSort("Fin cuota", "Ascendente");
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo noviembre",
@@ -2811,11 +2800,7 @@ registerMonthlyExpensesPageDefaultHooks({
       "Sin deuda",
     ]);
 
-    await user.click(
-      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
-        name: "Ordenar Fin cuota",
-      }),
-    );
+    await applyVigenciaSort("Fin cuota", "Descendente");
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo marzo",

@@ -162,7 +162,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     ).toBeChecked();
   });
 
-  it("renders loan direction as its own column", () => {
+  it("renders loan direction as a chip within the lender column", () => {
     renderMonthlyExpensesTable([
       createRow({
         description: "Prestamo a proveedor",
@@ -179,9 +179,140 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     ]);
 
     expect(
-      screen.getByRole("columnheader", { name: "Dirección" }),
+      screen.getByRole("columnheader", { name: "Prestamista" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Dirección" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Me deben")).toBeInTheDocument();
+  });
+
+  it("merges installment start and end into a single vigencia column", () => {
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "Prestamo a proveedor",
+        installmentCount: "3",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Proveedor",
+        loanDirection: "receivable",
+        loanEndMonth: "2026-03",
+        loanProgress: "1 de 3 cuotas abonadas",
+        loanRemainingInstallments: 2,
+        loanTotalInstallments: 3,
+        startMonth: "2026-01",
+      }),
+    ]);
+
+    expect(
+      screen.getByRole("columnheader", { name: "Vigencia" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Inicio cuota" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Fin cuota" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("01/2026")).toBeInTheDocument();
+    expect(screen.getByText("03/2026")).toBeInTheDocument();
+  });
+
+  it("filters loans by direction from the prestamista column", async () => {
+    const user = userEvent.setup();
+
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "Deuda propia",
+        id: "loan-payable",
+        installmentCount: "3",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Banco",
+        loanDirection: "payable",
+        loanEndMonth: "2026-08",
+        loanPaidInstallments: 1,
+        loanProgress: "1 de 3 cuotas abonadas",
+        loanRemainingInstallments: 2,
+        loanTotalInstallments: 3,
+        startMonth: "2026-06",
+      }),
+      createRow({
+        description: "Prestamo a tercero",
+        id: "loan-receivable",
+        installmentCount: "4",
+        isLoan: true,
+        lenderId: "lender-2",
+        lenderName: "Cliente",
+        loanDirection: "receivable",
+        loanEndMonth: "2026-09",
+        loanPaidInstallments: 2,
+        loanProgress: "2 de 4 cuotas abonadas",
+        loanRemainingInstallments: 2,
+        loanTotalInstallments: 4,
+        startMonth: "2026-05",
+      }),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Dirección" }));
+    await user.click(screen.getByRole("option", { name: "Me deben" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    expect(screen.queryByText("Deuda propia")).not.toBeInTheDocument();
+    expect(screen.getByText("Prestamo a tercero")).toBeInTheDocument();
+  });
+
+  it("filters loans by their vigencia range", async () => {
+    const user = userEvent.setup();
+
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "Cuota marzo",
+        id: "loan-march",
+        installmentCount: "3",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Banco",
+        loanDirection: "payable",
+        loanEndMonth: "2026-05",
+        loanPaidInstallments: 1,
+        loanProgress: "1 de 3 cuotas abonadas",
+        loanRemainingInstallments: 2,
+        loanTotalInstallments: 3,
+        startMonth: "2026-03",
+      }),
+      createRow({
+        description: "Cuota agosto",
+        id: "loan-august",
+        installmentCount: "3",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Banco",
+        loanDirection: "payable",
+        loanEndMonth: "2026-10",
+        loanPaidInstallments: 1,
+        loanProgress: "1 de 3 cuotas abonadas",
+        loanRemainingInstallments: 2,
+        loanTotalInstallments: 3,
+        startMonth: "2026-08",
+      }),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
+    await user.click(screen.getByRole("option", { name: "Rango" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
+      "02/2026",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
+      "06/2026",
+    );
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    expect(screen.getByText("Cuota marzo")).toBeInTheDocument();
+    expect(screen.queryByText("Cuota agosto")).not.toBeInTheDocument();
   });
 
   it("associates receipt label with the file input in register payment dialog", async () => {

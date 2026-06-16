@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { DataTable } from "./data-table";
+import { DataTable, matchesAdvancedYearMonthRangeFilter } from "./data-table";
 
 type TableRow = {
   label: string;
@@ -548,5 +548,124 @@ describe("DataTable", () => {
     expect(
       screen.queryByText("Filtros avanzados activos"),
     ).not.toBeInTheDocument();
+  });
+
+  function renderYearMonthRangeTable() {
+    const rows = [
+      { label: "Sin fechas", monthValue: null as number | null },
+      { label: "Marzo", monthValue: 202603 },
+      { label: "Mayo", monthValue: 202605 },
+      { label: "Agosto", monthValue: 202608 },
+    ];
+    const columns: ColumnDef<(typeof rows)[number]>[] = [
+      {
+        accessorKey: "label",
+        header: "Descripción",
+      },
+      {
+        accessorKey: "monthValue",
+        filterFn: (row, _columnId, filterValue) =>
+          matchesAdvancedYearMonthRangeFilter(filterValue, row.original.monthValue),
+        header: "Vigencia",
+      },
+    ];
+
+    render(
+      <DataTable
+        advancedFiltersConfig={[
+          {
+            columnId: "monthValue",
+            label: "Vigencia",
+            type: "yearMonthRange",
+          },
+        ]}
+        columns={columns}
+        data={rows}
+        emptyMessage="Sin datos"
+        filterColumnId="label"
+      />,
+    );
+  }
+
+  it("filters rows by a year-month range", async () => {
+    const user = userEvent.setup();
+    renderYearMonthRangeTable();
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
+    await user.click(screen.getByRole("option", { name: "Rango" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
+      "03/2026",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
+      "05/2026",
+    );
+    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+
+    expect(screen.queryByText("Sin fechas")).not.toBeInTheDocument();
+    expect(screen.getByText("Marzo")).toBeInTheDocument();
+    expect(screen.getByText("Mayo")).toBeInTheDocument();
+    expect(screen.queryByText("Agosto")).not.toBeInTheDocument();
+    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
+  });
+
+  it("filters rows with a lower bound only", async () => {
+    const user = userEvent.setup();
+    renderYearMonthRangeTable();
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
+    await user.click(screen.getByRole("option", { name: "Desde" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
+      "05/2026",
+    );
+    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+
+    expect(screen.queryByText("Sin fechas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Marzo")).not.toBeInTheDocument();
+    expect(screen.getByText("Mayo")).toBeInTheDocument();
+    expect(screen.getByText("Agosto")).toBeInTheDocument();
+  });
+
+  it("filters rows by presence of year-month dates", async () => {
+    const user = userEvent.setup();
+    renderYearMonthRangeTable();
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
+    await user.click(screen.getByRole("option", { name: "Con fechas" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+
+    expect(screen.queryByText("Sin fechas")).not.toBeInTheDocument();
+    expect(screen.getByText("Marzo")).toBeInTheDocument();
+    expect(screen.getByText("Mayo")).toBeInTheDocument();
+    expect(screen.getByText("Agosto")).toBeInTheDocument();
+  });
+
+  it("blocks applying an invalid year-month range", async () => {
+    const user = userEvent.setup();
+    renderYearMonthRangeTable();
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
+    await user.click(screen.getByRole("option", { name: "Rango" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
+      "08/2026",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
+      "03/2026",
+    );
+
+    expect(
+      screen.getByText("El desde no puede ser mayor que el hasta."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Aplicar filtros" }),
+    ).toBeDisabled();
   });
 });
