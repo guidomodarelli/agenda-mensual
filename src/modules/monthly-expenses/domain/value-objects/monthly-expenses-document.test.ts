@@ -756,6 +756,34 @@ describe("monthlyExpensesDocument", () => {
     );
   });
 
+  it("drops send status from manual payment records without a receipt", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentRecords: [
+              {
+                coveredPayments: 1,
+                id: "payment-1",
+                sendStatus: "sent",
+              },
+            ],
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.paymentRecords?.[0]?.receipt).toBeUndefined();
+    expect(result.items[0]?.paymentRecords?.[0]?.sendStatus).toBeUndefined();
+  });
+
   it("rejects invalid receipt share statuses", () => {
     expect(() =>
       createMonthlyExpensesDocument(

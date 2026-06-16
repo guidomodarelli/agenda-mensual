@@ -693,7 +693,12 @@ function validatePaymentRecords(
         paymentRecord.registeredAt ?? null,
         operationName,
       ),
-      ...(normalizedSendStatus ? { sendStatus: normalizedSendStatus } : {}),
+      // Share status only applies to records that carry a receipt; manual
+      // records have nothing to send, so the field is dropped to keep the
+      // per-receipt invariant.
+      ...(paymentRecord.receipt && normalizedSendStatus
+        ? { sendStatus: normalizedSendStatus }
+        : {}),
     };
   });
 }
