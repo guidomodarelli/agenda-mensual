@@ -39,6 +39,7 @@ import {
 } from "@/modules/monthly-expenses/infrastructure/pwa/shared-receipt-payload";
 
 import {
+  appendUploadedReceiptToExpenseItem,
   deriveExpenseSearchQueryFromFileName,
   getCurrentMonthIdentifier,
   getRemainingReceiptPayments,
@@ -438,36 +439,11 @@ export default function ReceiptShareTargetPage() {
           ]
         : monthDocument.items;
 
-      const nextItems = baseItems.map((item) => {
-        if (item.id !== targetExpenseId) {
-          return item;
-        }
-
-        const currentReceipts = item.receipts ?? [];
-
-        return {
-          ...item,
-          folders: {
-            allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
-            allReceiptsFolderViewUrl: receiptUpload.allReceiptsFolderViewUrl,
-            monthlyFolderId: receiptUpload.monthlyFolderId,
-            monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
-          },
-          receipts: [
-            ...currentReceipts,
-            {
-              allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
-              allReceiptsFolderViewUrl: receiptUpload.allReceiptsFolderViewUrl,
-              coveredPayments: receiptUpload.coveredPayments,
-              fileId: receiptUpload.fileId,
-              fileName: receiptUpload.fileName,
-              fileViewUrl: receiptUpload.fileViewUrl,
-              monthlyFolderId: receiptUpload.monthlyFolderId,
-              monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
-            },
-          ],
-        };
-      });
+      const nextItems = baseItems.map((item) =>
+        item.id === targetExpenseId
+          ? appendUploadedReceiptToExpenseItem(item, receiptUpload)
+          : item,
+      );
 
       const saveCommand: SaveMonthlyExpensesCommand = {
         items: normalizeExpenseItemsForSave(nextItems),

@@ -416,18 +416,6 @@ function normalizeReceiptShareMessage(value: string): string {
   return value.trim();
 }
 
-function isReceiptShareStatus(
-  value: string,
-): value is MonthlyExpenseReceiptShareStatus {
-  return value === "pending" || value === "sent";
-}
-
-function normalizeReceiptShareStatus(
-  value: string,
-): MonthlyExpenseReceiptShareStatus | "" {
-  return isReceiptShareStatus(value) ? value : "";
-}
-
 function createEmptyRow(): MonthlyExpensesEditableRow {
   return {
     allReceiptsFolderId: "",
@@ -453,7 +441,6 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
-    receiptShareStatus: "",
     requiresReceiptShare: false,
     receipts: [],
     monthlyFolderId: "",
@@ -520,6 +507,9 @@ function toEditablePaymentRecords(
           }
         : {}),
       registeredAt: paymentRecord.registeredAt ?? null,
+      ...(paymentRecord.sendStatus
+        ? { sendStatus: paymentRecord.sendStatus }
+        : {}),
     }));
   }
 
@@ -644,16 +634,6 @@ export function toEditableRows(
     const legacyCoverage = getLegacyCoverageFromPaymentRecords(paymentRecords);
 
     return ({
-    ...(item.requiresReceiptShare === true
-      ? {
-          receiptShareStatus:
-            item.receiptShareStatus === "sent" ? "sent" : "pending",
-        }
-      : {
-          receiptShareStatus: normalizeReceiptShareStatus(
-            item.receiptShareStatus ?? "",
-          ),
-        }),
     ...(item.manualCoveredPayments !== undefined
       ? {
           manualCoveredPayments: legacyCoverage.manualCoveredPayments,
@@ -871,6 +851,9 @@ function getSynchronizedPaymentRecordsForSave(
       id: matchedRecord?.id ?? `legacy-receipt-${receipt.fileId}`,
       receipt,
       registeredAt: matchedRecord?.registeredAt ?? null,
+      ...(matchedRecord?.sendStatus
+        ? { sendStatus: matchedRecord.sendStatus }
+        : {}),
     };
   });
   const manualCoveredPayments = getNormalizedManualCoveredPayments(row);
@@ -1117,7 +1100,6 @@ export function copyMonthlyExpenseTemplatesToMonth(
       monthlyFolderStatus: undefined,
       monthlyFolderViewUrl: "",
       paymentRecords: [],
-      receiptShareStatus: "",
       receipts: [],
     })),
   );
@@ -1195,6 +1177,7 @@ export function getExpenseValidationMessage(
   month: string,
   row: MonthlyExpensesEditableRow | null,
   mode: "create" | "edit",
+  originalRow: MonthlyExpensesEditableRow | null = null,
 ): string | null {
   if (!row) {
     return null;
@@ -1249,9 +1232,23 @@ export function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
-  if (
-    mode === "create" &&
+  // In create mode any invalid (including empty) receipt-share phone blocks the
+  // save. In edit mode a legacy empty value on a row that already had sharing on
+  // is tolerated so unrelated fields stay editable, but the phone is still
+  // required when the user just enabled sharing in this edit or entered an
+  // actually invalid number (both would otherwise fail later in command/API
+  // validation).
+  const receiptSharePhone = row.receiptSharePhoneDigits.trim();
+  const sharingJustEnabled =
+    mode === "edit" &&
     row.requiresReceiptShare &&
+    (!originalRow || !originalRow.requiresReceiptShare);
+  const enforceReceiptSharePhone =
+    mode === "create" || receiptSharePhone.length > 0 || sharingJustEnabled;
+
+  if (
+    row.requiresReceiptShare &&
+    enforceReceiptSharePhone &&
     validateReceiptSharePhoneDigits(row.receiptSharePhoneDigits) !== null
   ) {
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
@@ -1417,9 +1414,6 @@ export function toSaveMonthlyExpensesCommand(
               ),
             }
           : {}),
-        ...(isReceiptShareStatus(row.receiptShareStatus)
-          ? { receiptShareStatus: row.receiptShareStatus }
-          : {}),
         ...(buildRowFoldersPayload(row)
           ? {
               folders: buildRowFoldersPayload(row),
@@ -1479,6 +1473,9 @@ export function toSaveMonthlyExpensesCommand(
                   : {}),
                 ...(paymentRecord.registeredAt
                   ? { registeredAt: paymentRecord.registeredAt }
+                  : {}),
+                ...(paymentRecord.sendStatus
+                  ? { sendStatus: paymentRecord.sendStatus }
                   : {}),
               })),
             }
@@ -1681,6 +1678,7 @@ export default function MonthlyExpensesPage({
     formState.month,
     expenseSheetState.draft,
     expenseSheetState.mode,
+    expenseSheetState.originalRow,
   );
   const dirtyExpenseFields = getChangedExpenseFields(
     expenseSheetState.originalRow,
@@ -2482,20 +2480,11 @@ export default function MonthlyExpensesPage({
         return currentState;
       }
 
-      const hasKnownStatus = isReceiptShareStatus(
-        currentState.draft.receiptShareStatus,
-      );
-
       return {
         ...currentState,
         draft: normalizeEditableRows(formState.month, [
           {
             ...currentState.draft,
-            receiptShareStatus: checked
-              ? hasKnownStatus
-                ? currentState.draft.receiptShareStatus
-                : "pending"
-              : currentState.draft.receiptShareStatus,
             requiresReceiptShare: checked,
           },
         ])[0],
@@ -2923,6 +2912,10 @@ export default function MonthlyExpensesPage({
                   : {
                       ...record,
                       receipt: undefined,
+                      // A record without a receipt has nothing to send, so its
+                      // share status is cleared to avoid carrying a stale "sent"
+                      // onto a future replacement receipt.
+                      sendStatus: undefined,
                     }),
             }),
       );
@@ -3139,6 +3132,10 @@ export default function MonthlyExpensesPage({
                             replacementReceiptUpload.monthlyFolderViewUrl,
                         },
                         registeredAt: replacementReceiptUpload.registeredAt,
+                        // A freshly attached replacement receipt has not been sent
+                        // yet; drop any prior status so it does not inherit a stale
+                        // "sent" from the record it replaced.
+                        sendStatus: undefined,
                       }),
               }),
         );
@@ -3634,7 +3631,6 @@ export default function MonthlyExpensesPage({
     const normalizedReceiptShareMessage = normalizeReceiptShareMessage(
       receiptShareMessage,
     );
-    const hasKnownStatus = isReceiptShareStatus(expenseRow.receiptShareStatus);
 
     if (
       expenseRow.requiresReceiptShare &&
@@ -3653,7 +3649,6 @@ export default function MonthlyExpensesPage({
               ...row,
               receiptShareMessage: normalizedReceiptShareMessage,
               receiptSharePhoneDigits: normalizedPhoneDigits,
-              receiptShareStatus: hasKnownStatus ? row.receiptShareStatus : "pending",
               requiresReceiptShare: true,
             }
           : row,
@@ -3700,8 +3695,18 @@ export default function MonthlyExpensesPage({
               ...row,
               receiptShareMessage: "",
               receiptSharePhoneDigits: "",
-              receiptShareStatus: "",
               requiresReceiptShare: false,
+              // Clearing the recipient also resets the per-record send status, so
+              // re-enabling sharing later (e.g. for a new recipient) does not show
+              // old receipts as already sent.
+              paymentRecords: (row.paymentRecords ?? []).map((paymentRecord) => ({
+                coveredPayments: paymentRecord.coveredPayments,
+                id: paymentRecord.id,
+                ...(paymentRecord.receipt
+                  ? { receipt: paymentRecord.receipt }
+                  : {}),
+                registeredAt: paymentRecord.registeredAt,
+              })),
             }
           : row,
       ),
@@ -3753,12 +3758,14 @@ export default function MonthlyExpensesPage({
     }
   };
 
-  const handleUpdateReceiptShareStatus = async ({
+  const handleUpdatePaymentRecordSendStatus = async ({
     expenseId,
-    receiptShareStatus,
+    paymentRecordId,
+    sendStatus,
   }: {
     expenseId: string;
-    receiptShareStatus: MonthlyExpenseReceiptShareStatus;
+    paymentRecordId: string;
+    sendStatus: MonthlyExpenseReceiptShareStatus;
   }) => {
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para actualizar el estado de envío.");
@@ -3772,15 +3779,18 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    if (!expenseRow.requiresReceiptShare) {
+    const targetPaymentRecord = expenseRow.paymentRecords?.find(
+      (paymentRecord) => paymentRecord.id === paymentRecordId,
+    );
+
+    if (!targetPaymentRecord || !targetPaymentRecord.receipt) {
       return;
     }
 
-    const currentStatus = isReceiptShareStatus(expenseRow.receiptShareStatus)
-      ? expenseRow.receiptShareStatus
-      : "pending";
+    const currentStatus =
+      targetPaymentRecord.sendStatus === "sent" ? "sent" : "pending";
 
-    if (currentStatus === receiptShareStatus) {
+    if (currentStatus === sendStatus) {
       return;
     }
 
@@ -3788,7 +3798,11 @@ export default function MonthlyExpensesPage({
       row.id === expenseId
         ? {
             ...row,
-            receiptShareStatus,
+            paymentRecords: (row.paymentRecords ?? []).map((paymentRecord) =>
+              paymentRecord.id === paymentRecordId
+                ? { ...paymentRecord, sendStatus }
+                : paymentRecord,
+            ),
           }
         : row,
     );
@@ -4557,7 +4571,7 @@ export default function MonthlyExpensesPage({
                 onUpdatePaymentLink={handleUpdatePaymentLink}
                 onUpdateExpenseDetails={handleUpdateExpenseDetails}
                 onUpdateExpenseReceiptShare={handleUpdateExpenseReceiptShare}
-                onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}
+                onUpdatePaymentRecordSendStatus={handleUpdatePaymentRecordSendStatus}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
                 replicateFromPreviousMonthDialogOpen={

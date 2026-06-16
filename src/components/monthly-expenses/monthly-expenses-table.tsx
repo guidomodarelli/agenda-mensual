@@ -166,8 +166,6 @@ const SORTABLE_COLUMN_IDS = new Set([
   "subtotal",
   "total",
   "usd",
-  "receiptShareStatus",
-  "receiptShareLink",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
   LOAN_INSTALLMENT_START_COLUMN_ID,
@@ -180,8 +178,6 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "subtotal",
   "total",
   "usd",
-  "receiptShareStatus",
-  "receiptShareLink",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
   LOAN_INSTALLMENT_START_COLUMN_ID,
@@ -254,30 +250,6 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
     columnId: "usd",
     label: "USD",
     type: "numberRange",
-  },
-  {
-    columnId: "receiptShareStatus",
-    enumOptions: [
-      {
-        label: "Pendiente",
-        value: "pending",
-      },
-      {
-        label: "Enviado",
-        value: "sent",
-      },
-      {
-        label: "Sin estado",
-        value: "none",
-      },
-    ],
-    label: "Estado de envío",
-    type: "enum",
-  },
-  {
-    columnId: "receiptShareLink",
-    label: "Enviar",
-    type: "presence",
   },
   {
     columnId: "paymentsProgress",
@@ -878,7 +850,6 @@ export interface MonthlyExpensesEditableRow {
   paymentLink: string;
   receiptShareMessage: string;
   receiptSharePhoneDigits: string;
-  receiptShareStatus: MonthlyExpenseReceiptShareStatus | "";
   requiresReceiptShare: boolean;
   receipts: MonthlyExpensesEditableReceipt[];
   monthlyFolderId: string;
@@ -915,6 +886,7 @@ export interface MonthlyExpensesEditablePaymentRecord {
   id: string;
   receipt?: MonthlyExpensesEditableReceipt;
   registeredAt: string | null;
+  sendStatus?: MonthlyExpenseReceiptShareStatus;
 }
 
 export interface MonthlyExpensesReplicableOption {
@@ -1014,9 +986,10 @@ interface MonthlyExpensesTableProps {
     receiptShareMessage: string;
     receiptSharePhoneDigits: string;
   }) => void | Promise<void>;
-  onUpdateReceiptShareStatus: (args: {
+  onUpdatePaymentRecordSendStatus: (args: {
     expenseId: string;
-    receiptShareStatus: MonthlyExpenseReceiptShareStatus;
+    paymentRecordId: string;
+    sendStatus: MonthlyExpenseReceiptShareStatus;
   }) => void | Promise<void>;
   onRequestCloseExpenseSheet: () => void;
   onSaveExpense: () => void;
@@ -1285,14 +1258,56 @@ function getReceiptShareStatusIcon(
   return status === "sent" ? Mail : Clock3;
 }
 
+/**
+ * Aggregates the per-payment share status into a single expense-level status.
+ *
+ * Returns `null` when the expense does not require sharing or has no receipt
+ * payments yet. Otherwise it returns `"sent"` only when every receipt payment
+ * was already shared, and `"pending"` when at least one is still unsent.
+ *
+ * @param row - Expense row carrying its payment records and share requirement.
+ * @returns The aggregated share status or `null` when not applicable.
+ */
 function getNormalizedReceiptShareStatus(
-  row: Pick<MonthlyExpensesEditableRow, "receiptShareStatus" | "requiresReceiptShare">,
+  row: Pick<MonthlyExpensesEditableRow, "paymentRecords" | "requiresReceiptShare">,
 ): MonthlyExpenseReceiptShareStatus | null {
+  const progress = getReceiptShareProgress(row);
+
+  if (!progress) {
+    return null;
+  }
+
+  return progress.sentCount >= progress.receiptCount ? "sent" : "pending";
+}
+
+/**
+ * Counts how many receipt payments were already shared versus the total number
+ * of receipt payments for an expense.
+ *
+ * @param row - Expense row carrying its payment records and share requirement.
+ * @returns `{ receiptCount, sentCount }`, or `null` when sharing does not apply
+ *   or there are no receipt payments to share.
+ */
+function getReceiptShareProgress(
+  row: Pick<MonthlyExpensesEditableRow, "paymentRecords" | "requiresReceiptShare">,
+): { receiptCount: number; sentCount: number } | null {
   if (!row.requiresReceiptShare) {
     return null;
   }
 
-  return row.receiptShareStatus === "sent" ? "sent" : "pending";
+  const receiptPaymentRecords = (row.paymentRecords ?? []).filter(
+    (paymentRecord) => Boolean(paymentRecord.receipt),
+  );
+
+  if (receiptPaymentRecords.length === 0) {
+    return null;
+  }
+
+  const sentCount = receiptPaymentRecords.filter(
+    (paymentRecord) => paymentRecord.sendStatus === "sent",
+  ).length;
+
+  return { receiptCount: receiptPaymentRecords.length, sentCount };
 }
 
 function getReceiptShareStatusToneClassName(
@@ -1316,59 +1331,41 @@ function getReceiptShareMessage(value: string): string | null {
   return normalizedMessage.length > 0 ? normalizedMessage : null;
 }
 
-function getReceiptShareReceiptUrls(
-  receipts: MonthlyExpensesEditableReceipt[],
-): string[] {
-  return receipts
-    .map((receipt) => receipt.fileViewUrl.trim())
-    .filter((receiptUrl) => receiptUrl.length > 0);
-}
-
-function getReceiptShareReceiptsMessage(receiptUrls: string[]): string | null {
-  if (receiptUrls.length === 0) {
-    return null;
-  }
-
-  if (receiptUrls.length === 1) {
-    return `Comprobante: ${receiptUrls[0]}`;
-  }
-
-  return receiptUrls
-    .map(
-      (receiptUrl, index) => `Comprobante ${index + 1}: ${receiptUrl}`,
-    )
-    .join("\n");
-}
-
-function getReceiptShareWhatsAppLink(
-  row: Pick<
+/**
+ * Builds the WhatsApp deep link to share a single payment's receipt with the
+ * expense recipient. The recipient (phone + optional message) is shared expense
+ * configuration, while the shared file is the receipt of that specific payment.
+ *
+ * @param destination - Expense-level recipient configuration.
+ * @param receipt - Receipt attached to the payment being shared.
+ * @returns The WhatsApp link, or `null` when sharing is not configured or the
+ *   payment has no receipt URL.
+ */
+function getPaymentRecordWhatsAppLink(
+  destination: Pick<
     MonthlyExpensesEditableRow,
-    | "receiptShareMessage"
-    | "receiptSharePhoneDigits"
-    | "receipts"
-    | "requiresReceiptShare"
+    "receiptShareMessage" | "receiptSharePhoneDigits" | "requiresReceiptShare"
   >,
+  receipt: MonthlyExpensesEditableReceipt | undefined,
 ): string | null {
-  if (!row.requiresReceiptShare) {
+  if (!destination.requiresReceiptShare) {
     return null;
   }
 
-  const phoneDigits = row.receiptSharePhoneDigits.trim();
+  const phoneDigits = destination.receiptSharePhoneDigits.trim();
 
   if (!phoneDigits) {
     return null;
   }
 
-  const receiptShareMessage = getReceiptShareReceiptsMessage(
-    getReceiptShareReceiptUrls(row.receipts),
-  );
+  const receiptUrl = receipt ? receipt.fileViewUrl.trim() : "";
 
-  if (!receiptShareMessage) {
+  if (!receiptUrl) {
     return null;
   }
 
-  const normalizedMessage = getReceiptShareMessage(row.receiptShareMessage);
-
+  const receiptShareMessage = `Comprobante: ${receiptUrl}`;
+  const normalizedMessage = getReceiptShareMessage(destination.receiptShareMessage);
   const fullMessage = normalizedMessage
     ? `${receiptShareMessage}\n\n${normalizedMessage}`
     : receiptShareMessage;
@@ -1834,9 +1831,15 @@ function PaymentHistoryCell({
   onRegisterPaymentRecord,
   onDeleteManualPaymentRecord,
   onDeleteReceipt,
+  onDeleteExpenseReceiptShare,
   onEditManualPaymentRecord,
   onEditReceiptCoverage,
+  onOpenReceiptShareDialog,
+  onUpdatePaymentRecordSendStatus,
   paymentRecords,
+  receiptShareMessage,
+  receiptSharePhoneDigits,
+  requiresReceiptShare,
 }: {
   actionDisabled: boolean;
   expenseDescription: string;
@@ -1855,6 +1858,7 @@ function PaymentHistoryCell({
     expenseId: string;
     receiptFileId: string;
   }) => void;
+  onDeleteExpenseReceiptShare: (expenseId: string) => void | Promise<void>;
   onEditManualPaymentRecord: (args: {
     expenseId: string;
     paymentRecordId: string;
@@ -1863,7 +1867,22 @@ function PaymentHistoryCell({
     expenseId: string;
     receiptFileId: string;
   }) => void;
+  onOpenReceiptShareDialog: (args: {
+    expenseDescription: string;
+    expenseId: string;
+    mode: "create" | "edit";
+    receiptShareMessage: string;
+    receiptSharePhoneDigits: string;
+  }) => void;
+  onUpdatePaymentRecordSendStatus: (args: {
+    expenseId: string;
+    paymentRecordId: string;
+    sendStatus: MonthlyExpenseReceiptShareStatus;
+  }) => void | Promise<void>;
   paymentRecords: MonthlyExpensesEditablePaymentRecord[];
+  receiptShareMessage: string;
+  receiptSharePhoneDigits: string;
+  requiresReceiptShare: boolean;
 }) {
   const [manualRecordDraft, setManualRecordDraft] = useState("1");
   const [selectedReceiptFile, setSelectedReceiptFile] = useState<File | null>(null);
@@ -1885,6 +1904,21 @@ function PaymentHistoryCell({
   const recordsCountLabel = paymentRecords.length === 1
     ? "registro"
     : "registros";
+  const receiptShareDestination = {
+    receiptShareMessage,
+    receiptSharePhoneDigits,
+    requiresReceiptShare,
+  };
+  const receiptShareProgress = getReceiptShareProgress({
+    paymentRecords,
+    requiresReceiptShare,
+  });
+  const trimmedReceiptSharePhone = receiptSharePhoneDigits.trim();
+  const hasReceiptShareTarget =
+    requiresReceiptShare && trimmedReceiptSharePhone.length > 0;
+  const formattedReceiptSharePhone =
+    formatReceiptSharePhoneDisplay(trimmedReceiptSharePhone) ||
+    trimmedReceiptSharePhone;
   const parsedManualCoveredPayments = Number(manualRecordDraft);
   const hasValidManualDraft =
     Number.isInteger(parsedManualCoveredPayments) &&
@@ -2045,6 +2079,55 @@ function PaymentHistoryCell({
           </PopoverTrigger>
           <PopoverContent align="start" className={styles.extraReceiptsPopover}>
             <div className={styles.extraReceiptsList}>
+              <div className={styles.receiptShareTargetRow}>
+                {hasReceiptShareTarget ? (
+                  <>
+                    <span className={styles.receiptShareTargetLabel}>
+                      <Mail aria-hidden="true" className={styles.receiptLinkIcon} />
+                      {`Enviar a ${formattedReceiptSharePhone}`}
+                    </span>
+                    <QuickEditActionsMenu
+                      actionDisabled={actionDisabled}
+                      confirmDeleteActionAriaLabel={`Confirmar eliminación de datos de envío para ${expenseDescription}`}
+                      confirmDeleteActionDescription="Esta acción borra el número de WhatsApp y el mensaje guardado para compartir comprobantes."
+                      confirmDeleteActionTitle="¿Querés eliminar estos datos de envío?"
+                      deleteActionLabel="Eliminar datos de envío"
+                      editActionLabel="Editar datos de envío"
+                      expenseDescription={expenseDescription}
+                      onDelete={() => onDeleteExpenseReceiptShare(expenseId)}
+                      onEdit={() =>
+                        onOpenReceiptShareDialog({
+                          expenseId,
+                          expenseDescription,
+                          mode: "edit",
+                          receiptShareMessage,
+                          receiptSharePhoneDigits,
+                        })}
+                      triggerAriaLabel="Abrir acciones de envío"
+                    />
+                  </>
+                ) : (
+                  <Button
+                    aria-label={`Agregar datos de envío para ${expenseDescription}`}
+                    className={styles.manualPaymentsRegisterButton}
+                    disabled={actionDisabled}
+                    onClick={() =>
+                      onOpenReceiptShareDialog({
+                        expenseId,
+                        expenseDescription,
+                        mode: "create",
+                        receiptShareMessage,
+                        receiptSharePhoneDigits,
+                      })}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <Plus aria-hidden="true" />
+                    Agregar datos de envío
+                  </Button>
+                )}
+              </div>
               <div className={styles.manualPaymentsControls}>
                 <Button
                   aria-label={`Agregar nuevo registro de pago para ${expenseDescription}`}
@@ -2071,6 +2154,12 @@ function PaymentHistoryCell({
               const receiptFileUrl = paymentRecord.receipt
                 ? getValidHttpUrl(paymentRecord.receipt.fileViewUrl)
                 : null;
+              const paymentSendStatus =
+                paymentRecord.sendStatus === "sent" ? "sent" : "pending";
+              const paymentWhatsAppLink = getPaymentRecordWhatsAppLink(
+                receiptShareDestination,
+                paymentRecord.receipt,
+              );
               const paymentRecordActions = paymentRecord.receipt
                 ? {
                     confirmDeleteActionAriaLabel:
@@ -2139,6 +2228,84 @@ function PaymentHistoryCell({
                         )
                       : null}
                   </div>
+                  {paymentRecord.receipt && requiresReceiptShare ? (
+                    <div className={styles.paymentRecordSendControls}>
+                      <Select
+                        onValueChange={(value) => {
+                          void onUpdatePaymentRecordSendStatus({
+                            expenseId,
+                            paymentRecordId: paymentRecord.id,
+                            sendStatus: value as MonthlyExpenseReceiptShareStatus,
+                          });
+                        }}
+                        value={paymentSendStatus}
+                      >
+                        <SelectTrigger
+                          aria-label={`Estado de envío de ${recordLabel} para ${expenseDescription}`}
+                          className={cn(
+                            styles.receiptShareStatusControl,
+                            getReceiptShareStatusToneClassName({
+                              isPaymentFullyCompleted: true,
+                              status: paymentSendStatus,
+                            }),
+                          )}
+                        >
+                          <SelectValue>
+                            <span className={styles.receiptShareStatusValue}>
+                              {(() => {
+                                const StatusIcon =
+                                  getReceiptShareStatusIcon(paymentSendStatus);
+
+                                return (
+                                  <StatusIcon
+                                    aria-hidden="true"
+                                    className={styles.paymentLinkIcon}
+                                  />
+                                );
+                              })()}
+                              <span>
+                                {getReceiptShareStatusLabel(paymentSendStatus)}
+                              </span>
+                            </span>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">
+                            <span className={styles.receiptShareStatusValue}>
+                              <Clock3
+                                aria-hidden="true"
+                                className={styles.paymentLinkIcon}
+                              />
+                              <span>Pendiente</span>
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="sent">
+                            <span className={styles.receiptShareStatusValue}>
+                              <Mail
+                                aria-hidden="true"
+                                className={styles.paymentLinkIcon}
+                              />
+                              <span>Enviado</span>
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {paymentWhatsAppLink ? (
+                        <a
+                          className={styles.paymentLinkAction}
+                          href={paymentWhatsAppLink}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          Enviar
+                          <ExternalLink
+                            aria-hidden="true"
+                            className={styles.paymentLinkIcon}
+                          />
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className={styles.paymentRecordActions}>
                     <PaymentRecordActionsMenu
                       actionDisabled={actionDisabled}
@@ -2161,6 +2328,19 @@ function PaymentHistoryCell({
           </PopoverContent>
         </Popover>
       )}
+      {receiptShareProgress ? (
+        <span
+          className={cn(
+            styles.receiptShareProgressChip,
+            receiptShareProgress.sentCount >= receiptShareProgress.receiptCount
+              ? styles.receiptShareProgressChipComplete
+              : undefined,
+          )}
+        >
+          <Mail aria-hidden="true" className={styles.receiptCountIcon} />
+          {`${receiptShareProgress.sentCount}/${receiptShareProgress.receiptCount} enviados`}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -2216,7 +2396,7 @@ export function MonthlyExpensesTable({
   onUpdatePaymentLink,
   onUpdateExpenseDetails,
   onUpdateExpenseReceiptShare,
-  onUpdateReceiptShareStatus,
+  onUpdatePaymentRecordSendStatus,
   onMonthChange,
   onRequestCloseExpenseSheet,
   onSaveExpense,
@@ -3454,237 +3634,6 @@ export function MonthlyExpensesTable({
         },
       },
       {
-        accessorKey: "receiptShareStatus",
-        cell: ({ row }) => {
-          const normalizedStatus = getNormalizedReceiptShareStatus(row.original);
-
-          if (!normalizedStatus) {
-            return null;
-          }
-
-          const expenseDescription = row.original.description.trim() || "compromiso";
-          const isPaymentFullyCompleted = isPaymentCompleted(row.original);
-          const statusToneClassName = getReceiptShareStatusToneClassName({
-            isPaymentFullyCompleted,
-            status: normalizedStatus,
-          });
-
-          return (
-              <Select
-                onValueChange={(value) => {
-                void onUpdateReceiptShareStatus({
-                  expenseId: row.original.id,
-                  receiptShareStatus: value as MonthlyExpenseReceiptShareStatus,
-                });
-              }}
-              value={normalizedStatus}
-            >
-              <SelectTrigger
-                aria-label={`Estado de envío de ${expenseDescription}`}
-                className={cn(
-                  styles.receiptShareStatusControl,
-                  statusToneClassName,
-                )}
-              >
-                <SelectValue>
-                  <span className={styles.receiptShareStatusValue}>
-                    {(() => {
-                      const StatusIcon = getReceiptShareStatusIcon(normalizedStatus);
-
-                      return <StatusIcon aria-hidden="true" className={styles.paymentLinkIcon} />;
-                    })()}
-                    <span>{getReceiptShareStatusLabel(normalizedStatus)}</span>
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  className={cn(
-                    styles.receiptShareStatusControl,
-                    getReceiptShareStatusToneClassName({
-                      isPaymentFullyCompleted,
-                      status: "pending",
-                    }),
-                  )}
-                  value="pending"
-                >
-                  <span className={styles.receiptShareStatusValue}>
-                    <Clock3 aria-hidden="true" className={styles.paymentLinkIcon} />
-                    <span>Pendiente</span>
-                  </span>
-                </SelectItem>
-                <SelectItem
-                  className={cn(
-                    styles.receiptShareStatusControl,
-                    getReceiptShareStatusToneClassName({
-                      isPaymentFullyCompleted,
-                      status: "sent",
-                    }),
-                  )}
-                  value="sent"
-                >
-                  <span className={styles.receiptShareStatusValue}>
-                    <Mail aria-hidden="true" className={styles.paymentLinkIcon} />
-                    <span>Enviado</span>
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          );
-        },
-        filterFn: (row, _columnId, filterValue) => {
-          const normalizedStatus = getNormalizedReceiptShareStatus(row.original);
-
-          return matchesAdvancedEnumFilter(
-            filterValue,
-            normalizedStatus ?? "none",
-          );
-        },
-        header: getSortableHeader("Estado de envío"),
-        meta: { label: "Estado de envío" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          const leftStatus = getNormalizedReceiptShareStatus(rowA.original);
-          const rightStatus = getNormalizedReceiptShareStatus(rowB.original);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) => {
-              const leftRank = leftValue === "pending" ? 0 : 1;
-              const rightRank = rightValue === "pending" ? 0 : 1;
-
-              return leftRank - rightRank;
-            },
-            leftValue: leftStatus,
-            rightValue: rightStatus,
-            sortDirection: getSortDirection("receiptShareStatus"),
-          });
-        },
-      },
-      {
-        id: "receiptShareLink",
-        accessorFn: (row) => getReceiptShareWhatsAppLink(row),
-        cell: ({ row }) => {
-          const receiptShareLink = getReceiptShareWhatsAppLink(row.original);
-          const expenseDescription = row.original.description.trim() || "compromiso";
-          const hasReceiptShareTarget =
-            row.original.requiresReceiptShare &&
-            row.original.receiptSharePhoneDigits.trim().length > 0;
-
-          if (!hasReceiptShareTarget) {
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label={`Agregar datos de envío para ${expenseDescription}`}
-                    className={styles.paymentLinkActionButton}
-                    disabled={actionDisabled}
-                    onClick={() =>
-                      handleOpenReceiptShareDialog({
-                        expenseId: row.original.id,
-                        expenseDescription,
-                        mode: "create",
-                        receiptShareMessage: row.original.receiptShareMessage,
-                        receiptSharePhoneDigits: row.original.receiptSharePhoneDigits,
-                      })}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Plus aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Agregar datos de envío</TooltipContent>
-              </Tooltip>
-            );
-          }
-
-          const phoneDigits = row.original.receiptSharePhoneDigits.trim();
-          const formattedPhoneDigits = formatReceiptSharePhoneDisplay(phoneDigits);
-
-          return (
-            <div className={styles.paymentLinkActionsRow}>
-              {receiptShareLink ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      className={styles.paymentLinkAction}
-                      href={receiptShareLink}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Enviar
-                      <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {`Enviar comprobante a ${formattedPhoneDigits || phoneDigits}`}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <span className={styles.mutedValue}>Sin comprobantes</span>
-              )}
-              <QuickEditActionsMenu
-                actionDisabled={actionDisabled}
-                confirmDeleteActionAriaLabel={`Confirmar eliminación de datos de envío para ${expenseDescription}`}
-                confirmDeleteActionDescription="Esta acción borra el número de WhatsApp y el mensaje guardado para compartir comprobantes."
-                confirmDeleteActionTitle="¿Querés eliminar estos datos de envío?"
-                deleteActionLabel="Eliminar datos de envío"
-                editActionLabel="Editar datos de envío"
-                expenseDescription={expenseDescription}
-                onDelete={() => onDeleteExpenseReceiptShare(row.original.id)}
-                onEdit={() =>
-                  handleOpenReceiptShareDialog({
-                    expenseId: row.original.id,
-                    expenseDescription,
-                    mode: "edit",
-                    receiptShareMessage: row.original.receiptShareMessage,
-                    receiptSharePhoneDigits: row.original.receiptSharePhoneDigits,
-                  })}
-                triggerAriaLabel="Abrir acciones de envío"
-              />
-            </div>
-          );
-        },
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedPresenceFilter(
-            filterValue,
-            getReceiptShareWhatsAppLink(row.original) != null,
-          ),
-        header: getSortableHeader("Enviar"),
-        meta: { label: "Enviar" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          const leftLink = getReceiptShareWhatsAppLink(rowA.original);
-          const rightLink = getReceiptShareWhatsAppLink(rowB.original);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) =>
-              leftValue.localeCompare(rightValue, "es", {
-                sensitivity: "base",
-              }),
-            leftValue: leftLink,
-            rightValue: rightLink,
-            sortDirection: getSortDirection("receiptShareLink"),
-          });
-        },
-      },
-      {
         id: "paymentsProgress",
         accessorFn: (row) => {
           const { coveredPayments, requiredPayments } = getPaymentProgress(row);
@@ -3784,9 +3733,15 @@ export function MonthlyExpensesTable({
               onRegisterPaymentRecord={onRegisterPaymentRecord}
               onDeleteManualPaymentRecord={onDeleteManualPaymentRecord}
               onDeleteReceipt={onDeleteReceipt}
+              onDeleteExpenseReceiptShare={onDeleteExpenseReceiptShare}
               onEditManualPaymentRecord={onEditManualPaymentRecord}
               onEditReceiptCoverage={onEditReceiptCoverage}
+              onOpenReceiptShareDialog={handleOpenReceiptShareDialog}
+              onUpdatePaymentRecordSendStatus={onUpdatePaymentRecordSendStatus}
               paymentRecords={row.original.paymentRecords ?? []}
+              receiptShareMessage={row.original.receiptShareMessage}
+              receiptSharePhoneDigits={row.original.receiptSharePhoneDigits}
+              requiresReceiptShare={row.original.requiresReceiptShare}
             />
           );
         },
@@ -4074,7 +4029,7 @@ export function MonthlyExpensesTable({
       onEditExpense,
       onMoveExpenseToFolder,
       onRegisterPaymentRecord,
-      onUpdateReceiptShareStatus,
+      onUpdatePaymentRecordSendStatus,
       compareRowsByDescriptionFilterRelevance,
       handleOpenDetailsDialog,
       handleOpenReceiptShareDialog,

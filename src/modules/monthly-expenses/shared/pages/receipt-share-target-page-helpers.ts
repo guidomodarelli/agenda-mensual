@@ -156,9 +156,9 @@ export function normalizeExpenseItemsForSave(
           receiptSharePhoneDigits: item.receiptSharePhoneDigits,
         }
       : {}),
-    ...(typeof item.receiptShareStatus !== "undefined"
+    ...(item.paymentRecords
       ? {
-          receiptShareStatus: item.receiptShareStatus,
+          paymentRecords: item.paymentRecords,
         }
       : {}),
     ...(typeof item.requiresReceiptShare === "boolean"
@@ -186,6 +186,66 @@ export function normalizeExpenseItemsForSave(
       : {}),
     subtotal: item.subtotal,
   }));
+}
+
+/** Minimal shape of an uploaded receipt needed to attach it to an expense item. */
+export interface UploadedSharedReceipt {
+  allReceiptsFolderId: string;
+  allReceiptsFolderViewUrl: string;
+  coveredPayments: number;
+  fileId: string;
+  fileName: string;
+  fileViewUrl: string;
+  monthlyFolderId: string;
+  monthlyFolderViewUrl: string;
+}
+
+/**
+ * Attaches an uploaded shared receipt to the target expense item.
+ *
+ * The receipt is added both to the legacy `receipts` array and as a matching
+ * payment record. The domain normalizer prefers `paymentRecords` over legacy
+ * `receipts` when present, so an expense that already has payment records would
+ * otherwise drop the newly uploaded receipt from the saved document.
+ *
+ * @param item - The target expense item to update.
+ * @param receiptUpload - The uploaded receipt metadata returned by the upload API.
+ * @returns A new expense item carrying the uploaded receipt as a payment record.
+ */
+export function appendUploadedReceiptToExpenseItem(
+  item: MonthlyExpensesDocumentResult["items"][number],
+  receiptUpload: UploadedSharedReceipt,
+): MonthlyExpensesDocumentResult["items"][number] {
+  const uploadedReceipt = {
+    allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
+    allReceiptsFolderViewUrl: receiptUpload.allReceiptsFolderViewUrl,
+    coveredPayments: receiptUpload.coveredPayments,
+    fileId: receiptUpload.fileId,
+    fileName: receiptUpload.fileName,
+    fileViewUrl: receiptUpload.fileViewUrl,
+    monthlyFolderId: receiptUpload.monthlyFolderId,
+    monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
+  };
+
+  return {
+    ...item,
+    folders: {
+      allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
+      allReceiptsFolderViewUrl: receiptUpload.allReceiptsFolderViewUrl,
+      monthlyFolderId: receiptUpload.monthlyFolderId,
+      monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
+    },
+    paymentRecords: [
+      ...(item.paymentRecords ?? []),
+      {
+        coveredPayments: receiptUpload.coveredPayments,
+        id: `legacy-receipt-${receiptUpload.fileId}`,
+        receipt: uploadedReceipt,
+        registeredAt: null,
+      },
+    ],
+    receipts: [...(item.receipts ?? []), uploadedReceipt],
+  };
 }
 
 export function getRemainingReceiptPayments({

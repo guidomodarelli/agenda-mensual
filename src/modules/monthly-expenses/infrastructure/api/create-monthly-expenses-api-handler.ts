@@ -66,6 +66,7 @@ const monthlyExpensePaymentRecordSchema = z.object({
   id: z.string().trim().min(1),
   receipt: monthlyExpenseReceiptSchema.nullable().optional(),
   registeredAt: z.string().datetime().nullable().optional(),
+  sendStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
 }).strict();
 
 const monthlyExpenseFoldersSchema = z.object({

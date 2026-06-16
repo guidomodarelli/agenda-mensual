@@ -1,12 +1,15 @@
 import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
+import { createMonthlyExpensesDocument } from "@/modules/monthly-expenses/domain/value-objects/monthly-expenses-document";
 
 import {
+  appendUploadedReceiptToExpenseItem,
   deriveExpenseSearchQueryFromFileName,
   getCurrentMonthIdentifier,
   getRemainingReceiptPayments,
   normalizeExpenseItemsForSave,
   suggestExpenseIdForSharedReceipt,
   type ReceiptSuggestionExpense,
+  type UploadedSharedReceipt,
 } from "./receipt-share-target-page-helpers";
 
 describe("receipt share target helpers", () => {
@@ -84,5 +87,73 @@ describe("receipt share target helpers", () => {
       occurrencesUnit: "semanas",
     });
     expect(normalizedItems[1]).not.toHaveProperty("occurrencesUnit");
+  });
+
+  it("keeps an uploaded shared receipt on an expense that already has payment records", () => {
+    const existingReceipt = {
+      allReceiptsFolderId: "receipt-folder-id",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-folder-id",
+      coveredPayments: 1,
+      fileId: "existing-receipt-file-id",
+      fileName: "existing.pdf",
+      fileViewUrl: "https://drive.google.com/file/d/existing-receipt-file-id/view",
+      monthlyFolderId: "receipt-month-folder-id",
+      monthlyFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    };
+    const item: MonthlyExpensesDocumentResult["items"][number] = {
+      currency: "ARS",
+      description: "Internet",
+      id: "expense-1",
+      occurrencesPerMonth: 2,
+      paymentRecords: [
+        {
+          coveredPayments: 1,
+          id: "legacy-receipt-existing-receipt-file-id",
+          receipt: existingReceipt,
+          registeredAt: null,
+        },
+      ],
+      receipts: [existingReceipt],
+      subtotal: 45,
+      total: 45,
+    };
+    const uploadedReceipt: UploadedSharedReceipt = {
+      allReceiptsFolderId: "receipt-folder-id",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-folder-id",
+      coveredPayments: 1,
+      fileId: "uploaded-receipt-file-id",
+      fileName: "comprobante.pdf",
+      fileViewUrl: "https://drive.google.com/file/d/uploaded-receipt-file-id/view",
+      monthlyFolderId: "receipt-month-folder-id",
+      monthlyFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    };
+
+    const updatedItem = appendUploadedReceiptToExpenseItem(item, uploadedReceipt);
+
+    expect(
+      updatedItem.paymentRecords?.some(
+        (paymentRecord) =>
+          paymentRecord.receipt?.fileId === "uploaded-receipt-file-id",
+      ),
+    ).toBe(true);
+
+    const savedDocument = createMonthlyExpensesDocument(
+      {
+        items: normalizeExpenseItemsForSave([updatedItem]),
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    const savedFileIds = (savedDocument.items[0]?.paymentRecords ?? [])
+      .map((paymentRecord) => paymentRecord.receipt?.fileId)
+      .filter(Boolean);
+
+    expect(savedFileIds).toContain("uploaded-receipt-file-id");
+    expect(savedFileIds).toContain("existing-receipt-file-id");
   });
 });

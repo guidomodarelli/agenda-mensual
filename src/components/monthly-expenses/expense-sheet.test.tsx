@@ -31,7 +31,6 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
-    receiptShareStatus: "",
     requiresReceiptShare: false,
     receipts: [],
     sortOrder: null,
@@ -191,15 +190,31 @@ describe("ExpenseSheet", () => {
     expect(screen.queryByLabelText("Subtotal")).not.toBeInTheDocument();
     expect(screen.queryByText("Frecuencia de pago")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Total")).not.toBeInTheDocument();
+  });
+
+  // The refactor unified the per-payment send recipient, and the
+  // "¿Necesitas enviar el comprobante a alguien?" section is now shown in edit
+  // mode too (previously create only), so its presence is asserted here.
+  it("shows the receipt share section with phone and message when editing an expense", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        receiptShareMessage: "Mensaje de prueba",
+        receiptSharePhoneDigits: "5491123456789",
+        requiresReceiptShare: true,
+      },
+      mode: "edit",
+    });
+
     expect(
-      screen.queryByLabelText("¿Necesitas enviar el comprobante a alguien?"),
-    ).not.toBeInTheDocument();
+      screen.getByLabelText("¿Necesitas enviar el comprobante a alguien?"),
+    ).toBeInTheDocument();
     expect(
-      screen.queryByLabelText("Número de teléfono (WhatsApp)"),
-    ).not.toBeInTheDocument();
+      screen.getByLabelText("Número de teléfono (WhatsApp)"),
+    ).toBeInTheDocument();
     expect(
-      screen.queryByLabelText("Mensaje personalizado (opcional)"),
-    ).not.toBeInTheDocument();
+      screen.getByLabelText("Mensaje personalizado (opcional)"),
+    ).toBeInTheDocument();
   });
 
   it("shows the loan direction selector for loans", () => {

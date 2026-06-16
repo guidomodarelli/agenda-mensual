@@ -35,7 +35,6 @@ function createRow(overrides: Partial<MonthlyExpensesEditableRow> = {}): Monthly
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
-    receiptShareStatus: "",
     requiresReceiptShare: false,
     receipts: [],
     startMonth: "",
@@ -51,7 +50,7 @@ function renderMonthlyExpensesTable(
   overrides: Partial<
     Pick<
       ComponentProps<typeof MonthlyExpensesTable>,
-      "onUpdateExpenseDetails"
+      "onUpdateExpenseDetails" | "onUpdatePaymentRecordSendStatus"
     >
   > = {},
 ) {
@@ -109,10 +108,10 @@ function renderMonthlyExpensesTable(
         onUnsavedChangesClose={jest.fn()}
         onUnsavedChangesDiscard={jest.fn()}
         onUpdateExpenseDetails={jest.fn()}
-        {...overrides}
         onUpdateExpenseReceiptShare={jest.fn()}
         onUpdatePaymentLink={jest.fn()}
-        onUpdateReceiptShareStatus={jest.fn()}
+        onUpdatePaymentRecordSendStatus={jest.fn()}
+        {...overrides}
         pendingMonth={null}
         replicateFromPreviousMonthDialogOpen={false}
         replicateFromPreviousMonthOptions={[]}
@@ -296,10 +295,38 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
   });
 
   it("focuses receipt share phone input when opening receipt share dialog", async () => {
-    renderMonthlyExpensesTable([createRow()]);
+    // The control to add receipt share data lives inside the "Registro de pagos"
+    // popover. We load a payment record so we can open that popover and then open
+    // the receipt share dialog.
+    renderMonthlyExpensesTable([
+      createRow({
+        paymentRecords: [
+          {
+            coveredPayments: 1,
+            id: "payment-1",
+            receipt: {
+              allReceiptsFolderId: "receipt-folder-id",
+              allReceiptsFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-folder-id",
+              coveredPayments: 1,
+              fileId: "receipt-file-id",
+              fileName: "comprobante.pdf",
+              fileViewUrl:
+                "https://drive.google.com/file/d/receipt-file-id/view",
+              monthlyFolderId: "receipt-month-folder-id",
+              monthlyFolderViewUrl:
+                "https://drive.google.com/drive/folders/receipt-month-folder-id",
+            },
+            registeredAt: null,
+          },
+        ],
+        requiresReceiptShare: true,
+      }),
+    ]);
 
     const user = userEvent.setup();
 
+    await user.click(screen.getByRole("button", { name: /\d+ registros?/ }));
     await user.click(
       screen.getByRole("button", {
         name: "Agregar datos de envío para Internet",
@@ -451,5 +478,54 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
     expect(onUpdateExpenseDetails).not.toHaveBeenCalled();
     expect(screen.getByText("Completá la duración mensual.")).toBeInTheDocument();
+  });
+
+  it("invokes onUpdatePaymentRecordSendStatus when changing a payment send status in the popover", async () => {
+    const user = userEvent.setup();
+    const onUpdatePaymentRecordSendStatus = jest.fn();
+
+    renderMonthlyExpensesTable(
+      [
+        createRow({
+          paymentRecords: [
+            {
+              coveredPayments: 1,
+              id: "payment-1",
+              receipt: {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id",
+                fileName: "comprobante.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              registeredAt: null,
+              sendStatus: "pending",
+            },
+          ],
+          requiresReceiptShare: true,
+        }),
+      ],
+      { onUpdatePaymentRecordSendStatus },
+    );
+
+    await user.click(screen.getByRole("button", { name: /\d+ registros?/ }));
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Estado de envío de Sin fecha — 1 pago para Internet",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "Enviado" }));
+
+    expect(onUpdatePaymentRecordSendStatus).toHaveBeenCalledWith({
+      expenseId: "expense-1",
+      paymentRecordId: "payment-1",
+      sendStatus: "sent",
+    });
   });
 });
