@@ -3415,25 +3415,23 @@ export function MonthlyExpensesTable({
           const hasSubtotalBreakdown =
             Number.isFinite(occurrencesPerMonth) &&
             (subtotalUnit === "hour" || occurrencesPerMonth !== 1);
+          const formatRowArsAmount = (value: string) =>
+            formatArsWithUsdSecondary({
+              exchangeRateSnapshot,
+              rowCurrency: row.original.currency,
+              value,
+            });
 
           return (
             <div className={styles.totalCell}>
               <div className={styles.totalSummary}>
                 <span className={styles.totalAmount}>
-                  {formatArsWithUsdSecondary({
-                    exchangeRateSnapshot,
-                    rowCurrency: row.original.currency,
-                    value: row.original.total,
-                  })}
+                  {formatRowArsAmount(row.original.total)}
                 </span>
                 {hasSubtotalBreakdown ? (
                   <span className={styles.totalSubtotalBreakdown}>
                     <span className={styles.totalSubtotalAmount}>
-                      {formatArsWithUsdSecondary({
-                        exchangeRateSnapshot,
-                        rowCurrency: row.original.currency,
-                        value: row.original.subtotal,
-                      })}
+                      {formatRowArsAmount(row.original.subtotal)}
                       {subtotalUnit === "hour" ? (
                         <span className={styles.subtotalRateSuffix}>/h</span>
                       ) : null}
