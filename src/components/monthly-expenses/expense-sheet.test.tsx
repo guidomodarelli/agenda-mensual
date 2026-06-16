@@ -192,9 +192,9 @@ describe("ExpenseSheet", () => {
     expect(screen.queryByLabelText("Total")).not.toBeInTheDocument();
   });
 
-  // El refactor unificó el destino de envío por pago y ahora la sección
-  // "¿Necesitas enviar el comprobante a alguien?" se muestra también en modo edit
-  // (antes solo en create), por eso aquí se valida su presencia.
+  // The refactor unified the per-payment send recipient, and the
+  // "¿Necesitas enviar el comprobante a alguien?" section is now shown in edit
+  // mode too (previously create only), so its presence is asserted here.
   it("shows the receipt share section with phone and message when editing an expense", () => {
     renderExpenseSheet({
       draft: {

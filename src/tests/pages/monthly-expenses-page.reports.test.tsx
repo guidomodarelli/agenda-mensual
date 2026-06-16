@@ -1746,9 +1746,9 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  // El refactor eliminó las columnas "Estado de envío" y "Enviar" de la tabla
-  // (el envío se unificó dentro del popover de "Registro de pagos"). Por eso este
-  // test valida que esas columnas ya no existan y que "Pagos" preceda a
+  // The refactor removed the "Estado de envío" and "Enviar" columns from the
+  // table (sharing was unified inside the "Registro de pagos" popover). This test
+  // asserts those columns no longer exist and that "Pagos" comes before
   // "Registro de pagos".
   it("renders Pagos and Registro de pagos columns in order without the removed envío columns", () => {
     renderWithProviders(
@@ -2274,10 +2274,10 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(getMonthlyExpensesSavePayload(fetchMock).items[0]?.folders).toBeUndefined();
   });
 
-  // Test eliminado: el refactor sacó la columna "Estado de envío" de la tabla y, con
-  // ella, la capacidad de ordenar por estado de envío a nivel gasto. El estado ahora
-  // vive por pago dentro del popover de "Registro de pagos", por lo que ordenar la
-  // tabla por estado de envío ya no es un comportamiento soportado.
+  // Removed test: the refactor dropped the "Estado de envío" column from the
+  // table and, with it, the ability to sort by send status at the expense level.
+  // The status now lives per payment inside the "Registro de pagos" popover, so
+  // sorting the table by send status is no longer a supported behavior.
 
   it("opens the debt sorting popover with three selectable criteria", async () => {
     const user = userEvent.setup();

@@ -295,9 +295,9 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
   });
 
   it("focuses receipt share phone input when opening receipt share dialog", async () => {
-    // El control para agregar datos de envío vive dentro del popover de
-    // "Registro de pagos". Cargamos un registro de pago para poder abrir ese
-    // popover y luego disparar el modal de datos de envío.
+    // The control to add receipt share data lives inside the "Registro de pagos"
+    // popover. We load a payment record so we can open that popover and then open
+    // the receipt share dialog.
     renderMonthlyExpensesTable([
       createRow({
         paymentRecords: [

@@ -76,8 +76,8 @@ registerMonthlyExpensesPageDefaultHooks({
 });
 
   /**
-   * Construye un registro de pago con comprobante para los fixtures de envío.
-   * El estado de envío ahora vive por pago dentro del popover de "Registro de pagos".
+   * Builds a payment record with a receipt for the receipt-share fixtures.
+   * The send status now lives per payment inside the "Registro de pagos" popover.
    */
   function createReceiptPaymentRecord({
     coveredPayments = 1,
@@ -115,7 +115,7 @@ registerMonthlyExpensesPageDefaultHooks({
   }
 
   /**
-   * Abre el popover de "Registro de pagos" desde su botón disparador ("N registros").
+   * Opens the "Registro de pagos" popover from its trigger button ("N registros").
    */
   async function openPaymentHistoryPopover(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole("button", { name: /\d+ registros?/ }));
@@ -1014,12 +1014,12 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  // La persistencia del estado de envío por pago (combobox dentro del popover de
-  // "Registro de pagos") se valida a nivel del componente `MonthlyExpensesTable`
-  // en `monthly-expenses-table-focus.test.tsx`, porque el Radix Select anidado en el
-  // Popover no propaga la selección de forma confiable en jsdom dentro del flujo
-  // completo de página. El handler de persistencia (`persistMonthlyExpensesRows`) ya
-  // queda ejercido por el test de eliminación de datos de envío de este archivo.
+  // Per-payment send status persistence (the combobox inside the "Registro de
+  // pagos" popover) is validated at the `MonthlyExpensesTable` component level in
+  // `monthly-expenses-table-focus.test.tsx`, because the Radix Select nested in the
+  // Popover does not propagate the selection reliably under jsdom within the full
+  // page flow. The persistence handler (`persistMonthlyExpensesRows`) is already
+  // exercised by the receipt-share deletion test in this file.
 
   it("shows pending receipt-share summary above the description filter", async () => {
     const user = userEvent.setup();
@@ -1112,9 +1112,9 @@ registerMonthlyExpensesPageDefaultHooks({
     ).toHaveValue("Servicio pendiente");
   });
 
-  // El refactor movió el combobox de estado de envío fuera de la columna de la tabla
-  // hacia el popover por pago de "Registro de pagos". Este test valida el tono visual
-  // (pendiente/enviado) del combobox de cada pago dentro de su popover.
+  // The refactor moved the send-status combobox out of the table column and into
+  // the per-payment "Registro de pagos" popover. This test validates the visual
+  // tone (pending/sent) of each payment's combobox inside its popover.
   it("renders the per-payment send-status combobox with the matching tone class inside its popover", async () => {
     const user = userEvent.setup();
 
@@ -1422,8 +1422,8 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.queryByLabelText("Subtotal")).not.toBeInTheDocument();
     expect(screen.queryByText("Frecuencia de pago")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Total")).not.toBeInTheDocument();
-    // La sección "¿Necesitas enviar el comprobante a alguien?" ahora se muestra
-    // también en modo edit (antes solo en create), por eso ya no se afirma su ausencia.
+    // The "¿Necesitas enviar el comprobante a alguien?" section is now shown in
+    // edit mode too (previously create only), so its absence is no longer asserted.
 
     const descriptionInput = screen.getByLabelText("Descripción");
     await user.clear(descriptionInput);
@@ -1608,10 +1608,10 @@ registerMonthlyExpensesPageDefaultHooks({
       }),
     );
 
-    // Al borrar los datos de envío, el item persistido pierde teléfono, mensaje y la
-    // marca de envío requerido, conservando el resto de su contenido (incluidos los
-    // registros de pago). Validamos ese comportamiento observable sin acoplarnos al
-    // shape exacto del comprobante persistido.
+    // When the receipt share data is deleted, the persisted item loses its phone,
+    // message and the receipt-share-required flag, keeping the rest of its content
+    // (including payment records). We assert that observable behavior without
+    // coupling to the exact persisted receipt shape.
     await waitFor(() => {
       const savedItem = getMonthlyExpensesSavePayload(fetchMock).items[0];
 
@@ -1626,8 +1626,8 @@ registerMonthlyExpensesPageDefaultHooks({
       expect(savedItem).not.toHaveProperty("requiresReceiptShare");
     });
 
-    // Reabrimos el popover de registros de pago para comprobar que, sin datos de
-    // envío, vuelve a ofrecerse el botón para agregarlos.
+    // We reopen the payment records popover to verify that, without receipt share
+    // data, the button to add it is offered again.
     await openPaymentHistoryPopover(user);
     expect(
       screen.getByRole("button", {
