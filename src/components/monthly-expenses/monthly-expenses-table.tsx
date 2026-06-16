@@ -1068,6 +1068,53 @@ function getSortableHeader(label: string) {
   };
 }
 
+const PAYMENT_PROGRESS_RING_RADIUS = 7;
+const PAYMENT_PROGRESS_RING_CIRCUMFERENCE =
+  2 * Math.PI * PAYMENT_PROGRESS_RING_RADIUS;
+
+/**
+ * Compact circular progress indicator for the payments column. The arc inherits
+ * the surrounding text color (green when complete, yellow when pending) through
+ * `currentColor`, so it stays in sync with the numeric label without extra props.
+ */
+function PaymentProgressRing({ fraction }: { fraction: number }) {
+  const clampedFraction = Math.min(Math.max(fraction, 0), 1);
+  const dashOffset =
+    PAYMENT_PROGRESS_RING_CIRCUMFERENCE * (1 - clampedFraction);
+
+  return (
+    <svg
+      aria-hidden="true"
+      className={styles.paymentProgressRing}
+      height="18"
+      viewBox="0 0 18 18"
+      width="18"
+    >
+      <circle
+        className={styles.paymentProgressRingTrack}
+        cx="9"
+        cy="9"
+        fill="none"
+        r={PAYMENT_PROGRESS_RING_RADIUS}
+        strokeWidth="2.5"
+      />
+      {clampedFraction > 0 ? (
+        <circle
+          cx="9"
+          cy="9"
+          fill="none"
+          r={PAYMENT_PROGRESS_RING_RADIUS}
+          stroke="currentColor"
+          strokeDasharray={PAYMENT_PROGRESS_RING_CIRCUMFERENCE}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          strokeWidth="2.5"
+        />
+      ) : null}
+    </svg>
+  );
+}
+
 function getLoanSortModeLabel(loanSortMode: LoanSortMode): string {
   const option = LOAN_SORT_OPTIONS.find((entry) => entry.value === loanSortMode);
 
@@ -3647,28 +3694,28 @@ export function MonthlyExpensesTable({
             row.original,
           );
           const normalizedCoveredPayments = Math.max(coveredPayments, 0);
-
-          if (coveredPayments >= requiredPayments) {
-            return (
-              <span
-                className={cn(
-                  styles.paymentProgressPlain,
-                  "text-green-700 dark:text-green-300",
-                )}
-              >
-                {coveredPayments} / {requiredPayments}
-              </span>
-            );
-          }
+          const isComplete = coveredPayments >= requiredPayments;
+          const completionFraction =
+            requiredPayments > 0
+              ? normalizedCoveredPayments / requiredPayments
+              : 0;
+          const displayedCoveredPayments = isComplete
+            ? coveredPayments
+            : normalizedCoveredPayments;
 
           return (
             <span
               className={cn(
                 styles.paymentProgressPlain,
-                "text-yellow-700 dark:text-yellow-300",
+                isComplete
+                  ? "text-green-700 dark:text-green-300"
+                  : "text-yellow-700 dark:text-yellow-300",
               )}
             >
-              {normalizedCoveredPayments} / {requiredPayments}
+              <PaymentProgressRing fraction={completionFraction} />
+              <span>
+                {displayedCoveredPayments} / {requiredPayments}
+              </span>
             </span>
           );
         },
