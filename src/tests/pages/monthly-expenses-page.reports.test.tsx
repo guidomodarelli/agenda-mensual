@@ -367,7 +367,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getAllByText("Abrir página de pago").length).toBeGreaterThan(0);
   });
 
-  it("renders Pagos immediately before Registro de pagos", () => {
+  it("renders Pagos immediately before Registros", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -391,7 +391,7 @@ registerMonthlyExpensesPageDefaultHooks({
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
     const paidHeaderIndex = headers.indexOf("Pagos");
-    const paymentHistoryHeaderIndex = headers.indexOf("Registro de pagos");
+    const paymentHistoryHeaderIndex = headers.indexOf("Registros");
 
     expect(paymentHistoryHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(paidHeaderIndex).toBe(paymentHistoryHeaderIndex - 1);
@@ -1749,8 +1749,8 @@ registerMonthlyExpensesPageDefaultHooks({
   // The refactor removed the "Estado de envío" and "Enviar" columns from the
   // table (sharing was unified inside the "Registro de pagos" popover). This test
   // asserts those columns no longer exist and that "Pagos" comes before
-  // "Registro de pagos".
-  it("renders Pagos and Registro de pagos columns in order without the removed envío columns", () => {
+  // "Registros".
+  it("renders Pagos and Registros columns in order without the removed envío columns", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -1782,7 +1782,7 @@ registerMonthlyExpensesPageDefaultHooks({
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
     const paidHeaderIndex = headers.indexOf("Pagos");
-    const paymentHistoryHeaderIndex = headers.indexOf("Registro de pagos");
+    const paymentHistoryHeaderIndex = headers.indexOf("Registros");
 
     expect(headers).not.toContain("Estado de envío");
     expect(headers).not.toContain("Enviar");

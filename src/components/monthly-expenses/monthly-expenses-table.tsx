@@ -283,7 +283,7 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
   },
   {
     columnId: "paymentHistory",
-    label: "Registro de pagos",
+    label: "Registros",
     type: "numberRange",
   },
   {
@@ -3796,8 +3796,8 @@ export function MonthlyExpensesTable({
             filterValue,
             (row.original.paymentRecords ?? []).length,
           ),
-        header: getSortableHeader("Registro de pagos"),
-        meta: { label: "Registro de pagos" },
+        header: getSortableHeader("Registros"),
+        meta: { label: "Registros" },
         sortingFn: (rowA, rowB) => {
           const relevanceComparison = compareRowsByDescriptionFilterRelevance(
             rowA.original,
