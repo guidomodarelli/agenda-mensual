@@ -1128,25 +1128,6 @@
   gap: 0.35rem;
 }
 
-.driveStatusBadge {
-  display: inline-flex;
-  align-items: center;
-}
-
-.driveStatusWarning,
-.driveStatusError {
-  width: 0.9rem;
-  height: 0.9rem;
-}
-
-.driveStatusWarning {
-  color: #a16207;
-}
-
-.driveStatusError {
-  color: var(--destructive);
-}
-
 .feedback {
   display: grid;
   gap: 0.2rem;
