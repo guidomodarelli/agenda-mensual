@@ -3464,6 +3464,36 @@ export function MonthlyExpensesTable({
 
           return (
             <div className={styles.totalCell}>
+              <div className={styles.totalSummary}>
+                <span className={styles.totalAmount}>
+                  {formatArsWithUsdSecondary({
+                    exchangeRateSnapshot,
+                    rowCurrency: row.original.currency,
+                    value: row.original.total,
+                  })}
+                </span>
+                {hasSubtotalBreakdown ? (
+                  <span className={styles.totalSubtotalBreakdown}>
+                    <span className={styles.totalSubtotalAmount}>
+                      {formatArsWithUsdSecondary({
+                        exchangeRateSnapshot,
+                        rowCurrency: row.original.currency,
+                        value: row.original.subtotal,
+                      })}
+                      {subtotalUnit === "hour" ? (
+                        <span className={styles.subtotalRateSuffix}>/h</span>
+                      ) : null}
+                    </span>
+                    <span className={styles.subtotalMultiplier}>
+                      {formatSubtotalMultiplierLabel(
+                        occurrencesPerMonth,
+                        row.original.occurrencesUnit,
+                        subtotalUnit,
+                      )}
+                    </span>
+                  </span>
+                ) : null}
+              </div>
               <div className={styles.subtotalTrailing}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -3505,36 +3535,6 @@ export function MonthlyExpensesTable({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <div className={styles.totalSummary}>
-                <span className={styles.totalAmount}>
-                  {formatArsWithUsdSecondary({
-                    exchangeRateSnapshot,
-                    rowCurrency: row.original.currency,
-                    value: row.original.total,
-                  })}
-                </span>
-                {hasSubtotalBreakdown ? (
-                  <span className={styles.totalSubtotalBreakdown}>
-                    <span className={styles.totalSubtotalAmount}>
-                      {formatArsWithUsdSecondary({
-                        exchangeRateSnapshot,
-                        rowCurrency: row.original.currency,
-                        value: row.original.subtotal,
-                      })}
-                      {subtotalUnit === "hour" ? (
-                        <span className={styles.subtotalRateSuffix}>/h</span>
-                      ) : null}
-                    </span>
-                    <span className={styles.subtotalMultiplier}>
-                      {formatSubtotalMultiplierLabel(
-                        occurrencesPerMonth,
-                        row.original.occurrencesUnit,
-                        subtotalUnit,
-                      )}
-                    </span>
-                  </span>
-                ) : null}
-              </div>
             </div>
           );
         },
@@ -3561,7 +3561,7 @@ export function MonthlyExpensesTable({
             }),
           ),
         header: getSortableHeader("Total"),
-        meta: { headerClassName: styles.totalHeader, label: "Total" },
+        meta: { label: "Total" },
         sortingFn: (rowA, rowB) => {
           const relevanceComparison = compareRowsByDescriptionFilterRelevance(
             rowA.original,
