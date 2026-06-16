@@ -1115,6 +1115,15 @@ function PaymentProgressRing({ fraction }: { fraction: number }) {
   );
 }
 
+/**
+ * Unified muted placeholder for columns that only apply to loans (loan progress,
+ * lender, validity range). Keeps every empty loan cell visually quiet and
+ * consistent instead of mixing "N/A" and "-" glyphs.
+ */
+function EmptyCellPlaceholder() {
+  return <span className={styles.emptyCellPlaceholder}>—</span>;
+}
+
 function getLoanSortModeLabel(loanSortMode: LoanSortMode): string {
   const option = LOAN_SORT_OPTIONS.find((entry) => entry.value === loanSortMode);
 
@@ -3443,126 +3452,92 @@ export function MonthlyExpensesTable({
         },
       },
       {
-        accessorKey: "subtotal",
+        accessorKey: "total",
         cell: ({ row }) => {
-          const expenseDescription = row.original.description.trim() || "compromiso";
+          const expenseDescription =
+            row.original.description.trim() || "compromiso";
           const occurrencesPerMonth = Number(row.original.occurrencesPerMonth);
           const subtotalUnit = row.original.subtotalUnit ?? "occurrence";
-          const showMultiplier = Number.isFinite(occurrencesPerMonth);
+          const hasSubtotalBreakdown =
+            Number.isFinite(occurrencesPerMonth) &&
+            (subtotalUnit === "hour" || occurrencesPerMonth !== 1);
 
           return (
-            <div className={styles.quickEditCell}>
-              <div className={styles.subtotalSummary}>
-                <span className={styles.subtotalAmount}>
+            <div className={styles.totalCell}>
+              <div className={styles.subtotalTrailing}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label={`Abrir acciones de subtotal y cantidad para ${expenseDescription}`}
+                      className={styles.paymentLinkActionButton}
+                      disabled={actionDisabled}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <MoreVertical
+                        aria-hidden="true"
+                        className={styles.paymentLinkIcon}
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        window.setTimeout(() => {
+                          handleOpenDetailsDialog({
+                            currency: row.original.currency,
+                            expenseDescription,
+                            expenseId: row.original.id,
+                            occurrencesPerMonth:
+                              row.original.occurrencesPerMonth,
+                            occurrencesUnit: row.original.occurrencesUnit,
+                            subtotal: row.original.subtotal,
+                            subtotalUnit:
+                              row.original.subtotalUnit ?? "occurrence",
+                          });
+                        }, 0);
+                      }}
+                    >
+                      <Pencil aria-hidden="true" />
+                      Editar subtotal y cantidad
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className={styles.totalSummary}>
+                <span className={styles.totalAmount}>
                   {formatArsWithUsdSecondary({
                     exchangeRateSnapshot,
                     rowCurrency: row.original.currency,
-                    value: row.original.subtotal,
+                    value: row.original.total,
                   })}
-                  {subtotalUnit === "hour" ? (
-                    <span className={styles.subtotalRateSuffix}>/h</span>
-                  ) : null}
                 </span>
-                {showMultiplier ? (
-                  <span className={styles.subtotalMultiplier}>
-                    {formatSubtotalMultiplierLabel(
-                      occurrencesPerMonth,
-                      row.original.occurrencesUnit,
-                      subtotalUnit,
-                    )}
+                {hasSubtotalBreakdown ? (
+                  <span className={styles.totalSubtotalBreakdown}>
+                    <span className={styles.totalSubtotalAmount}>
+                      {formatArsWithUsdSecondary({
+                        exchangeRateSnapshot,
+                        rowCurrency: row.original.currency,
+                        value: row.original.subtotal,
+                      })}
+                      {subtotalUnit === "hour" ? (
+                        <span className={styles.subtotalRateSuffix}>/h</span>
+                      ) : null}
+                    </span>
+                    <span className={styles.subtotalMultiplier}>
+                      {formatSubtotalMultiplierLabel(
+                        occurrencesPerMonth,
+                        row.original.occurrencesUnit,
+                        subtotalUnit,
+                      )}
+                    </span>
                   </span>
                 ) : null}
-              </div>
-              <div className={styles.subtotalTrailing}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    aria-label={`Abrir acciones de subtotal y cantidad para ${expenseDescription}`}
-                    className={styles.paymentLinkActionButton}
-                    disabled={actionDisabled}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <MoreVertical
-                      aria-hidden="true"
-                      className={styles.paymentLinkIcon}
-                    />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      window.setTimeout(() => {
-                        handleOpenDetailsDialog({
-                          currency: row.original.currency,
-                          expenseDescription,
-                          expenseId: row.original.id,
-                          occurrencesPerMonth: row.original.occurrencesPerMonth,
-                          occurrencesUnit: row.original.occurrencesUnit,
-                          subtotal: row.original.subtotal,
-                          subtotalUnit: row.original.subtotalUnit ?? "occurrence",
-                        });
-                      }, 0);
-                    }}
-                  >
-                    <Pencil aria-hidden="true" />
-                    Editar subtotal y cantidad
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
               </div>
             </div>
           );
         },
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedNumberRangeFilter(
-            filterValue,
-            getArsComparableAmount({
-              exchangeRateSnapshot,
-              rowCurrency: row.original.currency,
-              value: row.original.subtotal,
-            }),
-          ),
-        header: getSortableHeader("Subtotal"),
-        meta: { label: "Subtotal" },
-        sortingFn: (rowA, rowB) => {
-          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
-            rowA.original,
-            rowB.original,
-          );
-
-          if (relevanceComparison !== 0) {
-            return relevanceComparison;
-          }
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) => leftValue - rightValue,
-            leftValue: getArsComparableAmount({
-              exchangeRateSnapshot,
-              rowCurrency: rowA.original.currency,
-              value: rowA.original.subtotal,
-            }),
-            rightValue: getArsComparableAmount({
-              exchangeRateSnapshot,
-              rowCurrency: rowB.original.currency,
-              value: rowB.original.subtotal,
-            }),
-            sortDirection: getSortDirection("subtotal"),
-          });
-        },
-      },
-      {
-        accessorKey: "total",
-        cell: ({ row }) => (
-          <span className={styles.totalAmount}>
-            {formatArsWithUsdSecondary({
-              exchangeRateSnapshot,
-              rowCurrency: row.original.currency,
-              value: row.original.total,
-            })}
-          </span>
-        ),
         footer: ({ table }) => {
           const arsTotal = getConvertedTotalAmount({
             currency: "ARS",
@@ -3586,7 +3561,7 @@ export function MonthlyExpensesTable({
             }),
           ),
         header: getSortableHeader("Total"),
-        meta: { label: "Total" },
+        meta: { headerClassName: styles.totalHeader, label: "Total" },
         sortingFn: (rowA, rowB) => {
           const relevanceComparison = compareRowsByDescriptionFilterRelevance(
             rowA.original,
@@ -3713,9 +3688,7 @@ export function MonthlyExpensesTable({
               )}
             >
               <PaymentProgressRing fraction={completionFraction} />
-              <span>
-                {displayedCoveredPayments} / {requiredPayments}
-              </span>
+              {displayedCoveredPayments} / {requiredPayments}
             </span>
           );
         },
@@ -3821,7 +3794,7 @@ export function MonthlyExpensesTable({
         accessorKey: "loanProgress",
         cell: ({ row }) => {
           if (!row.original.isLoan) {
-            return "N/A";
+            return <EmptyCellPlaceholder />;
           }
 
           if (!row.original.loanProgress) {
@@ -3919,7 +3892,7 @@ export function MonthlyExpensesTable({
           return (
             <div className={styles.lenderCell}>
               <span className={styles.lenderName}>
-                {lenderName.length > 0 ? lenderName : "-"}
+                {lenderName.length > 0 ? lenderName : <EmptyCellPlaceholder />}
               </span>
               {row.original.isLoan ? (
                 <Badge className={styles.lenderDirectionBadge} variant="outline">
@@ -3965,7 +3938,7 @@ export function MonthlyExpensesTable({
           const endLabel = formatYearMonth(row.original.loanEndMonth);
 
           if (startLabel === "-" && endLabel === "-") {
-            return "-";
+            return <EmptyCellPlaceholder />;
           }
 
           return (

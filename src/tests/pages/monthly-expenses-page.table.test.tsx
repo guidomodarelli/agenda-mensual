@@ -266,16 +266,16 @@ registerMonthlyExpensesPageDefaultHooks({
       screen.queryByRole("menuitemcheckbox", { name: "Descripción" }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("menuitemcheckbox", { name: /Subtotal/i }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: /Total/i }));
 
     expect(
-      screen.getByRole("menuitemcheckbox", { name: /Subtotal/i }),
+      screen.getByRole("menuitemcheckbox", { name: /Total/i }),
     ).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
 
     expect(
-      screen.queryByRole("columnheader", { name: "Subtotal" }),
+      screen.queryByRole("columnheader", { name: "Total" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
   });
@@ -324,7 +324,7 @@ registerMonthlyExpensesPageDefaultHooks({
   // status no longer lives at the expense level and now lives per payment). This
   // test now combines two still-available numeric ranges (Subtotal and Total) to
   // validate advanced filtering, its active badge, and clear/apply.
-  it("filters rows with advanced modal filters combining numeric ranges", async () => {
+  it("filters rows with an advanced bounded numeric range on the total column", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -363,7 +363,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.type(screen.getByRole("spinbutton", { name: "Subtotal Mínimo" }), "150");
+    await user.type(screen.getByRole("spinbutton", { name: "Total Mínimo" }), "150");
     await user.type(screen.getByRole("spinbutton", { name: "Total Máximo" }), "250");
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
@@ -423,14 +423,14 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
-    expect(screen.queryByRole("columnheader", { name: "Subtotal" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Total" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     await user.click(screen.getByRole("menuitem", { name: "Restablecer" }));
 
     await user.keyboard("{Escape}");
 
-    expect(screen.getByRole("columnheader", { name: "Subtotal" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Total" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "USD" })).not.toBeInTheDocument();
   });
 
@@ -461,7 +461,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Subtotal" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Total" }));
     expect(screen.getAllByText("Columna deseleccionada").length).toBeGreaterThan(0);
     await user.keyboard("{Escape}");
 
@@ -529,7 +529,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Internet",
@@ -537,7 +537,7 @@ registerMonthlyExpensesPageDefaultHooks({
       "Agua",
     ]);
     expect(screen.queryByText("Columnas modificadas")).not.toBeInTheDocument();
-    expect(screen.getByText("Ordenado por: Subtotal ↑")).toBeInTheDocument();
+    expect(screen.getByText("Ordenado por: Total ↑")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     expect(
@@ -634,7 +634,7 @@ registerMonthlyExpensesPageDefaultHooks({
       "Internet",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(moveCompletedToEndCheckbox).toBeDisabled();
     expect(
@@ -728,13 +728,13 @@ registerMonthlyExpensesPageDefaultHooks({
       TABLE_PREFERENCES_STORAGE_KEY,
       JSON.stringify({
         columnVisibility: {
-          subtotal: false,
+          total: false,
         },
         loanSortMode: "paidInstallments",
         sorting: [
           {
             desc: true,
-            id: "subtotal",
+            id: "total",
           },
         ],
       }),
@@ -785,7 +785,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("columnheader", { name: "Subtotal" }),
+        screen.queryByRole("columnheader", { name: "Total" }),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("columnheader", { name: "USD" }),
@@ -825,9 +825,9 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Subtotal" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Total" }));
 
     await waitFor(() => {
       const persistedTablePreferences = getPersistedTablePreferences();
@@ -838,82 +838,18 @@ registerMonthlyExpensesPageDefaultHooks({
       expect(persistedTablePreferences?.sorting).toEqual([
         {
           desc: false,
-          id: "subtotal",
+          id: "total",
         },
       ]);
       expect(persistedTablePreferences?.columnVisibility).toEqual(
         expect.objectContaining({
-          subtotal: false,
+          total: false,
         }),
       );
     });
   });
 
-  it("sorts subtotal numerically in ascending and descending order", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialLendersCatalog={{
-          lenders: [
-            {
-              id: "lender-1",
-              name: "Banco Ciudad",
-              type: "bank",
-            },
-          ],
-        }}
-        initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Agua",
-              id: "expense-1",
-              occurrencesPerMonth: 1,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Luz",
-              id: "expense-2",
-              occurrencesPerMonth: 1,
-              subtotal: 20,
-              total: 20,
-            },
-            {
-              currency: "ARS",
-              description: "Internet",
-              id: "expense-3",
-              occurrencesPerMonth: 10,
-              subtotal: 5,
-              total: 50,
-            },
-          ],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
-
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Internet",
-      "Luz",
-      "Agua",
-    ]);
-
-    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
-
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Agua",
-      "Luz",
-      "Internet",
-    ]);
-  });
-
-  it("keeps active subtotal sorting when description relevance ties", async () => {
+  it("keeps active total sorting when description relevance ties", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -944,7 +880,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "aa");
-    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Aab", "Aaa"]);
   });

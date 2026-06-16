@@ -496,12 +496,12 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(screen.queryByText(/4h 30m/)).not.toBeInTheDocument();
   });
 
-  it("shows the singular multiplier with a monthly cadence for a single occurrence", () => {
+  it("omits the multiplier breakdown for a single monthly occurrence", () => {
     renderMonthlyExpensesTable([
       createRow({ occurrencesPerMonth: "1", occurrencesUnit: "" }),
     ]);
 
-    expect(screen.getByText("× 1 vez/mes")).toBeInTheDocument();
+    expect(screen.queryByText("× 1 vez/mes")).not.toBeInTheDocument();
   });
 
   it("shows the hourly rate suffix and the monthly duration for an hourly subtotal", () => {

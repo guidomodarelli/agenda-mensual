@@ -276,7 +276,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  it("renders converted amounts in subtotal and total while hiding the USD column by default", () => {
+  it("renders converted amounts in the total column while hiding the USD column by default", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -321,10 +321,10 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByText("$ 1.200")).toBeInTheDocument();
     expect(screen.getByText(/^Dólar solidario:/i)).toBeInTheDocument();
     expect(screen.getByText("$ 1.476")).toBeInTheDocument();
-    expect(screen.getAllByText("$ 14.760,00").length).toBeGreaterThanOrEqual(3);
-    expect(screen.getAllByText(/US\$\s*10,00/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("$ 14.760,00").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/US\$\s*10,00/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/\(US\$\s*10,00\)/).length).toBeGreaterThanOrEqual(
-      2,
+      1,
     );
   });
 
@@ -2662,8 +2662,8 @@ registerMonthlyExpensesPageDefaultHooks({
     const expenseRow = screen.getByRole("row", { name: /Prestamo tarjeta/i });
     const expenseCells = within(expenseRow).getAllByRole("cell");
 
-    expect(expenseCells.at(lenderHeaderIndex)?.textContent?.trim()).toBe("-");
-    expect(expenseCells.at(vigenciaHeaderIndex)?.textContent?.trim()).toBe("-");
+    expect(expenseCells.at(lenderHeaderIndex)?.textContent?.trim()).toBe("—");
+    expect(expenseCells.at(vigenciaHeaderIndex)?.textContent?.trim()).toBe("—");
   });
 
   it("renders the merged Vigencia column as MM/YY and sorts by inicio or fin", async () => {
@@ -2741,7 +2741,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(within(januaryRow).getByText("04/26")).toBeInTheDocument();
     expect(within(marchRow).getByText("03/26")).toBeInTheDocument();
     expect(within(marchRow).getByText("08/26")).toBeInTheDocument();
-    expect(within(noLoanRow).getAllByText("-").length).toBeGreaterThan(0);
+    expect(within(noLoanRow).getAllByText("—").length).toBeGreaterThan(0);
 
     const monthlyExpensesTable = getMonthlyExpensesTable();
 
@@ -2805,12 +2805,12 @@ registerMonthlyExpensesPageDefaultHooks({
           exchangeRateSnapshot: null,
           items: [
             {
-              currency: "ARS",
+              currency: "USD",
               description: "Internet",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              subtotal: 14760,
-              total: 14760,
+              subtotal: 120,
+              total: 120,
             },
           ],
           month: "2026-03",

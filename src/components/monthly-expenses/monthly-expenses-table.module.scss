@@ -617,13 +617,54 @@
 }
 
 .totalAmount {
-  font-variant-numeric: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.totalSummary {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+  text-align: right;
+}
+
+.totalSubtotalBreakdown {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalSubtotalAmount {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.totalHeader {
+  text-align: right;
+}
+
+.emptyCellPlaceholder {
+  color: var(--muted-foreground);
 }
 
 .convertedCurrencyValue {
   display: inline-grid;
   gap: 0.05rem;
   line-height: 1.1;
+  justify-items: end;
 }
 
 .convertedCurrencySecondaryValue {
@@ -857,25 +898,6 @@
   width: 100%;
   max-width: 12rem;
   margin-left: auto;
-}
-
-.quickEditCell {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.subtotalSummary {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.125rem;
-}
-
-.subtotalAmount {
-  text-align: left;
 }
 
 .subtotalRateSuffix {
