@@ -123,6 +123,18 @@ import {
 } from "./expense-edit-validation";
 import { OccurrenceDurationInput } from "./occurrence-duration-input";
 import { formatSubtotalMultiplierLabel } from "./occurrences-unit";
+import {
+  formatConvertedAmount,
+  formatCurrencyAmount,
+  formatExchangeRateAmount,
+  getArsComparableAmount,
+  getConvertedAmountForCurrency,
+  getConvertedTotalAmount,
+} from "./monthly-expenses-currency";
+import {
+  getPaymentProgress,
+  isPaymentCompleted,
+} from "./monthly-expenses-payment-progress";
 import { PaymentProgressRing } from "./payment-progress-ring";
 import {
   getValidPaymentLink as getValidPaymentLinkUrl,
@@ -130,12 +142,29 @@ import {
 } from "./payment-link";
 import styles from "./monthly-expenses-table.module.scss";
 
-type TechnicalErrorCode = `E${number}${number}${number}${number}`;
+import type {
+  ExchangeRateSnapshot,
+  MonthlyExpenseCurrency,
+  MonthlyExpenseDriveResourceStatus,
+  MonthlyExpenseLoanDirection,
+  MonthlyExpenseReceiptShareStatus,
+  MonthlyExpenseSubtotalUnit,
+  MonthlyExpensesEditablePaymentRecord,
+  MonthlyExpensesEditableReceipt,
+  MonthlyExpensesEditableRow,
+  MonthlyExpensesReplicableOption,
+  TechnicalErrorCode,
+} from "./monthly-expenses-table.types";
 
-type MonthlyExpenseCurrency = "ARS" | "USD";
-export type MonthlyExpenseLoanDirection = "payable" | "receivable";
-export type MonthlyExpenseSubtotalUnit = "occurrence" | "hour";
-type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
+export type {
+  MonthlyExpenseDriveResourceStatus,
+  MonthlyExpenseLoanDirection,
+  MonthlyExpenseSubtotalUnit,
+  MonthlyExpensesEditablePaymentRecord,
+  MonthlyExpensesEditableReceipt,
+  MonthlyExpensesEditableRow,
+  MonthlyExpensesReplicableOption,
+} from "./monthly-expenses-table.types";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
@@ -250,16 +279,6 @@ function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): bool
 
   return true;
 }
-const CURRENCY_FORMATTER_BY_CURRENCY: Record<MonthlyExpenseCurrency, Intl.NumberFormat> = {
-  ARS: new Intl.NumberFormat("es-AR", {
-    currency: "ARS",
-    style: "currency",
-  }),
-  USD: new Intl.NumberFormat("es-AR", {
-    currency: "USD",
-    style: "currency",
-  }),
-};
 const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] = [
   {
     columnId: "subtotal",
@@ -830,86 +849,12 @@ function SortModeColumnHeader<TMode extends string>({
   );
 }
 
-export interface MonthlyExpensesEditableRow {
-  allReceiptsFolderId: string;
-  allReceiptsFolderStatus?: MonthlyExpenseDriveResourceStatus;
-  allReceiptsFolderViewUrl: string;
-  currency: MonthlyExpenseCurrency;
-  description: string;
-  expenseFolderId: string;
-  id: string;
-  installmentCount: string;
-  isLoan: boolean;
-  lenderId: string;
-  lenderName: string;
-  loanDirection?: MonthlyExpenseLoanDirection;
-  loanEndMonth: string;
-  loanPaidInstallments: number | null;
-  loanProgress: string;
-  loanRemainingInstallments: number | null;
-  loanTotalInstallments: number | null;
-  manualCoveredPayments: string;
-  occurrencesPerMonth: string;
-  occurrencesUnit: string;
-  paymentRecords?: MonthlyExpensesEditablePaymentRecord[];
-  paymentLink: string;
-  receiptShareMessage: string;
-  receiptSharePhoneDigits: string;
-  requiresReceiptShare: boolean;
-  receipts: MonthlyExpensesEditableReceipt[];
-  monthlyFolderId: string;
-  monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
-  monthlyFolderViewUrl: string;
-  sortOrder: number | null;
-  startMonth: string;
-  subtotal: string;
-  subtotalUnit?: MonthlyExpenseSubtotalUnit;
-  total: string;
-}
-
-export type MonthlyExpenseDriveResourceStatus =
-  | "normal"
-  | "trashed"
-  | "missing";
-
-export interface MonthlyExpensesEditableReceipt {
-  allReceiptsFolderId: string;
-  allReceiptsFolderStatus?: MonthlyExpenseDriveResourceStatus;
-  allReceiptsFolderViewUrl: string;
-  coveredPayments: number;
-  fileId: string;
-  fileName: string;
-  fileStatus?: MonthlyExpenseDriveResourceStatus;
-  fileViewUrl: string;
-  monthlyFolderId: string;
-  monthlyFolderStatus?: MonthlyExpenseDriveResourceStatus;
-  monthlyFolderViewUrl: string;
-}
-
-export interface MonthlyExpensesEditablePaymentRecord {
-  coveredPayments: number;
-  id: string;
-  receipt?: MonthlyExpensesEditableReceipt;
-  registeredAt: string | null;
-  sendStatus?: MonthlyExpenseReceiptShareStatus;
-}
-
-export interface MonthlyExpensesReplicableOption {
-  description: string;
-  id: string;
-}
-
 interface MonthlyExpensesTableProps {
   actionDisabled: boolean;
   changedFields: Set<string>;
   draft: MonthlyExpensesEditableRow | null;
   exchangeRateLoadError: string | null;
-  exchangeRateSnapshot: {
-    blueRate: number;
-    month: string;
-    officialRate: number;
-    solidarityRate: number;
-  } | null;
+  exchangeRateSnapshot: ExchangeRateSnapshot | null;
   expenseFolders: ExpenseFolderOption[];
   folderFilterId: string;
   feedbackMessage: string;
@@ -1548,81 +1493,12 @@ function getExcludeFilterMetrics(
   };
 }
 
-function formatCurrencyAmount(
-  currency: MonthlyExpenseCurrency,
-  value: string,
-): string {
-  const numericValue = Number(value);
-
-  if (!Number.isFinite(numericValue)) {
-    return value;
-  }
-
-  return CURRENCY_FORMATTER_BY_CURRENCY[currency].format(numericValue);
-}
-
-function formatConvertedAmount(
-  currency: MonthlyExpenseCurrency,
-  value: number | null,
-): string {
-  if (value == null) {
-    return "-";
-  }
-
-  return CURRENCY_FORMATTER_BY_CURRENCY[currency].format(value);
-}
-
-function formatExchangeRateAmount(value: number): string {
-  return `$ ${new Intl.NumberFormat("es-AR", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0,
-  }).format(value)}`;
-}
-
-function getConvertedAmountForCurrency({
-  currency,
-  exchangeRateSnapshot,
-  rowCurrency,
-  total,
-}: {
-  currency: MonthlyExpenseCurrency;
-  exchangeRateSnapshot: MonthlyExpensesTableProps["exchangeRateSnapshot"];
-  rowCurrency: MonthlyExpenseCurrency;
-  total: number;
-}): number | null {
-  if (!Number.isFinite(total)) {
-    return null;
-  }
-
-  if (currency === "ARS") {
-    if (rowCurrency === "ARS") {
-      return total;
-    }
-
-    if (!exchangeRateSnapshot) {
-      return null;
-    }
-
-    return total * exchangeRateSnapshot.solidarityRate;
-  }
-
-  if (rowCurrency === "USD") {
-    return total;
-  }
-
-  if (!exchangeRateSnapshot) {
-    return null;
-  }
-
-  return total / exchangeRateSnapshot.solidarityRate;
-}
-
 function formatArsWithUsdSecondary({
   exchangeRateSnapshot,
   rowCurrency,
   value,
 }: {
-  exchangeRateSnapshot: MonthlyExpensesTableProps["exchangeRateSnapshot"];
+  exchangeRateSnapshot: ExchangeRateSnapshot | null;
   rowCurrency: MonthlyExpenseCurrency;
   value: string;
 }) {
@@ -1645,105 +1521,6 @@ function formatArsWithUsdSecondary({
       </span>
     </span>
   );
-}
-
-function getArsComparableAmount({
-  exchangeRateSnapshot,
-  rowCurrency,
-  value,
-}: {
-  exchangeRateSnapshot: MonthlyExpensesTableProps["exchangeRateSnapshot"];
-  rowCurrency: MonthlyExpenseCurrency;
-  value: string;
-}): number | null {
-  return getConvertedAmountForCurrency({
-    currency: "ARS",
-    exchangeRateSnapshot,
-    rowCurrency,
-    total: Number(value),
-  });
-}
-
-function getConvertedTotalAmount({
-  currency,
-  exchangeRateSnapshot,
-  rows,
-}: {
-  currency: MonthlyExpenseCurrency;
-  exchangeRateSnapshot: MonthlyExpensesTableProps["exchangeRateSnapshot"];
-  rows: MonthlyExpensesEditableRow[];
-}): number | null {
-  let total = 0;
-  let hasValues = false;
-
-  for (const row of rows) {
-    const convertedAmount = getConvertedAmountForCurrency({
-      currency,
-      exchangeRateSnapshot,
-      rowCurrency: row.currency,
-      total: Number(row.total),
-    });
-
-    if (convertedAmount == null) {
-      continue;
-    }
-
-    total += convertedAmount;
-    hasValues = true;
-  }
-
-  return hasValues ? total : null;
-}
-
-function parseNonNegativeInteger(value: string): number {
-  const numericValue = Number(value);
-
-  if (!Number.isInteger(numericValue) || numericValue < 0) {
-    return 0;
-  }
-
-  return numericValue;
-}
-
-function parsePositiveInteger(value: string): number {
-  const numericValue = Number(value);
-
-  if (!Number.isInteger(numericValue) || numericValue <= 0) {
-    return 0;
-  }
-
-  return numericValue;
-}
-
-function getCoveredPaymentsByReceipts(receipts: MonthlyExpensesEditableReceipt[]): number {
-  return receipts.reduce(
-    (coveredPayments, receipt) => coveredPayments + receipt.coveredPayments,
-    0,
-  );
-}
-
-function getPaymentProgress(row: MonthlyExpensesEditableRow): {
-  coveredPayments: number;
-  coveredPaymentsByReceipts: number;
-  requiredPayments: number;
-} {
-  const requiredPayments = parsePositiveInteger(row.occurrencesPerMonth);
-  const manualCoveredPayments = parseNonNegativeInteger(
-    row.manualCoveredPayments,
-  );
-  const coveredPaymentsByReceipts = getCoveredPaymentsByReceipts(row.receipts);
-
-  return {
-    coveredPayments: manualCoveredPayments + coveredPaymentsByReceipts,
-    coveredPaymentsByReceipts,
-    requiredPayments,
-  };
-}
-
-function isPaymentCompleted(row: MonthlyExpensesEditableRow): boolean {
-  const { coveredPayments, requiredPayments } = getPaymentProgress(row);
-
-  return requiredPayments > 0 && coveredPayments >= requiredPayments;
 }
 
 function getValidHttpUrl(value: string): string | null {
