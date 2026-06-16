@@ -15,6 +15,15 @@ export type MonthlyExpenseSubtotalUnit = "occurrence" | "hour";
 
 export type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
 
+/** Sort criterion for the unified loan "Deuda / cuotas" column. */
+export type LoanSortMode =
+  | "paidInstallments"
+  | "remainingInstallments"
+  | "totalInstallments";
+
+/** Sort criterion for the unified loan "Vigencia" column (start vs end month). */
+export type VigenciaSortMode = "startMonth" | "endMonth";
+
 export type MonthlyExpenseDriveResourceStatus =
   | "normal"
   | "trashed"

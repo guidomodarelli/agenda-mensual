@@ -131,6 +131,13 @@ import { getNormalizedReceiptShareStatus } from "./monthly-expenses-receipt-shar
 import { PaymentHistoryCell } from "./payment-history-cell";
 import { PaymentProgressRing } from "./payment-progress-ring";
 import {
+  DEFAULT_LOAN_SORT_MODE,
+  DEFAULT_VIGENCIA_SORT_MODE,
+  getPersistedMonthlyExpensesTablePreferences,
+  MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY,
+  persistMonthlyExpensesTablePreferences,
+} from "./monthly-expenses-table-preferences";
+import {
   getValidPaymentLink as getValidPaymentLinkUrl,
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
 } from "./payment-link";
@@ -138,6 +145,7 @@ import styles from "./monthly-expenses-table.module.scss";
 
 import type {
   ExchangeRateSnapshot,
+  LoanSortMode,
   MonthlyExpenseCurrency,
   MonthlyExpenseDriveResourceStatus,
   MonthlyExpenseLoanDirection,
@@ -146,6 +154,7 @@ import type {
   MonthlyExpensesEditableRow,
   MonthlyExpensesReplicableOption,
   TechnicalErrorCode,
+  VigenciaSortMode,
 } from "./monthly-expenses-table.types";
 
 export type {
@@ -158,25 +167,12 @@ export type {
   MonthlyExpensesReplicableOption,
 } from "./monthly-expenses-table.types";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
-type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
-const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
-/**
- * Criterio de orden de la columna unificada «Vigencia»: por mes de inicio o
- * por mes de fin de cuota.
- */
-type VigenciaSortMode = "startMonth" | "endMonth";
-const DEFAULT_VIGENCIA_SORT_MODE: VigenciaSortMode = "startMonth";
 const LOAN_SORT_COLUMN_ID = "loanProgress";
 const LOAN_INSTALLMENT_RANGE_COLUMN_ID = "loanInstallmentRange";
 const BULK_SELECTION_COLUMN_ID = "bulkSelection";
-const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
-  "control-mensual.monthly-expenses.table-preferences";
 const MOVE_COMPLETED_TO_END_LABEL = "Mover completados al final";
 const MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT =
   "Desactivado mientras haya un orden manual.";
-const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
-  usd: false,
-};
 /**
  * Cantidad máxima de caracteres que se muestran en la descripción de la fila
  * antes de truncar con ellipsis y exponer el texto completo en un tooltip.
@@ -185,27 +181,6 @@ const DESCRIPTION_TRUNCATE_CHAR_LIMIT = 32;
 const MONTHLY_EXPENSES_EMPTY_MESSAGE = "No hay gastos cargados para este mes.";
 const MONTHLY_EXPENSES_FILTERED_EMPTY_MESSAGE =
   "No hay resultados para los filtros actuales.";
-const SORTABLE_COLUMN_IDS = new Set([
-  "description",
-  "paymentsProgress",
-  "paymentHistory",
-  "subtotal",
-  "total",
-  "usd",
-  LOAN_SORT_COLUMN_ID,
-  "lenderName",
-  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-]);
-const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
-  "paymentsProgress",
-  "paymentHistory",
-  "subtotal",
-  "total",
-  "usd",
-  LOAN_SORT_COLUMN_ID,
-  "lenderName",
-  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-]);
 const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
   {
     label: "Cuotas pagadas",
@@ -331,161 +306,6 @@ function buildVigenciaSortingState(direction: "asc" | "desc"): SortingState {
       id: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
     },
   ];
-}
-
-interface MonthlyExpensesTablePreferences {
-  columnVisibility: VisibilityState;
-  loanSortMode: LoanSortMode;
-  moveCompletedToEnd: boolean;
-  sorting: SortingState;
-  vigenciaSortMode: VigenciaSortMode;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function parsePersistedLoanSortMode(value: unknown): LoanSortMode | null {
-  if (
-    value !== "paidInstallments" &&
-    value !== "remainingInstallments" &&
-    value !== "totalInstallments"
-  ) {
-    return null;
-  }
-
-  return value;
-}
-
-function parsePersistedVigenciaSortMode(value: unknown): VigenciaSortMode | null {
-  if (value !== "startMonth" && value !== "endMonth") {
-    return null;
-  }
-
-  return value;
-}
-
-function parsePersistedMoveCompletedToEnd(value: unknown): boolean {
-  return value === true;
-}
-
-function parsePersistedSorting(value: unknown): SortingState | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  const parsedSorting: SortingState = [];
-
-  for (const entry of value) {
-    if (!isRecord(entry)) {
-      continue;
-    }
-
-    const id = entry.id;
-    const desc = entry.desc;
-
-    if (
-      typeof id !== "string" ||
-      typeof desc !== "boolean" ||
-      !SORTABLE_COLUMN_IDS.has(id)
-    ) {
-      continue;
-    }
-
-    parsedSorting.push({
-      desc,
-      id,
-    });
-  }
-
-  return parsedSorting;
-}
-
-function parsePersistedColumnVisibility(value: unknown): VisibilityState | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const parsedColumnVisibility: VisibilityState = {};
-
-  for (const [columnId, isVisible] of Object.entries(value)) {
-    if (
-      !PERSISTABLE_COLUMN_VISIBILITY_IDS.has(columnId) ||
-      typeof isVisible !== "boolean"
-    ) {
-      continue;
-    }
-
-    parsedColumnVisibility[columnId] = isVisible;
-  }
-
-  return parsedColumnVisibility;
-}
-
-function getPersistedMonthlyExpensesTablePreferences(): MonthlyExpensesTablePreferences | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const serializedPreferences = window.localStorage.getItem(
-      MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY,
-    );
-
-    if (!serializedPreferences) {
-      return null;
-    }
-
-    const parsedPreferences = JSON.parse(serializedPreferences);
-
-    if (!isRecord(parsedPreferences)) {
-      return null;
-    }
-
-    const loanSortMode =
-      parsePersistedLoanSortMode(parsedPreferences.loanSortMode) ??
-      DEFAULT_LOAN_SORT_MODE;
-    const vigenciaSortMode =
-      parsePersistedVigenciaSortMode(parsedPreferences.vigenciaSortMode) ??
-      DEFAULT_VIGENCIA_SORT_MODE;
-    const moveCompletedToEnd = parsePersistedMoveCompletedToEnd(
-      parsedPreferences.moveCompletedToEnd,
-    );
-    const sorting = parsePersistedSorting(parsedPreferences.sorting) ?? [];
-    const parsedColumnVisibility =
-      parsePersistedColumnVisibility(parsedPreferences.columnVisibility) ?? {};
-    const columnVisibility: VisibilityState = {
-      ...MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY,
-      ...parsedColumnVisibility,
-    };
-
-    return {
-      columnVisibility,
-      loanSortMode,
-      moveCompletedToEnd,
-      sorting,
-      vigenciaSortMode,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function persistMonthlyExpensesTablePreferences(
-  preferences: MonthlyExpensesTablePreferences,
-): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY,
-      JSON.stringify(preferences),
-    );
-  } catch {
-    // Ignore storage failures (private mode, disabled storage, etc.)
-  }
 }
 
 interface SortModeColumnHeaderProps<TMode extends string> {
