@@ -3793,7 +3793,7 @@ export function MonthlyExpensesTable({
 
           return (
             <div className={styles.loanProgressCell}>
-              <span>{`${paidInstallments} de ${totalInstallments}`}</span>
+              <span>{`${paidInstallments} de ${totalInstallments} cuotas`}</span>
               <div
                 aria-hidden="true"
                 className={styles.loanProgressBarTrack}
