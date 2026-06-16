@@ -5,6 +5,7 @@ import {
   createMonthlyExpensesDocument,
   MAX_OCCURRENCES_UNIT_LENGTH,
   occurrenceDurationToHours,
+  toMonthlyExpensesDocumentInput,
 } from "./monthly-expenses-document";
 
 describe("monthlyExpensesDocument", () => {
@@ -1059,5 +1060,56 @@ describe("monthlyExpensesDocument", () => {
     ).toThrow(
       `Saving monthly expenses requires every occurrence unit to be at most ${MAX_OCCURRENCES_UNIT_LENGTH} characters.`,
     );
+  });
+
+  it("preserves payment record send status when reserializing a document to input", () => {
+    const document = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentRecords: [
+              {
+                coveredPayments: 1,
+                id: "payment-1",
+                receipt: {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+                sendStatus: "sent",
+              },
+            ],
+            receiptSharePhoneDigits: "5491123456789",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    const reserialized = toMonthlyExpensesDocumentInput(document);
+
+    expect(reserialized.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("sent");
+
+    const revalidated = createMonthlyExpensesDocument(
+      reserialized,
+      "Saving monthly expenses",
+    );
+
+    expect(revalidated.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("sent");
   });
 });

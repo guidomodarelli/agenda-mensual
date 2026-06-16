@@ -1170,6 +1170,9 @@ export function toMonthlyExpensesDocumentInput(
               ...(paymentRecord.registeredAt
                 ? { registeredAt: paymentRecord.registeredAt }
                 : {}),
+              ...(paymentRecord.sendStatus
+                ? { sendStatus: paymentRecord.sendStatus }
+                : {}),
             })),
           }
         : {}),
