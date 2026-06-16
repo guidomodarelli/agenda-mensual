@@ -345,10 +345,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
   });
 
-  // El filtro avanzado enum "Estado de envío" se eliminó en el refactor (el estado
-  // de envío dejó de vivir a nivel gasto y ahora vive por pago). Este test ahora
-  // combina dos rangos numéricos vigentes (Subtotal y Total) para validar el
-  // filtrado avanzado, su badge de actividad, y el limpiar/aplicar.
+  // The "Estado de envío" enum advanced filter was removed in the refactor (send
+  // status no longer lives at the expense level and now lives per payment). This
+  // test now combines two still-available numeric ranges (Subtotal and Total) to
+  // validate advanced filtering, its active badge, and clear/apply.
   it("filters rows with advanced modal filters combining numeric ranges", async () => {
     const user = userEvent.setup();
 
