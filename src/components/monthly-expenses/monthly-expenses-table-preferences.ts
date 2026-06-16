@@ -1,5 +1,9 @@
 import type { SortingState, VisibilityState } from "@tanstack/react-table";
 
+import {
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+  LOAN_SORT_COLUMN_ID,
+} from "./monthly-expenses-table-column-ids";
 import type {
   LoanSortMode,
   VigenciaSortMode,
@@ -16,10 +20,7 @@ export const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
 
-// Column ids accepted when restoring persisted sorting/visibility. The two loan
-// ids mirror LOAN_SORT_COLUMN_ID / LOAN_INSTALLMENT_RANGE_COLUMN_ID in the table
-// module; kept as literals here to avoid a cross-module dependency for two
-// stable identifiers.
+// Column ids accepted when restoring persisted sorting/visibility.
 const SORTABLE_COLUMN_IDS = new Set([
   "description",
   "paymentsProgress",
@@ -27,9 +28,9 @@ const SORTABLE_COLUMN_IDS = new Set([
   "subtotal",
   "total",
   "usd",
-  "loanProgress",
+  LOAN_SORT_COLUMN_ID,
   "lenderName",
-  "loanInstallmentRange",
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
 ]);
 
 const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
@@ -38,9 +39,9 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "subtotal",
   "total",
   "usd",
-  "loanProgress",
+  LOAN_SORT_COLUMN_ID,
   "lenderName",
-  "loanInstallmentRange",
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
 ]);
 
 export interface MonthlyExpensesTablePreferences {

@@ -19,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   DataTable,
   type DataTableAdvancedFilterConfig,
-  type DataTableColumnFilterValue,
   matchesAdvancedYearMonthRangeFilter,
 } from "@/components/ui/data-table";
 import {
@@ -128,6 +127,20 @@ import {
   isPaymentCompleted,
 } from "./monthly-expenses-payment-progress";
 import { getNormalizedReceiptShareStatus } from "./monthly-expenses-receipt-share";
+import {
+  matchesAdvancedEnumFilter,
+  matchesAdvancedPresenceFilter,
+  matchesAdvancedNumberRangeFilter,
+} from "./monthly-expenses-advanced-filters";
+import {
+  compareValuesKeepingInvalidLast,
+  getColumnSortDirection,
+} from "./monthly-expenses-sort-comparators";
+import {
+  BULK_SELECTION_COLUMN_ID,
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+  LOAN_SORT_COLUMN_ID,
+} from "./monthly-expenses-table-column-ids";
 import { PaymentHistoryCell } from "./payment-history-cell";
 import { PaymentProgressRing } from "./payment-progress-ring";
 import {
@@ -167,9 +180,6 @@ export type {
   MonthlyExpensesReplicableOption,
 } from "./monthly-expenses-table.types";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
-const LOAN_SORT_COLUMN_ID = "loanProgress";
-const LOAN_INSTALLMENT_RANGE_COLUMN_ID = "loanInstallmentRange";
-const BULK_SELECTION_COLUMN_ID = "bulkSelection";
 const MOVE_COMPLETED_TO_END_LABEL = "Mover completados al final";
 const MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT =
   "Desactivado mientras haya un orden manual.";
@@ -659,157 +669,6 @@ function getVigenciaSortModeLabel(vigenciaSortMode: VigenciaSortMode): string {
 
   return option.label;
 }
-
-function getColumnSortDirection(
-  sorting: SortingState,
-  columnId: string,
-): "asc" | "desc" {
-  const sortEntry = sorting.find((entry) => entry.id === columnId);
-
-  if (!sortEntry) {
-    return "asc";
-  }
-
-  return sortEntry.desc ? "desc" : "asc";
-}
-
-function normalizeSortToken(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[.\s/_-]+/g, "");
-}
-
-function isInvalidSortValue(value: unknown): boolean {
-  if (value == null) {
-    return true;
-  }
-
-  if (typeof value === "number") {
-    return !Number.isFinite(value);
-  }
-
-  if (typeof value === "string") {
-    const normalizedValue = value.trim();
-
-    if (!normalizedValue) {
-      return true;
-    }
-
-    const normalizedToken = normalizeSortToken(normalizedValue);
-
-    return normalizedToken === "noaplica" || normalizedToken === "na";
-  }
-
-  return false;
-}
-
-function compareValuesKeepingInvalidLast<TValue>({
-  compareValidValues,
-  leftValue,
-  rightValue,
-  sortDirection,
-}: {
-  compareValidValues: (
-    leftValue: NonNullable<TValue>,
-    rightValue: NonNullable<TValue>,
-  ) => number;
-  leftValue: TValue;
-  rightValue: TValue;
-  sortDirection: "asc" | "desc";
-}): number {
-  const leftIsInvalid = isInvalidSortValue(leftValue);
-  const rightIsInvalid = isInvalidSortValue(rightValue);
-
-  if (leftIsInvalid && rightIsInvalid) {
-    return 0;
-  }
-
-  if (leftIsInvalid && !rightIsInvalid) {
-    return sortDirection === "desc" ? -1 : 1;
-  }
-
-  if (!leftIsInvalid && rightIsInvalid) {
-    return sortDirection === "desc" ? 1 : -1;
-  }
-
-  return compareValidValues(
-    leftValue as NonNullable<TValue>,
-    rightValue as NonNullable<TValue>,
-  );
-}
-
-function matchesAdvancedNumberRangeFilter(
-  columnFilterValue: unknown,
-  value: number | null,
-): boolean {
-  if (
-    !columnFilterValue ||
-    typeof columnFilterValue !== "object" ||
-    (columnFilterValue as DataTableColumnFilterValue).kind !== "numberRange"
-  ) {
-    return true;
-  }
-
-  const filterValue = columnFilterValue as Extract<
-    DataTableColumnFilterValue,
-    { kind: "numberRange" }
-  >;
-
-  if (value == null || !Number.isFinite(value)) {
-    return false;
-  }
-
-  if (filterValue.min != null && value < filterValue.min) {
-    return false;
-  }
-
-  if (filterValue.max != null && value > filterValue.max) {
-    return false;
-  }
-
-  return true;
-}
-
-function matchesAdvancedPresenceFilter(
-  columnFilterValue: unknown,
-  hasValue: boolean,
-): boolean {
-  if (
-    !columnFilterValue ||
-    typeof columnFilterValue !== "object" ||
-    (columnFilterValue as DataTableColumnFilterValue).kind !== "presence"
-  ) {
-    return true;
-  }
-
-  const filterValue = columnFilterValue as Extract<
-    DataTableColumnFilterValue,
-    { kind: "presence" }
-  >;
-
-  return filterValue.value === "hasValue" ? hasValue : !hasValue;
-}
-
-function matchesAdvancedEnumFilter(
-  columnFilterValue: unknown,
-  value: string,
-): boolean {
-  if (
-    !columnFilterValue ||
-    typeof columnFilterValue !== "object" ||
-    (columnFilterValue as DataTableColumnFilterValue).kind !== "enum"
-  ) {
-    return true;
-  }
-
-  const filterValue = columnFilterValue as Extract<
-    DataTableColumnFilterValue,
-    { kind: "enum" }
-  >;
-
-  return filterValue.value === value;
-}
-
 
 function parseYearMonth(value: string): { month: string; year: string } | null {
   const normalizedValue = value.trim();
