@@ -2228,6 +2228,21 @@ function PaymentHistoryCell({
                         )
                       : null}
                   </div>
+                  <div className={styles.paymentRecordActions}>
+                    <PaymentRecordActionsMenu
+                      actionDisabled={actionDisabled}
+                      confirmDeleteActionAriaLabel={
+                        paymentRecordActions.confirmDeleteActionAriaLabel
+                      }
+                      confirmDeleteActionDescription="Esta acción guarda el cambio inmediatamente en tu archivo mensual."
+                      confirmDeleteActionTitle={paymentRecordActions.confirmDeleteActionTitle}
+                      deleteActionLabel={paymentRecordActions.deleteActionLabel}
+                      editActionLabel={paymentRecordActions.editActionLabel}
+                      onDelete={paymentRecordActions.onDelete}
+                      onEdit={paymentRecordActions.onEdit}
+                      triggerAriaLabel={paymentRecordActions.triggerAriaLabel}
+                    />
+                  </div>
                   {paymentRecord.receipt && requiresReceiptShare ? (
                     <div className={styles.paymentRecordSendControls}>
                       <Select
@@ -2306,21 +2321,6 @@ function PaymentHistoryCell({
                       ) : null}
                     </div>
                   ) : null}
-                  <div className={styles.paymentRecordActions}>
-                    <PaymentRecordActionsMenu
-                      actionDisabled={actionDisabled}
-                      confirmDeleteActionAriaLabel={
-                        paymentRecordActions.confirmDeleteActionAriaLabel
-                      }
-                      confirmDeleteActionDescription="Esta acción guarda el cambio inmediatamente en tu archivo mensual."
-                      confirmDeleteActionTitle={paymentRecordActions.confirmDeleteActionTitle}
-                      deleteActionLabel={paymentRecordActions.deleteActionLabel}
-                      editActionLabel={paymentRecordActions.editActionLabel}
-                      onDelete={paymentRecordActions.onDelete}
-                      onEdit={paymentRecordActions.onEdit}
-                      triggerAriaLabel={paymentRecordActions.triggerAriaLabel}
-                    />
-                  </div>
                 </div>
               );
               })}
