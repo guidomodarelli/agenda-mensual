@@ -720,6 +720,70 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(response.statusCode).toBe(200);
   });
 
+  it("accepts and passes payment record sendStatus to save", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-03",
+      name: "control-mensual-2026-marzo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const paymentRecords = [
+      {
+        coveredPayments: 1,
+        id: "payment-1",
+        receipt: {
+          allReceiptsFolderId: "receipt-folder-id",
+          allReceiptsFolderViewUrl:
+            "https://drive.google.com/drive/folders/receipt-folder-id",
+          coveredPayments: 1,
+          fileId: "receipt-file-id",
+          fileName: "comprobante.pdf",
+          fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
+          monthlyFolderId: "receipt-month-folder-id",
+          monthlyFolderViewUrl:
+            "https://drive.google.com/drive/folders/receipt-month-folder-id",
+        },
+        registeredAt: null,
+        sendStatus: "sent",
+      },
+    ];
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentRecords,
+            receiptSharePhoneDigits: "5491123456789",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][0].command.items[0].paymentRecords).toEqual(
+      paymentRecords,
+    );
+  });
+
   it("passes shared folder metadata to save even when monthly folder metadata is blank", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({
