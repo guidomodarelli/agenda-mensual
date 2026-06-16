@@ -156,9 +156,9 @@ export function normalizeExpenseItemsForSave(
           receiptSharePhoneDigits: item.receiptSharePhoneDigits,
         }
       : {}),
-    ...(typeof item.receiptShareStatus !== "undefined"
+    ...(item.paymentRecords
       ? {
-          receiptShareStatus: item.receiptShareStatus,
+          paymentRecords: item.paymentRecords,
         }
       : {}),
     ...(typeof item.requiresReceiptShare === "boolean"

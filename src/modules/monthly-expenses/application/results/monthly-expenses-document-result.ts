@@ -4,7 +4,6 @@ import type {
   MonthlyExpenseLoan,
   MonthlyExpensePaymentRecord,
   MonthlyExpenseReceipt,
-  MonthlyExpenseReceiptShareStatus,
   MonthlyExpenseSubtotalUnit,
   MonthlyExpensesExchangeRateSnapshot,
   MonthlyExpensesDocument,
@@ -48,7 +47,6 @@ export interface MonthlyExpenseItemResult {
   paymentLink?: string | null;
   receiptShareMessage?: string | null;
   receiptSharePhoneDigits?: string | null;
-  receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
   requiresReceiptShare?: boolean;
   receipts?: MonthlyExpenseReceiptResult[];
   sortOrder?: number | null;

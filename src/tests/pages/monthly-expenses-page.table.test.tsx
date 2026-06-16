@@ -345,7 +345,11 @@ registerMonthlyExpensesPageDefaultHooks({
     });
   });
 
-  it("filters rows with advanced modal filters for numeric range, enum status, and presence", async () => {
+  // El filtro avanzado enum "Estado de envío" se eliminó en el refactor (el estado
+  // de envío dejó de vivir a nivel gasto y ahora vive por pago). Este test ahora
+  // combina dos rangos numéricos vigentes (Subtotal y Total) para validar el
+  // filtrado avanzado, su badge de actividad, y el limpiar/aplicar.
+  it("filters rows with advanced modal filters combining numeric ranges", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -355,33 +359,25 @@ registerMonthlyExpensesPageDefaultHooks({
           items: [
             {
               currency: "ARS",
-              description: "Pendiente con link",
+              description: "Gasto chico",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              paymentLink: "https://pagos.example.com/pending",
-              receiptShareStatus: "pending",
-              requiresReceiptShare: true,
               subtotal: 100,
               total: 100,
             },
             {
               currency: "ARS",
-              description: "Enviado sin link",
+              description: "Gasto medio",
               id: "expense-2",
               occurrencesPerMonth: 1,
-              paymentLink: null,
-              receiptShareStatus: "sent",
-              requiresReceiptShare: true,
               subtotal: 200,
               total: 200,
             },
             {
               currency: "ARS",
-              description: "Sin estado sin link",
+              description: "Gasto grande",
               id: "expense-3",
               occurrencesPerMonth: 1,
-              paymentLink: null,
-              requiresReceiptShare: false,
               subtotal: 300,
               total: 300,
             },
@@ -393,27 +389,26 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
     await user.type(screen.getByRole("spinbutton", { name: "Subtotal Mínimo" }), "150");
-    await user.click(screen.getByRole("combobox", { name: "Estado de envío" }));
-    await user.click(screen.getByRole("option", { name: "Enviado" }));
+    await user.type(screen.getByRole("spinbutton", { name: "Total Máximo" }), "250");
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
-    expect(screen.queryByText("Pendiente con link")).not.toBeInTheDocument();
-    expect(screen.getByText("Enviado sin link")).toBeInTheDocument();
-    expect(screen.queryByText("Sin estado sin link")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gasto chico")).not.toBeInTheDocument();
+    expect(screen.getByText("Gasto medio")).toBeInTheDocument();
+    expect(screen.queryByText("Gasto grande")).not.toBeInTheDocument();
     expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
     await user.click(screen.getByRole("button", { name: "Limpiar" }));
 
-    expect(screen.queryByText("Pendiente con link")).not.toBeInTheDocument();
-    expect(screen.getByText("Enviado sin link")).toBeInTheDocument();
-    expect(screen.queryByText("Sin estado sin link")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gasto chico")).not.toBeInTheDocument();
+    expect(screen.getByText("Gasto medio")).toBeInTheDocument();
+    expect(screen.queryByText("Gasto grande")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
-    expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
-    expect(screen.getByText("Enviado sin link")).toBeInTheDocument();
-    expect(screen.getByText("Sin estado sin link")).toBeInTheDocument();
+    expect(screen.getByText("Gasto chico")).toBeInTheDocument();
+    expect(screen.getByText("Gasto medio")).toBeInTheDocument();
+    expect(screen.getByText("Gasto grande")).toBeInTheDocument();
   }, ADVANCED_FILTERS_TEST_TIMEOUT_MS);
 
   it("allows selecting and deselecting all hideable columns from the selector", async () => {
@@ -3391,7 +3386,6 @@ registerMonthlyExpensesPageDefaultHooks({
         paymentLink: "https://pagos.example.com/tarjeta",
         receiptShareMessage: "Enviar comprobante",
         receiptSharePhoneDigits: "5491122334455",
-        receiptShareStatus: "sent",
         requiresReceiptShare: true,
         receipts: [
           {
@@ -3445,7 +3439,6 @@ registerMonthlyExpensesPageDefaultHooks({
       paymentRecords: [],
       receiptShareMessage: "Enviar comprobante",
       receiptSharePhoneDigits: "5491122334455",
-      receiptShareStatus: "",
       requiresReceiptShare: true,
       receipts: [],
       startMonth: "2026-01",
@@ -3490,7 +3483,6 @@ registerMonthlyExpensesPageDefaultHooks({
         paymentLink: "",
         receiptShareMessage: "",
         receiptSharePhoneDigits: "",
-        receiptShareStatus: "",
         requiresReceiptShare: false,
         receipts: [],
         startMonth: "2025-03",
@@ -3522,7 +3514,6 @@ registerMonthlyExpensesPageDefaultHooks({
         paymentLink: "",
         receiptShareMessage: "",
         receiptSharePhoneDigits: "",
-        receiptShareStatus: "",
         requiresReceiptShare: false,
         receipts: [],
         startMonth: "2026-01",
@@ -3554,7 +3545,6 @@ registerMonthlyExpensesPageDefaultHooks({
         paymentLink: "",
         receiptShareMessage: "",
         receiptSharePhoneDigits: "",
-        receiptShareStatus: "",
         requiresReceiptShare: false,
         receipts: [],
         startMonth: "",
@@ -3597,7 +3587,6 @@ registerMonthlyExpensesPageDefaultHooks({
         paymentLink: "",
         receiptShareMessage: "",
         receiptSharePhoneDigits: "",
-        receiptShareStatus: "",
         requiresReceiptShare: false,
         receipts: [],
         startMonth: "2026-01",
@@ -3638,7 +3627,6 @@ registerMonthlyExpensesPageDefaultHooks({
         paymentLink: "",
         receiptShareMessage: "",
         receiptSharePhoneDigits: "",
-        receiptShareStatus: "",
         requiresReceiptShare: false,
         receipts: [],
         startMonth: "2026-01",

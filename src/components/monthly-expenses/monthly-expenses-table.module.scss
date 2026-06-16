@@ -986,8 +986,8 @@
 }
 
 .extraReceiptRow {
-  display: grid;
-  grid-template-columns: fit-content(100%) minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   align-items: center;
   width: 100%;
@@ -998,6 +998,7 @@
   align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1005,7 +1006,46 @@
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  justify-self: end;
+  margin-left: auto;
+}
+
+.paymentRecordSendControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+}
+
+.receiptShareTargetRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.receiptShareTargetLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+.receiptShareProgressChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.receiptShareProgressChipComplete {
+  color: var(--primary);
 }
 
 .receiptSummary {

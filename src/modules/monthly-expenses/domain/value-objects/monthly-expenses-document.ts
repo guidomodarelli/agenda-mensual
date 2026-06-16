@@ -63,6 +63,11 @@ export interface MonthlyExpensePaymentRecordInput {
   id: string;
   receipt?: MonthlyExpenseReceiptInput | null;
   registeredAt?: string | null;
+  /**
+   * Whether the receipt attached to this payment was already shared with the
+   * expense recipient. Only meaningful for records that carry a receipt.
+   */
+  sendStatus?: MonthlyExpenseReceiptShareStatus | null;
 }
 
 export interface MonthlyExpensePaymentRecord {
@@ -70,6 +75,7 @@ export interface MonthlyExpensePaymentRecord {
   id: string;
   receipt?: MonthlyExpenseReceipt;
   registeredAt: string | null;
+  sendStatus?: MonthlyExpenseReceiptShareStatus | null;
 }
 
 export interface MonthlyExpenseFoldersInput {
@@ -107,6 +113,12 @@ export interface MonthlyExpenseItemInput {
   paymentLink?: string | null;
   receiptShareMessage?: string | null;
   receiptSharePhoneDigits?: string | null;
+  /**
+   * @deprecated Legacy expense-level share status. The share status now lives on
+   * each payment record (`MonthlyExpensePaymentRecord.sendStatus`). It is still
+   * accepted as input so legacy documents can propagate it to their receipt
+   * payment records during normalization, but it is never emitted on the entity.
+   */
   receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
   requiresReceiptShare?: boolean;
   receipts?: MonthlyExpenseReceiptInput[] | null;
@@ -125,7 +137,6 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   paymentRecords?: MonthlyExpensePaymentRecord[];
   receiptShareMessage?: string | null;
   receiptSharePhoneDigits?: string | null;
-  receiptShareStatus?: MonthlyExpenseReceiptShareStatus | null;
   requiresReceiptShare?: boolean;
   receipts: MonthlyExpenseReceipt[];
   sortOrder?: number | null;
@@ -665,6 +676,11 @@ function validatePaymentRecords(
       );
     }
 
+    const normalizedSendStatus = validateReceiptShareStatus(
+      paymentRecord.sendStatus,
+      operationName,
+    );
+
     return {
       coveredPayments: normalizedCoveredPayments,
       id: normalizedPaymentRecordId,
@@ -677,8 +693,46 @@ function validatePaymentRecords(
         paymentRecord.registeredAt ?? null,
         operationName,
       ),
+      ...(normalizedSendStatus ? { sendStatus: normalizedSendStatus } : {}),
     };
   });
+}
+
+/**
+ * Resolves the share status for a single payment record.
+ *
+ * Only records that carry a receipt can hold a share status (there is nothing to
+ * send otherwise). The record's own `sendStatus` takes precedence; when absent,
+ * the legacy expense-level status is used as a fallback so documents migrated
+ * from the previous model keep their state. When the expense requires receipt
+ * sharing, receipt records default to `"pending"`.
+ *
+ * @param legacyReceiptShareStatus - Legacy expense-level share status fallback.
+ * @param paymentRecord - Normalized payment record to resolve.
+ * @param requiresReceiptShare - Whether the parent expense requires sharing.
+ * @returns The payment record with its resolved `sendStatus`.
+ */
+function resolvePaymentRecordSendStatus({
+  legacyReceiptShareStatus,
+  paymentRecord,
+  requiresReceiptShare,
+}: {
+  legacyReceiptShareStatus: MonthlyExpenseReceiptShareStatus | null;
+  paymentRecord: MonthlyExpensePaymentRecord;
+  requiresReceiptShare: boolean;
+}): MonthlyExpensePaymentRecord {
+  if (!paymentRecord.receipt) {
+    return paymentRecord;
+  }
+
+  const recordSendStatus = paymentRecord.sendStatus ?? legacyReceiptShareStatus;
+  const resolvedSendStatus = requiresReceiptShare
+    ? recordSendStatus ?? "pending"
+    : recordSendStatus;
+
+  return resolvedSendStatus
+    ? { ...paymentRecord, sendStatus: resolvedSendStatus }
+    : paymentRecord;
 }
 
 function validateFolders(
@@ -824,14 +878,11 @@ function validateItem(
   const normalizedReceiptShareMessage = normalizeReceiptShareMessage(
     receiptShareMessage,
   );
-  const normalizedReceiptShareStatus = validateReceiptShareStatus(
+  const legacyReceiptShareStatus = validateReceiptShareStatus(
     receiptShareStatus,
     operationName,
   );
   const normalizedRequiresReceiptShare = requiresReceiptShare === true;
-  const resolvedReceiptShareStatus = normalizedRequiresReceiptShare
-    ? normalizedReceiptShareStatus ?? "pending"
-    : normalizedReceiptShareStatus;
   const normalizedReceipts = validateReceipts(receipts, operationName);
   const normalizedPaymentRecordsInput = validatePaymentRecords(
     item.paymentRecords,
@@ -897,13 +948,20 @@ function validateItem(
     );
   }
 
-  const normalizedPaymentRecords = normalizedPaymentRecordsInput.length > 0
+  const basePaymentRecords = normalizedPaymentRecordsInput.length > 0
     ? normalizedPaymentRecordsInput
     : createPaymentRecordsFromLegacyFields({
         expenseId: normalizedItem.id,
         legacyManualCoveredPayments: normalizedManualCoveredPaymentsFromLegacy,
         legacyReceipts: normalizedReceipts,
       });
+  const normalizedPaymentRecords = basePaymentRecords.map((paymentRecord) =>
+    resolvePaymentRecordSendStatus({
+      legacyReceiptShareStatus,
+      paymentRecord,
+      requiresReceiptShare: normalizedRequiresReceiptShare,
+    }),
+  );
   const normalizedManualCoveredPayments = normalizedPaymentRecords
     .filter((paymentRecord) => !paymentRecord.receipt)
     .reduce(
@@ -941,9 +999,6 @@ function validateItem(
       : {}),
     ...(normalizedReceiptSharePhoneDigits
       ? { receiptSharePhoneDigits: normalizedReceiptSharePhoneDigits }
-      : {}),
-    ...(resolvedReceiptShareStatus
-      ? { receiptShareStatus: resolvedReceiptShareStatus }
       : {}),
     ...(normalizedRequiresReceiptShare ? { requiresReceiptShare: true } : {}),
     paymentRecords: normalizedPaymentRecords,

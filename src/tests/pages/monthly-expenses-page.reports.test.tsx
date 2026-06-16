@@ -1746,7 +1746,11 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  it("renders Estado de envío, Enviar, Pagos, and Registro de pagos columns in order", () => {
+  // El refactor eliminó las columnas "Estado de envío" y "Enviar" de la tabla
+  // (el envío se unificó dentro del popover de "Registro de pagos"). Por eso este
+  // test valida que esas columnas ya no existan y que "Pagos" preceda a
+  // "Registro de pagos".
+  it("renders Pagos and Registro de pagos columns in order without the removed envío columns", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -1777,14 +1781,12 @@ registerMonthlyExpensesPageDefaultHooks({
     const headers = screen
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
-    const receiptShareStatusHeaderIndex = headers.indexOf("Estado de envío");
-    const receiptShareLinkHeaderIndex = headers.indexOf("Enviar");
     const paidHeaderIndex = headers.indexOf("Pagos");
     const paymentHistoryHeaderIndex = headers.indexOf("Registro de pagos");
 
-    expect(receiptShareStatusHeaderIndex).toBeGreaterThanOrEqual(0);
-    expect(receiptShareLinkHeaderIndex).toBe(receiptShareStatusHeaderIndex + 1);
-    expect(paidHeaderIndex).toBe(receiptShareLinkHeaderIndex + 1);
+    expect(headers).not.toContain("Estado de envío");
+    expect(headers).not.toContain("Enviar");
+    expect(paidHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(paymentHistoryHeaderIndex).toBe(paidHeaderIndex + 1);
     expect(headers).not.toContain("Link");
     expect(headers).not.toContain("Carpeta del mes actual");
@@ -2272,76 +2274,10 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(getMonthlyExpensesSavePayload(fetchMock).items[0]?.folders).toBeUndefined();
   });
 
-  it("sorts Estado de envío with N/A rows always at the end", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Estado pendiente",
-              id: "expense-1",
-              occurrencesPerMonth: 1,
-              receiptShareStatus: "pending",
-              requiresReceiptShare: true,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Sin envio A",
-              id: "expense-2",
-              occurrencesPerMonth: 1,
-              requiresReceiptShare: false,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Estado enviado",
-              id: "expense-3",
-              occurrencesPerMonth: 1,
-              receiptShareStatus: "sent",
-              requiresReceiptShare: true,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Sin envio B",
-              id: "expense-4",
-              occurrencesPerMonth: 1,
-              requiresReceiptShare: false,
-              subtotal: 100,
-              total: 100,
-            },
-          ],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Ordenar Estado de envío" }));
-
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Estado pendiente",
-      "Estado enviado",
-      "Sin envio A",
-      "Sin envio B",
-    ]);
-
-    await user.click(screen.getByRole("button", { name: "Ordenar Estado de envío" }));
-
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Estado enviado",
-      "Estado pendiente",
-      "Sin envio A",
-      "Sin envio B",
-    ]);
-  });
+  // Test eliminado: el refactor sacó la columna "Estado de envío" de la tabla y, con
+  // ella, la capacidad de ordenar por estado de envío a nivel gasto. El estado ahora
+  // vive por pago dentro del popover de "Registro de pagos", por lo que ordenar la
+  // tabla por estado de envío ya no es un comportamiento soportado.
 
   it("opens the debt sorting popover with three selectable criteria", async () => {
     const user = userEvent.setup();

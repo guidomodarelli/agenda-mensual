@@ -190,7 +190,7 @@ function getFieldErrors(
     fieldErrors.installmentCount = "Completá la cantidad total de cuotas.";
   }
 
-  if (isCreateMode && draft.requiresReceiptShare) {
+  if (draft.requiresReceiptShare) {
     const receiptSharePhoneValidationError = validateReceiptSharePhoneDigits(
       draft.receiptSharePhoneDigits,
     );
@@ -875,7 +875,7 @@ function ExpenseSheetContent({
                 </div>
               ) : null}
 
-              {isCreateMode ? (
+              {(
                 <div className={styles.loanSection}>
                   <div className={styles.loanToggleRow}>
                     <div className={styles.fieldControlWrapper}>
@@ -988,7 +988,7 @@ function ExpenseSheetContent({
                     </>
                   ) : null}
                 </div>
-              ) : null}
+              )}
             </form>
           </Form>
 

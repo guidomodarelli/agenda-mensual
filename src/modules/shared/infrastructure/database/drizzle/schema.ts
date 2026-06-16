@@ -93,7 +93,6 @@ export const expenseMonthsTable = sqliteTable(
     monthlyFolderViewUrl: text("monthly_folder_view_url"),
     occurrencesPerMonth: integer("occurrences_per_month").notNull(),
     occurrencesUnit: text("occurrences_unit"),
-    receiptShareStatus: text("receipt_share_status"),
     subtotal: real("subtotal").notNull(),
     subtotalUnit: text("subtotal_unit"),
     updatedAtIso: text("updated_at_iso").notNull(),
@@ -138,6 +137,7 @@ export const expensePaymentRecordsTable = sqliteTable(
     paymentRecordId: text("payment_record_id").notNull(),
     receiptFileId: text("receipt_file_id"),
     registeredAtIso: text("registered_at_iso"),
+    sendStatus: text("send_status"),
     userSubject: text("user_subject").notNull(),
   },
   (table) => [

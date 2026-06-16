@@ -47,7 +47,6 @@ interface NormalizedExpenseRow {
   paymentLink: string | null;
   receiptShareMessage: string | null;
   receiptSharePhoneDigits: string | null;
-  receiptShareStatus: string | null;
   requiresReceiptShare: number;
   sortOrder: number | null;
   subtotal: number;
@@ -412,7 +411,6 @@ export class DrizzleMonthlyExpensesRepository
           monthlyFolderViewUrl: monthlyFolder.viewUrl,
           occurrencesPerMonth: item.occurrencesPerMonth,
           occurrencesUnit: item.occurrencesUnit ?? null,
-          receiptShareStatus: item.receiptShareStatus ?? null,
           subtotal: item.subtotal,
           subtotalUnit: item.subtotalUnit === "hour" ? "hour" : null,
           updatedAtIso: nowIso,
@@ -432,7 +430,6 @@ export class DrizzleMonthlyExpensesRepository
             monthlyFolderViewUrl: monthlyFolder.viewUrl,
             occurrencesPerMonth: item.occurrencesPerMonth,
             occurrencesUnit: item.occurrencesUnit ?? null,
-            receiptShareStatus: item.receiptShareStatus ?? null,
             subtotal: item.subtotal,
             subtotalUnit: item.subtotalUnit === "hour" ? "hour" : null,
             updatedAtIso: nowIso,
@@ -472,6 +469,7 @@ export class DrizzleMonthlyExpensesRepository
             paymentRecordId: paymentRecord.id,
             receiptFileId: paymentRecord.receipt?.fileId ?? null,
             registeredAtIso: paymentRecord.registeredAt ?? null,
+            sendStatus: paymentRecord.sendStatus ?? null,
             userSubject: this.userSubject,
           })),
         );
@@ -584,7 +582,6 @@ export class DrizzleMonthlyExpensesRepository
         paymentLink: expensesTable.paymentLink,
         receiptShareMessage: expensesTable.receiptShareMessage,
         receiptSharePhoneDigits: expensesTable.receiptSharePhoneDigits,
-        receiptShareStatus: expenseMonthsTable.receiptShareStatus,
         requiresReceiptShare: expensesTable.requiresReceiptShare,
         sortOrder: expensesTable.sortOrder,
         subtotal: expenseMonthsTable.subtotal,
@@ -666,6 +663,7 @@ export class DrizzleMonthlyExpensesRepository
             paymentRecordId: expensePaymentRecordsTable.paymentRecordId,
             receiptFileId: expensePaymentRecordsTable.receiptFileId,
             registeredAtIso: expensePaymentRecordsTable.registeredAtIso,
+            sendStatus: expensePaymentRecordsTable.sendStatus,
           })
           .from(expensePaymentRecordsTable)
           .where(
@@ -741,6 +739,7 @@ export class DrizzleMonthlyExpensesRepository
           registeredAt?: string | null;
         };
         registeredAt?: string | null;
+        sendStatus?: "pending" | "sent" | null;
       }[]
     >();
 
@@ -756,6 +755,9 @@ export class DrizzleMonthlyExpensesRepository
         ...(resolvedReceipt ? { receipt: resolvedReceipt } : {}),
         ...(paymentRecord.registeredAtIso
           ? { registeredAt: paymentRecord.registeredAtIso }
+          : {}),
+        ...(paymentRecord.sendStatus
+          ? { sendStatus: paymentRecord.sendStatus as "pending" | "sent" }
           : {}),
       };
       const existingPaymentRecords =
@@ -837,11 +839,6 @@ export class DrizzleMonthlyExpensesRepository
             : {}),
           ...(row.receiptSharePhoneDigits
             ? { receiptSharePhoneDigits: row.receiptSharePhoneDigits }
-            : {}),
-          ...(row.receiptShareStatus
-            ? {
-                receiptShareStatus: row.receiptShareStatus as "pending" | "sent",
-              }
             : {}),
           ...(row.requiresReceiptShare === 1 ? { requiresReceiptShare: true } : {}),
           ...(receiptsByExpenseId.has(row.expenseId)

@@ -568,8 +568,191 @@ describe("monthlyExpensesDocument", () => {
     );
 
     expect(result.items[0]?.receiptSharePhoneDigits).toBe("5491123456789");
-    expect(result.items[0]?.receiptShareStatus).toBe("pending");
     expect(result.items[0]?.requiresReceiptShare).toBe(true);
+  });
+
+  it("defaults the share status to pending on receipt payment records when sharing is required", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentRecords: [
+              {
+                coveredPayments: 1,
+                id: "payment-1",
+                receipt: {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id",
+                  fileName: "comprobante.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              },
+            ],
+            receiptSharePhoneDigits: "5491123456789",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("pending");
+  });
+
+  it("keeps the explicit send status on each receipt payment record", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 2,
+            paymentRecords: [
+              {
+                coveredPayments: 1,
+                id: "payment-1",
+                receipt: {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id-1",
+                  fileName: "comprobante-1.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id-1/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+                sendStatus: "sent",
+              },
+              {
+                coveredPayments: 1,
+                id: "payment-2",
+                receipt: {
+                  allReceiptsFolderId: "receipt-folder-id",
+                  allReceiptsFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-folder-id",
+                  coveredPayments: 1,
+                  fileId: "receipt-file-id-2",
+                  fileName: "comprobante-2.pdf",
+                  fileViewUrl:
+                    "https://drive.google.com/file/d/receipt-file-id-2/view",
+                  monthlyFolderId: "receipt-month-folder-id",
+                  monthlyFolderViewUrl:
+                    "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                },
+              },
+            ],
+            receiptSharePhoneDigits: "5491123456789",
+            requiresReceiptShare: true,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("sent");
+    expect(result.items[0]?.paymentRecords?.[1]?.sendStatus).toBe("pending");
+  });
+
+  it("propagates the legacy expense-level share status to receipt payment records", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receiptShareStatus: "sent",
+            receiptSharePhoneDigits: "5491123456789",
+            requiresReceiptShare: true,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id",
+                fileName: "comprobante.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("sent");
+    expect(
+      (result.items[0] as { receiptShareStatus?: string }).receiptShareStatus,
+    ).toBeUndefined();
+  });
+
+  it("rejects invalid payment record send statuses", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentRecords: [
+                {
+                  coveredPayments: 1,
+                  id: "payment-1",
+                  receipt: {
+                    allReceiptsFolderId: "receipt-folder-id",
+                    allReceiptsFolderViewUrl:
+                      "https://drive.google.com/drive/folders/receipt-folder-id",
+                    coveredPayments: 1,
+                    fileId: "receipt-file-id",
+                    fileName: "comprobante.pdf",
+                    fileViewUrl:
+                      "https://drive.google.com/file/d/receipt-file-id/view",
+                    monthlyFolderId: "receipt-month-folder-id",
+                    monthlyFolderViewUrl:
+                      "https://drive.google.com/drive/folders/receipt-month-folder-id",
+                  },
+                  sendStatus: "done" as unknown as "sent",
+                },
+              ],
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(
+      "Saving monthly expenses requires every receipt share status to be pending or sent.",
+    );
   });
 
   it("rejects invalid receipt share statuses", () => {

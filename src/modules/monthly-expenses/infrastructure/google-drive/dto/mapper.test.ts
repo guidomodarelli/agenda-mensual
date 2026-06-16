@@ -342,6 +342,18 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
   });
 
   it("serializes and parses receipt sharing metadata", () => {
+    const receipt = {
+      allReceiptsFolderId: "receipt-folder-id",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-folder-id",
+      coveredPayments: 1,
+      fileId: "receipt-file-id",
+      fileName: "comprobante.pdf",
+      fileViewUrl: "https://drive.google.com/file/d/receipt-file-id/view",
+      monthlyFolderId: "receipt-month-folder-id",
+      monthlyFolderViewUrl:
+        "https://drive.google.com/drive/folders/receipt-month-folder-id",
+    };
     const serialized = mapMonthlyExpensesDocumentToGoogleDriveFile({
       items: [
         {
@@ -350,12 +362,20 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
           id: "expense-1",
           manualCoveredPayments: 0,
           occurrencesPerMonth: 1,
+          paymentRecords: [
+            {
+              coveredPayments: 1,
+              id: "payment-1",
+              receipt,
+              registeredAt: null,
+              sendStatus: "sent",
+            },
+          ],
           receiptShareMessage: "Hola",
           receiptSharePhoneDigits: "5491123456789",
-          receiptShareStatus: "pending",
           requiresReceiptShare: true,
           paymentLink: null,
-          receipts: [],
+          receipts: [receipt],
           subtotal: 45,
           total: 45,
         },
@@ -365,6 +385,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
 
     expect(serialized.content).toContain('"requiresReceiptShare": true');
     expect(serialized.content).toContain('"receiptSharePhoneDigits": "5491123456789"');
+    expect(serialized.content).toContain('"sendStatus": "sent"');
 
     const parsed = parseGoogleDriveMonthlyExpensesContent(
       serialized.content,
@@ -373,7 +394,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
 
     expect(parsed.items[0]?.requiresReceiptShare).toBe(true);
     expect(parsed.items[0]?.receiptSharePhoneDigits).toBe("5491123456789");
-    expect(parsed.items[0]?.receiptShareStatus).toBe("pending");
+    expect(parsed.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("sent");
   });
 
   it("throws when parsing an invalid receiptSharePhoneDigits", () => {

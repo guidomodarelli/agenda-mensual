@@ -118,6 +118,7 @@ const monthlyExpensePaymentRecordSchema = z.object({
   id: z.string().trim().min(1),
   receipt: monthlyExpenseReceiptSchema.nullable().optional(),
   registeredAt: z.string().datetime().nullable().optional(),
+  sendStatus: z.enum(RECEIPT_SHARE_STATUSES).nullable().optional(),
 }).strict();
 
 const monthlyExpenseFoldersSchema = z.object({
@@ -289,7 +290,6 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             paymentLink,
             receiptShareMessage,
             receiptSharePhoneDigits,
-            receiptShareStatus,
             requiresReceiptShare,
             receipts,
             subtotal,
@@ -353,6 +353,9 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
                     ...(paymentRecord.registeredAt
                       ? { registeredAt: paymentRecord.registeredAt }
                       : {}),
+                    ...(paymentRecord.sendStatus
+                      ? { sendStatus: paymentRecord.sendStatus }
+                      : {}),
                   })),
                 }
               : {}),
@@ -365,9 +368,6 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
               : {}),
             ...(receiptSharePhoneDigits
               ? { receiptSharePhoneDigits }
-              : {}),
-            ...(receiptShareStatus
-              ? { receiptShareStatus }
               : {}),
             ...(requiresReceiptShare ? { requiresReceiptShare: true } : {}),
             ...(receipts.length > 0

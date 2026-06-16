@@ -416,18 +416,6 @@ function normalizeReceiptShareMessage(value: string): string {
   return value.trim();
 }
 
-function isReceiptShareStatus(
-  value: string,
-): value is MonthlyExpenseReceiptShareStatus {
-  return value === "pending" || value === "sent";
-}
-
-function normalizeReceiptShareStatus(
-  value: string,
-): MonthlyExpenseReceiptShareStatus | "" {
-  return isReceiptShareStatus(value) ? value : "";
-}
-
 function createEmptyRow(): MonthlyExpensesEditableRow {
   return {
     allReceiptsFolderId: "",
@@ -453,7 +441,6 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
-    receiptShareStatus: "",
     requiresReceiptShare: false,
     receipts: [],
     monthlyFolderId: "",
@@ -520,6 +507,9 @@ function toEditablePaymentRecords(
           }
         : {}),
       registeredAt: paymentRecord.registeredAt ?? null,
+      ...(paymentRecord.sendStatus
+        ? { sendStatus: paymentRecord.sendStatus }
+        : {}),
     }));
   }
 
@@ -644,16 +634,6 @@ export function toEditableRows(
     const legacyCoverage = getLegacyCoverageFromPaymentRecords(paymentRecords);
 
     return ({
-    ...(item.requiresReceiptShare === true
-      ? {
-          receiptShareStatus:
-            item.receiptShareStatus === "sent" ? "sent" : "pending",
-        }
-      : {
-          receiptShareStatus: normalizeReceiptShareStatus(
-            item.receiptShareStatus ?? "",
-          ),
-        }),
     ...(item.manualCoveredPayments !== undefined
       ? {
           manualCoveredPayments: legacyCoverage.manualCoveredPayments,
@@ -871,6 +851,9 @@ function getSynchronizedPaymentRecordsForSave(
       id: matchedRecord?.id ?? `legacy-receipt-${receipt.fileId}`,
       receipt,
       registeredAt: matchedRecord?.registeredAt ?? null,
+      ...(matchedRecord?.sendStatus
+        ? { sendStatus: matchedRecord.sendStatus }
+        : {}),
     };
   });
   const manualCoveredPayments = getNormalizedManualCoveredPayments(row);
@@ -1117,7 +1100,6 @@ export function copyMonthlyExpenseTemplatesToMonth(
       monthlyFolderStatus: undefined,
       monthlyFolderViewUrl: "",
       paymentRecords: [],
-      receiptShareStatus: "",
       receipts: [],
     })),
   );
@@ -1417,9 +1399,6 @@ export function toSaveMonthlyExpensesCommand(
               ),
             }
           : {}),
-        ...(isReceiptShareStatus(row.receiptShareStatus)
-          ? { receiptShareStatus: row.receiptShareStatus }
-          : {}),
         ...(buildRowFoldersPayload(row)
           ? {
               folders: buildRowFoldersPayload(row),
@@ -1479,6 +1458,9 @@ export function toSaveMonthlyExpensesCommand(
                   : {}),
                 ...(paymentRecord.registeredAt
                   ? { registeredAt: paymentRecord.registeredAt }
+                  : {}),
+                ...(paymentRecord.sendStatus
+                  ? { sendStatus: paymentRecord.sendStatus }
                   : {}),
               })),
             }
@@ -2482,20 +2464,11 @@ export default function MonthlyExpensesPage({
         return currentState;
       }
 
-      const hasKnownStatus = isReceiptShareStatus(
-        currentState.draft.receiptShareStatus,
-      );
-
       return {
         ...currentState,
         draft: normalizeEditableRows(formState.month, [
           {
             ...currentState.draft,
-            receiptShareStatus: checked
-              ? hasKnownStatus
-                ? currentState.draft.receiptShareStatus
-                : "pending"
-              : currentState.draft.receiptShareStatus,
             requiresReceiptShare: checked,
           },
         ])[0],
@@ -3634,7 +3607,6 @@ export default function MonthlyExpensesPage({
     const normalizedReceiptShareMessage = normalizeReceiptShareMessage(
       receiptShareMessage,
     );
-    const hasKnownStatus = isReceiptShareStatus(expenseRow.receiptShareStatus);
 
     if (
       expenseRow.requiresReceiptShare &&
@@ -3653,7 +3625,6 @@ export default function MonthlyExpensesPage({
               ...row,
               receiptShareMessage: normalizedReceiptShareMessage,
               receiptSharePhoneDigits: normalizedPhoneDigits,
-              receiptShareStatus: hasKnownStatus ? row.receiptShareStatus : "pending",
               requiresReceiptShare: true,
             }
           : row,
@@ -3700,7 +3671,6 @@ export default function MonthlyExpensesPage({
               ...row,
               receiptShareMessage: "",
               receiptSharePhoneDigits: "",
-              receiptShareStatus: "",
               requiresReceiptShare: false,
             }
           : row,
@@ -3753,12 +3723,14 @@ export default function MonthlyExpensesPage({
     }
   };
 
-  const handleUpdateReceiptShareStatus = async ({
+  const handleUpdatePaymentRecordSendStatus = async ({
     expenseId,
-    receiptShareStatus,
+    paymentRecordId,
+    sendStatus,
   }: {
     expenseId: string;
-    receiptShareStatus: MonthlyExpenseReceiptShareStatus;
+    paymentRecordId: string;
+    sendStatus: MonthlyExpenseReceiptShareStatus;
   }) => {
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para actualizar el estado de envío.");
@@ -3772,15 +3744,18 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    if (!expenseRow.requiresReceiptShare) {
+    const targetPaymentRecord = expenseRow.paymentRecords?.find(
+      (paymentRecord) => paymentRecord.id === paymentRecordId,
+    );
+
+    if (!targetPaymentRecord || !targetPaymentRecord.receipt) {
       return;
     }
 
-    const currentStatus = isReceiptShareStatus(expenseRow.receiptShareStatus)
-      ? expenseRow.receiptShareStatus
-      : "pending";
+    const currentStatus =
+      targetPaymentRecord.sendStatus === "sent" ? "sent" : "pending";
 
-    if (currentStatus === receiptShareStatus) {
+    if (currentStatus === sendStatus) {
       return;
     }
 
@@ -3788,7 +3763,11 @@ export default function MonthlyExpensesPage({
       row.id === expenseId
         ? {
             ...row,
-            receiptShareStatus,
+            paymentRecords: (row.paymentRecords ?? []).map((paymentRecord) =>
+              paymentRecord.id === paymentRecordId
+                ? { ...paymentRecord, sendStatus }
+                : paymentRecord,
+            ),
           }
         : row,
     );
@@ -4557,7 +4536,7 @@ export default function MonthlyExpensesPage({
                 onUpdatePaymentLink={handleUpdatePaymentLink}
                 onUpdateExpenseDetails={handleUpdateExpenseDetails}
                 onUpdateExpenseReceiptShare={handleUpdateExpenseReceiptShare}
-                onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}
+                onUpdatePaymentRecordSendStatus={handleUpdatePaymentRecordSendStatus}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
                 replicateFromPreviousMonthDialogOpen={
