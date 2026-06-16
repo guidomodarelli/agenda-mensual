@@ -2666,7 +2666,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(expenseCells.at(vigenciaHeaderIndex)?.textContent?.trim()).toBe("-");
   });
 
-  it("renders the merged Vigencia column as MM/YYYY and sorts by inicio or fin", async () => {
+  it("renders the merged Vigencia column as MM/YY and sorts by inicio or fin", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -2735,12 +2735,12 @@ registerMonthlyExpensesPageDefaultHooks({
     const marchRow = screen.getByRole("row", { name: /Prestamo marzo/i });
     const noLoanRow = screen.getByRole("row", { name: /Sin deuda/i });
 
-    expect(within(novemberRow).getByText("11/2025")).toBeInTheDocument();
-    expect(within(novemberRow).getByText("02/2026")).toBeInTheDocument();
-    expect(within(januaryRow).getByText("01/2026")).toBeInTheDocument();
-    expect(within(januaryRow).getByText("04/2026")).toBeInTheDocument();
-    expect(within(marchRow).getByText("03/2026")).toBeInTheDocument();
-    expect(within(marchRow).getByText("08/2026")).toBeInTheDocument();
+    expect(within(novemberRow).getByText("11/25")).toBeInTheDocument();
+    expect(within(novemberRow).getByText("02/26")).toBeInTheDocument();
+    expect(within(januaryRow).getByText("01/26")).toBeInTheDocument();
+    expect(within(januaryRow).getByText("04/26")).toBeInTheDocument();
+    expect(within(marchRow).getByText("03/26")).toBeInTheDocument();
+    expect(within(marchRow).getByText("08/26")).toBeInTheDocument();
     expect(within(noLoanRow).getAllByText("-").length).toBeGreaterThan(0);
 
     const monthlyExpensesTable = getMonthlyExpensesTable();

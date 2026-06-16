@@ -1434,7 +1434,7 @@ function formatYearMonth(value: string): string {
     return "-";
   }
 
-  return `${parsedValue.month}/${parsedValue.year}`;
+  return `${parsedValue.month}/${parsedValue.year.slice(-2)}`;
 }
 
 function getLoanDirectionLabel(
@@ -3837,7 +3837,7 @@ export function MonthlyExpensesTable({
 
           return (
             <div className={styles.loanProgressCell}>
-              <span>{row.original.loanProgress}</span>
+              <span>{`${paidInstallments} de ${totalInstallments}`}</span>
               <div
                 aria-hidden="true"
                 className={styles.loanProgressBarTrack}
@@ -3848,7 +3848,7 @@ export function MonthlyExpensesTable({
                 />
               </div>
               <span className={styles.loanProgressRemaining}>
-                {`${row.original.loanRemainingInstallments ?? 0} cuotas restantes`}
+                {`${row.original.loanRemainingInstallments ?? 0} restantes`}
               </span>
             </div>
           );

@@ -213,8 +213,8 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(
       screen.queryByRole("columnheader", { name: "Fin cuota" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("01/2026")).toBeInTheDocument();
-    expect(screen.getByText("03/2026")).toBeInTheDocument();
+    expect(screen.getByText("01/26")).toBeInTheDocument();
+    expect(screen.getByText("03/26")).toBeInTheDocument();
   });
 
   it("filters loans by direction from the prestamista column", async () => {
