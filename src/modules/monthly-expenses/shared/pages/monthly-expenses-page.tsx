@@ -1231,9 +1231,15 @@ export function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
+  // In create mode any invalid (including empty) receipt-share phone blocks the
+  // save. In edit mode a legacy empty value is tolerated so unrelated fields stay
+  // editable, but an actually entered invalid number still blocks the save (it
+  // would otherwise fail later in command/API validation).
+  const receiptSharePhone = row.receiptSharePhoneDigits.trim();
+
   if (
-    mode === "create" &&
     row.requiresReceiptShare &&
+    (mode === "create" || receiptSharePhone.length > 0) &&
     validateReceiptSharePhoneDigits(row.receiptSharePhoneDigits) !== null
   ) {
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
@@ -3672,6 +3678,17 @@ export default function MonthlyExpensesPage({
               receiptShareMessage: "",
               receiptSharePhoneDigits: "",
               requiresReceiptShare: false,
+              // Clearing the recipient also resets the per-record send status, so
+              // re-enabling sharing later (e.g. for a new recipient) does not show
+              // old receipts as already sent.
+              paymentRecords: (row.paymentRecords ?? []).map((paymentRecord) => ({
+                coveredPayments: paymentRecord.coveredPayments,
+                id: paymentRecord.id,
+                ...(paymentRecord.receipt
+                  ? { receipt: paymentRecord.receipt }
+                  : {}),
+                registeredAt: paymentRecord.registeredAt,
+              })),
             }
           : row,
       ),

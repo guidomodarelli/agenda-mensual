@@ -451,4 +451,26 @@ describe("monthly expenses page mappers", () => {
 
     expect(getExpenseValidationMessage("2026-03", editableRow, "edit")).toBeNull();
   });
+
+  it("blocks edit mode when the entered receipt share phone is invalid", () => {
+    const editableRow = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          receiptSharePhoneDigits: "123",
+          requiresReceiptShare: true,
+          subtotal: 100,
+          total: 100,
+        },
+      ],
+      month: "2026-03",
+    })[0];
+
+    expect(getExpenseValidationMessage("2026-03", editableRow, "edit")).toBe(
+      "Corregí los errores antes de continuar.",
+    );
+  });
 });
