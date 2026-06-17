@@ -1,3 +1,15 @@
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarDays,
+  Clock,
+  Flame,
+  Layers,
+  RotateCcw,
+} from "lucide-react";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -7,24 +19,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import styles from "./monthly-expenses-loans-report.module.scss";
 
 type TechnicalErrorCode = `E${number}${number}${number}${number}`;
+
+type MonthlyExpensesLoanDirection = "payable" | "receivable";
+
+type MonthlyExpensesLenderType =
+  | "bank"
+  | "family"
+  | "friend"
+  | "other"
+  | "unassigned";
 
 const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 2,
   minimumFractionDigits: 0,
 });
 
+const MISSING_VALUE_LABEL = "Sin dato";
+const MAX_AVATAR_INITIALS = 2;
+
 interface MonthlyExpensesLoanReportView {
   activeLoanCount: number;
-  direction: "payable" | "receivable";
+  direction: MonthlyExpensesLoanDirection;
   expenseDescriptions: string[];
   firstDebtMonth: string | null;
   lenderId: string | null;
   lenderName: string;
-  lenderType: "bank" | "family" | "friend" | "other" | "unassigned";
+  lenderType: MonthlyExpensesLenderType;
   latestRecordedMonth: string | null;
   remainingAmount: number;
   trackedLoanCount: number;
@@ -56,7 +81,7 @@ interface MonthlyExpensesLoansReportProps {
   onTypeFilterChange: (value: string) => void;
 }
 
-function getTypeLabel(type: MonthlyExpensesLoanReportView["lenderType"]): string {
+function getTypeLabel(type: MonthlyExpensesLenderType): string {
   switch (type) {
     case "bank":
       return "Banco";
@@ -79,8 +104,83 @@ function formatArsAmount(value: number): string {
   return `$ ${arsCurrencyFormatter.format(value)}`;
 }
 
-function getDirectionLabel(direction: MonthlyExpensesLoanReportView["direction"]): string {
+/**
+ * Formats an amount with the sign before the currency symbol so a negative net
+ * balance reads as "-$ 1.000" instead of the formatter default "$ -1.000".
+ *
+ * @param value - Amount to format in ARS.
+ * @returns The signed ARS representation.
+ */
+function formatSignedArsAmount(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "$ 0";
+  }
+
+  const sign = value < 0 ? "-" : "";
+
+  return `${sign}${formatArsAmount(Math.abs(value))}`;
+}
+
+function getDirectionLabel(direction: MonthlyExpensesLoanDirection): string {
   return direction === "payable" ? "Yo debo" : "Me deben";
+}
+
+/**
+ * Resolves the human hint that explains the net balance sign in plain Spanish.
+ *
+ * @param netRemainingAmount - Receivable minus payable remaining amount.
+ * @returns The explanatory hint for the net balance.
+ */
+function getNetBalanceHint(netRemainingAmount: number): string {
+  if (netRemainingAmount < 0) {
+    return "Debés más de lo que te deben.";
+  }
+
+  if (netRemainingAmount > 0) {
+    return "Te deben más de lo que debés.";
+  }
+
+  return "Estás en cero: lo que debés y lo que te deben se equilibran.";
+}
+
+function getNetBalanceTone(
+  netRemainingAmount: number,
+): "negative" | "positive" | "neutral" {
+  if (netRemainingAmount < 0) {
+    return "negative";
+  }
+
+  if (netRemainingAmount > 0) {
+    return "positive";
+  }
+
+  return "neutral";
+}
+
+/**
+ * Builds up to two uppercase initials from a lender name for the avatar.
+ *
+ * @param lenderName - Display name of the lender.
+ * @returns The avatar initials, or a fallback glyph when the name is empty.
+ */
+function getLenderInitials(lenderName: string): string {
+  const initials = lenderName
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .slice(0, MAX_AVATAR_INITIALS)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return initials.length > 0 ? initials : "?";
+}
+
+function getWidthPercent(part: number, total: number): string {
+  if (total <= 0 || !Number.isFinite(part) || !Number.isFinite(total)) {
+    return "0%";
+  }
+
+  return `${Math.max(0, Math.min(100, (part / total) * 100))}%`;
 }
 
 export function MonthlyExpensesLoansReport({
@@ -97,62 +197,92 @@ export function MonthlyExpensesLoansReport({
   onResetFilters,
   onTypeFilterChange,
 }: MonthlyExpensesLoansReportProps) {
+  const splitTotal =
+    summary.payableRemainingAmount + summary.receivableRemainingAmount;
+  const netTone = getNetBalanceTone(summary.netRemainingAmount);
+  const splitAriaLabel = `Distribución de deudas: yo debo ${formatArsAmount(
+    summary.payableRemainingAmount,
+  )}, me deben ${formatArsAmount(summary.receivableRemainingAmount)}.`;
+
   return (
     <section className={styles.content}>
-      <p className={styles.description}>
-        Revisá cuánto debés, cuánto te deben y qué gastos están asociados.
-      </p>
+      <header className={styles.hero}>
+        <div className={styles.heroBalance}>
+          <p className={styles.heroLabel}>Balance neto</p>
+          <p className={styles.heroValue} data-tone={netTone}>
+            {formatSignedArsAmount(summary.netRemainingAmount)}
+          </p>
+          <p className={styles.heroHint}>
+            {getNetBalanceHint(summary.netRemainingAmount)}
+          </p>
+        </div>
 
-      <div className={styles.summaryGrid}>
-        <div className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>Prestamistas con deuda</p>
-          <p className={styles.summaryValue}>{summary.lenderCount}</p>
+        <dl className={styles.heroKpis}>
+          <div className={styles.kpi}>
+            <dt className={styles.kpiLabel}>Prestamistas con deuda</dt>
+            <dd className={styles.kpiValue}>{summary.lenderCount}</dd>
+          </div>
+          <div className={styles.kpi}>
+            <dt className={styles.kpiLabel}>Deudas activas</dt>
+            <dd className={styles.kpiValue}>{summary.activeLoanCount}</dd>
+          </div>
+        </dl>
+      </header>
+
+      <div className={styles.split}>
+        <div
+          aria-label={splitAriaLabel}
+          className={styles.splitBar}
+          role="img"
+        >
+          <span
+            className={styles.splitPayable}
+            style={{
+              width: getWidthPercent(summary.payableRemainingAmount, splitTotal),
+            }}
+          />
+          <span
+            className={styles.splitReceivable}
+            style={{
+              width: getWidthPercent(
+                summary.receivableRemainingAmount,
+                splitTotal,
+              ),
+            }}
+          />
         </div>
-        <div className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>Deudas activas</p>
-          <p className={styles.summaryValue}>{summary.activeLoanCount}</p>
-        </div>
-        <div className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>Monto pendiente estimado</p>
-          <p className={styles.summaryValue}>{formatArsAmount(summary.remainingAmount)}</p>
-        </div>
-        <div className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>Total que debés</p>
-          <p className={styles.summaryValue}>
-            {formatArsAmount(summary.payableRemainingAmount)}
-          </p>
-        </div>
-        <div className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>Total que te deben</p>
-          <p className={styles.summaryValue}>
-            {formatArsAmount(summary.receivableRemainingAmount)}
-          </p>
-        </div>
-        <div className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>Balance neto</p>
-          <p className={styles.summaryValue}>{formatArsAmount(summary.netRemainingAmount)}</p>
+        <div className={styles.splitLegend}>
+          <span className={styles.splitLegendItem}>
+            <span className={`${styles.dot} ${styles.dotPayable}`} aria-hidden />
+            Yo debo
+            <strong>{formatArsAmount(summary.payableRemainingAmount)}</strong>
+          </span>
+          <span className={styles.splitLegendItem}>
+            Me deben
+            <strong>{formatArsAmount(summary.receivableRemainingAmount)}</strong>
+            <span
+              className={`${styles.dot} ${styles.dotReceivable}`}
+              aria-hidden
+            />
+          </span>
         </div>
       </div>
 
       <div className={styles.filters}>
-        <div className={styles.filterField}>
-          <Label htmlFor="loan-report-direction-filter">Dirección</Label>
-          <Select
+        <div className={styles.directionFilter}>
+          <Label className={styles.filterLabel} id="loan-report-direction-label">
+            Dirección
+          </Label>
+          <Tabs
             onValueChange={onDirectionFilterChange}
             value={selectedDirectionFilter}
           >
-            <SelectTrigger
-              aria-label="Filtrar por dirección"
-              id="loan-report-direction-filter"
-            >
-              <SelectValue placeholder="Todas las direcciones" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las direcciones</SelectItem>
-              <SelectItem value="payable">Yo debo</SelectItem>
-              <SelectItem value="receivable">Me deben</SelectItem>
-            </SelectContent>
-          </Select>
+            <TabsList aria-labelledby="loan-report-direction-label">
+              <TabsTrigger value="all">Todas</TabsTrigger>
+              <TabsTrigger value="payable">Yo debo</TabsTrigger>
+              <TabsTrigger value="receivable">Me deben</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className={styles.filterField}>
@@ -204,6 +334,7 @@ export function MonthlyExpensesLoansReport({
           type="button"
           variant="outline"
         >
+          <RotateCcw aria-hidden />
           Limpiar filtros
         </Button>
       </div>
@@ -222,54 +353,72 @@ export function MonthlyExpensesLoansReport({
           entries.map((entry) => (
             <article
               className={styles.entry}
+              data-direction={entry.direction}
               key={`${entry.lenderId ?? entry.lenderName}-${entry.lenderType}`}
             >
               <div className={styles.entryHeader}>
-                <div>
+                <Avatar className={styles.entryAvatar}>
+                  <AvatarFallback className={styles.entryAvatarFallback}>
+                    {getLenderInitials(entry.lenderName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={styles.entryIdentity}>
                   <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
-                  <p className={styles.entryMeta}>
-                    {getDirectionLabel(entry.direction)} · {getTypeLabel(entry.lenderType)}
-                  </p>
-                </div>
-                <p className={styles.entryAmount}>{formatArsAmount(entry.remainingAmount)}</p>
-              </div>
-              <div className={styles.entryTimeline}>
-                <div className={styles.entryTimelineItem}>
-                  <p className={styles.entryTimelineLabel}>Inicio más antiguo</p>
-                  <p className={styles.entryTimelineValue}>
-                    {entry.firstDebtMonth ?? "Sin dato"}
-                  </p>
-                </div>
-                <div className={styles.entryTimelineItem}>
-                  <p className={styles.entryTimelineLabel}>Último mes registrado</p>
-                  <p className={styles.entryTimelineValue}>
-                    {entry.latestRecordedMonth ?? "Sin dato"}
-                  </p>
+                  <Badge className={styles.typeBadge} variant="outline">
+                    {getTypeLabel(entry.lenderType)}
+                  </Badge>
                 </div>
               </div>
-              <div className={styles.entryTimeline}>
-                <div className={styles.entryTimelineItem}>
-                  <p className={styles.entryTimelineLabel}>Deudas activas</p>
-                  <p className={styles.entryTimelineValue}>{entry.activeLoanCount}</p>
-                </div>
-                <div className={styles.entryTimelineItem}>
-                  <p className={styles.entryTimelineLabel}>Deudas registradas</p>
-                  <p className={styles.entryTimelineValue}>{entry.trackedLoanCount}</p>
-                </div>
-              </div>
-              <div className={styles.entryExpenses}>
-                <p className={styles.entryExpensesLabel}>Gastos asociados</p>
-                <div className={styles.entryExpenseBadges}>
-                  {entry.expenseDescriptions.length > 0 ? (
-                    entry.expenseDescriptions.map((description, index) => (
-                      <span className={styles.entryExpenseBadge} key={`${description}-${index}`}>
-                        {description}
-                      </span>
-                    ))
+
+              <div className={styles.entryAmountRow}>
+                <span className={styles.directionBadge}>
+                  {entry.direction === "payable" ? (
+                    <ArrowUpRight aria-hidden />
                   ) : (
-                    <span className={styles.entryExpenseEmpty}>Sin gastos asociados</span>
+                    <ArrowDownLeft aria-hidden />
                   )}
-                </div>
+                  {getDirectionLabel(entry.direction)}
+                </span>
+                <p className={styles.entryAmount}>
+                  {formatArsAmount(entry.remainingAmount)}
+                </p>
+              </div>
+
+              <div className={styles.entryMetaGrid}>
+                <span className={styles.entryMetaItem}>
+                  <CalendarDays aria-hidden />
+                  Desde {entry.firstDebtMonth ?? MISSING_VALUE_LABEL}
+                </span>
+                <span className={styles.entryMetaItem}>
+                  <Clock aria-hidden />
+                  Últ. {entry.latestRecordedMonth ?? MISSING_VALUE_LABEL}
+                </span>
+                <span className={styles.entryMetaItem}>
+                  <Flame aria-hidden />
+                  {entry.activeLoanCount} activas
+                </span>
+                <span className={styles.entryMetaItem}>
+                  <Layers aria-hidden />
+                  {entry.trackedLoanCount} registradas
+                </span>
+              </div>
+
+              <div className={styles.entryExpenses}>
+                {entry.expenseDescriptions.length > 0 ? (
+                  entry.expenseDescriptions.map((description, index) => (
+                    <Badge
+                      className={styles.entryExpenseBadge}
+                      key={`${description}-${index}`}
+                      variant="secondary"
+                    >
+                      {description}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className={styles.entryExpenseEmpty}>
+                    Sin gastos asociados
+                  </span>
+                )}
               </div>
             </article>
           ))
