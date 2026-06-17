@@ -109,6 +109,67 @@ function toProjectedLoanItemInput(
 }
 
 /**
+ * Resolves the loan's shared all-receipts folder (the per-loan Drive folder that
+ * is stable across months), preferring explicit folder metadata and falling back
+ * to the first receipt, mirroring the repository's own resolution. Returns `null`
+ * when the loan has no all-receipts folder yet.
+ *
+ * @param item - Canonical loan item to read folder metadata from.
+ * @returns The all-receipts folder id and view URL, or `null` when absent.
+ */
+function resolveSharedAllReceiptsFolder(
+  item: MonthlyExpenseItem,
+): { id: string; viewUrl: string } | null {
+  const folderId = item.folders?.allReceiptsFolderId?.trim();
+  const folderViewUrl = item.folders?.allReceiptsFolderViewUrl?.trim();
+
+  if (folderId && folderViewUrl) {
+    return { id: folderId, viewUrl: folderViewUrl };
+  }
+
+  const firstReceipt = item.receipts[0];
+
+  if (firstReceipt?.allReceiptsFolderId && firstReceipt.allReceiptsFolderViewUrl) {
+    return {
+      id: firstReceipt.allReceiptsFolderId,
+      viewUrl: firstReceipt.allReceiptsFolderViewUrl,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Builds the input for a brand-new projected loan (one not yet stored in the
+ * target month). On top of the definition, it carries the loan's shared
+ * all-receipts folder with the month-specific folder cleared, so persisting the
+ * month does not wipe the loan's all-receipts folder metadata in the shared
+ * expense row while still keeping the month free of another month's receipts.
+ *
+ * @param item - Canonical loan item to project.
+ * @returns A loan item input with the shared all-receipts folder preserved.
+ */
+function toNewProjectedLoanItemInput(
+  item: MonthlyExpenseItem,
+): MonthlyExpenseItemInput {
+  const sharedAllReceiptsFolder = resolveSharedAllReceiptsFolder(item);
+
+  return {
+    ...toProjectedLoanItemInput(item),
+    ...(sharedAllReceiptsFolder
+      ? {
+          folders: {
+            allReceiptsFolderId: sharedAllReceiptsFolder.id,
+            allReceiptsFolderViewUrl: sharedAllReceiptsFolder.viewUrl,
+            monthlyFolderId: "",
+            monthlyFolderViewUrl: "",
+          },
+        }
+      : {}),
+  };
+}
+
+/**
  * Returns the loan item inputs that should be reflected in the target month:
  *
  * - **Projected (new) loans:** loans whose installment range covers the target
@@ -161,7 +222,7 @@ export function projectMonthlyExpenseLoans({
       continue;
     }
 
-    projectedItems.push(toProjectedLoanItemInput(item));
+    projectedItems.push(toNewProjectedLoanItemInput(item));
   }
 
   return projectedItems;

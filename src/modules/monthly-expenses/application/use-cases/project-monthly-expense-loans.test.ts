@@ -30,7 +30,71 @@ function buildLoanItem(
   };
 }
 
+const FOLDERS_FIXTURE = {
+  allReceiptsFolderId: "all-receipts-folder",
+  allReceiptsFolderViewUrl:
+    "https://drive.google.com/drive/folders/all-receipts-folder",
+  monthlyFolderId: "monthly-folder-march",
+  monthlyFolderViewUrl:
+    "https://drive.google.com/drive/folders/monthly-folder-march",
+};
+
 describe("projectMonthlyExpenseLoans", () => {
+  it("preserves the shared all-receipts folder and clears the monthly folder for new projections", () => {
+    const documents = [
+      buildDocument("2026-03", [
+        buildLoanItem({
+          folders: FOLDERS_FIXTURE,
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+        }),
+      ]),
+    ];
+
+    const [projected] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth: "2026-05",
+      baseItems: [],
+    });
+
+    expect(projected?.folders).toEqual({
+      allReceiptsFolderId: "all-receipts-folder",
+      allReceiptsFolderViewUrl:
+        "https://drive.google.com/drive/folders/all-receipts-folder",
+      monthlyFolderId: "",
+      monthlyFolderViewUrl: "",
+    });
+  });
+
+  it("omits folders from refreshes so the stored copy keeps its own folder state", () => {
+    const targetMonth = "2026-03";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({
+        folders: FOLDERS_FIXTURE,
+        loan: { installmentCount: 6, startMonth: "2026-03" },
+      }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-05", [
+        buildLoanItem({
+          folders: FOLDERS_FIXTURE,
+          subtotal: 1500,
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+        }),
+      ]),
+    ];
+
+    const [refreshed] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth,
+      baseItems: targetDocument.items,
+    });
+
+    expect(refreshed?.subtotal).toBe(1500);
+    expect(refreshed?.folders).toBeUndefined();
+  });
+
+
   it("projects a loan that starts next month into every month within its range", () => {
     const documents = [
       buildDocument("2026-03", [
