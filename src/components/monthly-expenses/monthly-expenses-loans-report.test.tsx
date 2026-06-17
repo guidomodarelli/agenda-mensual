@@ -41,7 +41,7 @@ function renderReport(overrides: RenderOverrides = {}) {
       summary={{
         activeLoanCount: 2,
         lenderCount: 1,
-        netRemainingAmount: -120500.75,
+        netRemainingAmount: 539499.25,
         payableRemainingAmount: 660000,
         receivableRemainingAmount: 120500.75,
         remainingAmount: 780500.75,
@@ -60,12 +60,31 @@ function renderReport(overrides: RenderOverrides = {}) {
 }
 
 describe("MonthlyExpensesLoansReport", () => {
-  it("shows the net balance with a leading sign and an explanatory hint when debts exceed receivables", () => {
+  it("shows the net balance as the user's position with a leading sign and hint when debts exceed receivables", () => {
     renderReport();
 
-    expect(screen.getByText("-$ 120.500,75")).toBeInTheDocument();
+    expect(screen.getByText("-$ 539.499,25")).toBeInTheDocument();
     expect(
       screen.getByText(/deb[eé]s m[aá]s de lo que te deben/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a positive net balance in your favor when receivables exceed debts", () => {
+    renderReport({
+      summary: {
+        activeLoanCount: 1,
+        lenderCount: 1,
+        netRemainingAmount: -45000,
+        payableRemainingAmount: 30000,
+        receivableRemainingAmount: 75000,
+        remainingAmount: 105000,
+        trackedLoanCount: 1,
+      },
+    });
+
+    expect(screen.getByText("$ 45.000")).toBeInTheDocument();
+    expect(
+      screen.getByText(/te deben m[aá]s de lo que deb[eé]s/i),
     ).toBeInTheDocument();
   });
 

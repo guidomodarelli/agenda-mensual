@@ -199,7 +199,14 @@ export function MonthlyExpensesLoansReport({
 }: MonthlyExpensesLoansReportProps) {
   const splitTotal =
     summary.payableRemainingAmount + summary.receivableRemainingAmount;
-  const netTone = getNetBalanceTone(summary.netRemainingAmount);
+  // Net balance shown as the user's position (what they are owed minus what they
+  // owe), so a deficit reads as a negative red figure. The summary's
+  // `netRemainingAmount` uses the inverse "net debt" convention
+  // (payable − receivable), so we derive the position from the unambiguous
+  // payable/receivable totals instead of reusing its sign.
+  const netBalancePosition =
+    summary.receivableRemainingAmount - summary.payableRemainingAmount;
+  const netTone = getNetBalanceTone(netBalancePosition);
   const splitAriaLabel = `Distribución de deudas: yo debo ${formatArsAmount(
     summary.payableRemainingAmount,
   )}, me deben ${formatArsAmount(summary.receivableRemainingAmount)}.`;
@@ -210,10 +217,10 @@ export function MonthlyExpensesLoansReport({
         <div className={styles.heroBalance}>
           <p className={styles.heroLabel}>Balance neto</p>
           <p className={styles.heroValue} data-tone={netTone}>
-            {formatSignedArsAmount(summary.netRemainingAmount)}
+            {formatSignedArsAmount(netBalancePosition)}
           </p>
           <p className={styles.heroHint}>
-            {getNetBalanceHint(summary.netRemainingAmount)}
+            {getNetBalanceHint(netBalancePosition)}
           </p>
         </div>
 
