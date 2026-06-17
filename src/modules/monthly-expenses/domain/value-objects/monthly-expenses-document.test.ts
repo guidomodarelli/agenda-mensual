@@ -9,6 +9,34 @@ import {
 } from "./monthly-expenses-document";
 
 describe("monthlyExpensesDocument", () => {
+  it("normalizes excluded loan ids by trimming, deduplicating and sorting them", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        excludedLoanIds: ["  loan-b ", "loan-a", "loan-a", "  ", ""],
+        items: [],
+        month: "2026-03",
+      },
+      "Testing excluded loan ids",
+    );
+
+    expect(result.excludedLoanIds).toEqual(["loan-a", "loan-b"]);
+    expect(
+      toMonthlyExpensesDocumentInput(result).excludedLoanIds,
+    ).toEqual(["loan-a", "loan-b"]);
+  });
+
+  it("defaults excluded loan ids to an empty list and omits them from the input when empty", () => {
+    const result = createMonthlyExpensesDocument(
+      { items: [], month: "2026-03" },
+      "Testing empty excluded loan ids",
+    );
+
+    expect(result.excludedLoanIds).toEqual([]);
+    expect(
+      toMonthlyExpensesDocumentInput(result).excludedLoanIds,
+    ).toBeUndefined();
+  });
+
   it("normalizes expense rows and calculates totals for each item", () => {
     const result = createMonthlyExpensesDocument(
       {
@@ -32,6 +60,7 @@ describe("monthlyExpensesDocument", () => {
     );
 
     expect(result).toEqual({
+      excludedLoanIds: [],
       hasReplicatedFromPreviousMonth: false,
       items: [
         {

@@ -6,6 +6,130 @@ import {
 } from "@/modules/exchange-rates/domain/errors/missing-monthly-exchange-rate-error";
 
 describe("saveMonthlyExpensesDocument", () => {
+  it("records an excluded loan when an in-range installment is removed from the saved items", async () => {
+    const getExchangeRateSnapshot = jest.fn().mockResolvedValue({
+      blueRate: 1290,
+      iibbRateDecimalUsed: 0.02,
+      month: "2026-04",
+      officialRate: 1200,
+      solidarityRate: 1476,
+      source: "ambito-historico-general",
+      sourceDateIso: "2026-04-30",
+      updatedAtIso: "2026-04-14T12:00:00.000Z",
+    });
+    const loanCanonicalDocument = {
+      excludedLoanIds: [],
+      items: [
+        {
+          currency: "ARS" as const,
+          description: "Notebook",
+          id: "loan-1",
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          paymentRecords: [],
+          receipts: [],
+          subtotal: 1000,
+          total: 1000,
+        },
+      ],
+      month: "2026-05",
+    };
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue(null),
+      listAll: jest.fn().mockResolvedValue([loanCanonicalDocument]),
+      save: jest.fn().mockResolvedValue({
+        id: "monthly-expenses-file-id",
+        month: "2026-04",
+        name: "control-mensual-2026-abril.json",
+        viewUrl: null,
+      }),
+    };
+
+    await saveMonthlyExpensesDocument({
+      // The month is saved without loan-1, even though its range covers 2026-04.
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Expensas",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 5000,
+          },
+        ],
+        month: "2026-04",
+      },
+      getExchangeRateSnapshot,
+      repository,
+    });
+
+    const savedDocument = (repository.save as jest.Mock).mock.calls[0][0];
+    expect(savedDocument.excludedLoanIds).toEqual(["loan-1"]);
+  });
+
+  it("does not exclude an in-range loan that is kept in the saved items", async () => {
+    const getExchangeRateSnapshot = jest.fn().mockResolvedValue({
+      blueRate: 1290,
+      iibbRateDecimalUsed: 0.02,
+      month: "2026-04",
+      officialRate: 1200,
+      solidarityRate: 1476,
+      source: "ambito-historico-general",
+      sourceDateIso: "2026-04-30",
+      updatedAtIso: "2026-04-14T12:00:00.000Z",
+    });
+    const loanCanonicalDocument = {
+      excludedLoanIds: [],
+      items: [
+        {
+          currency: "ARS" as const,
+          description: "Notebook",
+          id: "loan-1",
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          paymentRecords: [],
+          receipts: [],
+          subtotal: 1000,
+          total: 1000,
+        },
+      ],
+      month: "2026-05",
+    };
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue(null),
+      listAll: jest.fn().mockResolvedValue([loanCanonicalDocument]),
+      save: jest.fn().mockResolvedValue({
+        id: "monthly-expenses-file-id",
+        month: "2026-04",
+        name: "control-mensual-2026-abril.json",
+        viewUrl: null,
+      }),
+    };
+
+    await saveMonthlyExpensesDocument({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Notebook",
+            id: "loan-1",
+            loan: { installmentCount: 6, startMonth: "2026-03" },
+            occurrencesPerMonth: 1,
+            subtotal: 1000,
+          },
+        ],
+        month: "2026-04",
+      },
+      getExchangeRateSnapshot,
+      repository,
+    });
+
+    const savedDocument = (repository.save as jest.Mock).mock.calls[0][0];
+    expect(savedDocument.excludedLoanIds).toEqual([]);
+  });
+
   it("delegates a validated monthly document with the snapshot to the repository", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
@@ -45,6 +169,7 @@ describe("saveMonthlyExpensesDocument", () => {
     });
 
     expect(repository.save).toHaveBeenCalledWith({
+      excludedLoanIds: [],
       exchangeRateSnapshot: {
         blueRate: 1290,
         month: "2026-03",
@@ -113,6 +238,7 @@ describe("saveMonthlyExpensesDocument", () => {
     });
 
     expect(repository.save).toHaveBeenCalledWith({
+      excludedLoanIds: [],
       hasReplicatedFromPreviousMonth: false,
       items: [
         {
@@ -186,6 +312,7 @@ describe("saveMonthlyExpensesDocument", () => {
     });
 
     expect(repository.save).toHaveBeenCalledWith({
+      excludedLoanIds: [],
       exchangeRateSnapshot: {
         blueRate: 1190,
         month: "2026-05",
