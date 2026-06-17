@@ -38,6 +38,29 @@ function compareMonthIdentifiers(left: string, right: string): number {
 }
 
 /**
+ * Tells whether the target month falls within a loan's installment range
+ * `[startMonth, endMonth]`, where `endMonth` is derived from the installment count.
+ *
+ * @param loan - Loan whose range is evaluated.
+ * @param targetMonth - Month (`YYYY-MM`) to test.
+ * @returns `true` when the month is covered by the loan range.
+ */
+function isMonthWithinLoanRange(
+  loan: NonNullable<MonthlyExpenseItem["loan"]>,
+  targetMonth: string,
+): boolean {
+  const endMonth = calculateLoanEndMonth({
+    installmentCount: loan.installmentCount,
+    startMonth: loan.startMonth,
+  });
+
+  return (
+    compareMonthIdentifiers(targetMonth, loan.startMonth) >= 0 &&
+    compareMonthIdentifiers(targetMonth, endMonth) <= 0
+  );
+}
+
+/**
  * Builds the canonical definition of every loan, keeping the snapshot from its
  * most recent month so changes (amount, installment count) propagate forward.
  *
@@ -76,6 +99,12 @@ function collectCanonicalLoanSnapshots(
  * month are intentionally left out so they get recomputed against the target
  * month when the document is rebuilt.
  *
+ * Clearable definition fields (payment link, share fields, expense folder,
+ * occurrences unit, subtotal unit) are emitted with EXPLICIT cleared values
+ * (`null`/`false`/default) instead of being omitted, so when the caller overlays
+ * this on a stored copy (`{ ...storedItem, ...projected }`) a field the canonical
+ * loan no longer sets actually clears the stale value rather than keeping it.
+ *
  * @param item - Canonical loan item to project.
  * @returns A loan item input with no per-month payment state.
  */
@@ -87,7 +116,7 @@ function toProjectedLoanItemInput(
   return {
     currency: item.currency,
     description: item.description,
-    ...(item.expenseFolderId ? { expenseFolderId: item.expenseFolderId } : {}),
+    expenseFolderId: item.expenseFolderId ?? null,
     id: item.id,
     loan: {
       direction: loan.direction,
@@ -97,20 +126,17 @@ function toProjectedLoanItemInput(
       startMonth: loan.startMonth,
     },
     occurrencesPerMonth: item.occurrencesPerMonth,
-    ...(item.occurrencesUnit ? { occurrencesUnit: item.occurrencesUnit } : {}),
-    ...(item.paymentLink ? { paymentLink: item.paymentLink } : {}),
-    ...(item.receiptShareMessage
-      ? { receiptShareMessage: item.receiptShareMessage }
-      : {}),
-    ...(item.receiptSharePhoneDigits
-      ? { receiptSharePhoneDigits: item.receiptSharePhoneDigits }
-      : {}),
-    ...(item.requiresReceiptShare ? { requiresReceiptShare: true } : {}),
-    ...(item.sortOrder !== null && item.sortOrder !== undefined
-      ? { sortOrder: item.sortOrder }
-      : {}),
+    occurrencesUnit: item.occurrencesUnit ?? null,
+    paymentLink: item.paymentLink ?? null,
+    receiptShareMessage: item.receiptShareMessage ?? null,
+    receiptSharePhoneDigits: item.receiptSharePhoneDigits ?? null,
+    requiresReceiptShare: item.requiresReceiptShare === true,
+    sortOrder:
+      item.sortOrder !== null && item.sortOrder !== undefined
+        ? item.sortOrder
+        : null,
     subtotal: item.subtotal,
-    ...(item.subtotalUnit === "hour" ? { subtotalUnit: item.subtotalUnit } : {}),
+    subtotalUnit: item.subtotalUnit === "hour" ? "hour" : "occurrence",
   };
 }
 
@@ -214,25 +240,20 @@ export function projectMonthlyExpenseLoans({
 
     if (existingItemIds.has(item.id)) {
       // The loan is already stored in the target month. Refresh its definition
-      // only when a newer month holds the canonical snapshot; otherwise the
-      // stored copy already is the latest and nothing changes.
-      if (compareMonthIdentifiers(month, targetMonth) > 0) {
+      // only when a newer month holds the canonical snapshot AND that canonical
+      // range still covers the month; otherwise the stored copy is either already
+      // the latest or now out of range (the caller drops out-of-range copies).
+      if (
+        compareMonthIdentifiers(month, targetMonth) > 0 &&
+        isMonthWithinLoanRange(item.loan!, targetMonth)
+      ) {
         projectedItems.push(toProjectedLoanItemInput(item));
       }
 
       continue;
     }
 
-    const loan = item.loan!;
-    const endMonth = calculateLoanEndMonth({
-      installmentCount: loan.installmentCount,
-      startMonth: loan.startMonth,
-    });
-    const isWithinLoanRange =
-      compareMonthIdentifiers(targetMonth, loan.startMonth) >= 0 &&
-      compareMonthIdentifiers(targetMonth, endMonth) <= 0;
-
-    if (!isWithinLoanRange) {
+    if (!isMonthWithinLoanRange(item.loan!, targetMonth)) {
       continue;
     }
 
@@ -240,4 +261,48 @@ export function projectMonthlyExpenseLoans({
   }
 
   return projectedItems;
+}
+
+/**
+ * Returns the ids of loans stored in the target month whose CANONICAL (latest)
+ * snapshot lives in a newer month and whose updated range no longer covers the
+ * target month. These already-materialized copies are stale (e.g. the loan's
+ * installment count was shortened or its start month moved later) and must be
+ * dropped so a no-longer-active installment does not keep showing or get re-saved.
+ *
+ * Only copies superseded by a *newer* snapshot are reported: a month's own
+ * latest definition is left untouched even if it looks out of range.
+ *
+ * @param input - Stored documents, target month and the month's existing items.
+ * @returns The stored loan ids to remove from the target month.
+ */
+export function getOutOfRangeStoredLoanIds({
+  baseItems,
+  documents,
+  targetMonth,
+}: ProjectMonthlyExpenseLoansInput): string[] {
+  const canonicalSnapshots = collectCanonicalLoanSnapshots(documents);
+  const outOfRangeLoanIds: string[] = [];
+
+  for (const item of baseItems) {
+    if (!item.loan) {
+      continue;
+    }
+
+    const snapshot = canonicalSnapshots.get(item.id);
+
+    if (
+      !snapshot ||
+      !snapshot.item.loan ||
+      compareMonthIdentifiers(snapshot.month, targetMonth) <= 0
+    ) {
+      continue;
+    }
+
+    if (!isMonthWithinLoanRange(snapshot.item.loan, targetMonth)) {
+      outOfRangeLoanIds.push(item.id);
+    }
+  }
+
+  return outOfRangeLoanIds;
 }
