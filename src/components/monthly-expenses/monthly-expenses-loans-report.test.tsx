@@ -194,7 +194,7 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
-    expect(screen.getByText("Vence")).toBeInTheDocument();
+    expect(screen.getByText("Última cuota")).toBeInTheDocument();
   });
 
   it("lists shared descriptions as separate active loan rows", () => {

@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
   CalendarDays,
   Clock,
+  Flag,
   RotateCcw,
 } from "lucide-react";
 
@@ -342,8 +342,8 @@ function ActiveLoanRow({
         <TruncatedLoanName description={loan.description} />
         {loan.isDueSoon ? (
           <span className={styles.dueSoonBadge}>
-            <AlertTriangle aria-hidden />
-            Vence
+            <Flag aria-hidden />
+            Última cuota
           </span>
         ) : null}
       </div>
