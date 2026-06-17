@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownLeft,
@@ -22,6 +22,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import styles from "./monthly-expenses-loans-report.module.scss";
 
@@ -278,6 +284,53 @@ function getPayableAmountByLenderType(
     .sort((left, right) => right.amount - left.amount);
 }
 
+/**
+ * Renders a loan description that truncates with an ellipsis, surfacing the full
+ * text in a tooltip only when it is actually clipped.
+ */
+function TruncatedLoanName({ description }: { description: string }) {
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const element = nameRef.current;
+
+    if (!element || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const updateTruncation = () => {
+      setIsTruncated(element.scrollWidth > element.clientWidth);
+    };
+
+    updateTruncation();
+
+    const resizeObserver = new ResizeObserver(updateTruncation);
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, [description]);
+
+  const name = (
+    <span className={styles.entryLoanName} ref={nameRef}>
+      {description}
+    </span>
+  );
+
+  if (!isTruncated) {
+    return name;
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{name}</TooltipTrigger>
+        <TooltipContent>{description}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function ActiveLoanRow({
   loan,
 }: {
@@ -286,7 +339,7 @@ function ActiveLoanRow({
   return (
     <div className={styles.entryLoan} data-due-soon={loan.isDueSoon}>
       <div className={styles.entryLoanHead}>
-        <span className={styles.entryLoanName}>{loan.description}</span>
+        <TruncatedLoanName description={loan.description} />
         {loan.isDueSoon ? (
           <span className={styles.dueSoonBadge}>
             <AlertTriangle aria-hidden />
