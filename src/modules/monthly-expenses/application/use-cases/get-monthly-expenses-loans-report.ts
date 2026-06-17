@@ -19,8 +19,12 @@ import type {
   MonthlyExpensesLoanReportEntry,
   MonthlyExpensesLoanReportDirection,
   MonthlyExpensesLoanReportLenderType,
+  MonthlyExpensesLoanReportProjectionMonth,
   MonthlyExpensesLoansReportResult,
 } from "../results/monthly-expenses-loans-report-result";
+
+/** Upper bound of months shown in the upcoming-payments projection. */
+const MAX_PROJECTION_MONTHS = 24;
 
 interface ReportLenderInput {
   id: string;
@@ -276,6 +280,36 @@ function sortActiveLoansByRemainingAmount(
   });
 }
 
+/**
+ * Builds a contiguous month-by-month projection from the current month up to the
+ * last month that still carries an installment.
+ *
+ * @param currentMonth - First month of the projection.
+ * @param amountByMonth - Accumulated payable amount per month.
+ * @returns Ordered projection, empty when there is nothing to pay ahead.
+ */
+function buildMonthlyProjection(
+  currentMonth: string,
+  amountByMonth: Map<string, number>,
+): MonthlyExpensesLoanReportProjectionMonth[] {
+  const months = [...amountByMonth.keys()].sort(compareMonthIdentifiers);
+  const lastMonth = months[months.length - 1];
+
+  if (!lastMonth) {
+    return [];
+  }
+
+  const projection: MonthlyExpensesLoanReportProjectionMonth[] = [];
+  let month = currentMonth;
+
+  while (compareMonthIdentifiers(month, lastMonth) <= 0) {
+    projection.push({ amount: amountByMonth.get(month) ?? 0, month });
+    month = addMonthsToMonthIdentifier(month, 1);
+  }
+
+  return projection;
+}
+
 export async function getMonthlyExpensesLoansReport({
   currentMonth = getCurrentMonthIdentifier(),
   lenders,
@@ -306,6 +340,11 @@ export async function getMonthlyExpensesLoansReport({
     string,
     MonthlyExpensesLoanReportActiveLoan[]
   >();
+  const projectionAmountByMonth = new Map<string, number>();
+  const projectionCapMonth = addMonthsToMonthIdentifier(
+    currentMonth,
+    MAX_PROJECTION_MONTHS - 1,
+  );
 
   for (const snapshot of latestSnapshotsByLoan.values()) {
     const { lenderId, lenderName, lenderType } = resolveLender(snapshot, lenders);
@@ -348,10 +387,28 @@ export async function getMonthlyExpensesLoansReport({
     // it cannot keep a lender in the report. It is still counted in
     // `trackedLoanCount` so "registered" loans reflect history.
     const isActiveLoan = !isLoanSettled;
+    // The "this month" obligation is a single installment, charged only once the
+    // loan has started. The total remaining (above) covers the future ones.
+    const hasInstallmentThisMonth =
+      isActiveLoan &&
+      compareMonthIdentifiers(currentMonth, snapshot.startMonth) >= 0;
+    const installmentArsAmount = Number(
+      convertRemainingAmountToArs({
+        currency: snapshot.currency,
+        fallbackSolidarityRate,
+        nativeRemainingAmount: snapshot.monthlyAmount,
+        solidarityRate: snapshot.solidarityRate,
+      }).toFixed(2),
+    );
 
     if (isActiveLoan) {
       appendActiveLoan(activeLoansByEntry, entryKey, {
         currency: snapshot.currency,
+        currentMonthAmount: hasInstallmentThisMonth ? installmentArsAmount : 0,
+        currentMonthAmountOriginal:
+          snapshot.currency === "USD" && hasInstallmentThisMonth
+            ? Number(snapshot.monthlyAmount.toFixed(2))
+            : null,
         description: snapshot.description,
         endMonth: loanEndMonth,
         installmentCount: snapshot.totalInstallments,
@@ -362,6 +419,29 @@ export async function getMonthlyExpensesLoansReport({
         remainingAmountOriginal:
           snapshot.currency === "USD" ? nativeRemainingAmount : null,
       });
+
+      // Accumulate one installment per upcoming month the loan is still being
+      // paid, from the current month (or its start, if later) up to its end.
+      let projectionMonth =
+        compareMonthIdentifiers(snapshot.startMonth, currentMonth) > 0
+          ? snapshot.startMonth
+          : currentMonth;
+
+      while (
+        compareMonthIdentifiers(projectionMonth, loanEndMonth) <= 0 &&
+        compareMonthIdentifiers(projectionMonth, projectionCapMonth) <= 0
+      ) {
+        projectionAmountByMonth.set(
+          projectionMonth,
+          Number(
+            (
+              (projectionAmountByMonth.get(projectionMonth) ?? 0) +
+              installmentArsAmount
+            ).toFixed(2),
+          ),
+        );
+        projectionMonth = addMonthsToMonthIdentifier(projectionMonth, 1);
+      }
     }
 
     if (!currentEntry) {
@@ -420,6 +500,16 @@ export async function getMonthlyExpensesLoansReport({
   const uniqueLenders = new Set(
     entries.map((entry) => `${entry.lenderId ?? entry.lenderName}|${entry.lenderType}`),
   );
+  const currentMonthAmount = Number(
+    entries
+      .flatMap((entry) => entry.activeLoans)
+      .reduce((total, loan) => total + loan.currentMonthAmount, 0)
+      .toFixed(2),
+  );
+  const monthlyProjection = buildMonthlyProjection(
+    currentMonth,
+    projectionAmountByMonth,
+  );
 
   return {
     entries,
@@ -428,6 +518,8 @@ export async function getMonthlyExpensesLoansReport({
         (total, entry) => total + entry.activeLoanCount,
         0,
       ),
+      currentMonthAmount,
+      monthlyProjection,
       lenderCount: uniqueLenders.size,
       netRemainingAmount: Number(
         (

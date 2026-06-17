@@ -73,6 +73,8 @@ describe("getMonthlyExpensesLoansReport", () => {
           activeLoans: [
             {
               currency: "ARS",
+              currentMonthAmount: 50000,
+              currentMonthAmountOriginal: null,
               description: "Tarjeta visa",
               endMonth: "2026-12",
               installmentCount: 12,
@@ -95,6 +97,8 @@ describe("getMonthlyExpensesLoansReport", () => {
       summary: {
         activeLoanCount: 1,
         lenderCount: 1,
+        currentMonthAmount: 50000,
+        monthlyProjection: expect.any(Array),
         netRemainingAmount: 450000,
         payableRemainingAmount: 450000,
         receivableRemainingAmount: 0,
@@ -174,6 +178,8 @@ describe("getMonthlyExpensesLoansReport", () => {
         activeLoans: [
           {
             currency: "ARS",
+            currentMonthAmount: 10000,
+            currentMonthAmountOriginal: null,
             description: "Prestamo corregido",
             endMonth: "2026-04",
             installmentCount: 4,
@@ -196,6 +202,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 1,
       lenderCount: 1,
+      currentMonthAmount: 10000,
+      monthlyProjection: expect.any(Array),
       netRemainingAmount: -10000,
       payableRemainingAmount: 0,
       receivableRemainingAmount: 10000,
@@ -271,6 +279,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 2,
       lenderCount: 2,
+      currentMonthAmount: 15000,
+      monthlyProjection: expect.any(Array),
       netRemainingAmount: 20000,
       payableRemainingAmount: 30000,
       receivableRemainingAmount: 10000,
@@ -348,6 +358,8 @@ describe("getMonthlyExpensesLoansReport", () => {
         activeLoans: [
           {
             currency: "ARS",
+            currentMonthAmount: 10000,
+            currentMonthAmountOriginal: null,
             description: "Prestamo corregido",
             endMonth: "2026-04",
             installmentCount: 4,
@@ -371,6 +383,8 @@ describe("getMonthlyExpensesLoansReport", () => {
         activeLoans: [
           {
             currency: "ARS",
+            currentMonthAmount: 10000,
+            currentMonthAmountOriginal: null,
             description: "Prestamo corregido",
             endMonth: "2026-04",
             installmentCount: 4,
@@ -393,6 +407,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 2,
       lenderCount: 1,
+      currentMonthAmount: 20000,
+      monthlyProjection: expect.any(Array),
       netRemainingAmount: 0,
       payableRemainingAmount: 20000,
       receivableRemainingAmount: 20000,
@@ -529,6 +545,8 @@ describe("getMonthlyExpensesLoansReport", () => {
         activeLoans: [
           {
             currency: "ARS",
+            currentMonthAmount: 10000,
+            currentMonthAmountOriginal: null,
             description: "Tarjeta",
             endMonth: "2026-06",
             installmentCount: 6,
@@ -551,6 +569,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 1,
       lenderCount: 1,
+      currentMonthAmount: 10000,
+      monthlyProjection: expect.any(Array),
       netRemainingAmount: 30000,
       payableRemainingAmount: 30000,
       receivableRemainingAmount: 0,
@@ -604,7 +624,9 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries).toEqual([]);
     expect(result.summary).toEqual({
       activeLoanCount: 0,
+      currentMonthAmount: 0,
       lenderCount: 0,
+      monthlyProjection: [],
       netRemainingAmount: 0,
       payableRemainingAmount: 0,
       receivableRemainingAmount: 0,
@@ -878,6 +900,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries[0]?.activeLoans).toEqual([
       {
         currency: "ARS",
+        currentMonthAmount: 100000,
+        currentMonthAmountOriginal: null,
         description: "Préstamo",
         endMonth: "2026-06",
         installmentCount: 6,
@@ -928,6 +952,51 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries).toEqual([]);
   });
 
+  it("reports the current-month installment and an upcoming-payments projection", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Tarjeta",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2026-08",
+                installmentCount: 6,
+                lenderId: "lender-1",
+                lenderName: "Papa",
+                paidInstallments: 3,
+                startMonth: "2026-03",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [{ id: "lender-1", name: "Papa", type: "family" }],
+      repository,
+    });
+
+    expect(result.entries[0]?.activeLoans[0]?.currentMonthAmount).toBe(10000);
+    expect(result.summary.currentMonthAmount).toBe(10000);
+    expect(result.summary.monthlyProjection).toEqual([
+      { amount: 10000, month: "2026-06" },
+      { amount: 10000, month: "2026-07" },
+      { amount: 10000, month: "2026-08" },
+    ]);
+  });
+
   it("returns an empty report when the repository does not implement listAll", async () => {
     const result = await getMonthlyExpensesLoansReport({
       lenders: [],
@@ -941,7 +1010,9 @@ describe("getMonthlyExpensesLoansReport", () => {
       entries: [],
       summary: {
         activeLoanCount: 0,
+        currentMonthAmount: 0,
         lenderCount: 0,
+        monthlyProjection: [],
         netRemainingAmount: 0,
         payableRemainingAmount: 0,
         receivableRemainingAmount: 0,

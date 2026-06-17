@@ -92,6 +92,8 @@ registerMonthlyExpensesPageDefaultHooks({
             activeLoans: [
               {
                 currency: "ARS",
+                currentMonthAmount: 1000,
+                currentMonthAmountOriginal: null,
                 description: "Tarjeta",
                 endMonth: "2026-12",
                 installmentCount: 12,

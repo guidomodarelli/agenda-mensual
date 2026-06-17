@@ -43,6 +43,12 @@
   color: var(--muted-foreground);
 }
 
+.heroMeta {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
 .heroKpis {
   display: flex;
   gap: 1.5rem;
@@ -256,6 +262,19 @@
   gap: 0.75rem;
 }
 
+.entryAmountBlock {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: end;
+  text-align: right;
+}
+
+.entryAmountCaption {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
 .directionBadge {
   display: inline-flex;
   align-items: center;
@@ -405,6 +424,17 @@
   overflow-wrap: anywhere;
 }
 
+.entryLoanAmountUnit {
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+
+.entryLoanRemaining {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
 .loanProgressTrack {
   height: 0.3rem;
   border-radius: 999px;
@@ -509,6 +539,62 @@
   height: 0.6rem;
   border-radius: 0.15rem;
   background: var(--destructive);
+}
+
+.projection {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.projectionLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.projectionChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  height: 4.5rem;
+}
+
+.projectionBar {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  height: 100%;
+}
+
+.projectionTrack {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  width: 100%;
+  min-height: 0;
+}
+
+.projectionFill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 0.2rem 0.2rem 0 0;
+  background: color-mix(in srgb, var(--destructive) 35%, transparent);
+}
+
+.projectionBar[data-current="true"] .projectionFill {
+  background: var(--destructive);
+}
+
+.projectionMonth {
+  flex: 0 0 auto;
+  height: 0.85rem;
+  font-size: 0.62rem;
+  line-height: 0.85rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {

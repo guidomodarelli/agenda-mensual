@@ -5,6 +5,13 @@ export type MonthlyExpensesLoanReportDirection = "payable" | "receivable";
 export type MonthlyExpensesLoanReportCurrency = "ARS" | "USD";
 
 export interface MonthlyExpensesLoanReportActiveLoan {
+  /**
+   * Installment due in the current month, converted to ARS (one installment),
+   * or `0` when the loan has not started yet. This is the "this month" figure.
+   */
+  currentMonthAmount: number;
+  /** Current-month installment in the loan's own currency when USD, else `null`. */
+  currentMonthAmountOriginal: number | null;
   /** ISO month (`YYYY-MM`) of the loan's last installment. */
   endMonth: string;
   description: string;
@@ -13,13 +20,18 @@ export interface MonthlyExpensesLoanReportActiveLoan {
   isDueSoon: boolean;
   paidInstallments: number;
   currency: MonthlyExpensesLoanReportCurrency;
-  /** Remaining amount converted to ARS. */
+  /** Remaining amount (future installments) converted to ARS. */
   remainingAmount: number;
   /**
    * Remaining amount in the loan's own currency when it is not ARS (used to show
    * the original USD figure next to the converted one). `null` for ARS loans.
    */
   remainingAmountOriginal: number | null;
+}
+
+export interface MonthlyExpensesLoanReportProjectionMonth {
+  amount: number;
+  month: string;
 }
 
 export interface MonthlyExpensesLoanReportEntry {
@@ -41,6 +53,10 @@ export interface MonthlyExpensesLoansReportResult {
   summary: {
     activeLoanCount: number;
     lenderCount: number;
+    /** Amount due in the current month (sum of every active loan's installment). */
+    currentMonthAmount?: number;
+    /** Amount payable per upcoming month, from the current month forward. */
+    monthlyProjection?: MonthlyExpensesLoanReportProjectionMonth[];
     netRemainingAmount?: number;
     payableRemainingAmount?: number;
     receivableRemainingAmount?: number;
@@ -54,7 +70,9 @@ export function createEmptyMonthlyExpensesLoansReportResult(): MonthlyExpensesLo
     entries: [],
     summary: {
       activeLoanCount: 0,
+      currentMonthAmount: 0,
       lenderCount: 0,
+      monthlyProjection: [],
       netRemainingAmount: 0,
       payableRemainingAmount: 0,
       receivableRemainingAmount: 0,

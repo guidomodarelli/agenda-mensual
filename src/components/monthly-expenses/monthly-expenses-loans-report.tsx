@@ -45,6 +45,7 @@ type MonthlyExpensesLenderType =
   | "unassigned";
 
 type LoansReportSortKey = "amount" | "due" | "lender";
+type LoansReportAmountMode = "month" | "total";
 
 const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 2,
@@ -65,6 +66,8 @@ const LENDER_TYPE_SHADE: Record<MonthlyExpensesLenderType, number> = {
 
 interface MonthlyExpensesLoanReportActiveLoanView {
   currency: MonthlyExpenseLoanCurrency;
+  currentMonthAmount: number;
+  currentMonthAmountOriginal: number | null;
   description: string;
   endMonth: string;
   installmentCount: number;
@@ -72,6 +75,11 @@ interface MonthlyExpensesLoanReportActiveLoanView {
   paidInstallments: number;
   remainingAmount: number;
   remainingAmountOriginal: number | null;
+}
+
+interface MonthlyExpensesLoanReportProjectionMonthView {
+  amount: number;
+  month: string;
 }
 
 interface MonthlyExpensesLoanReportView {
@@ -100,7 +108,9 @@ interface MonthlyExpensesLoansReportProps {
   selectedTypeFilter: string;
   summary: {
     activeLoanCount: number;
+    currentMonthAmount: number;
     lenderCount: number;
+    monthlyProjection: MonthlyExpensesLoanReportProjectionMonthView[];
     netRemainingAmount: number;
     payableRemainingAmount: number;
     receivableRemainingAmount: number;
@@ -163,6 +173,19 @@ function formatActiveLoanRemaining(
 
   return `US$ ${arsCurrencyFormatter.format(loan.remainingAmountOriginal)} → ${formatArsAmount(
     loan.remainingAmount,
+  )}`;
+}
+
+/** Formats the current-month installment, showing the USD origin when present. */
+function formatActiveLoanCurrentMonth(
+  loan: MonthlyExpensesLoanReportActiveLoanView,
+): string {
+  if (loan.currentMonthAmountOriginal === null) {
+    return formatArsAmount(loan.currentMonthAmount);
+  }
+
+  return `US$ ${arsCurrencyFormatter.format(loan.currentMonthAmountOriginal)} → ${formatArsAmount(
+    loan.currentMonthAmount,
   )}`;
 }
 
@@ -261,6 +284,33 @@ function sortReportEntries(
   });
 }
 
+/** Sum of the current-month installments across an entry's active loans. */
+function getEntryCurrentMonthAmount(
+  entry: MonthlyExpensesLoanReportView,
+): number {
+  return entry.activeLoans.reduce(
+    (total, loan) => total + loan.currentMonthAmount,
+    0,
+  );
+}
+
+/** Picks the entry amount to show for the selected month/total mode. */
+function getEntryDisplayAmount(
+  entry: MonthlyExpensesLoanReportView,
+  amountMode: LoansReportAmountMode,
+): number {
+  return amountMode === "month"
+    ? getEntryCurrentMonthAmount(entry)
+    : entry.remainingAmount;
+}
+
+/** Formats a `YYYY-MM` identifier as a compact `MM/AA` label. */
+function formatProjectionMonthLabel(month: string): string {
+  const [year, monthNumber] = month.split("-");
+
+  return `${monthNumber}/${year.slice(2)}`;
+}
+
 /** Aggregates payable amounts by lender type for the "what you owe" breakdown. */
 function getPayableAmountByLenderType(
   entries: MonthlyExpensesLoanReportView[],
@@ -346,9 +396,15 @@ function ActiveLoanRow({
           Cuota {loan.paidInstallments} de {loan.installmentCount}
         </span>
         <span className={styles.entryLoanAmount}>
-          {formatActiveLoanRemaining(loan)}
+          {formatActiveLoanCurrentMonth(loan)}
+          <span className={styles.entryLoanAmountUnit}> este mes</span>
         </span>
       </div>
+      <p className={styles.entryLoanRemaining}>
+        {loan.installmentCount - loan.paidInstallments > 0
+          ? `Restan ${loan.installmentCount - loan.paidInstallments} · ${formatActiveLoanRemaining(loan)} en total`
+          : "Sin cuotas restantes"}
+      </p>
       <div
         aria-hidden
         className={styles.loanProgressTrack}
@@ -365,12 +421,19 @@ function ActiveLoanRow({
 }
 
 function LoanReportEntryCard({
+  amountMode,
   entry,
 }: {
+  amountMode: LoansReportAmountMode;
   entry: MonthlyExpensesLoanReportView;
 }) {
   const visibleLoans = entry.activeLoans.slice(0, MAX_VISIBLE_ACTIVE_LOANS);
   const hiddenLoanCount = entry.activeLoans.length - visibleLoans.length;
+  const currentMonthAmount = getEntryCurrentMonthAmount(entry);
+  const secondaryCaption =
+    amountMode === "month"
+      ? `Total ${formatArsAmount(entry.remainingAmount)}`
+      : `Este mes ${formatArsAmount(currentMonthAmount)}`;
 
   return (
     <article className={styles.entry} data-direction={entry.direction}>
@@ -397,9 +460,12 @@ function LoanReportEntryCard({
           )}
           {getDirectionLabel(entry.direction)}
         </span>
-        <p className={styles.entryAmount}>
-          {formatArsAmount(entry.remainingAmount)}
-        </p>
+        <div className={styles.entryAmountBlock}>
+          <p className={styles.entryAmount}>
+            {formatArsAmount(getEntryDisplayAmount(entry, amountMode))}
+          </p>
+          <p className={styles.entryAmountCaption}>{secondaryCaption}</p>
+        </div>
       </div>
 
       <div className={styles.entryMetaGrid}>
@@ -440,6 +506,7 @@ export function MonthlyExpensesLoansReport({
   onTypeFilterChange,
 }: MonthlyExpensesLoansReportProps) {
   const [sortKey, setSortKey] = useState<LoansReportSortKey>("amount");
+  const [amountMode, setAmountMode] = useState<LoansReportAmountMode>("total");
 
   const splitTotal =
     summary.payableRemainingAmount + summary.receivableRemainingAmount;
@@ -471,7 +538,7 @@ export function MonthlyExpensesLoansReport({
         ...section,
         entries: sectionEntries,
         subtotal: sectionEntries.reduce(
-          (total, entry) => total + entry.remainingAmount,
+          (total, entry) => total + getEntryDisplayAmount(entry, amountMode),
           0,
         ),
       };
@@ -485,6 +552,15 @@ export function MonthlyExpensesLoansReport({
   );
   const showTypeBreakdown = payableByLenderType.length > 1;
 
+  const maxProjectionAmount = summary.monthlyProjection.reduce(
+    (max, point) => Math.max(max, point.amount),
+    0,
+  );
+  const projectionLabelStep = Math.max(
+    1,
+    Math.ceil(summary.monthlyProjection.length / 6),
+  );
+
   return (
     <section className={styles.content}>
       <header className={styles.hero}>
@@ -496,16 +572,24 @@ export function MonthlyExpensesLoansReport({
           <p className={styles.heroHint}>
             {getNetBalanceHint(netBalancePosition)}
           </p>
+          <p className={styles.heroMeta}>
+            {summary.lenderCount} prestamistas · {summary.activeLoanCount} deudas
+            activas
+          </p>
         </div>
 
         <dl className={styles.heroKpis}>
           <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Prestamistas con deuda</dt>
-            <dd className={styles.kpiValue}>{summary.lenderCount}</dd>
+            <dt className={styles.kpiLabel}>Este mes</dt>
+            <dd className={styles.kpiValue}>
+              {formatArsAmount(summary.currentMonthAmount)}
+            </dd>
           </div>
           <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Deudas activas</dt>
-            <dd className={styles.kpiValue}>{summary.activeLoanCount}</dd>
+            <dt className={styles.kpiLabel}>Total restante</dt>
+            <dd className={styles.kpiValue}>
+              {formatArsAmount(summary.remainingAmount)}
+            </dd>
           </div>
         </dl>
       </header>
@@ -576,7 +660,54 @@ export function MonthlyExpensesLoansReport({
         </div>
       ) : null}
 
+      {summary.monthlyProjection.length > 0 ? (
+        <div className={styles.projection}>
+          <p className={styles.projectionLabel}>Lo que pagás los próximos meses</p>
+          <div className={styles.projectionChart}>
+            {summary.monthlyProjection.map((point, index) => (
+              <div
+                className={styles.projectionBar}
+                data-current={index === 0}
+                key={point.month}
+                title={`${formatProjectionMonthLabel(point.month)}: ${formatArsAmount(point.amount)}`}
+              >
+                <span className={styles.projectionTrack}>
+                  <span
+                    className={styles.projectionFill}
+                    style={{
+                      height: getWidthPercent(point.amount, maxProjectionAmount),
+                    }}
+                  />
+                </span>
+                <span className={styles.projectionMonth}>
+                  {index % projectionLabelStep === 0
+                    ? formatProjectionMonthLabel(point.month)
+                    : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className={styles.filters}>
+        <div className={styles.directionFilter}>
+          <Label className={styles.filterLabel} id="loan-report-amount-mode-label">
+            Mostrar
+          </Label>
+          <Tabs
+            onValueChange={(value) =>
+              setAmountMode(value as LoansReportAmountMode)
+            }
+            value={amountMode}
+          >
+            <TabsList aria-labelledby="loan-report-amount-mode-label">
+              <TabsTrigger value="total">Total</TabsTrigger>
+              <TabsTrigger value="month">Este mes</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         <div className={styles.directionFilter}>
           <Label className={styles.filterLabel} id="loan-report-direction-label">
             Dirección
@@ -697,6 +828,7 @@ export function MonthlyExpensesLoansReport({
             <div className={styles.entries}>
               {section.entries.map((entry) => (
                 <LoanReportEntryCard
+                  amountMode={amountMode}
                   entry={entry}
                   key={`${entry.lenderId ?? entry.lenderName}-${entry.lenderType}`}
                 />

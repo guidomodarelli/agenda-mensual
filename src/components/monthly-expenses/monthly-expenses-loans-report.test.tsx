@@ -14,6 +14,8 @@ type ActiveLoan = React.ComponentProps<
 function buildActiveLoan(overrides: Partial<ActiveLoan> = {}): ActiveLoan {
   return {
     currency: "ARS",
+    currentMonthAmount: 10000,
+    currentMonthAmountOriginal: null,
     description: "Tarjeta",
     endMonth: "2026-12",
     installmentCount: 12,
@@ -67,7 +69,12 @@ function renderReport(overrides: RenderOverrides = {}) {
       selectedTypeFilter="all"
       summary={{
         activeLoanCount: 2,
+        currentMonthAmount: 20000,
         lenderCount: 1,
+        monthlyProjection: [
+          { amount: 20000, month: "2026-06" },
+          { amount: 20000, month: "2026-07" },
+        ],
         netRemainingAmount: 539499.25,
         payableRemainingAmount: 660000,
         receivableRemainingAmount: 120500.75,
@@ -100,7 +107,9 @@ describe("MonthlyExpensesLoansReport", () => {
     renderReport({
       summary: {
         activeLoanCount: 1,
+        currentMonthAmount: 5000,
         lenderCount: 1,
+        monthlyProjection: [],
         netRemainingAmount: -45000,
         payableRemainingAmount: 30000,
         receivableRemainingAmount: 75000,
@@ -150,11 +159,13 @@ describe("MonthlyExpensesLoansReport", () => {
           activeLoans: [
             buildActiveLoan({
               currency: "USD",
+              currentMonthAmount: 100000,
+              currentMonthAmountOriginal: 100,
               description: "Iphone",
               installmentCount: 17,
-              paidInstallments: 0,
-              remainingAmount: 1700000,
-              remainingAmountOriginal: 1700,
+              paidInstallments: 1,
+              remainingAmount: 1600000,
+              remainingAmountOriginal: 1600,
             }),
           ],
           direction: "payable",
@@ -169,8 +180,9 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
+    expect(screen.getByText("US$ 100 → $ 100.000")).toBeInTheDocument();
     expect(
-      screen.getByText("US$ 1.700 → $ 1.700.000"),
+      screen.getByText(/US\$ 1\.600 → \$ 1\.600\.000 en total/),
     ).toBeInTheDocument();
   });
 
@@ -301,6 +313,41 @@ describe("MonthlyExpensesLoansReport", () => {
     renderReport();
 
     expect(screen.getByLabelText("Ordenar deudas")).toBeInTheDocument();
+  });
+
+  it("shows the current-month and total-remaining metrics in the header", () => {
+    renderReport();
+
+    expect(screen.getByText("Total restante")).toBeInTheDocument();
+    expect(screen.getByText("$ 780.500,75")).toBeInTheDocument();
+    expect(screen.getByText("$ 20.000")).toBeInTheDocument();
+  });
+
+  it("shows each loan's current-month installment and remaining total", () => {
+    renderReport();
+
+    expect(
+      screen.getByText("Restan 7 · $ 70.500,75 en total"),
+    ).toBeInTheDocument();
+  });
+
+  it("toggles the card amount between total and current month", async () => {
+    renderReport();
+
+    expect(screen.getByText("Este mes $ 20.000")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Este mes" }));
+
+    expect(screen.getByText("Total $ 120.500,75")).toBeInTheDocument();
+  });
+
+  it("renders an upcoming-payments projection", () => {
+    renderReport();
+
+    expect(
+      screen.getByText("Lo que pagás los próximos meses"),
+    ).toBeInTheDocument();
+    expect(screen.getByTitle("06/26: $ 20.000")).toBeInTheDocument();
   });
 
   it("exposes the direction filter as a segmented control and reports the selected value", async () => {

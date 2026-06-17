@@ -15,6 +15,8 @@ const monthlyExpensesReportEntrySchema = z.object({
   activeLoans: z.array(
     z.object({
       currency: z.enum(["ARS", "USD"]),
+      currentMonthAmount: z.number().nonnegative(),
+      currentMonthAmountOriginal: z.number().nonnegative().nullable(),
       description: z.string(),
       endMonth: z.string(),
       installmentCount: z.number().int().positive(),
@@ -39,7 +41,14 @@ const monthlyExpensesReportSchema = z.object({
     entries: z.array(monthlyExpensesReportEntrySchema),
     summary: z.object({
       activeLoanCount: z.number().int().nonnegative(),
+      currentMonthAmount: z.number().nonnegative(),
       lenderCount: z.number().int().nonnegative(),
+      monthlyProjection: z.array(
+        z.object({
+          amount: z.number().nonnegative(),
+          month: z.string(),
+        }),
+      ),
       netRemainingAmount: z.number(),
       payableRemainingAmount: z.number().nonnegative(),
       receivableRemainingAmount: z.number().nonnegative(),

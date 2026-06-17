@@ -116,11 +116,24 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(() => {
-    const persistedState = getPersistedSidebarState()
-    return persistedState ?? defaultOpen
-  })
+  // Initialize from `defaultOpen` only so the first client render matches the
+  // server render (the persisted state lives in client-only storage and would
+  // otherwise cause a hydration mismatch). The persisted value is applied right
+  // after mount instead.
+  const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+
+  React.useEffect(() => {
+    if (openProp !== undefined) {
+      return
+    }
+
+    const persistedState = getPersistedSidebarState()
+
+    if (persistedState !== null) {
+      _setOpen(persistedState)
+    }
+  }, [openProp])
 
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
