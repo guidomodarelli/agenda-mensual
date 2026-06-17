@@ -168,23 +168,38 @@ export async function getMonthlyExpensesLoansReport({
     );
     const currentEntry = entriesByLender.get(entryKey);
 
+    // A loan with no outstanding balance is already settled, so it must not
+    // surface as a current debt: it adds neither its description, timeline, nor
+    // active count, and on its own it cannot keep a lender in the report. It is
+    // still counted in `trackedLoanCount` so "registered" loans reflect history.
+    const hasOutstandingBalance = remainingAmount > 0;
+
     if (!currentEntry) {
       entriesByLender.set(entryKey, {
-        activeLoanCount: remainingAmount > 0 ? 1 : 0,
+        activeLoanCount: hasOutstandingBalance ? 1 : 0,
         direction: snapshot.direction,
-        expenseDescriptions: [snapshot.description],
-        firstDebtMonth: snapshot.startMonth,
+        expenseDescriptions: hasOutstandingBalance ? [snapshot.description] : [],
+        firstDebtMonth: hasOutstandingBalance ? snapshot.startMonth : null,
         lenderId,
         lenderName,
         lenderType,
-        latestRecordedMonth: snapshot.month,
+        latestRecordedMonth: hasOutstandingBalance ? snapshot.month : null,
         remainingAmount,
         trackedLoanCount: 1,
       });
       continue;
     }
 
-    currentEntry.activeLoanCount += remainingAmount > 0 ? 1 : 0;
+    currentEntry.trackedLoanCount += 1;
+    currentEntry.remainingAmount = Number(
+      (currentEntry.remainingAmount + remainingAmount).toFixed(2),
+    );
+
+    if (!hasOutstandingBalance) {
+      continue;
+    }
+
+    currentEntry.activeLoanCount += 1;
     currentEntry.expenseDescriptions = Array.from(
       new Set([...currentEntry.expenseDescriptions, snapshot.description]),
     ).sort((left, right) => left.localeCompare(right, "es"));
@@ -198,13 +213,11 @@ export async function getMonthlyExpensesLoansReport({
       compareMonthIdentifiers(currentEntry.latestRecordedMonth, snapshot.month) >= 0
         ? currentEntry.latestRecordedMonth
         : snapshot.month;
-    currentEntry.remainingAmount = Number(
-      (currentEntry.remainingAmount + remainingAmount).toFixed(2),
-    );
-    currentEntry.trackedLoanCount += 1;
   }
 
-  const entries = [...entriesByLender.values()].sort((left, right) => {
+  const entries = [...entriesByLender.values()]
+    .filter((entry) => entry.remainingAmount > 0)
+    .sort((left, right) => {
     if (right.remainingAmount !== left.remainingAmount) {
       return right.remainingAmount - left.remainingAmount;
     }

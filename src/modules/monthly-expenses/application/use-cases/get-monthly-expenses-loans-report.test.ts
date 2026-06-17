@@ -415,6 +415,142 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary.lenderCount).toBe(1);
   });
 
+  it("excludes fully paid loans from a lender's associated expenses while keeping active ones", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Tarjeta",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2026-06",
+                installmentCount: 6,
+                lenderId: "lender-1",
+                lenderName: "Papa",
+                paidInstallments: 1,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Aire Acondicionado",
+              id: "expense-2",
+              loan: {
+                direction: "payable",
+                endMonth: "2025-09",
+                installmentCount: 4,
+                lenderId: "lender-1",
+                lenderName: "Papa",
+                paidInstallments: 4,
+                startMonth: "2025-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 20000,
+              total: 20000,
+            },
+          ],
+          month: "2026-03",
+        },
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesLoansReport({
+      lenders: [
+        {
+          id: "lender-1",
+          name: "Papa",
+          type: "family",
+        },
+      ],
+      repository,
+    });
+
+    expect(result.entries).toEqual([
+      {
+        activeLoanCount: 1,
+        direction: "payable",
+        expenseDescriptions: ["Tarjeta"],
+        firstDebtMonth: "2026-01",
+        lenderId: "lender-1",
+        lenderName: "Papa",
+        lenderType: "family",
+        latestRecordedMonth: "2026-03",
+        remainingAmount: 50000,
+        trackedLoanCount: 2,
+      },
+    ]);
+    expect(result.summary).toEqual({
+      activeLoanCount: 1,
+      lenderCount: 1,
+      netRemainingAmount: 50000,
+      payableRemainingAmount: 50000,
+      receivableRemainingAmount: 0,
+      remainingAmount: 50000,
+      trackedLoanCount: 2,
+    });
+  });
+
+  it("omits lenders whose loans are all fully paid", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Aire Acondicionado",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2025-09",
+                installmentCount: 4,
+                lenderId: "lender-1",
+                lenderName: "Papa",
+                paidInstallments: 4,
+                startMonth: "2025-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 20000,
+              total: 20000,
+            },
+          ],
+          month: "2026-03",
+        },
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesLoansReport({
+      lenders: [
+        {
+          id: "lender-1",
+          name: "Papa",
+          type: "family",
+        },
+      ],
+      repository,
+    });
+
+    expect(result.entries).toEqual([]);
+    expect(result.summary).toEqual({
+      activeLoanCount: 0,
+      lenderCount: 0,
+      netRemainingAmount: 0,
+      payableRemainingAmount: 0,
+      receivableRemainingAmount: 0,
+      remainingAmount: 0,
+      trackedLoanCount: 0,
+    });
+  });
+
   it("returns an empty report when the repository does not implement listAll", async () => {
     const result = await getMonthlyExpensesLoansReport({
       lenders: [],
