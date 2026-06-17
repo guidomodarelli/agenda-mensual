@@ -130,9 +130,11 @@ async function verifyFolderStatusesByItemId({
 }
 
 /**
- * Augments the month's real document with the loan installments projected from
- * other months (loans whose range covers the month but that are not physically
- * stored in it). The projection is only reflected in the returned document; it is
+ * Augments the month's real document with the loans projected from other months:
+ * loans whose range covers the month but that are not physically stored in it are
+ * appended, and loans already stored whose canonical (latest) snapshot lives in a
+ * newer month get their definition refreshed in place while keeping that month's
+ * payment state. The projection is only reflected in the returned document; it is
  * never persisted here, so loans materialize only when the user saves the month.
  *
  * @param realDocument - The month's persisted document (real items only).
@@ -159,11 +161,28 @@ async function projectLoansIntoDocument({
   }
 
   const realDocumentInput = toMonthlyExpensesDocumentInput(realDocument);
+  const projectedItemsById = new Map(
+    projectedLoanItems.map((item) => [item.id, item]),
+  );
+  // Overlay the canonical definition on stored copies (preserving their per-month
+  // payment state, which the projection intentionally omits) so amount/installment
+  // changes propagate to months that already contain the loan.
+  const refreshedExistingItems = realDocumentInput.items.map((item) => {
+    const projectedItem = projectedItemsById.get(item.id);
+
+    return projectedItem ? { ...item, ...projectedItem } : item;
+  });
+  const existingItemIds = new Set(
+    realDocumentInput.items.map((item) => item.id),
+  );
+  const newProjectedItems = projectedLoanItems.filter(
+    (item) => !existingItemIds.has(item.id),
+  );
 
   return createMonthlyExpensesDocument(
     {
       ...realDocumentInput,
-      items: [...realDocumentInput.items, ...projectedLoanItems],
+      items: [...refreshedExistingItems, ...newProjectedItems],
     },
     "Loading monthly expenses",
   );

@@ -109,11 +109,22 @@ function toProjectedLoanItemInput(
 }
 
 /**
- * Returns the loan items that should be projected into the target month: every
- * loan whose installment range covers it and that is not already present there.
+ * Returns the loan item inputs that should be reflected in the target month:
+ *
+ * - **Projected (new) loans:** loans whose installment range covers the target
+ *   month and that are not yet physically stored in it.
+ * - **Refreshed (existing) loans:** loans already stored in the target month
+ *   whose canonical (latest) snapshot lives in a *newer* month. Only the loan and
+ *   expense definition is emitted (no per-month payment state), so the caller can
+ *   overlay it on the stored copy and propagate amount/installment changes while
+ *   preserving that month's payment records, receipts, folders and paid flag. When
+ *   the stored copy already *is* the latest snapshot, nothing is emitted for it.
+ *
+ * Every returned input carries the loan's stable `id`; the caller overlays it on a
+ * stored item with the same id or appends it when no stored item matches.
  *
  * @param input - Stored documents, target month and the month's existing items.
- * @returns Loan item inputs to append to the target month document.
+ * @returns Loan item inputs to overlay or append onto the target month document.
  */
 export function projectMonthlyExpenseLoans({
   baseItems,
@@ -124,9 +135,16 @@ export function projectMonthlyExpenseLoans({
   const projectedItems: MonthlyExpenseItemInput[] = [];
 
   for (const snapshot of collectCanonicalLoanSnapshots(documents).values()) {
-    const { item } = snapshot;
+    const { item, month } = snapshot;
 
     if (existingItemIds.has(item.id)) {
+      // The loan is already stored in the target month. Refresh its definition
+      // only when a newer month holds the canonical snapshot; otherwise the
+      // stored copy already is the latest and nothing changes.
+      if (compareMonthIdentifiers(month, targetMonth) > 0) {
+        projectedItems.push(toProjectedLoanItemInput(item));
+      }
+
       continue;
     }
 

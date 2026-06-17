@@ -602,6 +602,72 @@ describe("getMonthlyExpensesDocument", () => {
     ]);
   });
 
+  it("refreshes a stored loan definition from a newer snapshot while preserving its payment state", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        exchangeRateSnapshot: {
+          blueRate: 1290,
+          month: "2026-03",
+          officialRate: 1200,
+          solidarityRate: 1476,
+        },
+        items: [
+          {
+            currency: "ARS",
+            description: "Notebook",
+            id: "loan-1",
+            loan: { installmentCount: 6, startMonth: "2026-01" },
+            manualCoveredPayments: 1,
+            occurrencesPerMonth: 1,
+            paymentRecords: [{ coveredPayments: 1, id: "paid-record" }],
+            receipts: [],
+            subtotal: 1000,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn().mockResolvedValue([
+        buildLoanDocument("2026-01", "2026-01"),
+        createMonthlyExpensesDocument(
+          {
+            items: [
+              {
+                currency: "ARS",
+                description: "Notebook",
+                id: "loan-1",
+                loan: { installmentCount: 9, startMonth: "2026-01" },
+                occurrencesPerMonth: 1,
+                subtotal: 1500,
+              },
+            ],
+            month: "2026-05",
+          },
+          "Building newer snapshot",
+        ),
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-03",
+      },
+      repository,
+    });
+
+    const loanItem = result.items.find((item) => item.id === "loan-1");
+    expect(result.items).toHaveLength(1);
+    expect(loanItem?.subtotal).toBe(1500);
+    expect(loanItem?.loan?.installmentCount).toBe(9);
+    // Per-month payment state survives the canonical refresh.
+    expect(loanItem?.manualCoveredPayments).toBe(1);
+    expect(loanItem?.paymentRecords).toHaveLength(1);
+    // The refresh is never persisted on load.
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
   it("returns a non-blocking exchange rate warning when the selected month has no historical rates", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue(null),

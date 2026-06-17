@@ -89,6 +89,62 @@ describe("projectMonthlyExpenseLoans", () => {
     expect(projected).toHaveLength(0);
   });
 
+  it("refreshes a stored copy whose canonical snapshot lives in a newer month", () => {
+    const targetMonth = "2026-03";
+    const staleStoredItem = buildLoanItem({
+      subtotal: 1000,
+      loan: { installmentCount: 6, startMonth: "2026-03" },
+    });
+    const targetDocument = buildDocument(targetMonth, [staleStoredItem]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-05", [
+        buildLoanItem({
+          subtotal: 1500,
+          loan: { installmentCount: 9, startMonth: "2026-03" },
+        }),
+      ]),
+    ];
+
+    const projected = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth,
+      baseItems: targetDocument.items,
+    });
+
+    expect(projected).toHaveLength(1);
+    expect(projected[0]?.id).toBe("loan-1");
+    expect(projected[0]?.subtotal).toBe(1500);
+    expect(projected[0]?.loan?.installmentCount).toBe(9);
+  });
+
+  it("does not refresh a stored copy that already is the latest snapshot", () => {
+    const targetMonth = "2026-05";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({
+        subtotal: 1500,
+        loan: { installmentCount: 6, startMonth: "2026-03" },
+      }),
+    ]);
+    const documents = [
+      buildDocument("2026-03", [
+        buildLoanItem({
+          subtotal: 1000,
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+        }),
+      ]),
+      targetDocument,
+    ];
+
+    const projected = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth,
+      baseItems: targetDocument.items,
+    });
+
+    expect(projected).toHaveLength(0);
+  });
+
   it("uses the most recent snapshot as the canonical loan definition", () => {
     const documents = [
       buildDocument("2026-03", [
