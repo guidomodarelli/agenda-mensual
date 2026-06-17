@@ -391,7 +391,19 @@
 .entryLoans[data-expanded="true"] {
   max-height: 13.5rem;
   overflow-y: auto;
-  padding-right: 0.35rem;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent)
+    transparent;
+}
+
+.entryLoans[data-expanded="true"]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.entryLoans[data-expanded="true"]::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
 }
 
 .entryLoan {
