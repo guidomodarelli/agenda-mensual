@@ -376,6 +376,11 @@
   }
 }
 
+.dueSoonBadge[data-final="true"] {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
 .entryLoanMeta {
   display: flex;
   flex-wrap: wrap;

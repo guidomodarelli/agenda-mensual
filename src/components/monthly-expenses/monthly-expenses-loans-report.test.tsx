@@ -197,6 +197,36 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByText("Última cuota")).toBeInTheDocument();
   });
 
+  it("labels the final installment month as finishing instead of last installment", () => {
+    renderReport({
+      entries: [
+        {
+          activeLoanCount: 1,
+          activeLoans: [
+            buildActiveLoan({
+              description: "Préstamo",
+              installmentCount: 6,
+              isDueSoon: true,
+              paidInstallments: 6,
+              remainingAmount: 0,
+            }),
+          ],
+          direction: "payable",
+          firstDebtMonth: "2026-01",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-3",
+          lenderName: "Banco Nación",
+          lenderType: "bank",
+          remainingAmount: 0,
+          trackedLoanCount: 1,
+        },
+      ],
+    });
+
+    expect(screen.getByText("Finaliza")).toBeInTheDocument();
+    expect(screen.queryByText("Última cuota")).not.toBeInTheDocument();
+  });
+
   it("lists shared descriptions as separate active loan rows", () => {
     renderReport({
       entries: [

@@ -330,9 +330,14 @@ function ActiveLoanRow({
       <div className={styles.entryLoanHead}>
         <TruncatedLoanName description={loan.description} />
         {loan.isDueSoon ? (
-          <span className={styles.dueSoonBadge}>
+          <span
+            className={styles.dueSoonBadge}
+            data-final={loan.paidInstallments >= loan.installmentCount}
+          >
             <Flag aria-hidden />
-            Última cuota
+            {loan.paidInstallments >= loan.installmentCount
+              ? "Finaliza"
+              : "Última cuota"}
           </span>
         ) : null}
       </div>
