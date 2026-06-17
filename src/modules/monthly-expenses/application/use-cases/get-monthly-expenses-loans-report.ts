@@ -5,6 +5,7 @@
  */
 import type { LenderType } from "@/modules/lenders/domain/value-objects/lenders-catalog-document";
 
+import { calculateLoanEndMonth } from "../../domain/value-objects/monthly-expenses-document";
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import type { MonthlyExpensesDocument } from "../../domain/value-objects/monthly-expenses-document";
 import type {
@@ -21,8 +22,29 @@ interface ReportLenderInput {
 }
 
 interface GetMonthlyExpensesLoansReportDependencies {
+  /**
+   * Month (`YYYY-MM`) used to decide whether a loan is already settled. Defaults
+   * to the current calendar month. A loan whose end month is before this value
+   * has no remaining installments even if its latest stored snapshot still shows
+   * a pending one (finished loans stop being copied forward, so their snapshot
+   * freezes one installment short of completion).
+   */
+  currentMonth?: string;
   lenders: ReportLenderInput[];
   repository: MonthlyExpensesRepository;
+}
+
+/**
+ * Resolves the current calendar month as a `YYYY-MM` identifier.
+ *
+ * @param date - Reference date; defaults to now.
+ * @returns The current month identifier.
+ */
+function getCurrentMonthIdentifier(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
 }
 
 interface LoanSnapshot {
@@ -133,6 +155,7 @@ function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot
 }
 
 export async function getMonthlyExpensesLoansReport({
+  currentMonth = getCurrentMonthIdentifier(),
   lenders,
   repository,
 }: GetMonthlyExpensesLoansReportDependencies): Promise<MonthlyExpensesLoansReportResult> {
@@ -159,10 +182,15 @@ export async function getMonthlyExpensesLoansReport({
   for (const snapshot of latestSnapshotsByLoan.values()) {
     const { lenderId, lenderName, lenderType } = resolveLender(snapshot, lenders);
     const entryKey = `${snapshot.direction}|${lenderId ?? lenderName}|${lenderType}`;
-    const remainingInstallments = Math.max(
-      snapshot.totalInstallments - snapshot.paidInstallments,
-      0,
-    );
+    const loanEndMonth = calculateLoanEndMonth({
+      installmentCount: snapshot.totalInstallments,
+      startMonth: snapshot.startMonth,
+    });
+    const isLoanSettledByCurrentMonth =
+      compareMonthIdentifiers(currentMonth, loanEndMonth) > 0;
+    const remainingInstallments = isLoanSettledByCurrentMonth
+      ? 0
+      : Math.max(snapshot.totalInstallments - snapshot.paidInstallments, 0);
     const remainingAmount = Number(
       (snapshot.monthlyAmount * remainingInstallments).toFixed(2),
     );

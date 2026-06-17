@@ -55,6 +55,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-03",
       lenders: [
         {
           id: "lender-1",
@@ -145,6 +146,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-03",
       lenders: [
         {
           id: "lender-1",
@@ -228,6 +230,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-01",
       lenders: [
         {
           id: "lender-1",
@@ -306,6 +309,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-02",
       lenders: [
         {
           id: "lender-1",
@@ -401,6 +405,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-01",
       lenders: [
         {
           id: "lender-1",
@@ -463,6 +468,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-03",
       lenders: [
         {
           id: "lender-1",
@@ -529,6 +535,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     };
 
     const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-03",
       lenders: [
         {
           id: "lender-1",
@@ -549,6 +556,53 @@ describe("getMonthlyExpensesLoansReport", () => {
       remainingAmount: 0,
       trackedLoanCount: 0,
     });
+  });
+
+  it("treats a loan as settled once the current month is past its end month, even if its last snapshot still shows a pending installment", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Aire Acondicionado",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2026-04",
+                installmentCount: 18,
+                lenderId: "lender-1",
+                lenderName: "Adrian",
+                paidInstallments: 17,
+                startMonth: "2024-11",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 57944.33,
+              total: 57944.33,
+            },
+          ],
+          month: "2026-03",
+        },
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [
+        {
+          id: "lender-1",
+          name: "Adrian",
+          type: "family",
+        },
+      ],
+      repository,
+    });
+
+    expect(result.entries).toEqual([]);
+    expect(result.summary.activeLoanCount).toBe(0);
+    expect(result.summary.remainingAmount).toBe(0);
   });
 
   it("returns an empty report when the repository does not implement listAll", async () => {
