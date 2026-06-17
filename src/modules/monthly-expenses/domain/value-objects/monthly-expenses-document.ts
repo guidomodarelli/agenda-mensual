@@ -155,6 +155,11 @@ export type MonthlyExpensesExchangeRateSnapshot =
   MonthlyExpensesExchangeRateSnapshotInput;
 
 export interface MonthlyExpensesDocumentInput {
+  /**
+   * Loan expense ids the user explicitly removed from this month. They must not be
+   * re-projected from the loan's canonical definition on later loads.
+   */
+  excludedLoanIds?: string[];
   exchangeRateSnapshot?: MonthlyExpensesExchangeRateSnapshotInput;
   hasReplicatedFromPreviousMonth?: boolean;
   items: MonthlyExpenseItemInput[];
@@ -162,6 +167,13 @@ export interface MonthlyExpensesDocumentInput {
 }
 
 export interface MonthlyExpensesDocument {
+  /**
+   * Loan expense ids the user explicitly removed from this month, kept so loan
+   * projection skips them instead of re-adding the deleted installment.
+   * `createMonthlyExpensesDocument` always sets it (defaulting to an empty list);
+   * it stays optional so partial document literals remain valid.
+   */
+  excludedLoanIds?: string[];
   exchangeRateSnapshot?: MonthlyExpensesExchangeRateSnapshot | null;
   hasReplicatedFromPreviousMonth?: boolean;
   items: MonthlyExpenseItem[];
@@ -1055,6 +1067,33 @@ function validateExchangeRateSnapshot(
   };
 }
 
+/**
+ * Normalizes the excluded loan ids: trims, drops empty values and duplicates, and
+ * sorts them so the stored set is deterministic.
+ *
+ * @param excludedLoanIds - Raw excluded loan ids.
+ * @returns A deduplicated, sorted list of non-empty excluded loan ids.
+ */
+function normalizeExcludedLoanIds(
+  excludedLoanIds: string[] | null | undefined,
+): string[] {
+  if (!excludedLoanIds || excludedLoanIds.length === 0) {
+    return [];
+  }
+
+  const uniqueIds = new Set<string>();
+
+  for (const excludedLoanId of excludedLoanIds) {
+    const normalizedId = excludedLoanId.trim();
+
+    if (normalizedId) {
+      uniqueIds.add(normalizedId);
+    }
+  }
+
+  return [...uniqueIds].sort((left, right) => left.localeCompare(right));
+}
+
 export function createMonthlyExpensesDocument(
   payload: MonthlyExpensesDocumentInput,
   operationName: string,
@@ -1062,6 +1101,7 @@ export function createMonthlyExpensesDocument(
   const month = validateMonth(payload.month, operationName);
 
   return {
+    excludedLoanIds: normalizeExcludedLoanIds(payload.excludedLoanIds),
     ...(payload.exchangeRateSnapshot
       ? {
           exchangeRateSnapshot: validateExchangeRateSnapshot(
@@ -1093,7 +1133,12 @@ export function createEmptyMonthlyExpensesDocument(
 export function toMonthlyExpensesDocumentInput(
   document: MonthlyExpensesDocument,
 ): MonthlyExpensesDocumentInput {
+  const excludedLoanIds = document.excludedLoanIds ?? [];
+
   return {
+    ...(excludedLoanIds.length > 0
+      ? { excludedLoanIds: [...excludedLoanIds] }
+      : {}),
     ...(document.exchangeRateSnapshot
       ? {
           exchangeRateSnapshot: {

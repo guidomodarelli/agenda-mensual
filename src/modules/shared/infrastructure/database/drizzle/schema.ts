@@ -147,6 +147,21 @@ export const expensePaymentRecordsTable = sqliteTable(
   ],
 );
 
+export const monthlyExpenseExcludedLoansTable = sqliteTable(
+  "monthly_expense_excluded_loans",
+  {
+    expenseId: text("expense_id").notNull(),
+    month: text("month").notNull(),
+    updatedAtIso: text("updated_at_iso").notNull(),
+    userSubject: text("user_subject").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.month, table.expenseId],
+    }),
+  ],
+);
+
 export const lendersCatalogTable = sqliteTable(
   "lenders_catalog",
   {

@@ -213,6 +213,7 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
 });
 
 const googleDriveMonthlyExpensesDocumentSchema = z.object({
+  excludedLoanIds: z.array(z.string()).optional(),
   exchangeRateSnapshot: z
     .object({
       blueRate: z.number().positive(),
@@ -265,6 +266,9 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
   return {
     content: JSON.stringify(
       {
+        ...(document.excludedLoanIds && document.excludedLoanIds.length > 0
+          ? { excludedLoanIds: [...document.excludedLoanIds] }
+          : {}),
         ...(document.exchangeRateSnapshot
           ? {
               exchangeRateSnapshot: {
