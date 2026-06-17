@@ -244,6 +244,65 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     expect(parsed.items[0]?.paymentLink).toBe("https://pagos.empresa-energia.com");
   });
 
+  it("round-trips excludedLoanIds through Drive storage", () => {
+    const serialized = mapMonthlyExpensesDocumentToGoogleDriveFile({
+      excludedLoanIds: ["loan-9", "loan-1"],
+      items: [
+        {
+          currency: "ARS",
+          description: "Electricidad",
+          id: "expense-1",
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          paymentLink: null,
+          receipts: [],
+          subtotal: 45,
+          total: 45,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(serialized.content).toContain('"excludedLoanIds"');
+
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      serialized.content,
+      "Loading monthly expenses",
+    );
+
+    // Domain normalization sorts and dedupes the ids.
+    expect(parsed.excludedLoanIds).toEqual(["loan-1", "loan-9"]);
+  });
+
+  it("omits excludedLoanIds when empty and parses them to an empty list", () => {
+    const serialized = mapMonthlyExpensesDocumentToGoogleDriveFile({
+      excludedLoanIds: [],
+      items: [
+        {
+          currency: "ARS",
+          description: "Electricidad",
+          id: "expense-1",
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          paymentLink: null,
+          receipts: [],
+          subtotal: 45,
+          total: 45,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(serialized.content).not.toContain('"excludedLoanIds"');
+
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      serialized.content,
+      "Loading monthly expenses",
+    );
+
+    expect(parsed.excludedLoanIds).toEqual([]);
+  });
+
   it("serializes and parses isPaid when enabled", () => {
     const serialized = mapMonthlyExpensesDocumentToGoogleDriveFile({
       items: [
