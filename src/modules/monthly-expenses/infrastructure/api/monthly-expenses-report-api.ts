@@ -12,13 +12,19 @@ import type { MonthlyExpensesLoansReportResult } from "../../application/results
 
 const monthlyExpensesReportEntrySchema = z.object({
   activeLoanCount: z.number().int().nonnegative(),
-  direction: z.enum(["payable", "receivable"]),
-  expenseDescriptions: z.array(
+  activeLoans: z.array(
     z.object({
-      count: z.number().int().positive(),
+      currency: z.enum(["ARS", "USD"]),
       description: z.string(),
+      endMonth: z.string(),
+      installmentCount: z.number().int().positive(),
+      isDueSoon: z.boolean(),
+      paidInstallments: z.number().int().nonnegative(),
+      remainingAmount: z.number().nonnegative(),
+      remainingAmountOriginal: z.number().nonnegative().nullable(),
     }),
   ),
+  direction: z.enum(["payable", "receivable"]),
   firstDebtMonth: z.string().nullable(),
   lenderId: z.string().nullable(),
   lenderName: z.string().trim().min(1),

@@ -1,9 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import {
+  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
   CalendarDays,
   Clock,
-  Flame,
   RotateCcw,
 } from "lucide-react";
 
@@ -26,12 +29,16 @@ type TechnicalErrorCode = `E${number}${number}${number}${number}`;
 
 type MonthlyExpensesLoanDirection = "payable" | "receivable";
 
+type MonthlyExpenseLoanCurrency = "ARS" | "USD";
+
 type MonthlyExpensesLenderType =
   | "bank"
   | "family"
   | "friend"
   | "other"
   | "unassigned";
+
+type LoansReportSortKey = "amount" | "due" | "lender";
 
 const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 2,
@@ -40,16 +47,31 @@ const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
 
 const MISSING_VALUE_LABEL = "Sin dato";
 const MAX_AVATAR_INITIALS = 2;
+const MAX_VISIBLE_ACTIVE_LOANS = 3;
 
-interface MonthlyExpensesLoanReportExpenseView {
-  count: number;
+const LENDER_TYPE_SHADE: Record<MonthlyExpensesLenderType, number> = {
+  bank: 1,
+  family: 0.72,
+  friend: 0.52,
+  other: 0.36,
+  unassigned: 0.22,
+};
+
+interface MonthlyExpensesLoanReportActiveLoanView {
+  currency: MonthlyExpenseLoanCurrency;
   description: string;
+  endMonth: string;
+  installmentCount: number;
+  isDueSoon: boolean;
+  paidInstallments: number;
+  remainingAmount: number;
+  remainingAmountOriginal: number | null;
 }
 
 interface MonthlyExpensesLoanReportView {
   activeLoanCount: number;
+  activeLoans: MonthlyExpensesLoanReportActiveLoanView[];
   direction: MonthlyExpensesLoanDirection;
-  expenseDescriptions: MonthlyExpensesLoanReportExpenseView[];
   firstDebtMonth: string | null;
   lenderId: string | null;
   lenderName: string;
@@ -111,9 +133,6 @@ function formatArsAmount(value: number): string {
 /**
  * Formats an amount with the sign before the currency symbol so a negative net
  * balance reads as "-$ 1.000" instead of the formatter default "$ -1.000".
- *
- * @param value - Amount to format in ARS.
- * @returns The signed ARS representation.
  */
 function formatSignedArsAmount(value: number): string {
   if (!Number.isFinite(value)) {
@@ -125,15 +144,28 @@ function formatSignedArsAmount(value: number): string {
   return `${sign}${formatArsAmount(Math.abs(value))}`;
 }
 
+/**
+ * Formats an active loan's remaining amount, showing the original USD figure
+ * next to the converted ARS one when the loan is not in pesos.
+ */
+function formatActiveLoanRemaining(
+  loan: MonthlyExpensesLoanReportActiveLoanView,
+): string {
+  if (loan.remainingAmountOriginal === null) {
+    return formatArsAmount(loan.remainingAmount);
+  }
+
+  return `US$ ${arsCurrencyFormatter.format(loan.remainingAmountOriginal)} → ${formatArsAmount(
+    loan.remainingAmount,
+  )}`;
+}
+
 function getDirectionLabel(direction: MonthlyExpensesLoanDirection): string {
   return direction === "payable" ? "Yo debo" : "Me deben";
 }
 
 /**
  * Resolves the human hint that explains the net balance sign in plain Spanish.
- *
- * @param netRemainingAmount - Receivable minus payable remaining amount.
- * @returns The explanatory hint for the net balance.
  */
 function getNetBalanceHint(netRemainingAmount: number): string {
   if (netRemainingAmount < 0) {
@@ -163,9 +195,6 @@ function getNetBalanceTone(
 
 /**
  * Builds up to two uppercase initials from a lender name for the avatar.
- *
- * @param lenderName - Display name of the lender.
- * @returns The avatar initials, or a fallback glyph when the name is empty.
  */
 function getLenderInitials(lenderName: string): string {
   const initials = lenderName
@@ -187,6 +216,168 @@ function getWidthPercent(part: number, total: number): string {
   return `${Math.max(0, Math.min(100, (part / total) * 100))}%`;
 }
 
+/** Earliest loan end month for an entry, used to sort by upcoming due date. */
+function getEntryNextDueMonth(entry: MonthlyExpensesLoanReportView): string | null {
+  return entry.activeLoans.reduce<string | null>((earliest, loan) => {
+    if (earliest === null || loan.endMonth < earliest) {
+      return loan.endMonth;
+    }
+
+    return earliest;
+  }, null);
+}
+
+function sortReportEntries(
+  entries: MonthlyExpensesLoanReportView[],
+  sortKey: LoansReportSortKey,
+): MonthlyExpensesLoanReportView[] {
+  return [...entries].sort((left, right) => {
+    if (sortKey === "lender") {
+      return left.lenderName.localeCompare(right.lenderName, "es");
+    }
+
+    if (sortKey === "due") {
+      const leftDue = getEntryNextDueMonth(left) ?? "9999-12";
+      const rightDue = getEntryNextDueMonth(right) ?? "9999-12";
+
+      if (leftDue !== rightDue) {
+        return leftDue.localeCompare(rightDue);
+      }
+
+      return right.remainingAmount - left.remainingAmount;
+    }
+
+    if (right.remainingAmount !== left.remainingAmount) {
+      return right.remainingAmount - left.remainingAmount;
+    }
+
+    return left.lenderName.localeCompare(right.lenderName, "es");
+  });
+}
+
+/** Aggregates payable amounts by lender type for the "what you owe" breakdown. */
+function getPayableAmountByLenderType(
+  entries: MonthlyExpensesLoanReportView[],
+): Array<{ amount: number; lenderType: MonthlyExpensesLenderType }> {
+  const amountByType = new Map<MonthlyExpensesLenderType, number>();
+
+  for (const entry of entries) {
+    if (entry.direction !== "payable") {
+      continue;
+    }
+
+    amountByType.set(
+      entry.lenderType,
+      (amountByType.get(entry.lenderType) ?? 0) + entry.remainingAmount,
+    );
+  }
+
+  return [...amountByType.entries()]
+    .map(([lenderType, amount]) => ({ amount, lenderType }))
+    .filter((segment) => segment.amount > 0)
+    .sort((left, right) => right.amount - left.amount);
+}
+
+function ActiveLoanRow({
+  loan,
+}: {
+  loan: MonthlyExpensesLoanReportActiveLoanView;
+}) {
+  return (
+    <div className={styles.entryLoan} data-due-soon={loan.isDueSoon}>
+      <div className={styles.entryLoanHead}>
+        <span className={styles.entryLoanName}>{loan.description}</span>
+        {loan.isDueSoon ? (
+          <span className={styles.dueSoonBadge}>
+            <AlertTriangle aria-hidden />
+            Vence
+          </span>
+        ) : null}
+      </div>
+      <div className={styles.entryLoanMeta}>
+        <span className={styles.entryLoanInstallments}>
+          Cuota {loan.paidInstallments} de {loan.installmentCount}
+        </span>
+        <span className={styles.entryLoanAmount}>
+          {formatActiveLoanRemaining(loan)}
+        </span>
+      </div>
+      <div
+        aria-hidden
+        className={styles.loanProgressTrack}
+      >
+        <div
+          className={styles.loanProgressFill}
+          style={{
+            width: getWidthPercent(loan.paidInstallments, loan.installmentCount),
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LoanReportEntryCard({
+  entry,
+}: {
+  entry: MonthlyExpensesLoanReportView;
+}) {
+  const visibleLoans = entry.activeLoans.slice(0, MAX_VISIBLE_ACTIVE_LOANS);
+  const hiddenLoanCount = entry.activeLoans.length - visibleLoans.length;
+
+  return (
+    <article className={styles.entry} data-direction={entry.direction}>
+      <div className={styles.entryHeader}>
+        <Avatar className={styles.entryAvatar}>
+          <AvatarFallback className={styles.entryAvatarFallback}>
+            {getLenderInitials(entry.lenderName)}
+          </AvatarFallback>
+        </Avatar>
+        <div className={styles.entryIdentity}>
+          <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
+          <Badge className={styles.typeBadge} variant="outline">
+            {getTypeLabel(entry.lenderType)}
+          </Badge>
+        </div>
+      </div>
+
+      <div className={styles.entryAmountRow}>
+        <span className={styles.directionBadge}>
+          {entry.direction === "payable" ? (
+            <ArrowUpRight aria-hidden />
+          ) : (
+            <ArrowDownLeft aria-hidden />
+          )}
+          {getDirectionLabel(entry.direction)}
+        </span>
+        <p className={styles.entryAmount}>
+          {formatArsAmount(entry.remainingAmount)}
+        </p>
+      </div>
+
+      <div className={styles.entryMetaGrid}>
+        <span className={styles.entryMetaItem}>
+          <CalendarDays aria-hidden />
+          Desde {entry.firstDebtMonth ?? MISSING_VALUE_LABEL}
+        </span>
+        <span className={styles.entryMetaItem}>
+          <Clock aria-hidden />
+          Últ. {entry.latestRecordedMonth ?? MISSING_VALUE_LABEL}
+        </span>
+      </div>
+
+      <div className={styles.entryLoans}>
+        {visibleLoans.map((loan, index) => (
+          <ActiveLoanRow key={`${loan.description}-${loan.endMonth}-${index}`} loan={loan} />
+        ))}
+        {hiddenLoanCount > 0 ? (
+          <span className={styles.moreLoans}>{`+${hiddenLoanCount} más`}</span>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 export function MonthlyExpensesLoansReport({
   entries,
   feedbackMessage,
@@ -201,6 +392,8 @@ export function MonthlyExpensesLoansReport({
   onResetFilters,
   onTypeFilterChange,
 }: MonthlyExpensesLoansReportProps) {
+  const [sortKey, setSortKey] = useState<LoansReportSortKey>("amount");
+
   const splitTotal =
     summary.payableRemainingAmount + summary.receivableRemainingAmount;
   // Net balance shown as the user's position (what they are owed minus what they
@@ -214,6 +407,36 @@ export function MonthlyExpensesLoansReport({
   const splitAriaLabel = `Distribución de deudas: yo debo ${formatArsAmount(
     summary.payableRemainingAmount,
   )}, me deben ${formatArsAmount(summary.receivableRemainingAmount)}.`;
+
+  const sortedEntries = sortReportEntries(entries, sortKey);
+  const sections = (
+    [
+      { direction: "payable", title: "Yo debo" },
+      { direction: "receivable", title: "Me deben" },
+    ] as const
+  )
+    .map((section) => {
+      const sectionEntries = sortedEntries.filter(
+        (entry) => entry.direction === section.direction,
+      );
+
+      return {
+        ...section,
+        entries: sectionEntries,
+        subtotal: sectionEntries.reduce(
+          (total, entry) => total + entry.remainingAmount,
+          0,
+        ),
+      };
+    })
+    .filter((section) => section.entries.length > 0);
+
+  const payableByLenderType = getPayableAmountByLenderType(entries);
+  const payableTypeTotal = payableByLenderType.reduce(
+    (total, segment) => total + segment.amount,
+    0,
+  );
+  const showTypeBreakdown = payableByLenderType.length > 1;
 
   return (
     <section className={styles.content}>
@@ -241,11 +464,7 @@ export function MonthlyExpensesLoansReport({
       </header>
 
       <div className={styles.split}>
-        <div
-          aria-label={splitAriaLabel}
-          className={styles.splitBar}
-          role="img"
-        >
+        <div aria-label={splitAriaLabel} className={styles.splitBar} role="img">
           <span
             className={styles.splitPayable}
             style={{
@@ -271,13 +490,44 @@ export function MonthlyExpensesLoansReport({
           <span className={styles.splitLegendItem}>
             Me deben
             <strong>{formatArsAmount(summary.receivableRemainingAmount)}</strong>
-            <span
-              className={`${styles.dot} ${styles.dotReceivable}`}
-              aria-hidden
-            />
+            <span className={`${styles.dot} ${styles.dotReceivable}`} aria-hidden />
           </span>
         </div>
       </div>
+
+      {showTypeBreakdown ? (
+        <div className={styles.typeBreakdown}>
+          <p className={styles.typeBreakdownLabel}>Lo que debés por tipo</p>
+          <div
+            aria-hidden
+            className={styles.typeBreakdownBar}
+          >
+            {payableByLenderType.map((segment) => (
+              <span
+                className={styles.typeBreakdownSegment}
+                key={segment.lenderType}
+                style={{
+                  opacity: LENDER_TYPE_SHADE[segment.lenderType],
+                  width: getWidthPercent(segment.amount, payableTypeTotal),
+                }}
+              />
+            ))}
+          </div>
+          <div className={styles.typeBreakdownLegend}>
+            {payableByLenderType.map((segment) => (
+              <span className={styles.typeBreakdownLegendItem} key={segment.lenderType}>
+                <span
+                  aria-hidden
+                  className={styles.typeBreakdownSwatch}
+                  style={{ opacity: LENDER_TYPE_SHADE[segment.lenderType] }}
+                />
+                {getTypeLabel(segment.lenderType)}
+                <strong>{formatArsAmount(segment.amount)}</strong>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className={styles.filters}>
         <div className={styles.directionFilter}>
@@ -346,6 +596,25 @@ export function MonthlyExpensesLoansReport({
           </Select>
         </div>
 
+        <div className={styles.filterField}>
+          <Label className={styles.filterLabel} htmlFor="loan-report-sort">
+            Ordenar por
+          </Label>
+          <Select
+            onValueChange={(value) => setSortKey(value as LoansReportSortKey)}
+            value={sortKey}
+          >
+            <SelectTrigger aria-label="Ordenar deudas" id="loan-report-sort">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="amount">Monto</SelectItem>
+              <SelectItem value="due">Vencimiento</SelectItem>
+              <SelectItem value="lender">Prestamista</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <Button
           className={styles.resetButton}
           onClick={onResetFilters}
@@ -366,93 +635,33 @@ export function MonthlyExpensesLoansReport({
         </p>
       ) : null}
 
-      <div className={styles.entries}>
-        {entries.length > 0 ? (
-          entries.map((entry) => (
-            <article
-              className={styles.entry}
-              data-direction={entry.direction}
-              key={`${entry.lenderId ?? entry.lenderName}-${entry.lenderType}`}
-            >
-              <div className={styles.entryHeader}>
-                <Avatar className={styles.entryAvatar}>
-                  <AvatarFallback className={styles.entryAvatarFallback}>
-                    {getLenderInitials(entry.lenderName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className={styles.entryIdentity}>
-                  <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
-                  <Badge className={styles.typeBadge} variant="outline">
-                    {getTypeLabel(entry.lenderType)}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className={styles.entryAmountRow}>
-                <span className={styles.directionBadge}>
-                  {entry.direction === "payable" ? (
-                    <ArrowUpRight aria-hidden />
-                  ) : (
-                    <ArrowDownLeft aria-hidden />
-                  )}
-                  {getDirectionLabel(entry.direction)}
-                </span>
-                <p className={styles.entryAmount}>
-                  {formatArsAmount(entry.remainingAmount)}
-                </p>
-              </div>
-
-              <div className={styles.entryMetaGrid}>
-                <span className={styles.entryMetaItem}>
-                  <CalendarDays aria-hidden />
-                  Desde {entry.firstDebtMonth ?? MISSING_VALUE_LABEL}
-                </span>
-                <span className={styles.entryMetaItem}>
-                  <Clock aria-hidden />
-                  Últ. {entry.latestRecordedMonth ?? MISSING_VALUE_LABEL}
-                </span>
-                <span
-                  className={`${styles.entryMetaItem} ${styles.entryMetaItemFull}`}
-                >
-                  <Flame aria-hidden />
-                  {entry.activeLoanCount}{" "}
-                  {entry.activeLoanCount === 1 ? "deuda activa" : "deudas activas"}
-                </span>
-              </div>
-
-              <div className={styles.entryExpenses}>
-                {entry.expenseDescriptions.length > 0 ? (
-                  entry.expenseDescriptions.map((expense, index) => (
-                    <Badge
-                      className={styles.entryExpenseBadge}
-                      key={`${expense.description}-${index}`}
-                      variant="secondary"
-                    >
-                      {expense.description}
-                      {expense.count > 1 ? (
-                        <span
-                          aria-label={`${expense.count} préstamos`}
-                          className={styles.entryExpenseCount}
-                        >
-                          {expense.count}
-                        </span>
-                      ) : null}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className={styles.entryExpenseEmpty}>
-                    Sin gastos asociados
-                  </span>
-                )}
-              </div>
-            </article>
-          ))
-        ) : feedbackMessage ? null : (
-          <p className={styles.feedback}>
-            No hay deudas para los filtros seleccionados.
-          </p>
-        )}
-      </div>
+      {sections.length > 0 ? (
+        sections.map((section) => (
+          <div className={styles.section} key={section.direction}>
+            <div className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>{section.title}</h3>
+              <span
+                className={styles.sectionSubtotal}
+                data-direction={section.direction}
+              >
+                {formatArsAmount(section.subtotal)}
+              </span>
+            </div>
+            <div className={styles.entries}>
+              {section.entries.map((entry) => (
+                <LoanReportEntryCard
+                  entry={entry}
+                  key={`${entry.lenderId ?? entry.lenderName}-${entry.lenderType}`}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      ) : feedbackMessage ? null : (
+        <p className={styles.feedback}>
+          No hay deudas para los filtros seleccionados.
+        </p>
+      )}
     </section>
   );
 }

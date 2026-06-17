@@ -70,8 +70,19 @@ describe("getMonthlyExpensesLoansReport", () => {
       entries: [
         {
           activeLoanCount: 1,
+          activeLoans: [
+            {
+              currency: "ARS",
+              description: "Tarjeta visa",
+              endMonth: "2026-12",
+              installmentCount: 12,
+              isDueSoon: false,
+              paidInstallments: 3,
+              remainingAmount: 450000,
+              remainingAmountOriginal: null,
+            },
+          ],
           direction: "payable",
-          expenseDescriptions: [{ count: 1, description: "Tarjeta visa" }],
           firstDebtMonth: "2026-01",
           lenderId: "lender-1",
           lenderName: "Papa",
@@ -160,8 +171,19 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries).toEqual([
       {
         activeLoanCount: 1,
+        activeLoans: [
+          {
+            currency: "ARS",
+            description: "Prestamo corregido",
+            endMonth: "2026-04",
+            installmentCount: 4,
+            isDueSoon: true,
+            paidInstallments: 2,
+            remainingAmount: 20000,
+            remainingAmountOriginal: null,
+          },
+        ],
         direction: "receivable",
-        expenseDescriptions: [{ count: 1, description: "Prestamo corregido" }],
         firstDebtMonth: "2026-01",
         lenderId: "lender-1",
         lenderName: "Papa",
@@ -323,8 +345,19 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries).toEqual([
       {
         activeLoanCount: 1,
+        activeLoans: [
+          {
+            currency: "ARS",
+            description: "Prestamo corregido",
+            endMonth: "2026-04",
+            installmentCount: 4,
+            isDueSoon: false,
+            paidInstallments: 1,
+            remainingAmount: 30000,
+            remainingAmountOriginal: null,
+          },
+        ],
         direction: "payable",
-        expenseDescriptions: [{ count: 1, description: "Prestamo corregido" }],
         firstDebtMonth: "2026-01",
         lenderId: "lender-1",
         lenderName: "Papa",
@@ -335,8 +368,19 @@ describe("getMonthlyExpensesLoansReport", () => {
       },
       {
         activeLoanCount: 1,
+        activeLoans: [
+          {
+            currency: "ARS",
+            description: "Prestamo corregido",
+            endMonth: "2026-04",
+            installmentCount: 4,
+            isDueSoon: false,
+            paidInstallments: 1,
+            remainingAmount: 30000,
+            remainingAmountOriginal: null,
+          },
+        ],
         direction: "receivable",
-        expenseDescriptions: [{ count: 1, description: "Prestamo corregido" }],
         firstDebtMonth: "2026-01",
         lenderId: "lender-1",
         lenderName: "Papa",
@@ -482,8 +526,19 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries).toEqual([
       {
         activeLoanCount: 1,
+        activeLoans: [
+          {
+            currency: "ARS",
+            description: "Tarjeta",
+            endMonth: "2026-06",
+            installmentCount: 6,
+            isDueSoon: false,
+            paidInstallments: 1,
+            remainingAmount: 50000,
+            remainingAmountOriginal: null,
+          },
+        ],
         direction: "payable",
-        expenseDescriptions: [{ count: 1, description: "Tarjeta" }],
         firstDebtMonth: "2026-01",
         lenderId: "lender-1",
         lenderName: "Papa",
@@ -654,6 +709,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     });
 
     expect(result.entries[0]?.remainingAmount).toBe(1700000);
+    expect(result.entries[0]?.activeLoans[0]?.remainingAmountOriginal).toBe(1700);
+    expect(result.entries[0]?.activeLoans[0]?.currency).toBe("USD");
     expect(result.summary.payableRemainingAmount).toBe(1700000);
   });
 
@@ -712,7 +769,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries[0]?.remainingAmount).toBe(1360000);
   });
 
-  it("counts how many active loans share a description for a lender entry", async () => {
+  it("lists each active loan separately even when they share a description", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
       listAll: jest.fn().mockResolvedValue([
@@ -771,10 +828,13 @@ describe("getMonthlyExpensesLoansReport", () => {
       repository,
     });
 
-    expect(result.entries[0]?.expenseDescriptions).toEqual([
-      { count: 2, description: "Iphone" },
-    ]);
     expect(result.entries[0]?.activeLoanCount).toBe(2);
+    expect(
+      result.entries[0]?.activeLoans.map((loan) => loan.description),
+    ).toEqual(["Iphone", "Iphone"]);
+    expect(
+      result.entries[0]?.activeLoans.map((loan) => loan.remainingAmount),
+    ).toEqual([1700, 1000]);
   });
 
   it("returns an empty report when the repository does not implement listAll", async () => {

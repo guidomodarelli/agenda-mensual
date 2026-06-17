@@ -12,9 +12,9 @@ import type {
   MonthlyExpensesDocument,
 } from "../../domain/value-objects/monthly-expenses-document";
 import type {
+  MonthlyExpensesLoanReportActiveLoan,
   MonthlyExpensesLoanReportEntry,
   MonthlyExpensesLoanReportDirection,
-  MonthlyExpensesLoanReportExpense,
   MonthlyExpensesLoanReportLenderType,
   MonthlyExpensesLoansReportResult,
 } from "../results/monthly-expenses-loans-report-result";
@@ -227,43 +227,52 @@ function convertRemainingAmountToArs({
 }
 
 /**
- * Increments the active-loan count for a description under a lender entry.
+ * Adds a number of months to a `YYYY-MM` identifier.
  *
- * @param countsByEntry - Per-entry description→count map being accumulated.
- * @param entryKey - Stable lender entry identifier.
- * @param description - Loan description to count.
+ * @param month - Base month identifier.
+ * @param monthsToAdd - Months to add (may be negative).
+ * @returns The shifted month identifier.
  */
-function incrementActiveExpenseCount(
-  countsByEntry: Map<string, Map<string, number>>,
-  entryKey: string,
-  description: string,
-): void {
-  const countsByDescription =
-    countsByEntry.get(entryKey) ?? new Map<string, number>();
+function addMonthsToMonthIdentifier(month: string, monthsToAdd: number): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const monthIndex = year * 12 + (monthNumber - 1) + monthsToAdd;
+  const shiftedYear = Math.floor(monthIndex / 12);
+  const shiftedMonth = (monthIndex % 12) + 1;
 
-  countsByDescription.set(
-    description,
-    (countsByDescription.get(description) ?? 0) + 1,
-  );
-  countsByEntry.set(entryKey, countsByDescription);
+  return `${shiftedYear}-${String(shiftedMonth).padStart(2, "0")}`;
 }
 
 /**
- * Builds the sorted, count-aware expense list for a lender entry.
+ * Appends an active loan to the per-entry accumulator.
  *
- * @param countsByDescription - Description→active-loan-count map, or undefined.
- * @returns Expenses sorted by description, each with its active-loan count.
+ * @param loansByEntry - Per-entry active-loan list being accumulated.
+ * @param entryKey - Stable lender entry identifier.
+ * @param loan - Active loan to record.
  */
-function toSortedReportExpenses(
-  countsByDescription: Map<string, number> | undefined,
-): MonthlyExpensesLoanReportExpense[] {
-  if (!countsByDescription) {
+function appendActiveLoan(
+  loansByEntry: Map<string, MonthlyExpensesLoanReportActiveLoan[]>,
+  entryKey: string,
+  loan: MonthlyExpensesLoanReportActiveLoan,
+): void {
+  const loans = loansByEntry.get(entryKey) ?? [];
+  loans.push(loan);
+  loansByEntry.set(entryKey, loans);
+}
+
+function sortActiveLoansByRemainingAmount(
+  loans: MonthlyExpensesLoanReportActiveLoan[] | undefined,
+): MonthlyExpensesLoanReportActiveLoan[] {
+  if (!loans) {
     return [];
   }
 
-  return [...countsByDescription.entries()]
-    .map(([description, count]) => ({ count, description }))
-    .sort((left, right) => left.description.localeCompare(right.description, "es"));
+  return [...loans].sort((left, right) => {
+    if (right.remainingAmount !== left.remainingAmount) {
+      return right.remainingAmount - left.remainingAmount;
+    }
+
+    return left.description.localeCompare(right.description, "es");
+  });
 }
 
 export async function getMonthlyExpensesLoansReport({
@@ -276,6 +285,7 @@ export async function getMonthlyExpensesLoansReport({
       ? await repository.listAll()
       : [];
   const fallbackSolidarityRate = getLatestSolidarityRate(documents);
+  const dueSoonThresholdMonth = addMonthsToMonthIdentifier(currentMonth, 1);
   const latestSnapshotsByLoan = new Map<string, LoanSnapshot>();
 
   for (const snapshot of createLoanSnapshots(documents)) {
@@ -291,7 +301,10 @@ export async function getMonthlyExpensesLoansReport({
   }
 
   const entriesByLender = new Map<string, MonthlyExpensesLoanReportEntry>();
-  const activeExpenseCountsByEntry = new Map<string, Map<string, number>>();
+  const activeLoansByEntry = new Map<
+    string,
+    MonthlyExpensesLoanReportActiveLoan[]
+  >();
 
   for (const snapshot of latestSnapshotsByLoan.values()) {
     const { lenderId, lenderName, lenderType } = resolveLender(snapshot, lenders);
@@ -305,6 +318,9 @@ export async function getMonthlyExpensesLoansReport({
     const remainingInstallments = isLoanSettledByCurrentMonth
       ? 0
       : Math.max(snapshot.totalInstallments - snapshot.paidInstallments, 0);
+    const nativeRemainingAmount = Number(
+      (snapshot.monthlyAmount * remainingInstallments).toFixed(2),
+    );
     const remainingAmount = Number(
       convertRemainingAmountToArs({
         currency: snapshot.currency,
@@ -316,24 +332,35 @@ export async function getMonthlyExpensesLoansReport({
     const currentEntry = entriesByLender.get(entryKey);
 
     // A loan with no outstanding balance is already settled, so it must not
-    // surface as a current debt: it adds neither its description, timeline, nor
-    // active count, and on its own it cannot keep a lender in the report. It is
-    // still counted in `trackedLoanCount` so "registered" loans reflect history.
+    // surface as a current debt: it adds neither an active-loan row, timeline,
+    // nor active count, and on its own it cannot keep a lender in the report. It
+    // is still counted in `trackedLoanCount` so "registered" loans reflect
+    // history.
     const hasOutstandingBalance = remainingAmount > 0;
 
     if (hasOutstandingBalance) {
-      incrementActiveExpenseCount(
-        activeExpenseCountsByEntry,
-        entryKey,
-        snapshot.description,
-      );
+      appendActiveLoan(activeLoansByEntry, entryKey, {
+        currency: snapshot.currency,
+        description: snapshot.description,
+        endMonth: loanEndMonth,
+        installmentCount: snapshot.totalInstallments,
+        isDueSoon:
+          compareMonthIdentifiers(loanEndMonth, dueSoonThresholdMonth) <= 0,
+        paidInstallments: Math.min(
+          Math.max(snapshot.paidInstallments, 0),
+          snapshot.totalInstallments,
+        ),
+        remainingAmount,
+        remainingAmountOriginal:
+          snapshot.currency === "USD" ? nativeRemainingAmount : null,
+      });
     }
 
     if (!currentEntry) {
       entriesByLender.set(entryKey, {
         activeLoanCount: hasOutstandingBalance ? 1 : 0,
+        activeLoans: [],
         direction: snapshot.direction,
-        expenseDescriptions: [],
         firstDebtMonth: hasOutstandingBalance ? snapshot.startMonth : null,
         lenderId,
         lenderName,
@@ -368,8 +395,8 @@ export async function getMonthlyExpensesLoansReport({
   }
 
   for (const [entryKey, entry] of entriesByLender) {
-    entry.expenseDescriptions = toSortedReportExpenses(
-      activeExpenseCountsByEntry.get(entryKey),
+    entry.activeLoans = sortActiveLoansByRemainingAmount(
+      activeLoansByEntry.get(entryKey),
     );
   }
 

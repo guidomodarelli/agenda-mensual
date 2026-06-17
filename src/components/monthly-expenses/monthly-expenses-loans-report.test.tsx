@@ -7,6 +7,24 @@ type RenderOverrides = Partial<
   React.ComponentProps<typeof MonthlyExpensesLoansReport>
 >;
 
+type ActiveLoan = React.ComponentProps<
+  typeof MonthlyExpensesLoansReport
+>["entries"][number]["activeLoans"][number];
+
+function buildActiveLoan(overrides: Partial<ActiveLoan> = {}): ActiveLoan {
+  return {
+    currency: "ARS",
+    description: "Tarjeta",
+    endMonth: "2026-12",
+    installmentCount: 12,
+    isDueSoon: false,
+    paidInstallments: 5,
+    remainingAmount: 70500.75,
+    remainingAmountOriginal: null,
+    ...overrides,
+  };
+}
+
 function renderReport(overrides: RenderOverrides = {}) {
   const onDirectionFilterChange = jest.fn();
   const onLenderFilterChange = jest.fn();
@@ -18,11 +36,17 @@ function renderReport(overrides: RenderOverrides = {}) {
       entries={[
         {
           activeLoanCount: 2,
-          direction: "receivable",
-          expenseDescriptions: [
-            { count: 1, description: "Tarjeta" },
-            { count: 1, description: "Seguro" },
+          activeLoans: [
+            buildActiveLoan({ description: "Tarjeta", remainingAmount: 70500.75 }),
+            buildActiveLoan({
+              description: "Seguro",
+              endMonth: "2026-08",
+              installmentCount: 6,
+              paidInstallments: 2,
+              remainingAmount: 50000,
+            }),
           ],
+          direction: "receivable",
           firstDebtMonth: "2025-12",
           latestRecordedMonth: "2026-03",
           lenderId: "lender-1",
@@ -91,13 +115,6 @@ describe("MonthlyExpensesLoansReport", () => {
     ).toBeInTheDocument();
   });
 
-  it("breaks down how much is owed versus receivable using ARS money format", () => {
-    renderReport();
-
-    expect(screen.getByText("$ 660.000")).toBeInTheDocument();
-    expect(screen.getAllByText("$ 120.500,75")).toHaveLength(2);
-  });
-
   it("describes the owe-versus-receivable split for assistive technology", () => {
     renderReport();
 
@@ -106,7 +123,7 @@ describe("MonthlyExpensesLoansReport", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders each lender entry with its direction and type as separate badges", () => {
+  it("renders each lender entry with its direction, type and active loans", () => {
     renderReport();
 
     const entry = screen.getByRole("article");
@@ -118,26 +135,142 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(within(entry).getByText("Seguro")).toBeInTheDocument();
   });
 
-  it("shows a distinct count badge on the expense chip when several active loans share a description", () => {
+  it("shows the installment progress for each active loan", () => {
+    renderReport();
+
+    expect(screen.getByText("Cuota 5 de 12")).toBeInTheDocument();
+    expect(screen.getByText("Cuota 2 de 6")).toBeInTheDocument();
+  });
+
+  it("shows the original USD amount next to the converted ARS amount for USD loans", () => {
     renderReport({
       entries: [
         {
-          activeLoanCount: 2,
+          activeLoanCount: 1,
+          activeLoans: [
+            buildActiveLoan({
+              currency: "USD",
+              description: "Iphone",
+              installmentCount: 17,
+              paidInstallments: 0,
+              remainingAmount: 1700000,
+              remainingAmountOriginal: 1700,
+            }),
+          ],
           direction: "payable",
-          expenseDescriptions: [{ count: 2, description: "Iphone" }],
           firstDebtMonth: "2026-06",
           latestRecordedMonth: "2026-06",
           lenderId: "lender-2",
           lenderName: "Camila Morales",
           lenderType: "other",
-          remainingAmount: 3400000,
+          remainingAmount: 1700000,
+          trackedLoanCount: 1,
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText("US$ 1.700 → $ 1.700.000"),
+    ).toBeInTheDocument();
+  });
+
+  it("flags active loans whose final installment is due soon", () => {
+    renderReport({
+      entries: [
+        {
+          activeLoanCount: 1,
+          activeLoans: [
+            buildActiveLoan({ description: "Préstamo", isDueSoon: true }),
+          ],
+          direction: "payable",
+          firstDebtMonth: "2026-01",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-3",
+          lenderName: "Banco Nación",
+          lenderType: "bank",
+          remainingAmount: 70500.75,
+          trackedLoanCount: 1,
+        },
+      ],
+    });
+
+    expect(screen.getByText("Vence")).toBeInTheDocument();
+  });
+
+  it("lists shared descriptions as separate active loan rows", () => {
+    renderReport({
+      entries: [
+        {
+          activeLoanCount: 2,
+          activeLoans: [
+            buildActiveLoan({
+              description: "Iphone",
+              installmentCount: 17,
+              paidInstallments: 3,
+              remainingAmount: 1700,
+            }),
+            buildActiveLoan({
+              description: "Iphone",
+              installmentCount: 10,
+              paidInstallments: 2,
+              remainingAmount: 1000,
+            }),
+          ],
+          direction: "payable",
+          firstDebtMonth: "2026-06",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-2",
+          lenderName: "Camila Morales",
+          lenderType: "other",
+          remainingAmount: 2700,
           trackedLoanCount: 2,
         },
       ],
     });
 
-    expect(screen.getByText("Iphone")).toBeInTheDocument();
-    expect(screen.getByLabelText("2 préstamos")).toBeInTheDocument();
+    expect(screen.getAllByText("Iphone")).toHaveLength(2);
+    expect(screen.getByText("Cuota 3 de 17")).toBeInTheDocument();
+    expect(screen.getByText("Cuota 2 de 10")).toBeInTheDocument();
+  });
+
+  it("groups entries into 'Yo debo' and 'Me deben' sections", () => {
+    renderReport({
+      entries: [
+        {
+          activeLoanCount: 1,
+          activeLoans: [buildActiveLoan({ description: "Préstamo" })],
+          direction: "payable",
+          firstDebtMonth: "2026-01",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-2",
+          lenderName: "Banco Nación",
+          lenderType: "bank",
+          remainingAmount: 70500.75,
+          trackedLoanCount: 1,
+        },
+        {
+          activeLoanCount: 1,
+          activeLoans: [buildActiveLoan({ description: "Tarjeta" })],
+          direction: "receivable",
+          firstDebtMonth: "2026-01",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-1",
+          lenderName: "Vero",
+          lenderType: "family",
+          remainingAmount: 50000,
+          trackedLoanCount: 1,
+        },
+      ],
+    });
+
+    expect(screen.getByRole("heading", { name: "Yo debo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Me deben" })).toBeInTheDocument();
+  });
+
+  it("offers a sort control for the debt listing", () => {
+    renderReport();
+
+    expect(screen.getByLabelText("Ordenar deudas")).toBeInTheDocument();
   });
 
   it("exposes the direction filter as a segmented control and reports the selected value", async () => {

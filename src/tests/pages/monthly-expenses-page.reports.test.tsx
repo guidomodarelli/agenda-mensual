@@ -89,7 +89,18 @@ registerMonthlyExpensesPageDefaultHooks({
         [
           {
             activeLoanCount: 1,
-            expenseDescriptions: [{ count: 1, description: "Tarjeta" }],
+            activeLoans: [
+              {
+                currency: "ARS",
+                description: "Tarjeta",
+                endMonth: "2026-12",
+                installmentCount: 12,
+                isDueSoon: false,
+                paidInstallments: 1,
+                remainingAmount: 1000,
+                remainingAmountOriginal: null,
+              },
+            ],
             firstDebtMonth: "2026-01",
             lenderId: null,
             lenderName: "Prestamista manual",
