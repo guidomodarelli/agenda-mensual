@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Clock,
   Flame,
-  Layers,
   RotateCcw,
 } from "lucide-react";
 
@@ -405,13 +404,12 @@ export function MonthlyExpensesLoansReport({
                   <Clock aria-hidden />
                   Últ. {entry.latestRecordedMonth ?? MISSING_VALUE_LABEL}
                 </span>
-                <span className={styles.entryMetaItem}>
+                <span
+                  className={`${styles.entryMetaItem} ${styles.entryMetaItemFull}`}
+                >
                   <Flame aria-hidden />
-                  {entry.activeLoanCount} activas
-                </span>
-                <span className={styles.entryMetaItem}>
-                  <Layers aria-hidden />
-                  {entry.trackedLoanCount} registradas
+                  {entry.activeLoanCount}{" "}
+                  {entry.activeLoanCount === 1 ? "deuda activa" : "deudas activas"}
                 </span>
               </div>
 

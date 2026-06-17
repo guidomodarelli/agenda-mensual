@@ -309,6 +309,15 @@
   }
 }
 
+.entryMetaItemFull {
+  grid-column: 1 / -1;
+
+  &:nth-child(even) {
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+
 .entryExpenses {
   display: flex;
   flex-wrap: wrap;
