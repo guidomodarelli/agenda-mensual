@@ -194,7 +194,7 @@ jobs:
           fi
 
           # Reaccion final + mensaje segun resultado, usando un template fijo de
-          # comentario de cierre (mantener en paridad con docs/codex-autofix-loop.md).
+          # comentario de cierre (mantener en paridad con el skill codex-autofix-loop).
           #
           # 👎 (-1) es la senal de "sugerencia incorrecta/no util" que Codex
           # interpreta sobre SU comentario. Por eso solo se usa cuando el agente
