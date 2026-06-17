@@ -314,20 +314,22 @@ export async function getMonthlyExpensesLoansReport({
       installmentCount: snapshot.totalInstallments,
       startMonth: snapshot.startMonth,
     });
-    // Paid installments are recomputed against the current month rather than
-    // trusting the latest stored snapshot: a finished loan stops being copied
-    // forward, so its snapshot freezes one installment short of completion. By
-    // the loan's end month every installment is due, so it correctly settles to
-    // zero remaining once the current month reaches (or passes) that end month.
+    // A loan stays visible through the month of its final installment ("X de X")
+    // and is only dropped the month after its end month. Paid installments are
+    // recomputed against the current month rather than trusting the latest stored
+    // snapshot (a finished loan stops being copied forward, freezing one
+    // installment short). At the end month every installment is paid, so the loan
+    // still shows with a $0 remaining balance; past the end month it is settled.
+    const isLoanSettled =
+      compareMonthIdentifiers(currentMonth, loanEndMonth) > 0;
     const paidInstallments = calculatePaidLoanInstallments({
       installmentCount: snapshot.totalInstallments,
       startMonth: snapshot.startMonth,
       targetMonth: currentMonth,
     });
-    const remainingInstallments = Math.max(
-      snapshot.totalInstallments - paidInstallments,
-      0,
-    );
+    const remainingInstallments = isLoanSettled
+      ? 0
+      : Math.max(snapshot.totalInstallments - paidInstallments, 0);
     const nativeRemainingAmount = Number(
       (snapshot.monthlyAmount * remainingInstallments).toFixed(2),
     );
@@ -341,14 +343,13 @@ export async function getMonthlyExpensesLoansReport({
     );
     const currentEntry = entriesByLender.get(entryKey);
 
-    // A loan with no outstanding balance is already settled, so it must not
-    // surface as a current debt: it adds neither an active-loan row, timeline,
-    // nor active count, and on its own it cannot keep a lender in the report. It
-    // is still counted in `trackedLoanCount` so "registered" loans reflect
-    // history.
-    const hasOutstandingBalance = remainingAmount > 0;
+    // A settled loan (past its end month) must not surface as a current debt: it
+    // adds neither an active-loan row, timeline, nor active count, and on its own
+    // it cannot keep a lender in the report. It is still counted in
+    // `trackedLoanCount` so "registered" loans reflect history.
+    const isActiveLoan = !isLoanSettled;
 
-    if (hasOutstandingBalance) {
+    if (isActiveLoan) {
       appendActiveLoan(activeLoansByEntry, entryKey, {
         currency: snapshot.currency,
         description: snapshot.description,
@@ -365,14 +366,14 @@ export async function getMonthlyExpensesLoansReport({
 
     if (!currentEntry) {
       entriesByLender.set(entryKey, {
-        activeLoanCount: hasOutstandingBalance ? 1 : 0,
+        activeLoanCount: isActiveLoan ? 1 : 0,
         activeLoans: [],
         direction: snapshot.direction,
-        firstDebtMonth: hasOutstandingBalance ? snapshot.startMonth : null,
+        firstDebtMonth: isActiveLoan ? snapshot.startMonth : null,
         lenderId,
         lenderName,
         lenderType,
-        latestRecordedMonth: hasOutstandingBalance ? snapshot.month : null,
+        latestRecordedMonth: isActiveLoan ? snapshot.month : null,
         remainingAmount,
         trackedLoanCount: 1,
       });
@@ -384,7 +385,7 @@ export async function getMonthlyExpensesLoansReport({
       (currentEntry.remainingAmount + remainingAmount).toFixed(2),
     );
 
-    if (!hasOutstandingBalance) {
+    if (!isActiveLoan) {
       continue;
     }
 
@@ -408,7 +409,7 @@ export async function getMonthlyExpensesLoansReport({
   }
 
   const entries = [...entriesByLender.values()]
-    .filter((entry) => entry.remainingAmount > 0)
+    .filter((entry) => entry.activeLoans.length > 0)
     .sort((left, right) => {
     if (right.remainingAmount !== left.remainingAmount) {
       return right.remainingAmount - left.remainingAmount;
