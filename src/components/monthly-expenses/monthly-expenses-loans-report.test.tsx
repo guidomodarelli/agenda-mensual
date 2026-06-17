@@ -118,7 +118,7 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(within(entry).getByText("Seguro")).toBeInTheDocument();
   });
 
-  it("appends a multiplier to the expense chip when several active loans share a description", () => {
+  it("shows a distinct count badge on the expense chip when several active loans share a description", () => {
     renderReport({
       entries: [
         {
@@ -136,7 +136,8 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
-    expect(screen.getByText("Iphone ×2")).toBeInTheDocument();
+    expect(screen.getByText("Iphone")).toBeInTheDocument();
+    expect(screen.getByLabelText("2 préstamos")).toBeInTheDocument();
   });
 
   it("exposes the direction filter as a segmented control and reports the selected value", async () => {

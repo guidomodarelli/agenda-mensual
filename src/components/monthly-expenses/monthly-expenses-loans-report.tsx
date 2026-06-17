@@ -423,9 +423,15 @@ export function MonthlyExpensesLoansReport({
                       key={`${expense.description}-${index}`}
                       variant="secondary"
                     >
-                      {expense.count > 1
-                        ? `${expense.description} ×${expense.count}`
-                        : expense.description}
+                      {expense.description}
+                      {expense.count > 1 ? (
+                        <span
+                          aria-label={`${expense.count} préstamos`}
+                          className={styles.entryExpenseCount}
+                        >
+                          {expense.count}
+                        </span>
+                      ) : null}
                     </Badge>
                   ))
                 ) : (
