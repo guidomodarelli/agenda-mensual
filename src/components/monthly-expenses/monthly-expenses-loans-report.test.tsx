@@ -357,7 +357,7 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByText("Total $ 120.500,75")).toBeInTheDocument();
   });
 
-  it("expands the loan list on demand when there are more than three loans", async () => {
+  it("renders every active loan (no collapse), relying on scroll for overflow", () => {
     renderReport({
       entries: [
         {
@@ -377,15 +377,12 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
-    expect(screen.queryByText("Cuatro")).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "+2 más" }));
-
+    expect(screen.getByText("Uno")).toBeInTheDocument();
     expect(screen.getByText("Cuatro")).toBeInTheDocument();
     expect(screen.getByText("Cinco")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Ver menos" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /más|ver menos/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders an upcoming-payments projection", () => {

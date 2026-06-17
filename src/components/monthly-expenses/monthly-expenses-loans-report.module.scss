@@ -386,9 +386,6 @@
   flex-direction: column;
   gap: 0.6rem;
   min-width: 0;
-}
-
-.entryLoans[data-expanded="true"] {
   max-height: 13.5rem;
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -397,11 +394,11 @@
     transparent;
 }
 
-.entryLoans[data-expanded="true"]::-webkit-scrollbar {
+.entryLoans::-webkit-scrollbar {
   width: 6px;
 }
 
-.entryLoans[data-expanded="true"]::-webkit-scrollbar-thumb {
+.entryLoans::-webkit-scrollbar-thumb {
   border-radius: 999px;
   background: color-mix(in srgb, var(--foreground) 22%, transparent);
 }
@@ -507,22 +504,6 @@
   background: var(--destructive);
 }
 
-.moreLoans {
-  align-self: flex-start;
-  padding: 0.1rem 0;
-  border: none;
-  background: none;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  transition: color 0.15s ease;
-
-  &:hover {
-    color: var(--foreground);
-    text-decoration: underline;
-  }
-}
 
 .section {
   display: grid;

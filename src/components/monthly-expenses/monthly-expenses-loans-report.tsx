@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -54,6 +54,7 @@ const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
 
 const MISSING_VALUE_LABEL = "Sin dato";
 const MAX_AVATAR_INITIALS = 2;
+/** Active-loan rows kept visible before the list starts scrolling. */
 const MAX_VISIBLE_ACTIVE_LOANS = 3;
 
 const LENDER_TYPE_SHADE: Record<MonthlyExpensesLenderType, number> = {
@@ -466,16 +467,53 @@ function LoanReportEntryCard({
   amountMode: LoansReportAmountMode;
   entry: MonthlyExpensesLoanReportView;
 }) {
-  const [isLoansExpanded, setIsLoansExpanded] = useState(false);
-  const hiddenLoanCount = entry.activeLoans.length - MAX_VISIBLE_ACTIVE_LOANS;
-  const visibleLoans = isLoansExpanded
-    ? entry.activeLoans
-    : entry.activeLoans.slice(0, MAX_VISIBLE_ACTIVE_LOANS);
+  const loansRef = useRef<HTMLDivElement>(null);
   const currentMonthAmount = getEntryCurrentMonthAmount(entry);
   const secondaryCaption =
     amountMode === "month"
       ? `Total ${formatArsAmount(entry.remainingAmount)}`
       : `Este mes ${formatArsAmount(currentMonthAmount)}`;
+
+  // Cap the scroll container at the bottom of the Nth row so exactly
+  // MAX_VISIBLE_ACTIVE_LOANS rows show before scrolling, regardless of how tall
+  // each (variable-height) row ends up. Re-measured on width changes.
+  useEffect(() => {
+    const container = loansRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const applyMaxHeight = () => {
+      const rows = container.children;
+
+      if (rows.length <= MAX_VISIBLE_ACTIVE_LOANS) {
+        container.style.maxHeight = "";
+        return;
+      }
+
+      const lastVisibleRow = rows[MAX_VISIBLE_ACTIVE_LOANS - 1] as HTMLElement;
+      const visibleHeight =
+        lastVisibleRow.getBoundingClientRect().bottom -
+        container.getBoundingClientRect().top;
+      const nextMaxHeight = `${Math.ceil(visibleHeight)}px`;
+
+      if (container.style.maxHeight !== nextMaxHeight) {
+        container.style.maxHeight = nextMaxHeight;
+      }
+    };
+
+    applyMaxHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(applyMaxHeight);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, [entry.activeLoans.length]);
 
   return (
     <article className={styles.entry} data-direction={entry.direction}>
@@ -521,21 +559,11 @@ function LoanReportEntryCard({
         </span>
       </div>
 
-      <div className={styles.entryLoans} data-expanded={isLoansExpanded}>
-        {visibleLoans.map((loan, index) => (
+      <div className={styles.entryLoans} ref={loansRef}>
+        {entry.activeLoans.map((loan, index) => (
           <ActiveLoanRow key={`${loan.description}-${loan.endMonth}-${index}`} loan={loan} />
         ))}
       </div>
-      {hiddenLoanCount > 0 ? (
-        <button
-          aria-expanded={isLoansExpanded}
-          className={styles.moreLoans}
-          onClick={() => setIsLoansExpanded((expanded) => !expanded)}
-          type="button"
-        >
-          {isLoansExpanded ? "Ver menos" : `+${hiddenLoanCount} más`}
-        </button>
-      ) : null}
     </article>
   );
 }
