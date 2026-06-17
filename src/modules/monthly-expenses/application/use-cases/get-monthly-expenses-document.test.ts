@@ -1,9 +1,29 @@
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import type { MonthlyExpenseReceiptsRepository } from "../../domain/repositories/monthly-expense-receipts-repository";
+import { createMonthlyExpensesDocument } from "../../domain/value-objects/monthly-expenses-document";
 import { getMonthlyExpensesDocument } from "./get-monthly-expenses-document";
 import {
   MissingMonthlyExchangeRateError,
 } from "@/modules/exchange-rates/domain/errors/missing-monthly-exchange-rate-error";
+
+function buildLoanDocument(month: string, startMonth: string) {
+  return createMonthlyExpensesDocument(
+    {
+      items: [
+        {
+          currency: "ARS",
+          description: "Notebook",
+          id: "loan-1",
+          loan: { installmentCount: 6, startMonth },
+          occurrencesPerMonth: 1,
+          subtotal: 1000,
+        },
+      ],
+      month,
+    },
+    "Building loan document",
+  );
+}
 
 const getExchangeRateSnapshot = jest.fn().mockResolvedValue({
   blueRate: 1290,
@@ -499,6 +519,87 @@ describe("getMonthlyExpensesDocument", () => {
       allReceiptsFolderId: "receipt-folder-id",
       monthlyFolderId: "receipt-month-folder-id",
     });
+  });
+
+  it("projects loans from other months into the selected month", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue(null),
+      listAll: jest.fn().mockResolvedValue([buildLoanDocument("2026-01", "2026-01")]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-03",
+      },
+      repository,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe("loan-1");
+    expect(result.items[0]?.loan?.startMonth).toBe("2026-01");
+    expect(result.items[0]?.loan?.paidInstallments).toBe(3);
+  });
+
+  it("does not persist projected loans when there is no stored document", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue(null),
+      listAll: jest.fn().mockResolvedValue([buildLoanDocument("2026-01", "2026-01")]),
+      save: jest.fn(),
+    };
+
+    await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-03",
+      },
+      repository,
+    });
+
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it("excludes projected loans from the document persisted during snapshot backfill", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            receipts: [],
+            subtotal: 100,
+            total: 100,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn().mockResolvedValue([buildLoanDocument("2026-01", "2026-01")]),
+      save: jest.fn().mockImplementation(async (document) => document),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-03",
+      },
+      repository,
+    });
+
+    expect(repository.save).toHaveBeenCalledTimes(1);
+    const savedDocument = (repository.save as jest.Mock).mock.calls[0][0];
+    expect(savedDocument.items.map((item: { id: string }) => item.id)).toEqual([
+      "expense-1",
+    ]);
+    expect(result.items.map((item) => item.id).sort()).toEqual([
+      "expense-1",
+      "loan-1",
+    ]);
   });
 
   it("returns a non-blocking exchange rate warning when the selected month has no historical rates", async () => {

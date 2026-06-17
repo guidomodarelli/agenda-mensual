@@ -6,8 +6,10 @@ import {
   createEmptyMonthlyExpensesDocument,
   createMonthlyExpensesDocument,
   toMonthlyExpensesDocumentInput,
+  type MonthlyExpensesDocument,
 } from "../../domain/value-objects/monthly-expenses-document";
 import type { GetMonthlyExpensesDocumentQuery } from "../queries/get-monthly-expenses-document-query";
+import { projectMonthlyExpenseLoans } from "./project-monthly-expense-loans";
 import {
   toMonthlyExpensesDocumentResult,
   type MonthlyExpensesDocumentResult,
@@ -127,6 +129,46 @@ async function verifyFolderStatusesByItemId({
   return statusesByItemId;
 }
 
+/**
+ * Augments the month's real document with the loan installments projected from
+ * other months (loans whose range covers the month but that are not physically
+ * stored in it). The projection is only reflected in the returned document; it is
+ * never persisted here, so loans materialize only when the user saves the month.
+ *
+ * @param realDocument - The month's persisted document (real items only).
+ * @param repository - Repository used to scan every stored document for loans.
+ * @returns The document including the projected loans, or the same document when
+ *   there is nothing to project.
+ */
+async function projectLoansIntoDocument({
+  realDocument,
+  repository,
+}: {
+  realDocument: MonthlyExpensesDocument;
+  repository: MonthlyExpensesRepository;
+}): Promise<MonthlyExpensesDocument> {
+  const documents = (await repository.listAll()) ?? [];
+  const projectedLoanItems = projectMonthlyExpenseLoans({
+    baseItems: realDocument.items,
+    documents,
+    targetMonth: realDocument.month,
+  });
+
+  if (projectedLoanItems.length === 0) {
+    return realDocument;
+  }
+
+  const realDocumentInput = toMonthlyExpensesDocumentInput(realDocument);
+
+  return createMonthlyExpensesDocument(
+    {
+      ...realDocumentInput,
+      items: [...realDocumentInput.items, ...projectedLoanItems],
+    },
+    "Loading monthly expenses",
+  );
+}
+
 export async function getMonthlyExpensesDocument({
   getExchangeRateSnapshot,
   query,
@@ -136,11 +178,14 @@ export async function getMonthlyExpensesDocument({
   const includeDriveStatuses = query.includeDriveStatuses !== false;
   const storedDocument = await repository.getByMonth(query.month);
 
+  let realDocument: MonthlyExpensesDocument;
+  let exchangeRateLoadError: string | null = null;
+
   try {
     const exchangeRateSnapshot = await getExchangeRateSnapshot(query.month);
 
     if (!storedDocument) {
-      const emptyDocument = createMonthlyExpensesDocument(
+      realDocument = createMonthlyExpensesDocument(
         {
           exchangeRateSnapshot: {
             blueRate: exchangeRateSnapshot.blueRate,
@@ -153,90 +198,50 @@ export async function getMonthlyExpensesDocument({
         },
         "Loading monthly expenses",
       );
-
-      return toMonthlyExpensesDocumentResult(
-        emptyDocument,
-        null,
-        await verifyReceiptStatusesByFileId({
-          document: emptyDocument,
-          includeDriveStatuses,
-          receiptsRepository,
-        }),
-        await verifyFolderStatusesByItemId({
-          document: emptyDocument,
-          includeDriveStatuses,
-          receiptsRepository,
-        }),
-      );
-    }
-
-    if (storedDocument.exchangeRateSnapshot) {
-      return toMonthlyExpensesDocumentResult(
-        storedDocument,
-        null,
-        await verifyReceiptStatusesByFileId({
-          document: storedDocument,
-          includeDriveStatuses,
-          receiptsRepository,
-        }),
-        await verifyFolderStatusesByItemId({
-          document: storedDocument,
-          includeDriveStatuses,
-          receiptsRepository,
-        }),
-      );
-    }
-
-    const enrichedDocument = createMonthlyExpensesDocument(
-      {
-        ...toMonthlyExpensesDocumentInput(storedDocument),
-        exchangeRateSnapshot: {
-          blueRate: exchangeRateSnapshot.blueRate,
-          month: exchangeRateSnapshot.month,
-          officialRate: exchangeRateSnapshot.officialRate,
-          solidarityRate: exchangeRateSnapshot.solidarityRate,
+    } else if (storedDocument.exchangeRateSnapshot) {
+      realDocument = storedDocument;
+    } else {
+      realDocument = createMonthlyExpensesDocument(
+        {
+          ...toMonthlyExpensesDocumentInput(storedDocument),
+          exchangeRateSnapshot: {
+            blueRate: exchangeRateSnapshot.blueRate,
+            month: exchangeRateSnapshot.month,
+            officialRate: exchangeRateSnapshot.officialRate,
+            solidarityRate: exchangeRateSnapshot.solidarityRate,
+          },
         },
-      },
-      "Loading monthly expenses",
-    );
+        "Loading monthly expenses",
+      );
 
-    await repository.save(enrichedDocument);
-
-    return toMonthlyExpensesDocumentResult(
-      enrichedDocument,
-      null,
-      await verifyReceiptStatusesByFileId({
-        document: enrichedDocument,
-        includeDriveStatuses,
-        receiptsRepository,
-      }),
-      await verifyFolderStatusesByItemId({
-        document: enrichedDocument,
-        includeDriveStatuses,
-        receiptsRepository,
-      }),
-    );
+      await repository.save(realDocument);
+    }
   } catch (error) {
-    const fallbackDocument =
+    realDocument =
       storedDocument ?? createEmptyMonthlyExpensesDocument(query.month);
-    const exchangeRateLoadError =
+    exchangeRateLoadError =
       error instanceof MissingMonthlyExchangeRateError
         ? MONTHLY_EXCHANGE_RATE_FALLBACK_MESSAGE
         : "No pudimos cargar la cotización histórica del mes seleccionado.";
-
-    return toMonthlyExpensesDocumentResult(
-      fallbackDocument,
-      exchangeRateLoadError,
-      await verifyReceiptStatusesByFileId({
-        document: fallbackDocument,
-        includeDriveStatuses,
-        receiptsRepository,
-      }),
-      await verifyFolderStatusesByItemId({
-        document: fallbackDocument,
-        includeDriveStatuses,
-        receiptsRepository,
-      }),
-    );
   }
+
+  const projectedDocument = await projectLoansIntoDocument({
+    realDocument,
+    repository,
+  });
+
+  return toMonthlyExpensesDocumentResult(
+    projectedDocument,
+    exchangeRateLoadError,
+    await verifyReceiptStatusesByFileId({
+      document: projectedDocument,
+      includeDriveStatuses,
+      receiptsRepository,
+    }),
+    await verifyFolderStatusesByItemId({
+      document: projectedDocument,
+      includeDriveStatuses,
+      receiptsRepository,
+    }),
+  );
 }
