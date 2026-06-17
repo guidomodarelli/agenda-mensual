@@ -9,6 +9,7 @@ describe("monthly-expenses-report-api client", () => {
           summary: {
             activeLoanCount: 0,
             payableCurrentMonthAmount: 0,
+            receivableCurrentMonthAmount: 0,
             lenderCount: 0,
             monthlyProjection: [],
             netRemainingAmount: 0,

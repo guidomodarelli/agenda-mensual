@@ -500,13 +500,18 @@ export async function getMonthlyExpensesLoansReport({
   const uniqueLenders = new Set(
     entries.map((entry) => `${entry.lenderId ?? entry.lenderName}|${entry.lenderType}`),
   );
-  const payableCurrentMonthAmount = Number(
-    entries
-      .filter((entry) => entry.direction === "payable")
-      .flatMap((entry) => entry.activeLoans)
-      .reduce((total, loan) => total + loan.currentMonthAmount, 0)
-      .toFixed(2),
-  );
+  const sumCurrentMonthByDirection = (
+    direction: MonthlyExpensesLoanReportDirection,
+  ): number =>
+    Number(
+      entries
+        .filter((entry) => entry.direction === direction)
+        .flatMap((entry) => entry.activeLoans)
+        .reduce((total, loan) => total + loan.currentMonthAmount, 0)
+        .toFixed(2),
+    );
+  const payableCurrentMonthAmount = sumCurrentMonthByDirection("payable");
+  const receivableCurrentMonthAmount = sumCurrentMonthByDirection("receivable");
   const monthlyProjection = buildMonthlyProjection(
     currentMonth,
     projectionAmountByMonth,
@@ -520,6 +525,7 @@ export async function getMonthlyExpensesLoansReport({
         0,
       ),
       payableCurrentMonthAmount,
+      receivableCurrentMonthAmount,
       monthlyProjection,
       lenderCount: uniqueLenders.size,
       netRemainingAmount: Number(

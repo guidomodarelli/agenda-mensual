@@ -42,6 +42,7 @@ const monthlyExpensesReportSchema = z.object({
     summary: z.object({
       activeLoanCount: z.number().int().nonnegative(),
       payableCurrentMonthAmount: z.number().nonnegative(),
+      receivableCurrentMonthAmount: z.number().nonnegative(),
       lenderCount: z.number().int().nonnegative(),
       monthlyProjection: z.array(
         z.object({

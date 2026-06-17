@@ -70,6 +70,7 @@ function renderReport(overrides: RenderOverrides = {}) {
       summary={{
         activeLoanCount: 2,
         payableCurrentMonthAmount: 30000,
+        receivableCurrentMonthAmount: 15000,
         lenderCount: 1,
         monthlyProjection: [
           { amount: 20000, month: "2026-06" },
@@ -108,6 +109,7 @@ describe("MonthlyExpensesLoansReport", () => {
       summary: {
         activeLoanCount: 1,
         payableCurrentMonthAmount: 5000,
+        receivableCurrentMonthAmount: 12000,
         lenderCount: 1,
         monthlyProjection: [],
         netRemainingAmount: -45000,
@@ -315,11 +317,25 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByLabelText("Ordenar deudas")).toBeInTheDocument();
   });
 
-  it("shows only what you owe in the header current-month and total metrics", () => {
+  it("repeats the amount-mode toggle inline in several synced places", () => {
     renderReport();
 
-    expect(screen.getByText("Debés este mes")).toBeInTheDocument();
-    expect(screen.getByText("Debés en total")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Total" }).length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(
+      screen.getAllByRole("button", { name: "Este mes" }).length,
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps the balance and owe/receivable totals in sync with the amount-mode toggle", async () => {
+    renderReport();
+
+    expect(screen.getByText("-$ 539.499,25")).toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Este mes" })[0]);
+
+    expect(screen.getByText("-$ 15.000")).toBeInTheDocument();
     expect(screen.getByText("$ 30.000")).toBeInTheDocument();
   });
 
@@ -336,7 +352,7 @@ describe("MonthlyExpensesLoansReport", () => {
 
     expect(screen.getByText("Este mes $ 20.000")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Este mes" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Este mes" })[0]);
 
     expect(screen.getByText("Total $ 120.500,75")).toBeInTheDocument();
   });

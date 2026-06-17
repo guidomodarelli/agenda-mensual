@@ -55,6 +55,8 @@ export interface MonthlyExpensesLoansReportResult {
     lenderCount: number;
     /** Payable amount due in the current month (one installment per owed loan). */
     payableCurrentMonthAmount?: number;
+    /** Receivable amount due in the current month (one installment per loan). */
+    receivableCurrentMonthAmount?: number;
     /** Amount payable per upcoming month, from the current month forward. */
     monthlyProjection?: MonthlyExpensesLoanReportProjectionMonth[];
     netRemainingAmount?: number;
@@ -71,6 +73,7 @@ export function createEmptyMonthlyExpensesLoansReportResult(): MonthlyExpensesLo
     summary: {
       activeLoanCount: 0,
       payableCurrentMonthAmount: 0,
+      receivableCurrentMonthAmount: 0,
       lenderCount: 0,
       monthlyProjection: [],
       netRemainingAmount: 0,

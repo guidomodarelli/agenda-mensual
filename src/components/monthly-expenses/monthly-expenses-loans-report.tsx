@@ -109,6 +109,7 @@ interface MonthlyExpensesLoansReportProps {
   summary: {
     activeLoanCount: number;
     payableCurrentMonthAmount: number;
+    receivableCurrentMonthAmount: number;
     lenderCount: number;
     monthlyProjection: MonthlyExpensesLoanReportProjectionMonthView[];
     netRemainingAmount: number;
@@ -335,6 +336,44 @@ function getPayableAmountByLenderType(
 }
 
 /**
+ * Compact inline switch between the total and current-month amounts. Repeated in
+ * several places (balance, "Yo debo", "Me deben"); all instances share the same
+ * controlled state so toggling any of them updates every figure at once.
+ */
+function AmountModeToggle({
+  ariaLabel,
+  onChange,
+  value,
+}: {
+  ariaLabel: string;
+  onChange: (mode: LoansReportAmountMode) => void;
+  value: LoansReportAmountMode;
+}) {
+  return (
+    <span aria-label={ariaLabel} className={styles.amountModeToggle} role="group">
+      <button
+        aria-pressed={value === "total"}
+        className={styles.amountModeOption}
+        data-active={value === "total"}
+        onClick={() => onChange("total")}
+        type="button"
+      >
+        Total
+      </button>
+      <button
+        aria-pressed={value === "month"}
+        className={styles.amountModeOption}
+        data-active={value === "month"}
+        onClick={() => onChange("month")}
+        type="button"
+      >
+        Este mes
+      </button>
+    </span>
+  );
+}
+
+/**
  * Renders a loan description that truncates with an ellipsis, surfacing the full
  * text in a tooltip only when it is actually clipped. Truncation is measured at
  * open time (hover/focus), when layout and fonts are already settled.
@@ -518,19 +557,24 @@ export function MonthlyExpensesLoansReport({
   const [sortKey, setSortKey] = useState<LoansReportSortKey>("amount");
   const [amountMode, setAmountMode] = useState<LoansReportAmountMode>("total");
 
-  const splitTotal =
-    summary.payableRemainingAmount + summary.receivableRemainingAmount;
+  // Every aggregate figure (balance, "Yo debo"/"Me deben", cards) follows the
+  // same Total/Este mes toggle, so they all stay in sync.
+  const isMonthMode = amountMode === "month";
+  const payableShown = isMonthMode
+    ? summary.payableCurrentMonthAmount
+    : summary.payableRemainingAmount;
+  const receivableShown = isMonthMode
+    ? summary.receivableCurrentMonthAmount
+    : summary.receivableRemainingAmount;
+  const amountModeLabel = isMonthMode ? "este mes" : "total";
+  const splitTotal = payableShown + receivableShown;
   // Net balance shown as the user's position (what they are owed minus what they
-  // owe), so a deficit reads as a negative red figure. The summary's
-  // `netRemainingAmount` uses the inverse "net debt" convention
-  // (payable − receivable), so we derive the position from the unambiguous
-  // payable/receivable totals instead of reusing its sign.
-  const netBalancePosition =
-    summary.receivableRemainingAmount - summary.payableRemainingAmount;
+  // owe), so a deficit reads as a negative red figure.
+  const netBalancePosition = receivableShown - payableShown;
   const netTone = getNetBalanceTone(netBalancePosition);
-  const splitAriaLabel = `Distribución de deudas: yo debo ${formatArsAmount(
-    summary.payableRemainingAmount,
-  )}, me deben ${formatArsAmount(summary.receivableRemainingAmount)}.`;
+  const splitAriaLabel = `Distribución de deudas (${amountModeLabel}): yo debo ${formatArsAmount(
+    payableShown,
+  )}, me deben ${formatArsAmount(receivableShown)}.`;
 
   const sortedEntries = sortReportEntries(entries, sortKey);
   const sections = (
@@ -575,31 +619,30 @@ export function MonthlyExpensesLoansReport({
     <section className={styles.content}>
       <header className={styles.hero}>
         <div className={styles.heroBalance}>
-          <p className={styles.heroLabel}>Balance neto</p>
+          <div className={styles.heroLabelRow}>
+            <span className={styles.heroLabel}>Balance neto</span>
+            <AmountModeToggle
+              ariaLabel="Mostrar montos totales o de este mes"
+              onChange={setAmountMode}
+              value={amountMode}
+            />
+          </div>
           <p className={styles.heroValue} data-tone={netTone}>
             {formatSignedArsAmount(netBalancePosition)}
           </p>
           <p className={styles.heroHint}>
             {getNetBalanceHint(netBalancePosition)}
           </p>
-          <p className={styles.heroMeta}>
-            {summary.lenderCount} prestamistas · {summary.activeLoanCount} deudas
-            activas
-          </p>
         </div>
 
         <dl className={styles.heroKpis}>
           <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Debés este mes</dt>
-            <dd className={styles.kpiValue}>
-              {formatArsAmount(summary.payableCurrentMonthAmount)}
-            </dd>
+            <dt className={styles.kpiLabel}>Prestamistas con deuda</dt>
+            <dd className={styles.kpiValue}>{summary.lenderCount}</dd>
           </div>
           <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Debés en total</dt>
-            <dd className={styles.kpiValue}>
-              {formatArsAmount(summary.payableRemainingAmount)}
-            </dd>
+            <dt className={styles.kpiLabel}>Deudas activas</dt>
+            <dd className={styles.kpiValue}>{summary.activeLoanCount}</dd>
           </div>
         </dl>
       </header>
@@ -608,29 +651,32 @@ export function MonthlyExpensesLoansReport({
         <div aria-label={splitAriaLabel} className={styles.splitBar} role="img">
           <span
             className={styles.splitPayable}
-            style={{
-              width: getWidthPercent(summary.payableRemainingAmount, splitTotal),
-            }}
+            style={{ width: getWidthPercent(payableShown, splitTotal) }}
           />
           <span
             className={styles.splitReceivable}
-            style={{
-              width: getWidthPercent(
-                summary.receivableRemainingAmount,
-                splitTotal,
-              ),
-            }}
+            style={{ width: getWidthPercent(receivableShown, splitTotal) }}
           />
         </div>
         <div className={styles.splitLegend}>
           <span className={styles.splitLegendItem}>
             <span className={`${styles.dot} ${styles.dotPayable}`} aria-hidden />
             Yo debo
-            <strong>{formatArsAmount(summary.payableRemainingAmount)}</strong>
+            <AmountModeToggle
+              ariaLabel="Mostrar lo que debés total o de este mes"
+              onChange={setAmountMode}
+              value={amountMode}
+            />
+            <strong>{formatArsAmount(payableShown)}</strong>
           </span>
           <span className={styles.splitLegendItem}>
             Me deben
-            <strong>{formatArsAmount(summary.receivableRemainingAmount)}</strong>
+            <AmountModeToggle
+              ariaLabel="Mostrar lo que te deben total o de este mes"
+              onChange={setAmountMode}
+              value={amountMode}
+            />
+            <strong>{formatArsAmount(receivableShown)}</strong>
             <span className={`${styles.dot} ${styles.dotReceivable}`} aria-hidden />
           </span>
         </div>
@@ -701,23 +747,6 @@ export function MonthlyExpensesLoansReport({
       ) : null}
 
       <div className={styles.filters}>
-        <div className={styles.directionFilter}>
-          <Label className={styles.filterLabel} id="loan-report-amount-mode-label">
-            Mostrar
-          </Label>
-          <Tabs
-            onValueChange={(value) =>
-              setAmountMode(value as LoansReportAmountMode)
-            }
-            value={amountMode}
-          >
-            <TabsList aria-labelledby="loan-report-amount-mode-label">
-              <TabsTrigger value="total">Total</TabsTrigger>
-              <TabsTrigger value="month">Este mes</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
         <div className={styles.directionFilter}>
           <Label className={styles.filterLabel} id="loan-report-direction-label">
             Dirección
@@ -828,6 +857,11 @@ export function MonthlyExpensesLoansReport({
           <div className={styles.section} key={section.direction}>
             <div className={styles.sectionHeader}>
               <h3 className={styles.sectionTitle}>{section.title}</h3>
+              <AmountModeToggle
+                ariaLabel={`Mostrar ${section.title} total o de este mes`}
+                onChange={setAmountMode}
+                value={amountMode}
+              />
               <span
                 className={styles.sectionSubtotal}
                 data-direction={section.direction}
