@@ -427,8 +427,11 @@ function LoanReportEntryCard({
   amountMode: LoansReportAmountMode;
   entry: MonthlyExpensesLoanReportView;
 }) {
-  const visibleLoans = entry.activeLoans.slice(0, MAX_VISIBLE_ACTIVE_LOANS);
-  const hiddenLoanCount = entry.activeLoans.length - visibleLoans.length;
+  const [isLoansExpanded, setIsLoansExpanded] = useState(false);
+  const hiddenLoanCount = entry.activeLoans.length - MAX_VISIBLE_ACTIVE_LOANS;
+  const visibleLoans = isLoansExpanded
+    ? entry.activeLoans
+    : entry.activeLoans.slice(0, MAX_VISIBLE_ACTIVE_LOANS);
   const currentMonthAmount = getEntryCurrentMonthAmount(entry);
   const secondaryCaption =
     amountMode === "month"
@@ -479,14 +482,21 @@ function LoanReportEntryCard({
         </span>
       </div>
 
-      <div className={styles.entryLoans}>
+      <div className={styles.entryLoans} data-expanded={isLoansExpanded}>
         {visibleLoans.map((loan, index) => (
           <ActiveLoanRow key={`${loan.description}-${loan.endMonth}-${index}`} loan={loan} />
         ))}
-        {hiddenLoanCount > 0 ? (
-          <span className={styles.moreLoans}>{`+${hiddenLoanCount} más`}</span>
-        ) : null}
       </div>
+      {hiddenLoanCount > 0 ? (
+        <button
+          aria-expanded={isLoansExpanded}
+          className={styles.moreLoans}
+          onClick={() => setIsLoansExpanded((expanded) => !expanded)}
+          type="button"
+        >
+          {isLoansExpanded ? "Ver menos" : `+${hiddenLoanCount} más`}
+        </button>
+      ) : null}
     </article>
   );
 }

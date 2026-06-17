@@ -351,6 +351,12 @@
   min-width: 0;
 }
 
+.entryLoans[data-expanded="true"] {
+  max-height: 13.5rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
 .entryLoan {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -453,8 +459,20 @@
 }
 
 .moreLoans {
+  align-self: flex-start;
+  padding: 0.1rem 0;
+  border: none;
+  background: none;
   font-size: 0.75rem;
+  font-weight: 500;
   color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--foreground);
+    text-decoration: underline;
+  }
 }
 
 .section {

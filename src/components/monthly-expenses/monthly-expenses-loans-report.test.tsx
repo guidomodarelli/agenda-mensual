@@ -341,6 +341,37 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByText("Total $ 120.500,75")).toBeInTheDocument();
   });
 
+  it("expands the loan list on demand when there are more than three loans", async () => {
+    renderReport({
+      entries: [
+        {
+          activeLoanCount: 5,
+          activeLoans: ["Uno", "Dos", "Tres", "Cuatro", "Cinco"].map((name) =>
+            buildActiveLoan({ description: name }),
+          ),
+          direction: "payable",
+          firstDebtMonth: "2026-01",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-9",
+          lenderName: "Banco Santander",
+          lenderType: "bank",
+          remainingAmount: 500000,
+          trackedLoanCount: 5,
+        },
+      ],
+    });
+
+    expect(screen.queryByText("Cuatro")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "+2 más" }));
+
+    expect(screen.getByText("Cuatro")).toBeInTheDocument();
+    expect(screen.getByText("Cinco")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Ver menos" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders an upcoming-payments projection", () => {
     renderReport();
 
