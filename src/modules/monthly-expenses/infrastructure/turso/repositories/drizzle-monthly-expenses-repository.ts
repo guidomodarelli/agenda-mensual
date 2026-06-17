@@ -5,6 +5,7 @@ import {
   expensePaymentRecordsTable,
   expenseReceiptsTable,
   expensesTable,
+  monthlyExpenseExcludedLoansTable,
   monthlyExpenseMonthsTable,
 } from "@/modules/shared/infrastructure/database/drizzle/schema";
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
@@ -475,12 +476,61 @@ export class DrizzleMonthlyExpensesRepository
         );
       }
     }
+
+    await this.replaceExcludedLoansWithExecutor(databaseExecutor, document, nowIso);
+  }
+
+  /**
+   * Replaces the month's excluded-loan rows with the document's current set, so a
+   * loan the user removed stays excluded and a re-added loan stops being excluded.
+   *
+   * @param databaseExecutor - Active transactional executor.
+   * @param document - Document whose excluded loan ids are persisted.
+   * @param nowIso - Timestamp recorded on each exclusion row.
+   */
+  private async replaceExcludedLoansWithExecutor(
+    databaseExecutor: MonthlyExpensesPersistenceExecutor,
+    document: MonthlyExpensesDocument,
+    nowIso: string,
+  ): Promise<void> {
+    await databaseExecutor
+      .delete(monthlyExpenseExcludedLoansTable)
+      .where(
+        and(
+          eq(monthlyExpenseExcludedLoansTable.userSubject, this.userSubject),
+          eq(monthlyExpenseExcludedLoansTable.month, document.month),
+        ),
+      );
+
+    const excludedLoanIds = document.excludedLoanIds ?? [];
+
+    if (excludedLoanIds.length === 0) {
+      return;
+    }
+
+    await databaseExecutor.insert(monthlyExpenseExcludedLoansTable).values(
+      excludedLoanIds.map((expenseId) => ({
+        expenseId,
+        month: document.month,
+        updatedAtIso: nowIso,
+        userSubject: this.userSubject,
+      })),
+    );
   }
 
   private async clearNormalizedMonthWithExecutor(
     databaseExecutor: MonthlyExpensesPersistenceExecutor,
     month: string,
   ): Promise<void> {
+    await databaseExecutor
+      .delete(monthlyExpenseExcludedLoansTable)
+      .where(
+        and(
+          eq(monthlyExpenseExcludedLoansTable.userSubject, this.userSubject),
+          eq(monthlyExpenseExcludedLoansTable.month, month),
+        ),
+      );
+
     const existingRowsForMonth = await databaseExecutor
       .select({
         expenseId: expenseMonthsTable.expenseId,
@@ -555,6 +605,7 @@ export class DrizzleMonthlyExpensesRepository
       )
       .limit(1);
     const monthlyRow = monthlyRows[0] as MonthlyExpenseMonthRow | undefined;
+    const excludedLoanIds = await this.listExcludedLoanIds(month);
     const rows = await this.database
       .select({
         allReceiptsFolderId: expensesTable.allReceiptsFolderId,
@@ -607,20 +658,22 @@ export class DrizzleMonthlyExpensesRepository
       );
 
     if (rows.length === 0) {
-      if (!monthlyRow) {
+      if (!monthlyRow && excludedLoanIds.length === 0) {
         return null;
       }
 
-      const emptyMonthExchangeRateSnapshot =
-        getExchangeRateSnapshotFromRow(monthlyRow);
+      const emptyMonthExchangeRateSnapshot = monthlyRow
+        ? getExchangeRateSnapshotFromRow(monthlyRow)
+        : null;
 
       return createMonthlyExpensesDocument(
         {
+          ...(excludedLoanIds.length > 0 ? { excludedLoanIds } : {}),
           ...(emptyMonthExchangeRateSnapshot
             ? { exchangeRateSnapshot: emptyMonthExchangeRateSnapshot }
             : {}),
           hasReplicatedFromPreviousMonth:
-            monthlyRow.hasReplicatedFromPreviousMonth === 1,
+            monthlyRow?.hasReplicatedFromPreviousMonth === 1,
           items: [],
           month,
         },
@@ -776,6 +829,7 @@ export class DrizzleMonthlyExpensesRepository
 
     return createMonthlyExpensesDocument(
       {
+        ...(excludedLoanIds.length > 0 ? { excludedLoanIds } : {}),
         ...(exchangeRateSnapshot
           ? {
               exchangeRateSnapshot,
@@ -855,6 +909,22 @@ export class DrizzleMonthlyExpensesRepository
       },
       "Loading monthly expenses from database",
     );
+  }
+
+  private async listExcludedLoanIds(month: string): Promise<string[]> {
+    const rows = await this.database
+      .select({
+        expenseId: monthlyExpenseExcludedLoansTable.expenseId,
+      })
+      .from(monthlyExpenseExcludedLoansTable)
+      .where(
+        and(
+          eq(monthlyExpenseExcludedLoansTable.userSubject, this.userSubject),
+          eq(monthlyExpenseExcludedLoansTable.month, month),
+        ),
+      );
+
+    return rows.map((row) => row.expenseId);
   }
 
   async getByMonth(month: string): Promise<MonthlyExpensesDocument | null> {

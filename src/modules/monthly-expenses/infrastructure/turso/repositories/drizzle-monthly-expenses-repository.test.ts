@@ -179,10 +179,14 @@ describe("DrizzleMonthlyExpensesRepository", () => {
     const innerJoinMock = jest.fn().mockReturnValue({
       where: expensesWhereMock,
     });
+    const excludedLoansWhereMock = jest.fn().mockResolvedValue([]);
     const fromMock = jest
       .fn()
       .mockReturnValueOnce({
         where: metadataWhereMock,
+      })
+      .mockReturnValueOnce({
+        where: excludedLoansWhereMock,
       })
       .mockReturnValueOnce({
         innerJoin: innerJoinMock,
@@ -226,10 +230,14 @@ describe("DrizzleMonthlyExpensesRepository", () => {
     const innerJoinMock = jest.fn().mockReturnValue({
       where: expensesWhereMock,
     });
+    const excludedLoansWhereMock = jest.fn().mockResolvedValue([]);
     const fromMock = jest
       .fn()
       .mockReturnValueOnce({
         where: metadataWhereMock,
+      })
+      .mockReturnValueOnce({
+        where: excludedLoansWhereMock,
       })
       .mockReturnValueOnce({
         innerJoin: innerJoinMock,
@@ -263,6 +271,60 @@ describe("DrizzleMonthlyExpensesRepository", () => {
           month: "2026-04",
         },
         "Testing empty monthly metadata reads",
+      ),
+    );
+  });
+
+  it("returns a document carrying the month's excluded loan ids when only exclusions exist", async () => {
+    const metadataLimitMock = jest.fn().mockResolvedValue([]);
+    const metadataWhereMock = jest.fn().mockReturnValue({
+      limit: metadataLimitMock,
+    });
+    const excludedLoansWhereMock = jest
+      .fn()
+      .mockResolvedValue([{ expenseId: "loan-1" }]);
+    const expensesOrderByMock = jest.fn().mockResolvedValue([]);
+    const expensesWhereMock = jest.fn().mockReturnValue({
+      orderBy: expensesOrderByMock,
+    });
+    const innerJoinMock = jest.fn().mockReturnValue({
+      where: expensesWhereMock,
+    });
+    const fromMock = jest
+      .fn()
+      .mockReturnValueOnce({
+        where: metadataWhereMock,
+      })
+      .mockReturnValueOnce({
+        where: excludedLoansWhereMock,
+      })
+      .mockReturnValueOnce({
+        innerJoin: innerJoinMock,
+      });
+    const selectMock = jest.fn().mockReturnValue({
+      from: fromMock,
+    });
+    const repository = new DrizzleMonthlyExpensesRepository(
+      {
+        select: selectMock,
+      } as never,
+      "user-subject",
+    );
+
+    const result = await (repository as unknown as {
+      getByMonthFromNormalized: (
+        month: string,
+      ) => Promise<ReturnType<typeof createEmptyMonthlyExpensesDocument> | null>;
+    }).getByMonthFromNormalized("2026-04");
+
+    expect(result).toEqual(
+      createMonthlyExpensesDocument(
+        {
+          excludedLoanIds: ["loan-1"],
+          items: [],
+          month: "2026-04",
+        },
+        "Testing excluded-loan reads",
       ),
     );
   });

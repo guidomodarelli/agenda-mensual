@@ -153,6 +153,7 @@ async function projectLoansIntoDocument({
   const projectedLoanItems = projectMonthlyExpenseLoans({
     baseItems: realDocument.items,
     documents,
+    excludedLoanIds: realDocument.excludedLoanIds,
     targetMonth: realDocument.month,
   });
 

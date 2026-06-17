@@ -121,6 +121,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     );
 
     expect(result).toEqual({
+      excludedLoanIds: [],
       hasReplicatedFromPreviousMonth: false,
       items: [
         {
@@ -165,6 +166,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     );
 
     expect(result).toEqual({
+      excludedLoanIds: [],
       hasReplicatedFromPreviousMonth: false,
       items: [
         {

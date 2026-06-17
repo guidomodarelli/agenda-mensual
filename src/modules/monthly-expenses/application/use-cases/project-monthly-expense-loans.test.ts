@@ -95,6 +95,31 @@ describe("projectMonthlyExpenseLoans", () => {
   });
 
 
+  it("does not project a loan the user excluded from the target month", () => {
+    const documents = [
+      buildDocument("2026-05", [
+        buildLoanItem({ loan: { installmentCount: 6, startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    expect(
+      projectMonthlyExpenseLoans({
+        documents,
+        targetMonth: "2026-04",
+        baseItems: [],
+        excludedLoanIds: ["loan-1"],
+      }),
+    ).toHaveLength(0);
+    // Without the exclusion the same loan would be projected.
+    expect(
+      projectMonthlyExpenseLoans({
+        documents,
+        targetMonth: "2026-04",
+        baseItems: [],
+      }),
+    ).toHaveLength(1);
+  });
+
   it("projects a loan that starts next month into every month within its range", () => {
     const documents = [
       buildDocument("2026-03", [

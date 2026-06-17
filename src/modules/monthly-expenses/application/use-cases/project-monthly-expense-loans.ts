@@ -17,6 +17,12 @@ interface ProjectMonthlyExpenseLoansInput {
   baseItems: MonthlyExpenseItem[];
   /** Every stored monthly document, scanned for loan items. */
   documents: MonthlyExpensesDocument[];
+  /**
+   * Loan expense ids the user explicitly removed from this month. They are never
+   * projected (neither appended nor refreshed) so a deleted installment does not
+   * reappear on the next load.
+   */
+  excludedLoanIds?: string[];
   /** Month (`YYYY-MM`) the loans are being projected into. */
   targetMonth: string;
 }
@@ -190,13 +196,21 @@ function toNewProjectedLoanItemInput(
 export function projectMonthlyExpenseLoans({
   baseItems,
   documents,
+  excludedLoanIds,
   targetMonth,
 }: ProjectMonthlyExpenseLoansInput): MonthlyExpenseItemInput[] {
   const existingItemIds = new Set(baseItems.map((item) => item.id));
+  const excludedItemIds = new Set(excludedLoanIds ?? []);
   const projectedItems: MonthlyExpenseItemInput[] = [];
 
   for (const snapshot of collectCanonicalLoanSnapshots(documents).values()) {
     const { item, month } = snapshot;
+
+    // A loan the user explicitly removed from this month is never reflected
+    // again, neither as an append nor as a refresh.
+    if (excludedItemIds.has(item.id)) {
+      continue;
+    }
 
     if (existingItemIds.has(item.id)) {
       // The loan is already stored in the target month. Refresh its definition

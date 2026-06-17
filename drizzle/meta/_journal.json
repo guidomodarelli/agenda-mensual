@@ -92,6 +92,13 @@
       "when": 1781564389974,
       "tag": "0012_move_share_status_to_payment_records",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1781734575296,
+      "tag": "0013_add_monthly_expense_excluded_loans",
+      "breakpoints": true
     }
   ]
 }

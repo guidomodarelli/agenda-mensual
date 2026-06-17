@@ -16,6 +16,7 @@ import {
   buildMonthlyExpenseReceiptFileName,
   getReceiptFileNameDatePrefix,
 } from "./monthly-expense-receipt-file-name";
+import { projectMonthlyExpenseLoans } from "./project-monthly-expense-loans";
 import type { MonthlyExchangeRateSnapshot } from "@/modules/exchange-rates/domain/entities/monthly-exchange-rate-snapshot";
 import {
   MissingMonthlyExchangeRateError,
@@ -226,6 +227,43 @@ async function syncReceiptFileRenames({
   };
 }
 
+/**
+ * Resolves the loans the user intentionally removed from the month: every loan
+ * whose installment range covers the month (its canonical definition lives in some
+ * stored document) yet is absent from the items being saved. Persisting them as
+ * exclusions keeps loan projection from re-adding the deleted installment on the
+ * next load.
+ *
+ * @param month - Month being saved (`YYYY-MM`).
+ * @param repository - Repository used to scan every stored document for loans.
+ * @param savedItems - The items the user is keeping in the month.
+ * @returns The excluded loan ids for the month.
+ */
+async function resolveExcludedLoanIds({
+  month,
+  repository,
+  savedItems,
+}: {
+  month: string;
+  repository: MonthlyExpensesRepository;
+  savedItems: MonthlyExpensesDocument["items"];
+}): Promise<string[]> {
+  const documents =
+    typeof repository.listAll === "function"
+      ? (await repository.listAll()) ?? []
+      : [];
+  const savedItemIds = new Set(savedItems.map((item) => item.id));
+
+  return projectMonthlyExpenseLoans({
+    baseItems: savedItems,
+    documents,
+    excludedLoanIds: [],
+    targetMonth: month,
+  })
+    .map((item) => item.id)
+    .filter((id) => !savedItemIds.has(id));
+}
+
 export async function saveMonthlyExpensesDocument({
   command,
   getExchangeRateSnapshot,
@@ -258,8 +296,14 @@ export async function saveMonthlyExpensesDocument({
     false;
   const resolvedExchangeRateSnapshot =
     exchangeRateSnapshot ?? currentDocument?.exchangeRateSnapshot ?? null;
+  const excludedLoanIds = await resolveExcludedLoanIds({
+    month: validatedBaseDocument.month,
+    repository,
+    savedItems: validatedBaseDocument.items,
+  });
   const validatedDocumentInput = {
     ...toMonthlyExpensesDocumentInput(validatedBaseDocument),
+    ...(excludedLoanIds.length > 0 ? { excludedLoanIds } : {}),
     ...(hasReplicatedFromPreviousMonth
       ? { hasReplicatedFromPreviousMonth: true }
       : {}),
