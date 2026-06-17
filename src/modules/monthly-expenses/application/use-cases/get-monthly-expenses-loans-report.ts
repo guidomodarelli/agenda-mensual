@@ -7,7 +7,10 @@ import type { LenderType } from "@/modules/lenders/domain/value-objects/lenders-
 
 import { calculateLoanEndMonth } from "../../domain/value-objects/monthly-expenses-document";
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
-import type { MonthlyExpensesDocument } from "../../domain/value-objects/monthly-expenses-document";
+import type {
+  MonthlyExpenseCurrency,
+  MonthlyExpensesDocument,
+} from "../../domain/value-objects/monthly-expenses-document";
 import type {
   MonthlyExpensesLoanReportEntry,
   MonthlyExpensesLoanReportDirection,
@@ -48,6 +51,7 @@ function getCurrentMonthIdentifier(date: Date = new Date()): string {
 }
 
 interface LoanSnapshot {
+  currency: MonthlyExpenseCurrency;
   description: string;
   direction: MonthlyExpensesLoanReportDirection;
   expenseId: string;
@@ -56,6 +60,11 @@ interface LoanSnapshot {
   monthlyAmount: number;
   month: string;
   paidInstallments: number;
+  /**
+   * USD→ARS solidarity rate captured from the document this snapshot belongs to,
+   * or `null` when that document carries no exchange-rate snapshot.
+   */
+  solidarityRate: number | null;
   startMonth: string;
   totalInstallments: number;
 }
@@ -137,6 +146,7 @@ function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot
       item.loan
         ? [
             {
+              currency: item.currency,
               description: item.description,
               direction: item.loan.direction ?? "payable",
               expenseId: item.id,
@@ -145,6 +155,7 @@ function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot
               month: document.month,
               monthlyAmount: item.total,
               paidInstallments: item.loan.paidInstallments,
+              solidarityRate: document.exchangeRateSnapshot?.solidarityRate ?? null,
               startMonth: item.loan.startMonth,
               totalInstallments: item.loan.installmentCount,
             },
@@ -152,6 +163,66 @@ function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot
         : [],
     ),
   );
+}
+
+/**
+ * Resolves the most recent USD→ARS solidarity rate across all documents, used as
+ * a fallback to convert USD loans whose own document lacks an exchange-rate
+ * snapshot.
+ *
+ * @param documents - Monthly expenses documents to scan for exchange rates.
+ * @returns The latest available solidarity rate, or `null` when none exists.
+ */
+function getLatestSolidarityRate(
+  documents: MonthlyExpensesDocument[],
+): number | null {
+  let latestMonth: string | null = null;
+  let latestSolidarityRate: number | null = null;
+
+  for (const document of documents) {
+    const solidarityRate = document.exchangeRateSnapshot?.solidarityRate;
+
+    if (
+      typeof solidarityRate === "number" &&
+      (latestMonth === null ||
+        compareMonthIdentifiers(document.month, latestMonth) > 0)
+    ) {
+      latestMonth = document.month;
+      latestSolidarityRate = solidarityRate;
+    }
+  }
+
+  return latestSolidarityRate;
+}
+
+/**
+ * Converts a loan's remaining amount into ARS. ARS loans pass through; USD loans
+ * are multiplied by the solidarity rate (the snapshot's own rate when present,
+ * otherwise the latest available rate). When no rate exists at all, the native
+ * USD amount is returned as a last resort so the debt is not dropped.
+ */
+function convertRemainingAmountToArs({
+  currency,
+  fallbackSolidarityRate,
+  nativeRemainingAmount,
+  solidarityRate,
+}: {
+  currency: MonthlyExpenseCurrency;
+  fallbackSolidarityRate: number | null;
+  nativeRemainingAmount: number;
+  solidarityRate: number | null;
+}): number {
+  if (currency !== "USD") {
+    return nativeRemainingAmount;
+  }
+
+  const effectiveSolidarityRate = solidarityRate ?? fallbackSolidarityRate;
+
+  if (effectiveSolidarityRate === null) {
+    return nativeRemainingAmount;
+  }
+
+  return nativeRemainingAmount * effectiveSolidarityRate;
 }
 
 export async function getMonthlyExpensesLoansReport({
@@ -163,6 +234,7 @@ export async function getMonthlyExpensesLoansReport({
     typeof (repository as Partial<MonthlyExpensesRepository>).listAll === "function"
       ? await repository.listAll()
       : [];
+  const fallbackSolidarityRate = getLatestSolidarityRate(documents);
   const latestSnapshotsByLoan = new Map<string, LoanSnapshot>();
 
   for (const snapshot of createLoanSnapshots(documents)) {
@@ -192,7 +264,12 @@ export async function getMonthlyExpensesLoansReport({
       ? 0
       : Math.max(snapshot.totalInstallments - snapshot.paidInstallments, 0);
     const remainingAmount = Number(
-      (snapshot.monthlyAmount * remainingInstallments).toFixed(2),
+      convertRemainingAmountToArs({
+        currency: snapshot.currency,
+        fallbackSolidarityRate,
+        nativeRemainingAmount: snapshot.monthlyAmount * remainingInstallments,
+        solidarityRate: snapshot.solidarityRate,
+      }).toFixed(2),
     );
     const currentEntry = entriesByLender.get(entryKey);
 

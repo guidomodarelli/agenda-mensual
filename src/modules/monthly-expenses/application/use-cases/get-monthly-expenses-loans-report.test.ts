@@ -605,6 +605,113 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary.remainingAmount).toBe(0);
   });
 
+  it("converts USD loans to ARS using the document solidarity rate", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          exchangeRateSnapshot: {
+            blueRate: 1100,
+            month: "2026-06",
+            officialRate: 950,
+            solidarityRate: 1000,
+          },
+          items: [
+            {
+              currency: "USD",
+              description: "Iphone",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2027-10",
+                installmentCount: 17,
+                lenderId: "lender-1",
+                lenderName: "Camila",
+                paidInstallments: 0,
+                startMonth: "2026-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [
+        {
+          id: "lender-1",
+          name: "Camila",
+          type: "other",
+        },
+      ],
+      repository,
+    });
+
+    expect(result.entries[0]?.remainingAmount).toBe(1700000);
+    expect(result.summary.payableRemainingAmount).toBe(1700000);
+  });
+
+  it("converts USD loans using the latest available rate when their own document has none", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          exchangeRateSnapshot: {
+            blueRate: 900,
+            month: "2026-04",
+            officialRate: 750,
+            solidarityRate: 800,
+          },
+          items: [],
+          month: "2026-04",
+        },
+        {
+          items: [
+            {
+              currency: "USD",
+              description: "Iphone",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2027-10",
+                installmentCount: 17,
+                lenderId: "lender-1",
+                lenderName: "Camila",
+                paidInstallments: 0,
+                startMonth: "2026-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [
+        {
+          id: "lender-1",
+          name: "Camila",
+          type: "other",
+        },
+      ],
+      repository,
+    });
+
+    expect(result.entries[0]?.remainingAmount).toBe(1360000);
+  });
+
   it("returns an empty report when the repository does not implement listAll", async () => {
     const result = await getMonthlyExpensesLoansReport({
       lenders: [],
