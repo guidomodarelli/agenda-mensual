@@ -5,7 +5,10 @@
  */
 import type { LenderType } from "@/modules/lenders/domain/value-objects/lenders-catalog-document";
 
-import { calculateLoanEndMonth } from "../../domain/value-objects/monthly-expenses-document";
+import {
+  calculateLoanEndMonth,
+  calculatePaidLoanInstallments,
+} from "../../domain/value-objects/monthly-expenses-document";
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import type {
   MonthlyExpenseCurrency,
@@ -60,7 +63,6 @@ interface LoanSnapshot {
   lenderName: string | null;
   monthlyAmount: number;
   month: string;
-  paidInstallments: number;
   /**
    * USD→ARS solidarity rate captured from the document this snapshot belongs to,
    * or `null` when that document carries no exchange-rate snapshot.
@@ -155,7 +157,6 @@ function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot
               lenderName: item.loan.lenderName ?? null,
               month: document.month,
               monthlyAmount: item.total,
-              paidInstallments: item.loan.paidInstallments,
               solidarityRate: document.exchangeRateSnapshot?.solidarityRate ?? null,
               startMonth: item.loan.startMonth,
               totalInstallments: item.loan.installmentCount,
@@ -313,11 +314,20 @@ export async function getMonthlyExpensesLoansReport({
       installmentCount: snapshot.totalInstallments,
       startMonth: snapshot.startMonth,
     });
-    const isLoanSettledByCurrentMonth =
-      compareMonthIdentifiers(currentMonth, loanEndMonth) > 0;
-    const remainingInstallments = isLoanSettledByCurrentMonth
-      ? 0
-      : Math.max(snapshot.totalInstallments - snapshot.paidInstallments, 0);
+    // Paid installments are recomputed against the current month rather than
+    // trusting the latest stored snapshot: a finished loan stops being copied
+    // forward, so its snapshot freezes one installment short of completion. By
+    // the loan's end month every installment is due, so it correctly settles to
+    // zero remaining once the current month reaches (or passes) that end month.
+    const paidInstallments = calculatePaidLoanInstallments({
+      installmentCount: snapshot.totalInstallments,
+      startMonth: snapshot.startMonth,
+      targetMonth: currentMonth,
+    });
+    const remainingInstallments = Math.max(
+      snapshot.totalInstallments - paidInstallments,
+      0,
+    );
     const nativeRemainingAmount = Number(
       (snapshot.monthlyAmount * remainingInstallments).toFixed(2),
     );
@@ -346,10 +356,7 @@ export async function getMonthlyExpensesLoansReport({
         installmentCount: snapshot.totalInstallments,
         isDueSoon:
           compareMonthIdentifiers(loanEndMonth, dueSoonThresholdMonth) <= 0,
-        paidInstallments: Math.min(
-          Math.max(snapshot.paidInstallments, 0),
-          snapshot.totalInstallments,
-        ),
+        paidInstallments,
         remainingAmount,
         remainingAmountOriginal:
           snapshot.currency === "USD" ? nativeRemainingAmount : null,

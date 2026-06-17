@@ -178,8 +178,8 @@ describe("getMonthlyExpensesLoansReport", () => {
             endMonth: "2026-04",
             installmentCount: 4,
             isDueSoon: true,
-            paidInstallments: 2,
-            remainingAmount: 20000,
+            paidInstallments: 3,
+            remainingAmount: 10000,
             remainingAmountOriginal: null,
           },
         ],
@@ -189,17 +189,17 @@ describe("getMonthlyExpensesLoansReport", () => {
         lenderName: "Papa",
         lenderType: "family",
         latestRecordedMonth: "2026-03",
-        remainingAmount: 20000,
+        remainingAmount: 10000,
         trackedLoanCount: 1,
       },
     ]);
     expect(result.summary).toEqual({
       activeLoanCount: 1,
       lenderCount: 1,
-      netRemainingAmount: -20000,
+      netRemainingAmount: -10000,
       payableRemainingAmount: 0,
-      receivableRemainingAmount: 20000,
-      remainingAmount: 20000,
+      receivableRemainingAmount: 10000,
+      remainingAmount: 10000,
       trackedLoanCount: 1,
     });
   });
@@ -352,8 +352,8 @@ describe("getMonthlyExpensesLoansReport", () => {
             endMonth: "2026-04",
             installmentCount: 4,
             isDueSoon: false,
-            paidInstallments: 1,
-            remainingAmount: 30000,
+            paidInstallments: 2,
+            remainingAmount: 20000,
             remainingAmountOriginal: null,
           },
         ],
@@ -363,7 +363,7 @@ describe("getMonthlyExpensesLoansReport", () => {
         lenderName: "Papa",
         lenderType: "family",
         latestRecordedMonth: "2026-02",
-        remainingAmount: 30000,
+        remainingAmount: 20000,
         trackedLoanCount: 1,
       },
       {
@@ -375,8 +375,8 @@ describe("getMonthlyExpensesLoansReport", () => {
             endMonth: "2026-04",
             installmentCount: 4,
             isDueSoon: false,
-            paidInstallments: 1,
-            remainingAmount: 30000,
+            paidInstallments: 2,
+            remainingAmount: 20000,
             remainingAmountOriginal: null,
           },
         ],
@@ -386,7 +386,7 @@ describe("getMonthlyExpensesLoansReport", () => {
         lenderName: "Papa",
         lenderType: "family",
         latestRecordedMonth: "2026-02",
-        remainingAmount: 30000,
+        remainingAmount: 20000,
         trackedLoanCount: 1,
       },
     ]);
@@ -394,9 +394,9 @@ describe("getMonthlyExpensesLoansReport", () => {
       activeLoanCount: 2,
       lenderCount: 1,
       netRemainingAmount: 0,
-      payableRemainingAmount: 30000,
-      receivableRemainingAmount: 30000,
-      remainingAmount: 60000,
+      payableRemainingAmount: 20000,
+      receivableRemainingAmount: 20000,
+      remainingAmount: 40000,
       trackedLoanCount: 2,
     });
   });
@@ -533,8 +533,8 @@ describe("getMonthlyExpensesLoansReport", () => {
             endMonth: "2026-06",
             installmentCount: 6,
             isDueSoon: false,
-            paidInstallments: 1,
-            remainingAmount: 50000,
+            paidInstallments: 3,
+            remainingAmount: 30000,
             remainingAmountOriginal: null,
           },
         ],
@@ -544,17 +544,17 @@ describe("getMonthlyExpensesLoansReport", () => {
         lenderName: "Papa",
         lenderType: "family",
         latestRecordedMonth: "2026-03",
-        remainingAmount: 50000,
+        remainingAmount: 30000,
         trackedLoanCount: 2,
       },
     ]);
     expect(result.summary).toEqual({
       activeLoanCount: 1,
       lenderCount: 1,
-      netRemainingAmount: 50000,
-      payableRemainingAmount: 50000,
+      netRemainingAmount: 30000,
+      payableRemainingAmount: 30000,
       receivableRemainingAmount: 0,
-      remainingAmount: 50000,
+      remainingAmount: 30000,
       trackedLoanCount: 2,
     });
   });
@@ -708,10 +708,10 @@ describe("getMonthlyExpensesLoansReport", () => {
       repository,
     });
 
-    expect(result.entries[0]?.remainingAmount).toBe(1700000);
-    expect(result.entries[0]?.activeLoans[0]?.remainingAmountOriginal).toBe(1700);
+    expect(result.entries[0]?.remainingAmount).toBe(1600000);
+    expect(result.entries[0]?.activeLoans[0]?.remainingAmountOriginal).toBe(1600);
     expect(result.entries[0]?.activeLoans[0]?.currency).toBe("USD");
-    expect(result.summary.payableRemainingAmount).toBe(1700000);
+    expect(result.summary.payableRemainingAmount).toBe(1600000);
   });
 
   it("converts USD loans using the latest available rate when their own document has none", async () => {
@@ -766,7 +766,7 @@ describe("getMonthlyExpensesLoansReport", () => {
       repository,
     });
 
-    expect(result.entries[0]?.remainingAmount).toBe(1360000);
+    expect(result.entries[0]?.remainingAmount).toBe(1280000);
   });
 
   it("lists each active loan separately even when they share a description", async () => {
@@ -834,7 +834,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     ).toEqual(["Iphone", "Iphone"]);
     expect(
       result.entries[0]?.activeLoans.map((loan) => loan.remainingAmount),
-    ).toEqual([1700, 1000]);
+    ).toEqual([1600, 900]);
   });
 
   it("returns an empty report when the repository does not implement listAll", async () => {
