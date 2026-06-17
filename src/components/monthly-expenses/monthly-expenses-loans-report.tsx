@@ -42,10 +42,15 @@ const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
 const MISSING_VALUE_LABEL = "Sin dato";
 const MAX_AVATAR_INITIALS = 2;
 
+interface MonthlyExpensesLoanReportExpenseView {
+  count: number;
+  description: string;
+}
+
 interface MonthlyExpensesLoanReportView {
   activeLoanCount: number;
   direction: MonthlyExpensesLoanDirection;
-  expenseDescriptions: string[];
+  expenseDescriptions: MonthlyExpensesLoanReportExpenseView[];
   firstDebtMonth: string | null;
   lenderId: string | null;
   lenderName: string;
@@ -412,13 +417,15 @@ export function MonthlyExpensesLoansReport({
 
               <div className={styles.entryExpenses}>
                 {entry.expenseDescriptions.length > 0 ? (
-                  entry.expenseDescriptions.map((description, index) => (
+                  entry.expenseDescriptions.map((expense, index) => (
                     <Badge
                       className={styles.entryExpenseBadge}
-                      key={`${description}-${index}`}
+                      key={`${expense.description}-${index}`}
                       variant="secondary"
                     >
-                      {description}
+                      {expense.count > 1
+                        ? `${expense.description} ×${expense.count}`
+                        : expense.description}
                     </Badge>
                   ))
                 ) : (

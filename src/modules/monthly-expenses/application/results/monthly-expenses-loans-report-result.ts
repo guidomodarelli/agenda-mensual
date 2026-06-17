@@ -3,10 +3,16 @@ import type { LenderType } from "@/modules/lenders/domain/value-objects/lenders-
 export type MonthlyExpensesLoanReportLenderType = LenderType | "unassigned";
 export type MonthlyExpensesLoanReportDirection = "payable" | "receivable";
 
+export interface MonthlyExpensesLoanReportExpense {
+  /** Number of active loans that share this description for the lender entry. */
+  count: number;
+  description: string;
+}
+
 export interface MonthlyExpensesLoanReportEntry {
   activeLoanCount: number;
   direction?: MonthlyExpensesLoanReportDirection;
-  expenseDescriptions: string[];
+  expenseDescriptions: MonthlyExpensesLoanReportExpense[];
   firstDebtMonth: string | null;
   lenderId: string | null;
   lenderName: string;

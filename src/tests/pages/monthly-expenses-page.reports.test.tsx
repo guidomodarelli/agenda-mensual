@@ -89,7 +89,7 @@ registerMonthlyExpensesPageDefaultHooks({
         [
           {
             activeLoanCount: 1,
-            expenseDescriptions: ["Tarjeta"],
+            expenseDescriptions: [{ count: 1, description: "Tarjeta" }],
             firstDebtMonth: "2026-01",
             lenderId: null,
             lenderName: "Prestamista manual",

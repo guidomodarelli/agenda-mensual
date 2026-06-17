@@ -19,7 +19,10 @@ function renderReport(overrides: RenderOverrides = {}) {
         {
           activeLoanCount: 2,
           direction: "receivable",
-          expenseDescriptions: ["Tarjeta", "Seguro"],
+          expenseDescriptions: [
+            { count: 1, description: "Tarjeta" },
+            { count: 1, description: "Seguro" },
+          ],
           firstDebtMonth: "2025-12",
           latestRecordedMonth: "2026-03",
           lenderId: "lender-1",
@@ -113,6 +116,27 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(within(entry).getByText("Banco")).toBeInTheDocument();
     expect(within(entry).getByText("Tarjeta")).toBeInTheDocument();
     expect(within(entry).getByText("Seguro")).toBeInTheDocument();
+  });
+
+  it("appends a multiplier to the expense chip when several active loans share a description", () => {
+    renderReport({
+      entries: [
+        {
+          activeLoanCount: 2,
+          direction: "payable",
+          expenseDescriptions: [{ count: 2, description: "Iphone" }],
+          firstDebtMonth: "2026-06",
+          latestRecordedMonth: "2026-06",
+          lenderId: "lender-2",
+          lenderName: "Camila Morales",
+          lenderType: "other",
+          remainingAmount: 3400000,
+          trackedLoanCount: 2,
+        },
+      ],
+    });
+
+    expect(screen.getByText("Iphone ×2")).toBeInTheDocument();
   });
 
   it("exposes the direction filter as a segmented control and reports the selected value", async () => {

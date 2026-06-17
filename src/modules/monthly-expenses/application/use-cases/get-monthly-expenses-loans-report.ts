@@ -14,6 +14,7 @@ import type {
 import type {
   MonthlyExpensesLoanReportEntry,
   MonthlyExpensesLoanReportDirection,
+  MonthlyExpensesLoanReportExpense,
   MonthlyExpensesLoanReportLenderType,
   MonthlyExpensesLoansReportResult,
 } from "../results/monthly-expenses-loans-report-result";
@@ -225,6 +226,46 @@ function convertRemainingAmountToArs({
   return nativeRemainingAmount * effectiveSolidarityRate;
 }
 
+/**
+ * Increments the active-loan count for a description under a lender entry.
+ *
+ * @param countsByEntry - Per-entry description→count map being accumulated.
+ * @param entryKey - Stable lender entry identifier.
+ * @param description - Loan description to count.
+ */
+function incrementActiveExpenseCount(
+  countsByEntry: Map<string, Map<string, number>>,
+  entryKey: string,
+  description: string,
+): void {
+  const countsByDescription =
+    countsByEntry.get(entryKey) ?? new Map<string, number>();
+
+  countsByDescription.set(
+    description,
+    (countsByDescription.get(description) ?? 0) + 1,
+  );
+  countsByEntry.set(entryKey, countsByDescription);
+}
+
+/**
+ * Builds the sorted, count-aware expense list for a lender entry.
+ *
+ * @param countsByDescription - Description→active-loan-count map, or undefined.
+ * @returns Expenses sorted by description, each with its active-loan count.
+ */
+function toSortedReportExpenses(
+  countsByDescription: Map<string, number> | undefined,
+): MonthlyExpensesLoanReportExpense[] {
+  if (!countsByDescription) {
+    return [];
+  }
+
+  return [...countsByDescription.entries()]
+    .map(([description, count]) => ({ count, description }))
+    .sort((left, right) => left.description.localeCompare(right.description, "es"));
+}
+
 export async function getMonthlyExpensesLoansReport({
   currentMonth = getCurrentMonthIdentifier(),
   lenders,
@@ -250,6 +291,7 @@ export async function getMonthlyExpensesLoansReport({
   }
 
   const entriesByLender = new Map<string, MonthlyExpensesLoanReportEntry>();
+  const activeExpenseCountsByEntry = new Map<string, Map<string, number>>();
 
   for (const snapshot of latestSnapshotsByLoan.values()) {
     const { lenderId, lenderName, lenderType } = resolveLender(snapshot, lenders);
@@ -279,11 +321,19 @@ export async function getMonthlyExpensesLoansReport({
     // still counted in `trackedLoanCount` so "registered" loans reflect history.
     const hasOutstandingBalance = remainingAmount > 0;
 
+    if (hasOutstandingBalance) {
+      incrementActiveExpenseCount(
+        activeExpenseCountsByEntry,
+        entryKey,
+        snapshot.description,
+      );
+    }
+
     if (!currentEntry) {
       entriesByLender.set(entryKey, {
         activeLoanCount: hasOutstandingBalance ? 1 : 0,
         direction: snapshot.direction,
-        expenseDescriptions: hasOutstandingBalance ? [snapshot.description] : [],
+        expenseDescriptions: [],
         firstDebtMonth: hasOutstandingBalance ? snapshot.startMonth : null,
         lenderId,
         lenderName,
@@ -305,9 +355,6 @@ export async function getMonthlyExpensesLoansReport({
     }
 
     currentEntry.activeLoanCount += 1;
-    currentEntry.expenseDescriptions = Array.from(
-      new Set([...currentEntry.expenseDescriptions, snapshot.description]),
-    ).sort((left, right) => left.localeCompare(right, "es"));
     currentEntry.firstDebtMonth =
       currentEntry.firstDebtMonth &&
       compareMonthIdentifiers(currentEntry.firstDebtMonth, snapshot.startMonth) <= 0
@@ -318,6 +365,12 @@ export async function getMonthlyExpensesLoansReport({
       compareMonthIdentifiers(currentEntry.latestRecordedMonth, snapshot.month) >= 0
         ? currentEntry.latestRecordedMonth
         : snapshot.month;
+  }
+
+  for (const [entryKey, entry] of entriesByLender) {
+    entry.expenseDescriptions = toSortedReportExpenses(
+      activeExpenseCountsByEntry.get(entryKey),
+    );
   }
 
   const entries = [...entriesByLender.values()]
