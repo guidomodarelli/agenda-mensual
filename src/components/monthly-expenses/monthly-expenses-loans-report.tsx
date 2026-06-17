@@ -108,7 +108,7 @@ interface MonthlyExpensesLoansReportProps {
   selectedTypeFilter: string;
   summary: {
     activeLoanCount: number;
-    currentMonthAmount: number;
+    payableCurrentMonthAmount: number;
     lenderCount: number;
     monthlyProjection: MonthlyExpensesLoanReportProjectionMonthView[];
     netRemainingAmount: number;
@@ -590,15 +590,15 @@ export function MonthlyExpensesLoansReport({
 
         <dl className={styles.heroKpis}>
           <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Este mes</dt>
+            <dt className={styles.kpiLabel}>Debés este mes</dt>
             <dd className={styles.kpiValue}>
-              {formatArsAmount(summary.currentMonthAmount)}
+              {formatArsAmount(summary.payableCurrentMonthAmount)}
             </dd>
           </div>
           <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Total restante</dt>
+            <dt className={styles.kpiLabel}>Debés en total</dt>
             <dd className={styles.kpiValue}>
-              {formatArsAmount(summary.remainingAmount)}
+              {formatArsAmount(summary.payableRemainingAmount)}
             </dd>
           </div>
         </dl>

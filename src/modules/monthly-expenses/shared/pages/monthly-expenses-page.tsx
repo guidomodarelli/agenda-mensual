@@ -981,7 +981,7 @@ function normalizeLoansReportSummary(
 ): NormalizedLoansReportSummary {
   return {
     ...summary,
-    currentMonthAmount: summary.currentMonthAmount ?? 0,
+    payableCurrentMonthAmount: summary.payableCurrentMonthAmount ?? 0,
     monthlyProjection: summary.monthlyProjection ?? [],
     netRemainingAmount: summary.netRemainingAmount ?? summary.remainingAmount,
     payableRemainingAmount:

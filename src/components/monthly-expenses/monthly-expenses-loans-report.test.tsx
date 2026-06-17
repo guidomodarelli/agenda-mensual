@@ -69,7 +69,7 @@ function renderReport(overrides: RenderOverrides = {}) {
       selectedTypeFilter="all"
       summary={{
         activeLoanCount: 2,
-        currentMonthAmount: 20000,
+        payableCurrentMonthAmount: 30000,
         lenderCount: 1,
         monthlyProjection: [
           { amount: 20000, month: "2026-06" },
@@ -107,7 +107,7 @@ describe("MonthlyExpensesLoansReport", () => {
     renderReport({
       summary: {
         activeLoanCount: 1,
-        currentMonthAmount: 5000,
+        payableCurrentMonthAmount: 5000,
         lenderCount: 1,
         monthlyProjection: [],
         netRemainingAmount: -45000,
@@ -315,12 +315,12 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByLabelText("Ordenar deudas")).toBeInTheDocument();
   });
 
-  it("shows the current-month and total-remaining metrics in the header", () => {
+  it("shows only what you owe in the header current-month and total metrics", () => {
     renderReport();
 
-    expect(screen.getByText("Total restante")).toBeInTheDocument();
-    expect(screen.getByText("$ 780.500,75")).toBeInTheDocument();
-    expect(screen.getByText("$ 20.000")).toBeInTheDocument();
+    expect(screen.getByText("Debés este mes")).toBeInTheDocument();
+    expect(screen.getByText("Debés en total")).toBeInTheDocument();
+    expect(screen.getByText("$ 30.000")).toBeInTheDocument();
   });
 
   it("shows each loan's current-month installment and remaining total", () => {

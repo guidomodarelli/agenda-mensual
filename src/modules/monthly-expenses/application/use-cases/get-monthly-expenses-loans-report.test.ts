@@ -97,7 +97,7 @@ describe("getMonthlyExpensesLoansReport", () => {
       summary: {
         activeLoanCount: 1,
         lenderCount: 1,
-        currentMonthAmount: 50000,
+        payableCurrentMonthAmount: 50000,
         monthlyProjection: expect.any(Array),
         netRemainingAmount: 450000,
         payableRemainingAmount: 450000,
@@ -202,7 +202,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 1,
       lenderCount: 1,
-      currentMonthAmount: 10000,
+      payableCurrentMonthAmount: 0,
       monthlyProjection: expect.any(Array),
       netRemainingAmount: -10000,
       payableRemainingAmount: 0,
@@ -279,7 +279,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 2,
       lenderCount: 2,
-      currentMonthAmount: 15000,
+      payableCurrentMonthAmount: 10000,
       monthlyProjection: expect.any(Array),
       netRemainingAmount: 20000,
       payableRemainingAmount: 30000,
@@ -407,7 +407,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 2,
       lenderCount: 1,
-      currentMonthAmount: 20000,
+      payableCurrentMonthAmount: 10000,
       monthlyProjection: expect.any(Array),
       netRemainingAmount: 0,
       payableRemainingAmount: 20000,
@@ -569,7 +569,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.summary).toEqual({
       activeLoanCount: 1,
       lenderCount: 1,
-      currentMonthAmount: 10000,
+      payableCurrentMonthAmount: 10000,
       monthlyProjection: expect.any(Array),
       netRemainingAmount: 30000,
       payableRemainingAmount: 30000,
@@ -624,7 +624,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries).toEqual([]);
     expect(result.summary).toEqual({
       activeLoanCount: 0,
-      currentMonthAmount: 0,
+      payableCurrentMonthAmount: 0,
       lenderCount: 0,
       monthlyProjection: [],
       netRemainingAmount: 0,
@@ -989,7 +989,7 @@ describe("getMonthlyExpensesLoansReport", () => {
     });
 
     expect(result.entries[0]?.activeLoans[0]?.currentMonthAmount).toBe(10000);
-    expect(result.summary.currentMonthAmount).toBe(10000);
+    expect(result.summary.payableCurrentMonthAmount).toBe(10000);
     expect(result.summary.monthlyProjection).toEqual([
       { amount: 10000, month: "2026-06" },
       { amount: 10000, month: "2026-07" },
@@ -1010,7 +1010,7 @@ describe("getMonthlyExpensesLoansReport", () => {
       entries: [],
       summary: {
         activeLoanCount: 0,
-        currentMonthAmount: 0,
+        payableCurrentMonthAmount: 0,
         lenderCount: 0,
         monthlyProjection: [],
         netRemainingAmount: 0,
