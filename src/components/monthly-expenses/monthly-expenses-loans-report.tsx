@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -286,45 +286,34 @@ function getPayableAmountByLenderType(
 
 /**
  * Renders a loan description that truncates with an ellipsis, surfacing the full
- * text in a tooltip only when it is actually clipped.
+ * text in a tooltip only when it is actually clipped. Truncation is measured at
+ * open time (hover/focus), when layout and fonts are already settled.
  */
 function TruncatedLoanName({ description }: { description: string }) {
   const nameRef = useRef<HTMLSpanElement>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
-  useEffect(() => {
-    const element = nameRef.current;
-
-    if (!element || typeof ResizeObserver === "undefined") {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setIsTooltipOpen(false);
       return;
     }
 
-    const updateTruncation = () => {
-      setIsTruncated(element.scrollWidth > element.clientWidth);
-    };
+    const element = nameRef.current;
 
-    updateTruncation();
-
-    const resizeObserver = new ResizeObserver(updateTruncation);
-    resizeObserver.observe(element);
-
-    return () => resizeObserver.disconnect();
-  }, [description]);
-
-  const name = (
-    <span className={styles.entryLoanName} ref={nameRef}>
-      {description}
-    </span>
-  );
-
-  if (!isTruncated) {
-    return name;
-  }
+    setIsTooltipOpen(
+      Boolean(element) && element!.scrollWidth > element!.clientWidth,
+    );
+  };
 
   return (
     <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>{name}</TooltipTrigger>
+      <Tooltip onOpenChange={handleOpenChange} open={isTooltipOpen}>
+        <TooltipTrigger asChild>
+          <span className={styles.entryLoanName} ref={nameRef}>
+            {description}
+          </span>
+        </TooltipTrigger>
         <TooltipContent>{description}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
