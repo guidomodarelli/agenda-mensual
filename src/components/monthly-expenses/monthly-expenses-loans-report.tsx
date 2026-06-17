@@ -297,7 +297,9 @@ export function MonthlyExpensesLoansReport({
         </div>
 
         <div className={styles.filterField}>
-          <Label htmlFor="loan-report-type-filter">Tipo</Label>
+          <Label className={styles.filterLabel} htmlFor="loan-report-type-filter">
+            Tipo
+          </Label>
           <Select onValueChange={onTypeFilterChange} value={selectedTypeFilter}>
             <SelectTrigger
               aria-label="Filtrar por tipo"
@@ -317,7 +319,12 @@ export function MonthlyExpensesLoansReport({
         </div>
 
         <div className={styles.filterField}>
-          <Label htmlFor="loan-report-lender-filter">Prestamista</Label>
+          <Label
+            className={styles.filterLabel}
+            htmlFor="loan-report-lender-filter"
+          >
+            Prestamista
+          </Label>
           <Select
             onValueChange={onLenderFilterChange}
             value={selectedLenderFilter}
