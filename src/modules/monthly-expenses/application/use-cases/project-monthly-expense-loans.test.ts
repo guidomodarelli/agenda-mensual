@@ -3,7 +3,10 @@ import {
   type MonthlyExpenseItemInput,
   type MonthlyExpensesDocument,
 } from "../../domain/value-objects/monthly-expenses-document";
-import { projectMonthlyExpenseLoans } from "./project-monthly-expense-loans";
+import {
+  getOutOfRangeStoredLoanIds,
+  projectMonthlyExpenseLoans,
+} from "./project-monthly-expense-loans";
 
 function buildDocument(
   month: string,
@@ -306,5 +309,121 @@ describe("projectMonthlyExpenseLoans", () => {
         baseItems: [],
       }),
     ).toHaveLength(0);
+  });
+
+  it("emits explicit cleared definition fields so a refresh overlay clears stale values", () => {
+    const targetMonth = "2026-03";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({
+        loan: { installmentCount: 6, startMonth: "2026-03" },
+        paymentLink: "https://pay.example.com/old",
+        requiresReceiptShare: true,
+        receiptSharePhoneDigits: "5491122334455",
+      }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-05", [
+        // Newer canonical snapshot no longer carries the optional fields.
+        buildLoanItem({
+          subtotal: 1500,
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+        }),
+      ]),
+    ];
+
+    const [refreshed] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth,
+      baseItems: targetDocument.items,
+    });
+
+    expect(refreshed?.paymentLink).toBeNull();
+    expect(refreshed?.requiresReceiptShare).toBe(false);
+    expect(refreshed?.receiptSharePhoneDigits).toBeNull();
+  });
+
+  it("does not refresh a stored copy whose newer canonical range no longer covers the month", () => {
+    const targetMonth = "2026-08";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({ loan: { installmentCount: 12, startMonth: "2026-03" } }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-09", [
+        // Shortened to 3 installments → range 2026-03..2026-05, excludes 2026-08.
+        buildLoanItem({ loan: { installmentCount: 3, startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    expect(
+      projectMonthlyExpenseLoans({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toHaveLength(0);
+  });
+});
+
+describe("getOutOfRangeStoredLoanIds", () => {
+  it("reports a stored loan a newer canonical snapshot pushed out of range", () => {
+    const targetMonth = "2026-08";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({ loan: { installmentCount: 12, startMonth: "2026-03" } }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-09", [
+        buildLoanItem({ loan: { installmentCount: 3, startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual(["loan-1"]);
+  });
+
+  it("does not report a stored loan still within its canonical range", () => {
+    const targetMonth = "2026-04";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({ loan: { installmentCount: 6, startMonth: "2026-03" } }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-05", [
+        buildLoanItem({
+          subtotal: 1500,
+          loan: { installmentCount: 6, startMonth: "2026-03" },
+        }),
+      ]),
+    ];
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
+  it("does not report a stored loan that is its own latest snapshot", () => {
+    const targetMonth = "2026-08";
+    const targetDocument = buildDocument(targetMonth, [
+      buildLoanItem({ loan: { installmentCount: 3, startMonth: "2026-03" } }),
+    ]);
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents: [targetDocument],
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
   });
 });

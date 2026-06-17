@@ -9,7 +9,10 @@ import {
   type MonthlyExpensesDocument,
 } from "../../domain/value-objects/monthly-expenses-document";
 import type { GetMonthlyExpensesDocumentQuery } from "../queries/get-monthly-expenses-document-query";
-import { projectMonthlyExpenseLoans } from "./project-monthly-expense-loans";
+import {
+  getOutOfRangeStoredLoanIds,
+  projectMonthlyExpenseLoans,
+} from "./project-monthly-expense-loans";
 import {
   toMonthlyExpensesDocumentResult,
   type MonthlyExpensesDocumentResult,
@@ -150,14 +153,18 @@ async function projectLoansIntoDocument({
   repository: MonthlyExpensesRepository;
 }): Promise<MonthlyExpensesDocument> {
   const documents = (await repository.listAll()) ?? [];
-  const projectedLoanItems = projectMonthlyExpenseLoans({
+  const projectionInput = {
     baseItems: realDocument.items,
     documents,
     excludedLoanIds: realDocument.excludedLoanIds,
     targetMonth: realDocument.month,
-  });
+  };
+  const projectedLoanItems = projectMonthlyExpenseLoans(projectionInput);
+  // Stored loan copies a newer canonical snapshot pushed out of range must be
+  // dropped so a no-longer-active installment stops showing and cannot be re-saved.
+  const outOfRangeLoanIds = new Set(getOutOfRangeStoredLoanIds(projectionInput));
 
-  if (projectedLoanItems.length === 0) {
+  if (projectedLoanItems.length === 0 && outOfRangeLoanIds.size === 0) {
     return realDocument;
   }
 
@@ -167,12 +174,15 @@ async function projectLoansIntoDocument({
   );
   // Overlay the canonical definition on stored copies (preserving their per-month
   // payment state, which the projection intentionally omits) so amount/installment
-  // changes propagate to months that already contain the loan.
-  const refreshedExistingItems = realDocumentInput.items.map((item) => {
-    const projectedItem = projectedItemsById.get(item.id);
+  // changes propagate to months that already contain the loan, and drop copies the
+  // canonical range no longer covers.
+  const refreshedExistingItems = realDocumentInput.items
+    .filter((item) => !outOfRangeLoanIds.has(item.id))
+    .map((item) => {
+      const projectedItem = projectedItemsById.get(item.id);
 
-    return projectedItem ? { ...item, ...projectedItem } : item;
-  });
+      return projectedItem ? { ...item, ...projectedItem } : item;
+    });
   const existingItemIds = new Set(
     realDocumentInput.items.map((item) => item.id),
   );

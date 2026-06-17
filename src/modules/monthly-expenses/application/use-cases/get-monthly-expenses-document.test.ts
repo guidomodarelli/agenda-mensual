@@ -543,6 +543,64 @@ describe("getMonthlyExpensesDocument", () => {
     expect(result.items[0]?.loan?.paidInstallments).toBe(3);
   });
 
+  it("drops a stored loan a newer canonical snapshot pushed out of range", async () => {
+    const storedDocument = createMonthlyExpensesDocument(
+      {
+        exchangeRateSnapshot: {
+          blueRate: 1290,
+          month: "2026-08",
+          officialRate: 1200,
+          solidarityRate: 1476,
+        },
+        items: [
+          {
+            currency: "ARS",
+            description: "Notebook",
+            id: "loan-1",
+            loan: { installmentCount: 12, startMonth: "2026-03" },
+            occurrencesPerMonth: 1,
+            subtotal: 1000,
+          },
+        ],
+        month: "2026-08",
+      },
+      "Building stored document",
+    );
+    const shortenedCanonical = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Notebook",
+            id: "loan-1",
+            loan: { installmentCount: 3, startMonth: "2026-03" },
+            occurrencesPerMonth: 1,
+            subtotal: 1000,
+          },
+        ],
+        month: "2026-09",
+      },
+      "Building shortened canonical",
+    );
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue(storedDocument),
+      listAll: jest.fn().mockResolvedValue([storedDocument, shortenedCanonical]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-08",
+      },
+      repository,
+    });
+
+    expect(result.items).toHaveLength(0);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
   it("does not re-project a loan the stored month marks as excluded", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue({
