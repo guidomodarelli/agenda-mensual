@@ -210,15 +210,14 @@ jobs:
           # interpreta sobre SU comentario. Por eso solo se usa cuando el agente
           # evaluo la sugerencia y concluyo que no requeria cambios. Si el fix no
           # se pudo aplicar por una falla del propio Action (error de infra/agente),
-          # NO mandamos 👎: usamos 😕 (confused) para pedir atencion humana sin
-          # desvalorizar la sugerencia.
+          # NO mandamos reaccion final para no desvalorizar la sugerencia.
           SHORT_SHA="${AFTER_SHA:0:7}"
           COMMIT_URL="${SERVER_URL}/${REPO}/commit/${AFTER_SHA}"
           # Resumen de una linea que dejo el paso de fix (gitignored, runtime).
           SUMMARY="$(head -n 1 .codex-autofix/summary.txt 2>/dev/null | tr -d '\r')"
 
           if [ "$FIX_OUTCOME" = "success" ] && [ "$CHANGED" = "true" ]; then
-            FINAL_REACTION="rocket"
+            FINAL_REACTION="+1"
             if [ -n "$SUMMARY" ]; then
               BODY="$(printf '✅ **Resuelto** en [`%s`](%s).\n\n**Qué cambió:** %s\n\n<sub>🤖 Fix automático en respuesta a este comentario de Codex · [run](%s)</sub>' "$SHORT_SHA" "$COMMIT_URL" "$SUMMARY" "$RUN_URL")"
             else
@@ -228,7 +227,7 @@ jobs:
             FINAL_REACTION="-1"
             BODY="$(printf 'ℹ️ **Sin cambios.** Revisé la sugerencia pero no requería cambios de código.\n\n<sub>🤖 Auto-fix de Codex · [run](%s)</sub>' "$RUN_URL")"
           else
-            FINAL_REACTION="confused"
+            FINAL_REACTION=""
             BODY="$(printf '⚠️ **No pude aplicar el fix** (falla del Action, no de la sugerencia).\n\n<sub>🤖 Auto-fix de Codex · [run](%s)</sub>' "$RUN_URL")"
           fi
 
