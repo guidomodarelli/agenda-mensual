@@ -80,6 +80,8 @@ export type ExpenseEditableFieldName =
   | "occurrencesUnit"
   | "receiptShareMessage"
   | "receiptSharePhoneDigits"
+  | "recurrenceStartMonth"
+  | "recurrenceEndMonth"
   | "startMonth"
   | "subtotal"
   | "subtotalUnit";
@@ -99,6 +101,7 @@ interface ExpenseSheetProps {
   onLenderSelect: (lenderId: string | null) => void;
   onManageFolders: () => void;
   onLoanToggle: (checked: boolean) => void;
+  onRecurringToggle: (checked: boolean) => void;
   onReceiptShareToggle: (checked: boolean) => void;
   onRequestClose: () => void;
   onSave: () => void;
@@ -115,7 +118,12 @@ type ExpenseSheetContentProps = Omit<ExpenseSheetProps, "draft"> & {
 
 type ExpenseSheetFormFieldName = Exclude<
   ExpenseEditableFieldName,
-  "loanDirection" | "manualCoveredPayments" | "occurrencesUnit" | "subtotalUnit"
+  | "loanDirection"
+  | "manualCoveredPayments"
+  | "occurrencesUnit"
+  | "recurrenceStartMonth"
+  | "recurrenceEndMonth"
+  | "subtotalUnit"
 >;
 type ExpenseFieldErrorMap = Partial<Record<ExpenseSheetFormFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseSheetFormFieldName, string>;
@@ -249,6 +257,7 @@ function ExpenseSheetContent({
   onLenderSelect,
   onManageFolders,
   onLoanToggle,
+  onRecurringToggle,
   onReceiptShareToggle,
   onRequestClose,
   onSave,
@@ -285,8 +294,13 @@ function ExpenseSheetContent({
     subtotalUnit === "hour"
       ? `Subtotal ${totalFormulaSubtotal}/h × ${totalFormulaDuration}/mes`
       : `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences}/mes`;
-  const isLoanToggleDisabled = mode === "edit";
-  const shouldShowLoanSection = isCreateMode || draft.isLoan;
+  const isLoanToggleDisabled = mode === "edit" || draft.isRecurring;
+  const isRecurringToggleDisabled = mode === "edit" || draft.isLoan;
+  const shouldShowLoanSection = (isCreateMode || draft.isLoan) && !draft.isRecurring;
+  const shouldShowRecurringSection =
+    (isCreateMode || draft.isRecurring) && !draft.isLoan;
+  const recurringHelpMessage =
+    "Marcá esta opción para gastos que se repiten todos los meses, como alquiler, expensas, agua, gas o energía. Cuando dejes de pagarlo, podés cancelar la recurrencia y deja de aparecer en los meses siguientes.";
   const form = useForm<ExpenseSheetFormValues>({
     values: getExpenseSheetFormValues(draft),
   });
@@ -298,9 +312,16 @@ function ExpenseSheetContent({
     shouldShowValidation && lenderIsMissing
       ? "Seleccioná un prestamista."
       : null;
+  const recurrenceStartMonthMissing =
+    draft.isRecurring && !draft.recurrenceStartMonth.trim();
+  const recurrenceStartMonthError =
+    shouldShowValidation && recurrenceStartMonthMissing
+      ? "Completá el mes de inicio."
+      : null;
   const hasFieldErrors =
     Object.keys(fieldErrors).length > 0 ||
     lenderIsMissing ||
+    recurrenceStartMonthMissing ||
     Boolean(hourDurationError);
   const shouldShowGlobalValidation =
     shouldShowValidation && Boolean(validationMessage) && !hasFieldErrors;
@@ -870,6 +891,132 @@ function ExpenseSheetContent({
                         </p>
                       </AlertDescription>
                     </Alert>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {shouldShowRecurringSection ? (
+                <div className={styles.loanSection}>
+                  <div className={styles.loanToggleRow}>
+                    <div className={styles.fieldControlWrapper}>
+                      <input
+                        checked={draft.isRecurring}
+                        className={styles.loanToggle}
+                        disabled={isRecurringToggleDisabled}
+                        id="expense-is-recurring"
+                        onChange={(event) =>
+                          onRecurringToggle(event.target.checked)
+                        }
+                        type="checkbox"
+                      />
+                    </div>
+                    <div className={styles.loanToggleLabelGroup}>
+                      <Label htmlFor="expense-is-recurring">
+                        {getFieldLabel(
+                          "Gasto recurrente",
+                          changedFields.has("isRecurring"),
+                        )}
+                      </Label>
+                      <LoanInfoPopover
+                        closeLabel="Cerrar ayuda sobre gasto recurrente"
+                        message={recurringHelpMessage}
+                        triggerLabel="Más información sobre gasto recurrente"
+                      />
+                    </div>
+                  </div>
+
+                  {draft.isRecurring ? (
+                    <>
+                      <div className={styles.loanFieldsGrid}>
+                        <div className={styles.fieldGroup}>
+                          <Label htmlFor="expense-recurrence-start-month">
+                            {getFieldLabel(
+                              "Inicio de la recurrencia",
+                              changedFields.has("recurrenceStartMonth"),
+                            )}
+                          </Label>
+                          <div className={styles.fieldControlWrapper}>
+                            <Input
+                              aria-label="Inicio de la recurrencia"
+                              className={cn(
+                                recurrenceStartMonthError && styles.invalidField,
+                                changedFields.has("recurrenceStartMonth") &&
+                                  styles.changedField,
+                              )}
+                              data-changed={
+                                changedFields.has("recurrenceStartMonth")
+                                  ? "true"
+                                  : "false"
+                              }
+                              id="expense-recurrence-start-month"
+                              max="2100-12"
+                              min="2000-01"
+                              onChange={(event) =>
+                                onFieldChange(
+                                  "recurrenceStartMonth",
+                                  event.target.value,
+                                )
+                              }
+                              type="month"
+                              value={draft.recurrenceStartMonth}
+                            />
+                            {recurrenceStartMonthError ? (
+                              <p className={styles.fieldErrorText} role="alert">
+                                {recurrenceStartMonthError}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className={styles.fieldGroup}>
+                          <Label htmlFor="expense-recurrence-end-month">
+                            {getFieldLabel(
+                              "Cancelar a partir de (opcional)",
+                              changedFields.has("recurrenceEndMonth"),
+                            )}
+                          </Label>
+                          <div className={styles.fieldControlWrapper}>
+                            <Input
+                              aria-label="Último mes de la recurrencia"
+                              className={cn(
+                                changedFields.has("recurrenceEndMonth") &&
+                                  styles.changedField,
+                              )}
+                              data-changed={
+                                changedFields.has("recurrenceEndMonth")
+                                  ? "true"
+                                  : "false"
+                              }
+                              id="expense-recurrence-end-month"
+                              max="2100-12"
+                              min={draft.recurrenceStartMonth || "2000-01"}
+                              onChange={(event) =>
+                                onFieldChange(
+                                  "recurrenceEndMonth",
+                                  event.target.value,
+                                )
+                              }
+                              type="month"
+                              value={draft.recurrenceEndMonth}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <Alert className={styles.loanStatus}>
+                        <Info
+                          aria-hidden="true"
+                          className={styles.loanStatusIcon}
+                        />
+                        <AlertDescription className={styles.loanStatusText}>
+                          <p>
+                            {draft.recurrenceEndMonth
+                              ? `Se deja de repetir después de ${draft.recurrenceEndMonth}.`
+                              : "Se repite todos los meses hasta que la canceles."}
+                          </p>
+                        </AlertDescription>
+                      </Alert>
                     </>
                   ) : null}
                 </div>

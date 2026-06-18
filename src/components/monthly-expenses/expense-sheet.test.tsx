@@ -28,6 +28,10 @@ function createDraftRow(): MonthlyExpensesEditableRow {
     monthlyFolderViewUrl: "",
     occurrencesPerMonth: "1",
     occurrencesUnit: "",
+    isRecurring: false,
+    recurrenceStartMonth: "",
+    recurrenceEndMonth: "",
+    recurrenceIsActive: false,
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
@@ -69,6 +73,7 @@ function renderExpenseSheet({
         onManageFolders={jest.fn()}
         onLenderSelect={jest.fn()}
         onLoanToggle={onLoanToggle}
+        onRecurringToggle={jest.fn()}
         onReceiptShareToggle={jest.fn()}
         onRequestClose={jest.fn()}
         onSave={jest.fn()}
@@ -265,5 +270,94 @@ describe("ExpenseSheet", () => {
     await user.click(loanToggle);
 
     expect(onLoanToggle).not.toHaveBeenCalled();
+  });
+
+  it("offers a recurring-expense toggle while creating", () => {
+    renderExpenseSheet({ mode: "create" });
+
+    expect(screen.getByLabelText("Gasto recurrente")).toBeInTheDocument();
+  });
+
+  it("shows the recurrence months when the expense is recurring", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        isRecurring: true,
+        recurrenceStartMonth: "2026-01",
+      },
+    });
+
+    expect(
+      screen.getByLabelText("Inicio de la recurrencia"),
+    ).toHaveValue("2026-01");
+    expect(
+      screen.getByLabelText("Último mes de la recurrencia"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the loan toggle when the expense is recurring", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        isRecurring: true,
+        recurrenceStartMonth: "2026-01",
+      },
+    });
+
+    expect(screen.queryByLabelText("Es deuda/préstamo")).not.toBeInTheDocument();
+  });
+
+  it("hides the recurring toggle when the expense is a loan", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        installmentCount: "6",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Banco",
+        startMonth: "2026-01",
+      },
+    });
+
+    expect(screen.queryByLabelText("Gasto recurrente")).not.toBeInTheDocument();
+  });
+
+  it("toggles the recurring flag from the recurring checkbox while creating", async () => {
+    const user = userEvent.setup();
+    const onRecurringToggle = jest.fn();
+
+    render(
+      <TooltipProvider>
+        <ExpenseSheet
+          actionDisabled={false}
+          changedFields={new Set()}
+          draft={createDraftRow()}
+          expenseFolders={[]}
+          isOpen={true}
+          isSubmitting={false}
+          lenders={[]}
+          mode="create"
+          onAddLender={jest.fn()}
+          onFieldChange={jest.fn()}
+          onFolderSelect={jest.fn()}
+          onManageFolders={jest.fn()}
+          onLenderSelect={jest.fn()}
+          onLoanToggle={jest.fn()}
+          onRecurringToggle={onRecurringToggle}
+          onReceiptShareToggle={jest.fn()}
+          onRequestClose={jest.fn()}
+          onSave={jest.fn()}
+          onUnsavedChangesClose={jest.fn()}
+          onUnsavedChangesDiscard={jest.fn()}
+          onUnsavedChangesSave={jest.fn()}
+          showUnsavedChangesDialog={false}
+          validationMessage={null}
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByLabelText("Gasto recurrente"));
+
+    expect(onRecurringToggle).toHaveBeenCalledWith(true);
   });
 });

@@ -80,6 +80,17 @@ export interface MonthlyExpensesEditableRow {
   manualCoveredPayments: string;
   occurrencesPerMonth: string;
   occurrencesUnit: string;
+  /** Whether the expense is an open-ended recurring expense (rent, utilities, etc.). */
+  isRecurring: boolean;
+  /** First month (`YYYY-MM`) the recurring expense applies to. */
+  recurrenceStartMonth: string;
+  /**
+   * Last month (`YYYY-MM`) the recurring expense applies to. Empty while the
+   * recurrence is active/open-ended; set to cancel it from that month onward.
+   */
+  recurrenceEndMonth: string;
+  /** Whether the recurrence is active in the visible month (derived for display). */
+  recurrenceIsActive: boolean;
   paymentRecords?: MonthlyExpensesEditablePaymentRecord[];
   paymentLink: string;
   receiptShareMessage: string;

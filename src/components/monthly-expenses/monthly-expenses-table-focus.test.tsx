@@ -32,6 +32,10 @@ function createRow(overrides: Partial<MonthlyExpensesEditableRow> = {}): Monthly
     monthlyFolderViewUrl: "",
     occurrencesPerMonth: "1",
     occurrencesUnit: "",
+    isRecurring: false,
+    recurrenceStartMonth: "",
+    recurrenceEndMonth: "",
+    recurrenceIsActive: false,
     paymentLink: "",
     receiptShareMessage: "",
     receiptSharePhoneDigits: "",
@@ -99,6 +103,9 @@ function renderMonthlyExpensesTable(
         onReorderFolders={jest.fn()}
         onExpenseLenderSelect={jest.fn()}
         onExpenseLoanToggle={jest.fn()}
+        onExpenseRecurringToggle={jest.fn()}
+        onCancelRecurrence={jest.fn()}
+        onReactivateRecurrence={jest.fn()}
         onExpenseReceiptShareToggle={jest.fn()}
         onMonthChange={jest.fn()}
         onRegisterPaymentRecord={jest.fn().mockResolvedValue(true)}

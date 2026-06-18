@@ -501,6 +501,8 @@ interface MonthlyExpensesTableProps {
   onConfirmCopyFromMonth: (selectedOptionIds: string[]) => void;
   onToggleAllReplicableOptions: () => void;
   onToggleReplicableOption: (optionId: string) => void;
+  onCancelRecurrence: (expenseId: string) => void | Promise<void>;
+  onReactivateRecurrence: (expenseId: string) => void | Promise<void>;
   onDeleteAllReceiptsFolderReference: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
   onDeleteExpenses: (expenseIds: string[]) => Promise<boolean>;
@@ -522,6 +524,7 @@ interface MonthlyExpensesTableProps {
   onReorderFolders: (orderedFolderIds: string[]) => void;
   onExpenseLenderSelect: (lenderId: string | null) => void;
   onExpenseLoanToggle: (checked: boolean) => void;
+  onExpenseRecurringToggle: (checked: boolean) => void;
   onExpenseReceiptShareToggle: (checked: boolean) => void;
   onMonthChange: (value: string) => void;
   onDeleteReceipt: (args: {
@@ -914,6 +917,8 @@ export function MonthlyExpensesTable({
   onToggleAllReplicableOptions,
   onToggleReplicableOption,
   onDeleteAllReceiptsFolderReference,
+  onCancelRecurrence,
+  onReactivateRecurrence,
   onDeleteExpense,
   onDeleteExpenses,
   onDeleteExpenseReceiptShare,
@@ -923,6 +928,7 @@ export function MonthlyExpensesTable({
   onExpenseFieldChange,
   onExpenseLenderSelect,
   onExpenseLoanToggle,
+  onExpenseRecurringToggle,
   onExpenseReceiptShareToggle,
   onDeleteReceipt,
   onEditReceiptCoverage,
@@ -1810,7 +1816,10 @@ export function MonthlyExpensesTable({
               canDeleteMonthlyFolderReference={canDeleteMonthlyFolderReference}
               description={row.original.description}
               hasPaymentLink={hasPaymentLink}
+              isRecurring={row.original.isRecurring}
+              isRecurrenceCancelled={Boolean(row.original.recurrenceEndMonth)}
               monthlyFolderViewUrl={monthlyFolderViewUrl}
+              onCancelRecurrence={() => onCancelRecurrence(row.original.id)}
               onDelete={() => onDeleteExpense(row.original.id)}
               onDeleteAllReceiptsFolderReference={() =>
                 onDeleteAllReceiptsFolderReference(row.original.id)}
@@ -1818,6 +1827,8 @@ export function MonthlyExpensesTable({
                 onDeleteMonthlyFolderReference(row.original.id)}
               onDeletePaymentLink={() => onDeletePaymentLink(row.original.id)}
               onEdit={() => onEditExpense(row.original.id)}
+              onReactivateRecurrence={() =>
+                onReactivateRecurrence(row.original.id)}
               onManagePaymentLink={() =>
                 handleOpenPaymentLinkDialog({
                   expenseDescription: expenseDescriptionLabel,
@@ -2936,6 +2947,7 @@ export function MonthlyExpensesTable({
           onManageFolders={onManageFolders}
           onLenderSelect={onExpenseLenderSelect}
           onLoanToggle={onExpenseLoanToggle}
+          onRecurringToggle={onExpenseRecurringToggle}
           onReceiptShareToggle={onExpenseReceiptShareToggle}
           onRequestClose={onRequestCloseExpenseSheet}
           onSave={onSaveExpense}

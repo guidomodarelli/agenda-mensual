@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Folder, FolderX, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarX2,
+  Folder,
+  FolderX,
+  MoreVertical,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -30,13 +39,19 @@ interface ExpenseRowActionsProps {
   canDeleteMonthlyFolderReference: boolean;
   description: string;
   hasPaymentLink: boolean;
+  /** Whether the expense is an open-ended recurring expense. */
+  isRecurring: boolean;
+  /** Whether the recurrence has already been cancelled (has an end month). */
+  isRecurrenceCancelled: boolean;
   monthlyFolderViewUrl: string | null;
+  onCancelRecurrence: () => void;
   onDeleteAllReceiptsFolderReference: () => void;
   onDelete: () => void;
   onDeleteMonthlyFolderReference: () => void;
   onDeletePaymentLink: () => void;
   onEdit: () => void;
   onManagePaymentLink: () => void;
+  onReactivateRecurrence: () => void;
 }
 
 export function ExpenseRowActions({
@@ -46,13 +61,17 @@ export function ExpenseRowActions({
   canDeleteMonthlyFolderReference,
   description,
   hasPaymentLink,
+  isRecurring,
+  isRecurrenceCancelled,
   monthlyFolderViewUrl,
+  onCancelRecurrence,
   onDeleteAllReceiptsFolderReference,
   onDelete,
   onDeleteMonthlyFolderReference,
   onDeletePaymentLink,
   onEdit,
   onManagePaymentLink,
+  onReactivateRecurrence,
 }: ExpenseRowActionsProps) {
   const normalizedDescription = description.trim() || "este compromiso";
   const [confirmActionType, setConfirmActionType] = useState<
@@ -60,6 +79,7 @@ export function ExpenseRowActions({
     | "deleteMonthlyFolderReference"
     | "deleteAllReceiptsFolderReference"
     | "deletePaymentLink"
+    | "cancelRecurrence"
     | null
   >(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -74,6 +94,7 @@ export function ExpenseRowActions({
       ? {
           actionLabel: "Confirmar",
           ariaLabel: undefined,
+          actionVariant: "destructive" as const,
           description:
             "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
           onConfirm: onDelete,
@@ -83,6 +104,7 @@ export function ExpenseRowActions({
         ? {
             actionLabel: "Quitar",
             ariaLabel: "Confirmar quitar referencia de carpeta del mes actual",
+            actionVariant: "destructive" as const,
             description:
               "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
             onConfirm: onDeleteMonthlyFolderReference,
@@ -92,6 +114,7 @@ export function ExpenseRowActions({
           ? {
               actionLabel: "Quitar",
               ariaLabel: "Confirmar quitar referencia de carpeta de comprobantes",
+              actionVariant: "destructive" as const,
               description:
                 "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
               onConfirm: onDeleteAllReceiptsFolderReference,
@@ -101,12 +124,23 @@ export function ExpenseRowActions({
             ? {
                 actionLabel: "Eliminar",
                 ariaLabel: `Confirmar eliminación de link de pago para ${normalizedDescription}`,
+                actionVariant: "destructive" as const,
                 description:
                   "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
                 onConfirm: onDeletePaymentLink,
                 title: "¿Querés eliminar este link de pago?",
               }
-            : null;
+            : confirmActionType === "cancelRecurrence"
+              ? {
+                  actionLabel: "Cancelar recurrencia",
+                  ariaLabel: `Confirmar cancelación de la recurrencia para ${normalizedDescription}`,
+                  actionVariant: "default" as const,
+                  description:
+                    "El gasto se sigue contando este mes y deja de repetirse en los meses siguientes. Podés reactivarlo cuando quieras.",
+                  onConfirm: onCancelRecurrence,
+                  title: "¿Querés cancelar la recurrencia?",
+                }
+              : null;
 
   return (
     <AlertDialog
@@ -154,6 +188,39 @@ export function ExpenseRowActions({
               Eliminar
             </span>
           </DropdownMenuItem>
+          {isRecurring ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Recurrencia</DropdownMenuLabel>
+              {isRecurrenceCancelled ? (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setIsMenuOpen(false);
+                    window.setTimeout(() => {
+                      onReactivateRecurrence();
+                    }, 0);
+                  }}
+                >
+                  <span className={styles.menuItem}>
+                    <RotateCcw aria-hidden="true" />
+                    Reactivar recurrencia
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setIsMenuOpen(false);
+                    setConfirmActionType("cancelRecurrence");
+                  }}
+                >
+                  <span className={styles.menuItem}>
+                    <CalendarX2 aria-hidden="true" />
+                    Cancelar recurrencia
+                  </span>
+                </DropdownMenuItem>
+              )}
+            </>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Link de pago</DropdownMenuLabel>
           {hasPaymentLink ? (
@@ -282,7 +349,7 @@ export function ExpenseRowActions({
                 setConfirmActionType(null);
                 confirmDialogConfig.onConfirm();
               }}
-              variant="destructive"
+              variant={confirmDialogConfig.actionVariant}
             >
               {confirmDialogConfig.actionLabel}
             </AlertDialogAction>

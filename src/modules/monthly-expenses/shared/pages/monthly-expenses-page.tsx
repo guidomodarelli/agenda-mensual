@@ -443,6 +443,10 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     manualCoveredPayments: "0",
     occurrencesPerMonth: "1",
     occurrencesUnit: "",
+    isRecurring: false,
+    recurrenceStartMonth: "",
+    recurrenceEndMonth: "",
+    recurrenceIsActive: false,
     paymentRecords: [],
     paymentLink: "",
     receiptShareMessage: "",
@@ -691,6 +695,10 @@ export function toEditableRows(
       : "",
     occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
     occurrencesUnit: item.occurrencesUnit?.trim() ?? "",
+    isRecurring: Boolean(item.recurrence),
+    recurrenceStartMonth: item.recurrence?.startMonth ?? "",
+    recurrenceEndMonth: item.recurrence?.endMonth ?? "",
+    recurrenceIsActive: item.recurrence?.isActive ?? false,
     paymentRecords,
     paymentLink: item.paymentLink?.trim() ?? "",
     receiptShareMessage: item.receiptShareMessage?.trim() ?? "",
@@ -1067,6 +1075,46 @@ function normalizeLoanPreview(
   };
 }
 
+function normalizeRecurrencePreview(
+  month: string,
+  row: MonthlyExpensesEditableRow,
+): Pick<
+  MonthlyExpensesEditableRow,
+  | "isRecurring"
+  | "recurrenceStartMonth"
+  | "recurrenceEndMonth"
+  | "recurrenceIsActive"
+> {
+  const normalizedMonth = month.trim();
+  const startMonth = row.recurrenceStartMonth.trim();
+  const endMonth = row.recurrenceEndMonth.trim();
+  const isActive =
+    MONTH_PATTERN.test(normalizedMonth) &&
+    MONTH_PATTERN.test(startMonth) &&
+    startMonth.localeCompare(normalizedMonth) <= 0 &&
+    (!endMonth || normalizedMonth.localeCompare(endMonth) <= 0);
+
+  return {
+    isRecurring: true,
+    recurrenceStartMonth: startMonth,
+    recurrenceEndMonth: endMonth,
+    recurrenceIsActive: isActive,
+  };
+}
+
+const CLEARED_RECURRENCE_FIELDS: Pick<
+  MonthlyExpensesEditableRow,
+  | "isRecurring"
+  | "recurrenceStartMonth"
+  | "recurrenceEndMonth"
+  | "recurrenceIsActive"
+> = {
+  isRecurring: false,
+  recurrenceStartMonth: "",
+  recurrenceEndMonth: "",
+  recurrenceIsActive: false,
+};
+
 function normalizeEditableRows(
   month: string,
   rows: MonthlyExpensesEditableRow[],
@@ -1087,6 +1135,11 @@ function normalizeEditableRows(
           loanTotalInstallments: null,
           startMonth: "",
         }),
+    // A loan and a recurring expense are mutually exclusive: loan wins, so a
+    // recurring flag is only honored when the row is not a loan.
+    ...(row.isRecurring && !row.isLoan
+      ? normalizeRecurrencePreview(month, row)
+      : CLEARED_RECURRENCE_FIELDS),
     total: calculateRowTotal(
       row.subtotal,
       row.occurrencesPerMonth,
@@ -1509,6 +1562,16 @@ export function toSaveMonthlyExpensesCommand(
                   ? { lenderName: row.lenderName.trim() }
                   : {}),
                 startMonth: row.startMonth.trim(),
+              },
+            }
+          : {}),
+        ...(row.isRecurring && !row.isLoan
+          ? {
+              recurrence: {
+                startMonth: row.recurrenceStartMonth.trim(),
+                ...(row.recurrenceEndMonth.trim()
+                  ? { endMonth: row.recurrenceEndMonth.trim() }
+                  : {}),
               },
             }
           : {}),
@@ -2463,6 +2526,45 @@ export default function MonthlyExpensesPage({
     });
   };
 
+  const handleCancelRecurrence = async (expenseId: string) => {
+    const targetRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!targetRow || !targetRow.isRecurring || targetRow.recurrenceEndMonth) {
+      return;
+    }
+
+    // Cancel from the visible month onward: it still counts this month and
+    // stops repeating in the following months.
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? { ...row, recurrenceEndMonth: formState.month }
+        : row,
+    );
+
+    await persistMonthlyExpensesRows(nextRows, {
+      loading: "Cancelando la recurrencia...",
+      success:
+        "Recurrencia cancelada. Deja de repetirse en los meses siguientes.",
+    });
+  };
+
+  const handleReactivateRecurrence = async (expenseId: string) => {
+    const targetRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!targetRow || !targetRow.isRecurring || !targetRow.recurrenceEndMonth) {
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId ? { ...row, recurrenceEndMonth: "" } : row,
+    );
+
+    await persistMonthlyExpensesRows(nextRows, {
+      loading: "Reactivando la recurrencia...",
+      success: "Recurrencia reactivada. Vuelve a repetirse todos los meses.",
+    });
+  };
+
   const handleFolderFilterChange = (folderId: string) => {
     setFolderFilterId(folderId);
   };
@@ -2504,6 +2606,41 @@ export default function MonthlyExpensesPage({
                 loanEndMonth: "",
                 loanProgress: "",
                 startMonth: "",
+              },
+        ])[0],
+      };
+    });
+  };
+
+  const handleExpenseRecurringToggle = (checked: boolean) => {
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+      if (currentState.mode === "edit") {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        draft: normalizeEditableRows(formState.month, [
+          checked
+            ? {
+                ...currentState.draft,
+                // A recurring expense and a loan are mutually exclusive.
+                isLoan: false,
+                isRecurring: true,
+                // Default the recurrence to start on the visible month.
+                recurrenceStartMonth:
+                  currentState.draft.recurrenceStartMonth.trim() ||
+                  formState.month,
+                recurrenceEndMonth: "",
+              }
+            : {
+                ...currentState.draft,
+                isRecurring: false,
+                recurrenceStartMonth: "",
+                recurrenceEndMonth: "",
               },
         ])[0],
       };
@@ -4588,6 +4725,9 @@ export default function MonthlyExpensesPage({
                 onReorderFolders={handleReorderExpenseFolders}
                 onExpenseLenderSelect={handleExpenseLenderSelect}
                 onExpenseLoanToggle={handleExpenseLoanToggle}
+                onExpenseRecurringToggle={handleExpenseRecurringToggle}
+                onCancelRecurrence={handleCancelRecurrence}
+                onReactivateRecurrence={handleReactivateRecurrence}
                 onExpenseReceiptShareToggle={handleExpenseReceiptShareToggle}
                 onMonthChange={handleMonthChange}
                 onRequestCloseExpenseSheet={handleRequestCloseExpenseSheet}

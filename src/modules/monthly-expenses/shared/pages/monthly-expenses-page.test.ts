@@ -499,4 +499,75 @@ describe("monthly expenses page mappers", () => {
       "Corregí los errores antes de continuar.",
     );
   });
+
+  it("builds a recurrence in the save command when creating a recurring expense", () => {
+    const recurringRow = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-03", isActive: true, endMonth: null },
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    const command = toSaveMonthlyExpensesCommand({
+      error: null,
+      exchangeRateLoadError: null,
+      exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
+      isSubmitting: false,
+      month: "2026-03",
+      rows: recurringRow,
+    });
+
+    expect(command.items[0]).toEqual(
+      expect.objectContaining({
+        recurrence: { startMonth: "2026-03" },
+      }),
+    );
+    expect(command.items[0]).not.toHaveProperty("loan");
+  });
+
+  it("carries the cancellation end month into the save command", () => {
+    const cancelledRow = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: {
+            startMonth: "2026-03",
+            endMonth: "2026-06",
+            isActive: false,
+          },
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-08",
+    });
+
+    const command = toSaveMonthlyExpensesCommand({
+      error: null,
+      exchangeRateLoadError: null,
+      exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
+      isSubmitting: false,
+      month: "2026-08",
+      rows: cancelledRow,
+    });
+
+    expect(command.items[0]).toEqual(
+      expect.objectContaining({
+        recurrence: { startMonth: "2026-03", endMonth: "2026-06" },
+      }),
+    );
+  });
 });
