@@ -1,17 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CalendarDays,
-  Clock,
-  Flag,
-  RotateCcw,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Flag, RotateCcw } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,7 +44,6 @@ const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
   minimumFractionDigits: 0,
 });
 
-const MISSING_VALUE_LABEL = "Sin dato";
 const MAX_AVATAR_INITIALS = 2;
 /** Active-loan rows kept visible before the list starts scrolling. */
 const MAX_VISIBLE_ACTIVE_LOANS = 3;
@@ -191,10 +182,6 @@ function formatActiveLoanCurrentMonth(
   )}`;
 }
 
-function getDirectionLabel(direction: MonthlyExpensesLoanDirection): string {
-  return direction === "payable" ? "Yo debo" : "Me deben";
-}
-
 /**
  * Resolves the human hint that explains the net balance sign in plain Spanish.
  */
@@ -306,6 +293,51 @@ function getEntryDisplayAmount(
     : entry.remainingAmount;
 }
 
+/** Aggregates paid and total installments across an entry's active loans. */
+function getEntryInstallmentProgress(entry: MonthlyExpensesLoanReportView): {
+  paidInstallments: number;
+  totalInstallments: number;
+} {
+  return entry.activeLoans.reduce(
+    (progress, loan) => ({
+      paidInstallments: progress.paidInstallments + loan.paidInstallments,
+      totalInstallments: progress.totalInstallments + loan.installmentCount,
+    }),
+    { paidInstallments: 0, totalInstallments: 0 },
+  );
+}
+
+/**
+ * Compact `firstMonth → lastMonth` span for an entry, collapsing to a single
+ * month when both ends match and to `null` when neither month is recorded.
+ */
+function getEntryMonthSpan(entry: MonthlyExpensesLoanReportView): string | null {
+  const { firstDebtMonth, latestRecordedMonth } = entry;
+
+  if (!firstDebtMonth && !latestRecordedMonth) {
+    return null;
+  }
+
+  if (firstDebtMonth && latestRecordedMonth && firstDebtMonth !== latestRecordedMonth) {
+    return `${firstDebtMonth} → ${latestRecordedMonth}`;
+  }
+
+  return latestRecordedMonth ?? firstDebtMonth;
+}
+
+/** Lender type plus its active month span, shown under the lender name. */
+function getEntrySubtitle(entry: MonthlyExpensesLoanReportView): string {
+  const monthSpan = getEntryMonthSpan(entry);
+  const typeLabel = getTypeLabel(entry.lenderType);
+
+  return monthSpan ? `${typeLabel} · ${monthSpan}` : typeLabel;
+}
+
+/** Formats an active-loan-count action label, e.g. "Ver 3 deudas". */
+function getExpandLoansLabel(activeLoanCount: number): string {
+  return `Ver ${activeLoanCount} ${activeLoanCount === 1 ? "deuda" : "deudas"}`;
+}
+
 /** Formats a `YYYY-MM` identifier as a compact `MM/AA` label. */
 function formatProjectionMonthLabel(month: string): string {
   const [year, monthNumber] = month.split("-");
@@ -338,8 +370,9 @@ function getPayableAmountByLenderType(
 
 /**
  * Compact inline switch between the total and current-month amounts. Repeated in
- * several places (balance, "Yo debo", "Me deben"); all instances share the same
- * controlled state so toggling any of them updates every figure at once.
+ * several places (balance and each "Yo debo"/"Me deben" section); all instances
+ * share the same controlled state so toggling any of them updates every figure
+ * at once.
  */
 function AmountModeToggle({
   ariaLabel,
@@ -468,15 +501,13 @@ function LoanReportEntryCard({
   entry: MonthlyExpensesLoanReportView;
 }) {
   const loansRef = useRef<HTMLDivElement>(null);
-  const currentMonthAmount = getEntryCurrentMonthAmount(entry);
-  const secondaryCaption =
-    amountMode === "month"
-      ? `Total ${formatArsAmount(entry.remainingAmount)}`
-      : `Este mes ${formatArsAmount(currentMonthAmount)}`;
+  const [areLoansExpanded, setAreLoansExpanded] = useState(false);
+  const installmentProgress = getEntryInstallmentProgress(entry);
+  const activeLoanCount = entry.activeLoans.length;
 
   // Cap the scroll container at the bottom of the Nth row so exactly
   // MAX_VISIBLE_ACTIVE_LOANS rows show before scrolling, regardless of how tall
-  // each (variable-height) row ends up. Re-measured on width changes.
+  // each (variable-height) row ends up. Only runs while the list is expanded.
   useEffect(() => {
     const container = loansRef.current;
 
@@ -513,7 +544,7 @@ function LoanReportEntryCard({
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [entry.activeLoans.length]);
+  }, [entry.activeLoans.length, areLoansExpanded]);
 
   return (
     <article className={styles.entry} data-direction={entry.direction}>
@@ -525,45 +556,64 @@ function LoanReportEntryCard({
         </Avatar>
         <div className={styles.entryIdentity}>
           <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
-          <Badge className={styles.typeBadge} variant="outline">
-            {getTypeLabel(entry.lenderType)}
-          </Badge>
+          <p className={styles.entrySubtitle}>{getEntrySubtitle(entry)}</p>
         </div>
       </div>
 
-      <div className={styles.entryAmountRow}>
-        <span className={styles.directionBadge}>
-          {entry.direction === "payable" ? (
-            <ArrowUpRight aria-hidden />
-          ) : (
-            <ArrowDownLeft aria-hidden />
-          )}
-          {getDirectionLabel(entry.direction)}
+      <div className={styles.entryAmountBlock}>
+        <span className={styles.entryAmountLabel}>
+          {amountMode === "month" ? "Este mes" : "Total"}
         </span>
-        <div className={styles.entryAmountBlock}>
-          <p className={styles.entryAmount}>
-            {formatArsAmount(getEntryDisplayAmount(entry, amountMode))}
-          </p>
-          <p className={styles.entryAmountCaption}>{secondaryCaption}</p>
+        <p className={styles.entryAmount}>
+          {formatArsAmount(getEntryDisplayAmount(entry, amountMode))}
+        </p>
+      </div>
+
+      <div className={styles.entryProgress}>
+        <div className={styles.entryProgressMeta}>
+          <span>Cuotas pagadas</span>
+          <span className={styles.entryProgressValue}>
+            {installmentProgress.paidInstallments} de{" "}
+            {installmentProgress.totalInstallments}
+          </span>
+        </div>
+        <div aria-hidden className={styles.entryProgressTrack}>
+          <div
+            className={styles.entryProgressFill}
+            style={{
+              width: getWidthPercent(
+                installmentProgress.paidInstallments,
+                installmentProgress.totalInstallments,
+              ),
+            }}
+          />
         </div>
       </div>
 
-      <div className={styles.entryMetaGrid}>
-        <span className={styles.entryMetaItem}>
-          <CalendarDays aria-hidden />
-          Desde {entry.firstDebtMonth ?? MISSING_VALUE_LABEL}
-        </span>
-        <span className={styles.entryMetaItem}>
-          <Clock aria-hidden />
-          Últ. {entry.latestRecordedMonth ?? MISSING_VALUE_LABEL}
-        </span>
-      </div>
-
-      <div className={styles.entryLoans} ref={loansRef}>
-        {entry.activeLoans.map((loan, index) => (
-          <ActiveLoanRow key={`${loan.description}-${loan.endMonth}-${index}`} loan={loan} />
-        ))}
-      </div>
+      {activeLoanCount > 0 ? (
+        <>
+          <Button
+            aria-expanded={areLoansExpanded}
+            className={styles.entryLoansToggle}
+            onClick={() => setAreLoansExpanded((expanded) => !expanded)}
+            type="button"
+            variant="ghost"
+          >
+            {areLoansExpanded ? "Ocultar" : getExpandLoansLabel(activeLoanCount)}
+            {areLoansExpanded ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />}
+          </Button>
+          {areLoansExpanded ? (
+            <div className={styles.entryLoans} ref={loansRef}>
+              {entry.activeLoans.map((loan, index) => (
+                <ActiveLoanRow
+                  key={`${loan.description}-${loan.endMonth}-${index}`}
+                  loan={loan}
+                />
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </article>
   );
 }
@@ -585,8 +635,8 @@ export function MonthlyExpensesLoansReport({
   const [sortKey, setSortKey] = useState<LoansReportSortKey>("amount");
   const [amountMode, setAmountMode] = useState<LoansReportAmountMode>("total");
 
-  // Every aggregate figure (balance, "Yo debo"/"Me deben", cards) follows the
-  // same Total/Este mes toggle, so they all stay in sync.
+  // Every aggregate figure (balance, "Yo debo"/"Me deben" metrics, cards)
+  // follows the same Total/Este mes toggle, so they all stay in sync.
   const isMonthMode = amountMode === "month";
   const payableShown = isMonthMode
     ? summary.payableCurrentMonthAmount
@@ -594,15 +644,10 @@ export function MonthlyExpensesLoansReport({
   const receivableShown = isMonthMode
     ? summary.receivableCurrentMonthAmount
     : summary.receivableRemainingAmount;
-  const amountModeLabel = isMonthMode ? "este mes" : "total";
-  const splitTotal = payableShown + receivableShown;
   // Net balance shown as the user's position (what they are owed minus what they
   // owe), so a deficit reads as a negative red figure.
   const netBalancePosition = receivableShown - payableShown;
   const netTone = getNetBalanceTone(netBalancePosition);
-  const splitAriaLabel = `Distribución de deudas (${amountModeLabel}): yo debo ${formatArsAmount(
-    payableShown,
-  )}, me deben ${formatArsAmount(receivableShown)}.`;
 
   const sortedEntries = sortReportEntries(entries, sortKey);
   const sections = (
@@ -646,69 +691,40 @@ export function MonthlyExpensesLoansReport({
   return (
     <section className={styles.content}>
       <header className={styles.hero}>
-        <div className={styles.heroBalance}>
-          <div className={styles.heroLabelRow}>
-            <span className={styles.heroLabel}>Balance neto</span>
-            <AmountModeToggle
-              ariaLabel="Mostrar montos totales o de este mes"
-              onChange={setAmountMode}
-              value={amountMode}
-            />
-          </div>
-          <p className={styles.heroValue} data-tone={netTone}>
-            {formatSignedArsAmount(netBalancePosition)}
-          </p>
-          <p className={styles.heroHint}>
-            {getNetBalanceHint(netBalancePosition)}
-          </p>
+        <div className={styles.heroLabelRow}>
+          <span className={styles.heroLabel}>Balance neto</span>
+          <AmountModeToggle
+            ariaLabel="Mostrar montos totales o de este mes"
+            onChange={setAmountMode}
+            value={amountMode}
+          />
         </div>
-
-        <dl className={styles.heroKpis}>
-          <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Prestamistas con deuda</dt>
-            <dd className={styles.kpiValue}>{summary.lenderCount}</dd>
-          </div>
-          <div className={styles.kpi}>
-            <dt className={styles.kpiLabel}>Deudas activas</dt>
-            <dd className={styles.kpiValue}>{summary.activeLoanCount}</dd>
-          </div>
-        </dl>
+        <p className={styles.heroValue} data-tone={netTone}>
+          {formatSignedArsAmount(netBalancePosition)}
+        </p>
+        <p className={styles.heroHint}>{getNetBalanceHint(netBalancePosition)}</p>
       </header>
 
-      <div className={styles.split}>
-        <div aria-label={splitAriaLabel} className={styles.splitBar} role="img">
-          <span
-            className={styles.splitPayable}
-            style={{ width: getWidthPercent(payableShown, splitTotal) }}
-          />
-          <span
-            className={styles.splitReceivable}
-            style={{ width: getWidthPercent(receivableShown, splitTotal) }}
-          />
+      <dl className={styles.metrics}>
+        <div className={styles.metricCard}>
+          <dt className={styles.metricLabel}>Yo debo</dt>
+          <dd className={styles.metricValue} data-tone="negative">
+            {formatArsAmount(payableShown)}
+          </dd>
         </div>
-        <div className={styles.splitLegend}>
-          <span className={styles.splitLegendItem}>
-            <span className={`${styles.dot} ${styles.dotPayable}`} aria-hidden />
-            Yo debo
-            <AmountModeToggle
-              ariaLabel="Mostrar lo que debés total o de este mes"
-              onChange={setAmountMode}
-              value={amountMode}
-            />
-            <strong>{formatArsAmount(payableShown)}</strong>
-          </span>
-          <span className={styles.splitLegendItem}>
-            Me deben
-            <AmountModeToggle
-              ariaLabel="Mostrar lo que te deben total o de este mes"
-              onChange={setAmountMode}
-              value={amountMode}
-            />
-            <strong>{formatArsAmount(receivableShown)}</strong>
-            <span className={`${styles.dot} ${styles.dotReceivable}`} aria-hidden />
-          </span>
+        <div className={styles.metricCard}>
+          <dt className={styles.metricLabel}>Me deben</dt>
+          <dd className={styles.metricValue}>{formatArsAmount(receivableShown)}</dd>
         </div>
-      </div>
+        <div className={styles.metricCard}>
+          <dt className={styles.metricLabel}>Prestamistas con deuda</dt>
+          <dd className={styles.metricValue}>{summary.lenderCount}</dd>
+        </div>
+        <div className={styles.metricCard}>
+          <dt className={styles.metricLabel}>Deudas activas</dt>
+          <dd className={styles.metricValue}>{summary.activeLoanCount}</dd>
+        </div>
+      </dl>
 
       {showTypeBreakdown ? (
         <div className={styles.typeBreakdown}>

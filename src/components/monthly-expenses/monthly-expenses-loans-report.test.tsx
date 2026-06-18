@@ -126,34 +126,41 @@ describe("MonthlyExpensesLoansReport", () => {
     ).toBeInTheDocument();
   });
 
-  it("describes the owe-versus-receivable split for assistive technology", () => {
+  it("summarizes what you owe and are owed as headline metrics", () => {
     renderReport();
 
-    expect(
-      screen.getByRole("img", { name: /yo debo .* me deben/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Prestamistas con deuda")).toBeInTheDocument();
+    expect(screen.getByText("Deudas activas")).toBeInTheDocument();
+    expect(screen.getByText("$ 660.000")).toBeInTheDocument();
   });
 
-  it("renders each lender entry with its direction, type and active loans", () => {
+  it("renders each lender entry with its type, amount and collapsible loans", async () => {
     renderReport();
 
     const entry = screen.getByRole("article");
 
     expect(within(entry).getByText("Banco Ciudad")).toBeInTheDocument();
-    expect(within(entry).getByText("Me deben")).toBeInTheDocument();
-    expect(within(entry).getByText("Banco")).toBeInTheDocument();
+    expect(within(entry).getByText(/Banco ·/)).toBeInTheDocument();
+    expect(within(entry).queryByText("Tarjeta")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(entry).getByRole("button", { name: /ver 2 deudas/i }),
+    );
+
     expect(within(entry).getByText("Tarjeta")).toBeInTheDocument();
     expect(within(entry).getByText("Seguro")).toBeInTheDocument();
   });
 
-  it("shows the installment progress for each active loan", () => {
+  it("shows the installment progress for each active loan once expanded", async () => {
     renderReport();
+
+    await userEvent.click(screen.getByRole("button", { name: /ver 2 deudas/i }));
 
     expect(screen.getByText("Cuota 5 de 12")).toBeInTheDocument();
     expect(screen.getByText("Cuota 2 de 6")).toBeInTheDocument();
   });
 
-  it("shows the original USD amount next to the converted ARS amount for USD loans", () => {
+  it("shows the original USD amount next to the converted ARS amount for USD loans", async () => {
     renderReport({
       entries: [
         {
@@ -182,13 +189,15 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
+    await userEvent.click(screen.getByRole("button", { name: /ver 1 deuda/i }));
+
     expect(screen.getByText("US$ 100 → $ 100.000")).toBeInTheDocument();
     expect(
       screen.getByText(/US\$ 1\.600 → \$ 1\.600\.000 en total/),
     ).toBeInTheDocument();
   });
 
-  it("flags active loans whose final installment is due soon", () => {
+  it("flags active loans whose final installment is due soon", async () => {
     renderReport({
       entries: [
         {
@@ -208,10 +217,12 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
+    await userEvent.click(screen.getByRole("button", { name: /ver 1 deuda/i }));
+
     expect(screen.getByText("Última cuota")).toBeInTheDocument();
   });
 
-  it("labels the final installment month as finishing instead of last installment", () => {
+  it("labels the final installment month as finishing instead of last installment", async () => {
     renderReport({
       entries: [
         {
@@ -237,11 +248,13 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
+    await userEvent.click(screen.getByRole("button", { name: /ver 1 deuda/i }));
+
     expect(screen.getByText("Finaliza")).toBeInTheDocument();
     expect(screen.queryByText("Última cuota")).not.toBeInTheDocument();
   });
 
-  it("lists shared descriptions as separate active loan rows", () => {
+  it("lists shared descriptions as separate active loan rows", async () => {
     renderReport({
       entries: [
         {
@@ -271,6 +284,8 @@ describe("MonthlyExpensesLoansReport", () => {
         },
       ],
     });
+
+    await userEvent.click(screen.getByRole("button", { name: /ver 2 deudas/i }));
 
     expect(screen.getAllByText("Iphone")).toHaveLength(2);
     expect(screen.getByText("Cuota 3 de 17")).toBeInTheDocument();
@@ -317,15 +332,15 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByLabelText("Ordenar deudas")).toBeInTheDocument();
   });
 
-  it("repeats the amount-mode toggle inline in several synced places", () => {
+  it("repeats the amount-mode toggle in the balance and each section", () => {
     renderReport();
 
     expect(
       screen.getAllByRole("button", { name: "Total" }).length,
-    ).toBeGreaterThanOrEqual(3);
+    ).toBeGreaterThanOrEqual(2);
     expect(
       screen.getAllByRole("button", { name: "Este mes" }).length,
-    ).toBeGreaterThanOrEqual(3);
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps the balance and owe/receivable totals in sync with the amount-mode toggle", async () => {
@@ -339,25 +354,42 @@ describe("MonthlyExpensesLoansReport", () => {
     expect(screen.getByText("$ 30.000")).toBeInTheDocument();
   });
 
-  it("shows each loan's current-month installment and remaining total", () => {
+  it("shows each loan's current-month installment and remaining total once expanded", async () => {
     renderReport();
+
+    await userEvent.click(screen.getByRole("button", { name: /ver 2 deudas/i }));
 
     expect(
       screen.getByText("Restan 7 · $ 70.500,75 en total"),
     ).toBeInTheDocument();
   });
 
-  it("toggles the card amount between total and current month", async () => {
+  it("shows only the selected mode amount on each card", async () => {
     renderReport();
 
-    expect(screen.getByText("Este mes $ 20.000")).toBeInTheDocument();
+    const entry = screen.getByRole("article");
+
+    expect(within(entry).getByText("Total")).toBeInTheDocument();
+    expect(within(entry).getByText("$ 120.500,75")).toBeInTheDocument();
+    expect(within(entry).queryByText("Este mes")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Este mes" })[0]);
 
-    expect(screen.getByText("Total $ 120.500,75")).toBeInTheDocument();
+    expect(within(entry).getByText("Este mes")).toBeInTheDocument();
+    expect(within(entry).getByText("$ 20.000")).toBeInTheDocument();
+    expect(within(entry).queryByText("Total")).not.toBeInTheDocument();
   });
 
-  it("renders every active loan (no collapse), relying on scroll for overflow", () => {
+  it("shows aggregated installment progress consistently on every card", () => {
+    renderReport();
+
+    const entry = screen.getByRole("article");
+
+    expect(within(entry).getByText("Cuotas pagadas")).toBeInTheDocument();
+    expect(within(entry).getByText("7 de 18")).toBeInTheDocument();
+  });
+
+  it("collapses active loans behind a toggle and reveals them on demand", async () => {
     renderReport({
       entries: [
         {
@@ -377,12 +409,16 @@ describe("MonthlyExpensesLoansReport", () => {
       ],
     });
 
+    expect(screen.queryByText("Uno")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /ver 5 deudas/i }));
+
     expect(screen.getByText("Uno")).toBeInTheDocument();
-    expect(screen.getByText("Cuatro")).toBeInTheDocument();
     expect(screen.getByText("Cinco")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /más|ver menos/i }),
-    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /ocultar/i }));
+
+    expect(screen.queryByText("Uno")).not.toBeInTheDocument();
   });
 
   it("renders an upcoming-payments projection", () => {
