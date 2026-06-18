@@ -235,6 +235,11 @@ export async function getMonthlyExpensesServerSidePropsForTab(
     ] = await Promise.allSettled([
       getMonthlyExpensesDocument({
         getExchangeRateSnapshot,
+        // SSR must not write during render (cache invalidation cannot run there),
+        // so it never persists a backfilled snapshot. The document is still
+        // returned with the snapshot in-memory; persistence happens later on the
+        // document API path, which invalidates the cached report.
+        persistMissingExchangeRateSnapshot: false,
         query: {
           includeDriveStatuses: false,
           month: selectedMonth,

@@ -104,6 +104,37 @@ describe("getMonthlyExpensesDocument", () => {
     expect(onExchangeRateSnapshotPersisted).toHaveBeenCalledTimes(1);
   });
 
+  it("returns the backfilled snapshot without persisting when persistence is disabled", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn(),
+    };
+    const onExchangeRateSnapshotPersisted = jest.fn();
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      onExchangeRateSnapshotPersisted,
+      persistMissingExchangeRateSnapshot: false,
+      query: {
+        month: "2026-03",
+      },
+      repository,
+    });
+
+    expect(result.exchangeRateSnapshot).toEqual({
+      blueRate: 1290,
+      month: "2026-03",
+      officialRate: 1200,
+      solidarityRate: 1476,
+    });
+    expect(repository.save).not.toHaveBeenCalled();
+    expect(onExchangeRateSnapshotPersisted).not.toHaveBeenCalled();
+  });
+
   it("does not notify a persisted write when the stored snapshot is already present", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue({
