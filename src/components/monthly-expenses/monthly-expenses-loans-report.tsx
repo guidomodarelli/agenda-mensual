@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -96,7 +95,6 @@ interface MonthlyExpensesLoansReportProps {
     label: string;
   }>;
   selectedLenderFilter: string;
-  selectedDirectionFilter: string;
   selectedTypeFilter: string;
   summary: {
     activeLoanCount: number;
@@ -111,7 +109,6 @@ interface MonthlyExpensesLoansReportProps {
     trackedLoanCount: number;
   };
   onLenderFilterChange: (value: string) => void;
-  onDirectionFilterChange: (value: string) => void;
   onResetFilters: () => void;
   onTypeFilterChange: (value: string) => void;
 }
@@ -624,10 +621,8 @@ export function MonthlyExpensesLoansReport({
   feedbackErrorCode = null,
   providerFilterOptions,
   selectedLenderFilter,
-  selectedDirectionFilter,
   selectedTypeFilter,
   summary,
-  onDirectionFilterChange,
   onLenderFilterChange,
   onResetFilters,
   onTypeFilterChange,
@@ -791,22 +786,6 @@ export function MonthlyExpensesLoansReport({
       ) : null}
 
       <div className={styles.filters}>
-        <div className={styles.directionFilter}>
-          <Label className={styles.filterLabel} id="loan-report-direction-label">
-            Dirección
-          </Label>
-          <Tabs
-            onValueChange={onDirectionFilterChange}
-            value={selectedDirectionFilter}
-          >
-            <TabsList aria-labelledby="loan-report-direction-label">
-              <TabsTrigger value="all">Todas</TabsTrigger>
-              <TabsTrigger value="payable">Yo debo</TabsTrigger>
-              <TabsTrigger value="receivable">Me deben</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
         <div className={styles.filterField}>
           <Label className={styles.filterLabel} htmlFor="loan-report-type-filter">
             Tipo

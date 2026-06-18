@@ -28,7 +28,6 @@ function buildActiveLoan(overrides: Partial<ActiveLoan> = {}): ActiveLoan {
 }
 
 function renderReport(overrides: RenderOverrides = {}) {
-  const onDirectionFilterChange = jest.fn();
   const onLenderFilterChange = jest.fn();
   const onResetFilters = jest.fn();
   const onTypeFilterChange = jest.fn();
@@ -59,12 +58,10 @@ function renderReport(overrides: RenderOverrides = {}) {
         },
       ]}
       feedbackMessage={null}
-      onDirectionFilterChange={onDirectionFilterChange}
       onLenderFilterChange={onLenderFilterChange}
       onResetFilters={onResetFilters}
       onTypeFilterChange={onTypeFilterChange}
       providerFilterOptions={[]}
-      selectedDirectionFilter="all"
       selectedLenderFilter="all"
       selectedTypeFilter="all"
       summary={{
@@ -87,7 +84,6 @@ function renderReport(overrides: RenderOverrides = {}) {
   );
 
   return {
-    onDirectionFilterChange,
     onLenderFilterChange,
     onResetFilters,
     onTypeFilterChange,
@@ -428,14 +424,6 @@ describe("MonthlyExpensesLoansReport", () => {
       screen.getByText("Lo que pagás los próximos meses"),
     ).toBeInTheDocument();
     expect(screen.getByTitle("06/26: $ 20.000")).toBeInTheDocument();
-  });
-
-  it("exposes the direction filter as a segmented control and reports the selected value", async () => {
-    const { onDirectionFilterChange } = renderReport();
-
-    await userEvent.click(screen.getByRole("tab", { name: "Yo debo" }));
-
-    expect(onDirectionFilterChange).toHaveBeenCalledWith("payable");
   });
 
   it("resets every filter when the clear action is used", () => {

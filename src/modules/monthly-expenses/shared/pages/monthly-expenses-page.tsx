@@ -161,7 +161,6 @@ interface LendersCatalogState {
 }
 
 interface LoansReportState {
-  directionFilter: string;
   entries: NormalizedLoansReportEntry[];
   error: string | null;
   errorCode: TechnicalErrorCode | null;
@@ -997,7 +996,6 @@ function createLoansReportState(
   errorCode: TechnicalErrorCode | null = null,
 ): LoansReportState {
   return {
-    directionFilter: "all",
     entries: normalizeLoansReportEntries(report.entries),
     error: error ? getSafeLoansReportErrorMessage(error) : null,
     errorCode,
@@ -1565,11 +1563,8 @@ function getFilteredLoansReportEntries(
     const matchesLender =
       reportState.lenderFilter === "all" ||
       entry.lenderId === reportState.lenderFilter;
-    const matchesDirection =
-      reportState.directionFilter === "all" ||
-      entry.direction === reportState.directionFilter;
 
-    return matchesType && matchesLender && matchesDirection;
+    return matchesType && matchesLender;
   });
 }
 
@@ -4475,13 +4470,6 @@ export default function MonthlyExpensesPage({
     }));
   };
 
-  const handleReportDirectionFilterChange = (value: string) => {
-    updateReportState((currentState) => ({
-      ...currentState,
-      directionFilter: value,
-    }));
-  };
-
   const handleReportLenderFilterChange = (value: string) => {
     updateReportState((currentState) => ({
       ...currentState,
@@ -4492,7 +4480,6 @@ export default function MonthlyExpensesPage({
   const handleReportFiltersReset = () => {
     updateReportState((currentState) => ({
       ...currentState,
-      directionFilter: "all",
       lenderFilter: "all",
       typeFilter: "all",
     }));
@@ -4612,11 +4599,9 @@ export default function MonthlyExpensesPage({
                 feedbackMessage={reportState.error}
                 feedbackErrorCode={reportState.errorCode}
                 providerFilterOptions={reportProviderFilterOptions}
-                selectedDirectionFilter={reportState.directionFilter}
                 selectedLenderFilter={reportState.lenderFilter}
                 selectedTypeFilter={reportState.typeFilter}
                 summary={reportState.summary}
-                onDirectionFilterChange={handleReportDirectionFilterChange}
                 onLenderFilterChange={handleReportLenderFilterChange}
                 onResetFilters={handleReportFiltersReset}
                 onTypeFilterChange={handleReportTypeFilterChange}

@@ -118,17 +118,9 @@
   width: 100%;
 }
 
-.directionFilter,
 .filterField {
   display: grid;
   gap: 0.4rem;
-}
-
-.directionFilter {
-  flex: 0 0 auto;
-}
-
-.filterField {
   flex: 1 1 12rem;
   min-width: 11rem;
 }
