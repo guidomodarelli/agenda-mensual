@@ -2,6 +2,7 @@ import { getLendersCatalog } from "@/modules/lenders/application/use-cases/get-l
 import { saveLendersCatalog } from "@/modules/lenders/application/use-cases/save-lenders-catalog";
 import { createLendersApiHandler } from "@/modules/lenders/infrastructure/api/create-lenders-api-handler";
 import { DrizzleLendersRepository } from "@/modules/lenders/infrastructure/turso/repositories/drizzle-lenders-repository";
+import { revalidateMonthlyExpensesLoansReportCache } from "@/modules/monthly-expenses/infrastructure/cache/monthly-expenses-loans-report-cache";
 import { createAppRouteHandler } from "@/modules/shared/infrastructure/next-app/next-api-handler-adapter";
 
 const handler = createAppRouteHandler(createLendersApiHandler({
@@ -11,10 +12,16 @@ const handler = createAppRouteHandler(createLendersApiHandler({
     });
   },
   async save({ command, database, userSubject }) {
-    return saveLendersCatalog({
+    const savedCatalog = await saveLendersCatalog({
       command,
       repository: new DrizzleLendersRepository(database, userSubject),
     });
+
+    // Lender names and types are denormalized into the loans report, so editing
+    // the catalog must invalidate the user's cached report.
+    revalidateMonthlyExpensesLoansReportCache(userSubject);
+
+    return savedCatalog;
   },
 }));
 

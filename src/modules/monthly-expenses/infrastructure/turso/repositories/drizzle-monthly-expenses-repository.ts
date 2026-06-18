@@ -972,17 +972,17 @@ export class DrizzleMonthlyExpensesRepository
       new Set(monthlyRows.map((row) => row.month)),
     ).sort((left, right) => left.localeCompare(right));
 
-    const documents: MonthlyExpensesDocument[] = [];
+    // Each month is reconstructed independently, so fetch them concurrently
+    // instead of awaiting one before starting the next. This turns N sequential
+    // round-trips to the (remote) database into a single concurrent batch, which
+    // is the dominant cost when building the loans report over a long history.
+    const documents = await Promise.all(
+      uniqueMonths.map((month) => this.getByMonth(month)),
+    );
 
-    for (const month of uniqueMonths) {
-      const document = await this.getByMonth(month);
-
-      if (document) {
-        documents.push(document);
-      }
-    }
-
-    return documents;
+    return documents.filter(
+      (document): document is MonthlyExpensesDocument => document !== null,
+    );
   }
 
   async listMonthsWithExpenses(): Promise<string[]> {

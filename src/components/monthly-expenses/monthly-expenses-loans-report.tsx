@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Flag, RotateCcw } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -90,6 +91,8 @@ interface MonthlyExpensesLoansReportProps {
   entries: MonthlyExpensesLoanReportView[];
   feedbackMessage: string | null;
   feedbackErrorCode?: TechnicalErrorCode | null;
+  /** While true the report shows a loading skeleton instead of its content. */
+  isLoading?: boolean;
   providerFilterOptions: Array<{
     id: string;
     label: string;
@@ -615,10 +618,60 @@ function LoanReportEntryCard({
   );
 }
 
+/** Number of placeholder cards shown while the report is loading. */
+const SKELETON_CARD_COUNT = 4;
+/** Number of placeholder summary metrics shown while the report is loading. */
+const SKELETON_METRIC_COUNT = 4;
+
+/**
+ * Placeholder shown while the deferred report is fetched on the client, mirroring
+ * the real layout (balance, metrics and lender cards) so the shell stays stable.
+ */
+function LoansReportSkeleton() {
+  return (
+    <section
+      aria-label="Cargando reporte de deudas"
+      className={styles.content}
+      role="status"
+    >
+      <div className={styles.hero}>
+        <Skeleton style={{ width: "8rem", height: "0.9rem" }} />
+        <Skeleton style={{ width: "14rem", height: "2.25rem" }} />
+        <Skeleton style={{ width: "12rem", height: "0.9rem" }} />
+      </div>
+      <div className={styles.metrics}>
+        {Array.from({ length: SKELETON_METRIC_COUNT }, (_, index) => (
+          <div className={styles.metricCard} key={index}>
+            <Skeleton style={{ width: "70%", height: "0.85rem" }} />
+            <Skeleton style={{ width: "85%", height: "1.4rem" }} />
+          </div>
+        ))}
+      </div>
+      <div className={styles.entries}>
+        {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
+          <div className={styles.entry} key={index}>
+            <div className={styles.entryHeader}>
+              <Skeleton style={{ width: "2.4rem", height: "2.4rem", borderRadius: "50%" }} />
+              <div className={styles.entryIdentity}>
+                <Skeleton style={{ width: "70%", height: "1rem" }} />
+                <Skeleton style={{ width: "50%", height: "0.8rem" }} />
+              </div>
+            </div>
+            <Skeleton style={{ width: "55%", height: "1.35rem", marginLeft: "auto" }} />
+            <Skeleton style={{ width: "100%", height: "0.35rem" }} />
+            <Skeleton style={{ width: "100%", height: "2rem" }} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function MonthlyExpensesLoansReport({
   entries,
   feedbackMessage,
   feedbackErrorCode = null,
+  isLoading = false,
   providerFilterOptions,
   selectedLenderFilter,
   selectedTypeFilter,
@@ -629,6 +682,10 @@ export function MonthlyExpensesLoansReport({
 }: MonthlyExpensesLoansReportProps) {
   const [sortKey, setSortKey] = useState<LoansReportSortKey>("amount");
   const [amountMode, setAmountMode] = useState<LoansReportAmountMode>("total");
+
+  if (isLoading) {
+    return <LoansReportSkeleton />;
+  }
 
   // Every aggregate figure (balance, "Yo debo"/"Me deben" metrics, cards)
   // follows the same Total/Este mes toggle, so they all stay in sync.

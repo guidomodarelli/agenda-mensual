@@ -34,9 +34,6 @@ import {
 import {
   getMonthlyExpensesDocument,
 } from "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-document";
-import {
-  getMonthlyExpensesLoansReport,
-} from "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-loans-report";
 import type {
   MonthlyExpenseReceiptsRepository,
 } from "@/modules/monthly-expenses/domain/repositories/monthly-expense-receipts-repository";
@@ -138,6 +135,7 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           createEmptyExpenseFoldersCatalogDocumentResult(),
         initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+        loansReportDeferred: false,
         expenseFoldersLoadErrorCode: null,
         expenseFoldersLoadError: null,
         lendersLoadErrorCode: null,
@@ -220,14 +218,13 @@ export async function getMonthlyExpensesServerSidePropsForTab(
     const expenseFoldersCatalogPromise = getExpenseFoldersCatalog({
       repository: expenseFoldersRepository,
     });
-    const loansReportPromise =
-      initialActiveTab === "debts"
-        ? lendersCatalogPromise.then((catalog) =>
-            getMonthlyExpensesLoansReport({
-              lenders: catalog.lenders,
-              repository: monthlyExpensesRepository,
-            }))
-        : Promise.resolve(createEmptyMonthlyExpensesLoansReportResult());
+    // The debts report is deferred to the client: SSR returns it empty so the
+    // page shell paints immediately, and the client fetches it from the (cached)
+    // report API on mount. This keeps the initial navigation off the report's
+    // critical path.
+    const loansReportPromise = Promise.resolve(
+      createEmptyMonthlyExpensesLoansReportResult(),
+    );
 
     const [
       documentResult,
@@ -340,6 +337,7 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           reportResult.status === "fulfilled"
             ? reportResult.value
             : createEmptyMonthlyExpensesLoansReportResult(),
+        loansReportDeferred: initialActiveTab === "debts",
         expenseFoldersLoadErrorCode:
           expenseFoldersResult.status === "rejected"
             ? TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_EXPENSE_FOLDERS_LOAD_ERROR
@@ -412,6 +410,7 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           createEmptyExpenseFoldersCatalogDocumentResult(),
         initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+        loansReportDeferred: false,
         expenseFoldersLoadErrorCode: null,
         expenseFoldersLoadError: null,
         lendersLoadErrorCode: null,

@@ -185,6 +185,98 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
+  it("defers the report to the client, showing a skeleton until it loads", async () => {
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: { email: "user@example.com", name: "User" },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+
+    const fetchMock = jest
+      .fn()
+      .mockImplementation(async (input: RequestInfo | URL) => {
+        if (input === "/api/storage/monthly-expenses-report") {
+          return {
+            json: async () => ({
+              data: {
+                entries: [
+                  {
+                    activeLoanCount: 1,
+                    activeLoans: [
+                      {
+                        currency: "ARS",
+                        currentMonthAmount: 1000,
+                        currentMonthAmountOriginal: null,
+                        description: "Tarjeta",
+                        endMonth: "2026-12",
+                        installmentCount: 12,
+                        isDueSoon: false,
+                        paidInstallments: 3,
+                        remainingAmount: 9000,
+                        remainingAmountOriginal: null,
+                      },
+                    ],
+                    direction: "payable",
+                    firstDebtMonth: "2026-01",
+                    latestRecordedMonth: "2026-03",
+                    lenderId: "lender-1",
+                    lenderName: "Banco Río",
+                    lenderType: "bank",
+                    remainingAmount: 9000,
+                    trackedLoanCount: 1,
+                  },
+                ],
+                summary: {
+                  activeLoanCount: 1,
+                  payableCurrentMonthAmount: 1000,
+                  receivableCurrentMonthAmount: 0,
+                  lenderCount: 1,
+                  monthlyProjection: [],
+                  netRemainingAmount: 9000,
+                  payableRemainingAmount: 9000,
+                  receivableRemainingAmount: 0,
+                  remainingAmount: 9000,
+                  trackedLoanCount: 1,
+                },
+              },
+            }),
+            ok: true,
+          };
+        }
+
+        throw new Error(`Unexpected fetch input: ${String(input)}`);
+      });
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialActiveTab="debts"
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+        loansReportDeferred
+      />,
+    );
+
+    expect(
+      screen.getByRole("status", { name: /cargando reporte de deudas/i }),
+    ).toBeInTheDocument();
+
+    expect(await screen.findByText("Banco Río")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: /cargando reporte de deudas/i }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses-report",
+      expect.anything(),
+    );
+  });
+
   it("shows a safe monthly expenses error message instead of a technical one", async () => {
     const user = userEvent.setup();
     const fetchMock = jest.fn().mockResolvedValue({
