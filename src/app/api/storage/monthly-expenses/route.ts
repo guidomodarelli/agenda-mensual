@@ -42,6 +42,11 @@ const handler = createAppRouteHandler(createMonthlyExpensesApiHandler({
 
     return getMonthlyExpensesDocument({
       getExchangeRateSnapshot,
+      // Loading an older month can persist a previously missing exchange-rate
+      // snapshot, which changes the loans report (e.g. USD loan conversions), so
+      // invalidate the cached report when that read-path write happens.
+      onExchangeRateSnapshotPersisted: () =>
+        revalidateMonthlyExpensesLoansReportCache(userSubject),
       query: {
         includeDriveStatuses,
         month,

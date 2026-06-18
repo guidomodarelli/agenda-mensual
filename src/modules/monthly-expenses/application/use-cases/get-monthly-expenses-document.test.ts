@@ -69,7 +69,7 @@ describe("getMonthlyExpensesDocument", () => {
     });
   });
 
-  it("backfills a stored document when the snapshot is missing", async () => {
+  it("backfills a stored document when the snapshot is missing and notifies of the persisted write", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue({
         items: [],
@@ -78,9 +78,11 @@ describe("getMonthlyExpensesDocument", () => {
       listAll: jest.fn(),
       save: jest.fn(),
     };
+    const onExchangeRateSnapshotPersisted = jest.fn();
 
     const result = await getMonthlyExpensesDocument({
       getExchangeRateSnapshot,
+      onExchangeRateSnapshotPersisted,
       query: {
         month: "2026-03",
       },
@@ -99,6 +101,37 @@ describe("getMonthlyExpensesDocument", () => {
       month: "2026-03",
     });
     expect(repository.save).toHaveBeenCalledTimes(1);
+    expect(onExchangeRateSnapshotPersisted).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not notify a persisted write when the stored snapshot is already present", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        exchangeRateSnapshot: {
+          blueRate: 1290,
+          month: "2026-03",
+          officialRate: 1200,
+          solidarityRate: 1476,
+        },
+        items: [],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn(),
+    };
+    const onExchangeRateSnapshotPersisted = jest.fn();
+
+    await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      onExchangeRateSnapshotPersisted,
+      query: {
+        month: "2026-03",
+      },
+      repository,
+    });
+
+    expect(repository.save).not.toHaveBeenCalled();
+    expect(onExchangeRateSnapshotPersisted).not.toHaveBeenCalled();
   });
 
   it("verifies folder status for items without receipts and exposes warning/error states", async () => {

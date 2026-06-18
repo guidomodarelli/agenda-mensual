@@ -29,6 +29,14 @@ interface GetMonthlyExpensesDocumentDependencies {
   getExchangeRateSnapshot: (
     month: string,
   ) => Promise<MonthlyExchangeRateSnapshot>;
+  /**
+   * Invoked when loading the month persists a previously missing exchange-rate
+   * snapshot (a write that happens on the read path for older months). Callers
+   * running in a request that may serve cached derived data (e.g. the loans
+   * report) use this to invalidate that cache. Optional: SSR and read-only
+   * callers omit it.
+   */
+  onExchangeRateSnapshotPersisted?: () => void | Promise<void>;
   query: GetMonthlyExpensesDocumentQuery;
   receiptsRepository?: MonthlyExpenseReceiptsRepository;
   repository: MonthlyExpensesRepository;
@@ -201,6 +209,7 @@ async function projectLoansIntoDocument({
 
 export async function getMonthlyExpensesDocument({
   getExchangeRateSnapshot,
+  onExchangeRateSnapshotPersisted,
   query,
   receiptsRepository,
   repository,
@@ -245,6 +254,7 @@ export async function getMonthlyExpensesDocument({
       );
 
       await repository.save(realDocument);
+      await onExchangeRateSnapshotPersisted?.();
     }
   } catch (error) {
     realDocument =
