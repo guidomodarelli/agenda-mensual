@@ -236,9 +236,14 @@ export async function getMonthlyExpensesServerSidePropsForTab(
       getMonthlyExpensesDocument({
         getExchangeRateSnapshot,
         // SSR must not write during render (cache invalidation cannot run there),
-        // so it never persists a backfilled snapshot. The document is still
-        // returned with the snapshot in-memory; persistence happens later on the
-        // document API path, which invalidates the cached report.
+        // so it never persists a backfilled snapshot here; the document is still
+        // returned with the snapshot in-memory for display. The loans report does
+        // not depend on this persistence: getMonthlyExpensesLoansReport converts
+        // USD loans with the latest available solidarity rate as a fallback for
+        // months that have no stored snapshot, which is the appropriate rate for
+        // valuing remaining (future) installments. Persistence still happens when
+        // a month is saved or loaded through the document API, which invalidates
+        // the cached report.
         persistMissingExchangeRateSnapshot: false,
         query: {
           includeDriveStatuses: false,
