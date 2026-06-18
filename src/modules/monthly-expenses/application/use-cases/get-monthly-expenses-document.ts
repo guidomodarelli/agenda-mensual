@@ -29,6 +29,23 @@ interface GetMonthlyExpensesDocumentDependencies {
   getExchangeRateSnapshot: (
     month: string,
   ) => Promise<MonthlyExchangeRateSnapshot>;
+  /**
+   * Invoked when loading the month persists a previously missing exchange-rate
+   * snapshot (a write that happens on the read path for older months). Callers
+   * running in a request that may serve cached derived data (e.g. the loans
+   * report) use this to invalidate that cache. Optional: read-only callers omit
+   * it. Never fires when {@link persistMissingExchangeRateSnapshot} is `false`.
+   */
+  onExchangeRateSnapshotPersisted?: () => void | Promise<void>;
+  /**
+   * Whether to persist a backfilled exchange-rate snapshot for older stored
+   * months. Defaults to `true`. Render-time callers (SSR) must pass `false` so
+   * they never write during render: cache invalidation (`revalidateTag`) cannot
+   * run there, so a hidden write would leave derived caches (the loans report)
+   * stale. The snapshot is still returned in-memory; persistence then happens on
+   * a mutating path (the document API) that can invalidate.
+   */
+  persistMissingExchangeRateSnapshot?: boolean;
   query: GetMonthlyExpensesDocumentQuery;
   receiptsRepository?: MonthlyExpenseReceiptsRepository;
   repository: MonthlyExpensesRepository;
@@ -201,6 +218,8 @@ async function projectLoansIntoDocument({
 
 export async function getMonthlyExpensesDocument({
   getExchangeRateSnapshot,
+  onExchangeRateSnapshotPersisted,
+  persistMissingExchangeRateSnapshot = true,
   query,
   receiptsRepository,
   repository,
@@ -244,7 +263,10 @@ export async function getMonthlyExpensesDocument({
         "Loading monthly expenses",
       );
 
-      await repository.save(realDocument);
+      if (persistMissingExchangeRateSnapshot) {
+        await repository.save(realDocument);
+        await onExchangeRateSnapshotPersisted?.();
+      }
     }
   } catch (error) {
     realDocument =

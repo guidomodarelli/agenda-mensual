@@ -125,6 +125,12 @@ export type MonthlyExpensesPageProps = {
   initialExpenseFoldersCatalog: ExpenseFoldersCatalogDocumentResult;
   initialLendersCatalog: LendersCatalogDocumentResult;
   initialLoansReport: MonthlyExpensesLoansReportResult;
+  /**
+   * When true the loans report was not computed during SSR and must be fetched
+   * on the client (deferred to keep the debts page off the report's critical
+   * path). The page then renders a loading skeleton until the fetch resolves.
+   */
+  loansReportDeferred?: boolean;
   expenseFoldersLoadErrorCode: TechnicalErrorCode | null;
   expenseFoldersLoadError: string | null;
   lendersLoadErrorCode: TechnicalErrorCode | null;
@@ -164,6 +170,7 @@ interface LoansReportState {
   entries: NormalizedLoansReportEntry[];
   error: string | null;
   errorCode: TechnicalErrorCode | null;
+  isLoading: boolean;
   lenderFilter: string;
   typeFilter: string;
   summary: NormalizedLoansReportSummary;
@@ -994,11 +1001,13 @@ function createLoansReportState(
   report: MonthlyExpensesLoansReportResult,
   error: string | null,
   errorCode: TechnicalErrorCode | null = null,
+  isLoading = false,
 ): LoansReportState {
   return {
     entries: normalizeLoansReportEntries(report.entries),
     error: error ? getSafeLoansReportErrorMessage(error) : null,
     errorCode,
+    isLoading,
     lenderFilter: "all",
     summary: normalizeLoansReportSummary(report.summary),
     typeFilter: "all",
@@ -1610,6 +1619,7 @@ export default function MonthlyExpensesPage({
   initialExpenseFoldersCatalog,
   initialLendersCatalog,
   initialLoansReport,
+  loansReportDeferred = false,
   expenseFoldersLoadErrorCode,
   expenseFoldersLoadError,
   lendersLoadErrorCode,
@@ -1637,7 +1647,12 @@ export default function MonthlyExpensesPage({
   const [folderFilterId, setFolderFilterId] = useState("");
   const [isFoldersManagerOpen, setIsFoldersManagerOpen] = useState(false);
   const [reportState, setReportState] = useState<LoansReportState>(
-    createLoansReportState(initialLoansReport, reportLoadError, reportLoadErrorCode),
+    createLoansReportState(
+      initialLoansReport,
+      reportLoadError,
+      reportLoadErrorCode,
+      loansReportDeferred,
+    ),
   );
   const [copyableMonthsState, setCopyableMonthsState] =
     useState<MonthlyExpensesCopyableMonthsResult>(initialCopyableMonths);
@@ -1669,6 +1684,7 @@ export default function MonthlyExpensesPage({
   const shouldIgnoreNextExpenseSheetCloseRef = useRef(false);
   const isReauthenticationInProgressRef = useRef(false);
   const latestMonthLoadRequestIdRef = useRef(0);
+  const hasRequestedDeferredReportRef = useRef(false);
 
   const isAuthenticated = status === "authenticated";
   const isSessionLoading = status === "loading";
@@ -1839,6 +1855,7 @@ export default function MonthlyExpensesPage({
         entries: mapReportEntriesToCurrentLenders(report.entries, lenders),
         errorCode: null,
         error: null,
+        isLoading: false,
         summary: normalizeLoansReportSummary(report.summary),
       }));
     } catch (error) {
@@ -1848,6 +1865,7 @@ export default function MonthlyExpensesPage({
         ...currentState,
         errorCode: technicalErrorCode,
         error: getSafeLoansReportErrorMessage(error),
+        isLoading: false,
       }));
       toast.error(
         renderErrorWithCode(
@@ -1857,6 +1875,26 @@ export default function MonthlyExpensesPage({
       );
     }
   };
+
+  // When SSR deferred the report, fetch it once on the client (after auth is
+  // resolved). The skeleton stays until this resolves. The ref guards against the
+  // effect re-running (auth flips, Strict Mode double-invoke) and re-fetching.
+  useEffect(() => {
+    if (
+      !loansReportDeferred ||
+      activeTab !== "debts" ||
+      !isAuthenticated ||
+      hasRequestedDeferredReportRef.current
+    ) {
+      return;
+    }
+
+    hasRequestedDeferredReportRef.current = true;
+    void refreshLoansReport();
+    // refreshLoansReport reads the latest lenders via its default argument and is
+    // a stable one-shot trigger here, so it is intentionally not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loansReportDeferred, activeTab, isAuthenticated]);
 
   const navigateToMonth = useCallback(
     async (normalizedMonth: string) => {
@@ -4598,6 +4636,7 @@ export default function MonthlyExpensesPage({
                 entries={filteredReportEntries}
                 feedbackMessage={reportState.error}
                 feedbackErrorCode={reportState.errorCode}
+                isLoading={reportState.isLoading}
                 providerFilterOptions={reportProviderFilterOptions}
                 selectedLenderFilter={reportState.lenderFilter}
                 selectedTypeFilter={reportState.typeFilter}

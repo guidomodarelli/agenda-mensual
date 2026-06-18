@@ -22,6 +22,14 @@ import {
   createMonthlyExpensesFileName,
 } from "../../google-drive/dto/mapper";
 
+/**
+ * Upper bound of monthly documents reconstructed concurrently in {@link
+ * DrizzleMonthlyExpensesRepository.listAll}. Each reconstruction issues several
+ * queries, so this caps the in-flight request fan-out for long histories while
+ * still overlapping round-trips.
+ */
+const MAX_CONCURRENT_MONTH_RECONSTRUCTIONS = 8;
+
 interface NormalizedExpenseRow {
   allReceiptsFolderId: string | null;
   allReceiptsFolderViewUrl: string | null;
@@ -972,17 +980,39 @@ export class DrizzleMonthlyExpensesRepository
       new Set(monthlyRows.map((row) => row.month)),
     ).sort((left, right) => left.localeCompare(right));
 
-    const documents: MonthlyExpensesDocument[] = [];
-
-    for (const month of uniqueMonths) {
-      const document = await this.getByMonth(month);
-
-      if (document) {
-        documents.push(document);
+    // Each month is reconstructed independently, so fetch them concurrently
+    // instead of awaiting one before starting the next. This turns N sequential
+    // round-trips to the (remote) database into overlapping batches, which is the
+    // dominant cost when building the loans report over a long history.
+    //
+    // Concurrency is capped: every reconstruction fans out into several queries
+    // (month metadata, exclusions, rows, receipts, payment records), so an
+    // unbounded fan-out over a long history could hit Turso request limits or
+    // time out. A fixed-size worker pool keeps the speed-up while bounding the
+    // number of in-flight requests.
+    const documents: Array<MonthlyExpensesDocument | null> = new Array(
+      uniqueMonths.length,
+    ).fill(null);
+    let nextMonthIndex = 0;
+    const reconstructMonthsFromCursor = async (): Promise<void> => {
+      while (nextMonthIndex < uniqueMonths.length) {
+        const monthIndex = nextMonthIndex;
+        nextMonthIndex += 1;
+        documents[monthIndex] = await this.getByMonth(uniqueMonths[monthIndex]);
       }
-    }
+    };
+    const workerCount = Math.min(
+      MAX_CONCURRENT_MONTH_RECONSTRUCTIONS,
+      uniqueMonths.length,
+    );
 
-    return documents;
+    await Promise.all(
+      Array.from({ length: workerCount }, reconstructMonthsFromCursor),
+    );
+
+    return documents.filter(
+      (document): document is MonthlyExpensesDocument => document !== null,
+    );
   }
 
   async listMonthsWithExpenses(): Promise<string[]> {

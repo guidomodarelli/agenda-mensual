@@ -51,7 +51,7 @@ interface GetMonthlyExpensesLoansReportDependencies {
  * @param date - Reference date; defaults to now.
  * @returns The current month identifier.
  */
-function getCurrentMonthIdentifier(date: Date = new Date()): string {
+export function getCurrentMonthIdentifier(date: Date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
 

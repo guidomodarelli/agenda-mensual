@@ -2,6 +2,7 @@ import { getMonthlyExpensesDocument } from "@/modules/monthly-expenses/applicati
 import { saveMonthlyExpensesDocument } from "@/modules/monthly-expenses/application/use-cases/save-monthly-expenses-document";
 import { createMonthlyExpensesApiHandler } from "@/modules/monthly-expenses/infrastructure/api/create-monthly-expenses-api-handler";
 import { GoogleDriveMonthlyExpenseReceiptsRepository } from "@/modules/monthly-expenses/infrastructure/google-drive/repositories/google-drive-monthly-expense-receipts-repository";
+import { revalidateMonthlyExpensesLoansReportCache } from "@/modules/monthly-expenses/infrastructure/cache/monthly-expenses-loans-report-cache";
 import { DrizzleMonthlyExpensesRepository } from "@/modules/monthly-expenses/infrastructure/turso/repositories/drizzle-monthly-expenses-repository";
 import { createGetMonthlyExchangeRateSnapshot } from "@/modules/exchange-rates/infrastructure/create-get-monthly-exchange-rate-snapshot";
 import { getGoogleDriveClientFromRequest } from "@/modules/auth/infrastructure/google-drive/google-drive-client";
@@ -41,6 +42,11 @@ const handler = createAppRouteHandler(createMonthlyExpensesApiHandler({
 
     return getMonthlyExpensesDocument({
       getExchangeRateSnapshot,
+      // Loading an older month can persist a previously missing exchange-rate
+      // snapshot, which changes the loans report (e.g. USD loan conversions), so
+      // invalidate the cached report when that read-path write happens.
+      onExchangeRateSnapshotPersisted: () =>
+        revalidateMonthlyExpensesLoansReportCache(userSubject),
       query: {
         includeDriveStatuses,
         month,
@@ -53,7 +59,7 @@ const handler = createAppRouteHandler(createMonthlyExpensesApiHandler({
     const getExchangeRateSnapshot = createGetMonthlyExchangeRateSnapshot(database);
     const driveClient = await getGoogleDriveClientFromRequest(request);
 
-    return saveMonthlyExpensesDocument({
+    const savedDocument = await saveMonthlyExpensesDocument({
       command,
       getExchangeRateSnapshot,
       receiptsRepository: new GoogleDriveMonthlyExpenseReceiptsRepository(
@@ -61,6 +67,12 @@ const handler = createAppRouteHandler(createMonthlyExpensesApiHandler({
       ),
       repository: new DrizzleMonthlyExpensesRepository(database, userSubject),
     });
+
+    // A saved document can change loan amounts, installments or lenders, so the
+    // cached report is no longer valid for this user.
+    revalidateMonthlyExpensesLoansReportCache(userSubject);
+
+    return savedDocument;
   },
 }));
 

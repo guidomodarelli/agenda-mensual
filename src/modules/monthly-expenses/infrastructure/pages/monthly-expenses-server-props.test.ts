@@ -301,19 +301,24 @@ describe("getMonthlyExpensesServerSidePropsForTab", () => {
     expect(mockGetMonthlyExpensesLoansReport).not.toHaveBeenCalled();
   });
 
-  it("computes loans report on debts tab reusing lenders catalog result", async () => {
-    await getMonthlyExpensesServerSidePropsForTab(
+  it("defers the loans report on the debts tab so the page shell renders first", async () => {
+    const result = await getMonthlyExpensesServerSidePropsForTab(
       createServerSideContext("2026-04"),
       "debts",
     );
 
-    expect(mockGetLendersCatalog).toHaveBeenCalledTimes(1);
-    expect(mockGetMonthlyExpensesLoansReport).toHaveBeenCalledTimes(1);
-    expect(mockGetMonthlyExpensesLoansReport).toHaveBeenCalledWith(
-      expect.objectContaining({
-        lenders: [],
-      }),
+    expect(result.props.loansReportDeferred).toBe(true);
+    expect(result.props.initialLoansReport.entries).toEqual([]);
+    expect(mockGetMonthlyExpensesLoansReport).not.toHaveBeenCalled();
+  });
+
+  it("does not defer the loans report on non-debts tabs", async () => {
+    const result = await getMonthlyExpensesServerSidePropsForTab(
+      createServerSideContext("2026-04"),
+      "expenses",
     );
+
+    expect(result.props.loansReportDeferred).toBe(false);
   });
 
   it("renders empty unauthenticated state when Google session is missing", async () => {

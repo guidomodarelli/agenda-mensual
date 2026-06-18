@@ -97,7 +97,7 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it("logs and returns 400 when report loading fails with a typed error", async () => {
+  it("logs and returns 400 with a technical error code when report loading fails with a typed error", async () => {
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
     const database = {} as TursoDatabase;
     const handler = createMonthlyExpensesLoansReportApiHandler({
@@ -116,6 +116,7 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
     expect(response.statusCode).toBe(400);
     expect(response.body).toEqual({
       error: "report not available",
+      errorCode: "E1006",
     });
     expect(errorSpy).toHaveBeenCalled();
   });

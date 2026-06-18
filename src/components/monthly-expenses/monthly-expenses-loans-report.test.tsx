@@ -122,6 +122,18 @@ describe("MonthlyExpensesLoansReport", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a loading skeleton instead of the report while it is loading", () => {
+    renderReport({ isLoading: true });
+
+    expect(
+      screen.getByRole("status", { name: /cargando reporte de deudas/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Balance neto")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Prestamistas con deuda"),
+    ).not.toBeInTheDocument();
+  });
+
   it("summarizes what you owe and are owed as headline metrics", () => {
     renderReport();
 
