@@ -111,8 +111,14 @@ export function createMonthlyExpensesLoansReportApiHandler<TResult>({
       }
 
       if (error instanceof Error) {
+        // Carry the technical error code so the client (the only loader of the
+        // deferred debts report) can surface an E#### code, matching the coded
+        // SSR failure path this deferral replaced.
         return response.status(400).json({
-          error: error.message,
+          ...createTechnicalErrorEnvelope(
+            error.message,
+            TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_REPORT_API_UNEXPECTED_ERROR,
+          ),
         });
       }
 
