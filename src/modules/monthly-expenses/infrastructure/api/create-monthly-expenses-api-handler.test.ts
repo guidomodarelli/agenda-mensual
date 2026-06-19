@@ -192,6 +192,40 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
   });
 
+  it("returns 400 when an item carries both loan and recurrence", async () => {
+    const save = jest.fn();
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn(),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            loan: { installmentCount: 6, startMonth: "2026-01" },
+            recurrence: { startMonth: "2026-01" },
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(400);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when paymentLink is not a valid URL", async () => {
     const handler = createMonthlyExpensesApiHandler({
       load: jest.fn(),

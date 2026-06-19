@@ -228,6 +228,15 @@ const monthlyExpenseItemSchema = z.object({
       path: ["receiptSharePhoneDigits"],
     });
   }
+
+  if (value.loan && value.recurrence) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "monthly-expenses API requires every expense to be either a loan or a recurring expense, not both.",
+      path: ["recurrence"],
+    });
+  }
 });
 
 const monthlyExpensesRequestBodySchema = z.object({
