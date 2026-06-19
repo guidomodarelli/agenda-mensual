@@ -1167,31 +1167,12 @@ export function copyMonthlyExpenseTemplatesToMonth(
     })),
   );
 
-  return normalizedRowsToCopy.filter((row) => {
-    if (row.isRecurring) {
-      // A recurring expense is copied only while it is still active in the
-      // target month. A cancellation (end month before the target month) leaves
-      // `recurrenceIsActive` false after normalization, so it is not re-copied
-      // into the following months.
-      return row.recurrenceIsActive;
-    }
-
-    if (!row.isLoan) {
-      return true;
-    }
-
-    // Copiamos una deuda mientras conserve una cuota en el mes destino. La
-    // última cuota cae sobre el mes de fin (ej. "6 de 6") y debe copiarse; los
-    // meses posteriores al fin (ej. "7 de 6") ya no tienen cuota y se excluyen.
-    // No alcanza con mirar las cuotas restantes: tanto la última cuota como un
-    // mes posterior al fin dan cero restantes, así que comparamos contra el mes
-    // de fin del préstamo.
-    if (row.loanEndMonth === "") {
-      return true;
-    }
-
-    return month.trim() <= row.loanEndMonth;
-  });
+  // Only plain one-off expenses are offered for manual replication. Loans/debts
+  // and recurring expenses are intentionally excluded: both already carry over on
+  // their own (loans project across their installment range and recurring expenses
+  // project from their start month), so suggesting them here would be redundant and
+  // could create duplicates.
+  return normalizedRowsToCopy.filter((row) => !row.isLoan && !row.isRecurring);
 }
 
 function normalizeTextForReplicationComparison(value: string): string {
@@ -2236,14 +2217,14 @@ export default function MonthlyExpensesPage({
 
       if (copiedRows.length === 0) {
         toast.warning(
-          "El mes seleccionado no tiene deudas vigentes para copiar.",
+          "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
         );
         return;
       }
 
       if (missingRows.length === 0) {
         toast.warning(
-          "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+          "No hay gastos faltantes para replicar desde el mes anterior.",
         );
         return;
       }
@@ -2349,8 +2330,8 @@ export default function MonthlyExpensesPage({
       const wasSaved = await persistMonthlyExpensesRows(
         [...formState.rows, ...selectedRows],
         {
-          loading: `Replicando gastos/deudas seleccionados desde ${sourceMonth}...`,
-          success: `Replicamos y guardamos los gastos/deudas seleccionados de ${sourceMonth} en ${formState.month}.`,
+          loading: `Replicando los gastos seleccionados desde ${sourceMonth}...`,
+          success: `Replicamos y guardamos los gastos seleccionados de ${sourceMonth} en ${formState.month}.`,
         },
         {
           hasReplicatedFromPreviousMonth: true,

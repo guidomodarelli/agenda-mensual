@@ -1692,7 +1692,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(router.push).not.toHaveBeenCalled();
 
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
-    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Replicar gastos del mes anterior" })).toBeDisabled();
     expect(screen.queryByText("2026-02")).not.toBeInTheDocument();
     expect(mockedToast.error).not.toHaveBeenCalled();
   });
@@ -2230,7 +2230,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replicar gastos del mes anterior" })).toBeInTheDocument();
 
     rerender(
       <TooltipProvider>
@@ -2259,7 +2259,7 @@ registerMonthlyExpensesPageDefaultHooks({
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replicar gastos del mes anterior" })).toBeInTheDocument();
 
     rerender(
       <TooltipProvider>
@@ -2289,7 +2289,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.queryByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+      screen.queryByRole("button", { name: "Replicar gastos del mes anterior" }),
     ).not.toBeInTheDocument();
   });
 
@@ -2614,10 +2614,10 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos del mes anterior" }));
     await user.click(
       await screen.findByRole("button", {
-        name: "Confirmar replicación de gastos/deudas del mes anterior",
+        name: "Confirmar replicación de gastos del mes anterior",
       }),
     );
 
@@ -2653,7 +2653,7 @@ registerMonthlyExpensesPageDefaultHooks({
       month: "2026-03",
     });
     expect(
-      screen.queryByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+      screen.queryByRole("button", { name: "Replicar gastos del mes anterior" }),
     ).not.toBeInTheDocument();
   });
 
@@ -2711,7 +2711,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos del mes anterior" }));
 
     const toggleAllCheckbox = await screen.findByRole("checkbox", {
       name: "Seleccionar todos",
@@ -2723,7 +2723,7 @@ registerMonthlyExpensesPageDefaultHooks({
       name: "Alquiler",
     });
     const confirmButton = screen.getByRole("button", {
-      name: "Confirmar replicación de gastos/deudas del mes anterior",
+      name: "Confirmar replicación de gastos del mes anterior",
     });
 
     expect(toggleAllCheckbox).toBeChecked();
@@ -2804,11 +2804,11 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos del mes anterior" }));
     await user.click(await screen.findByRole("checkbox", { name: "Hosting" }));
     await user.click(
       screen.getByRole("button", {
-        name: "Confirmar replicación de gastos/deudas del mes anterior",
+        name: "Confirmar replicación de gastos del mes anterior",
       }),
     );
 
@@ -2909,11 +2909,11 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+      screen.getByRole("button", { name: "Replicar gastos del mes anterior" }),
     );
     await waitFor(() => {
       expect(mockedToast.warning).toHaveBeenCalledWith(
-        "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+        "No hay gastos faltantes para replicar desde el mes anterior.",
       );
     });
     expect(fetchMock).not.toHaveBeenCalledWith(
@@ -2988,11 +2988,11 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
+      screen.getByRole("button", { name: "Replicar gastos del mes anterior" }),
     );
     await user.click(
       await screen.findByRole("button", {
-        name: "Confirmar replicación de gastos/deudas del mes anterior",
+        name: "Confirmar replicación de gastos del mes anterior",
       }),
     );
 
@@ -3024,11 +3024,11 @@ registerMonthlyExpensesPageDefaultHooks({
       ]),
     );
     expect(mockedToast.warning).not.toHaveBeenCalledWith(
-      "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+      "No hay gastos faltantes para replicar desde el mes anterior.",
     );
   });
 
-  it("shows a warning and skips persistence when all copied debts have zero remaining installments", async () => {
+  it("shows a warning and skips persistence when the previous month only has loans", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock({
       monthlyDocument: {
@@ -3082,7 +3082,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos del mes anterior" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -3092,7 +3092,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(mockedToast.warning).toHaveBeenCalledWith(
-      "El mes seleccionado no tiene deudas vigentes para copiar.",
+      "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
     );
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/storage/monthly-expenses",
@@ -3160,10 +3160,10 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos del mes anterior" }));
     await user.click(
       await screen.findByRole("button", {
-        name: "Confirmar replicación de gastos/deudas del mes anterior",
+        name: "Confirmar replicación de gastos del mes anterior",
       }),
     );
 
@@ -3245,10 +3245,10 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" }));
+    await user.click(screen.getByRole("button", { name: "Replicar gastos del mes anterior" }));
     await user.click(
       await screen.findByRole("button", {
-        name: "Confirmar replicación de gastos/deudas del mes anterior",
+        name: "Confirmar replicación de gastos del mes anterior",
       }),
     );
 
@@ -3262,7 +3262,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(screen.queryByText("Internet")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replicar gastos del mes anterior" })).toBeInTheDocument();
   });
 
   it("copies the expense template without carrying folder references", () => {
@@ -3278,19 +3278,19 @@ registerMonthlyExpensesPageDefaultHooks({
         expenseFolderId: "",
         sortOrder: null,
         id: "expense-source-1",
-        installmentCount: "12",
-        isLoan: true,
+        installmentCount: "",
+        isLoan: false,
         isRecurring: false,
         recurrenceStartMonth: "",
         recurrenceEndMonth: "",
         recurrenceIsActive: false,
-        lenderId: "lender-1",
-        lenderName: "Banco",
-        loanEndMonth: "2026-12",
-        loanPaidInstallments: 2,
-        loanProgress: "2 de 12 cuotas abonadas",
-        loanRemainingInstallments: 10,
-        loanTotalInstallments: 12,
+        lenderId: "",
+        lenderName: "",
+        loanEndMonth: "",
+        loanPaidInstallments: null,
+        loanProgress: "",
+        loanRemainingInstallments: null,
+        loanTotalInstallments: null,
         manualCoveredPayments: "2",
         monthlyFolderId: "monthly-folder-1",
         monthlyFolderStatus: "trashed",
@@ -3325,45 +3325,11 @@ registerMonthlyExpensesPageDefaultHooks({
     ]);
 
     expect(copiedRows).toHaveLength(1);
-    expect(copiedRows[0]).toEqual({
-      allReceiptsFolderId: "all-folder-1",
-      allReceiptsFolderStatus: undefined,
-      allReceiptsFolderViewUrl:
-        "https://drive.google.com/drive/folders/all-folder-1",
-      currency: "USD",
-      description: "Tarjeta",
-      expenseFolderId: "",
-      sortOrder: null,
-      id: "expense-source-1",
-      installmentCount: "12",
-      isLoan: true,
-      lenderId: "lender-1",
-      lenderName: "Banco",
-      loanEndMonth: "2026-12",
-      loanPaidInstallments: 3,
-      loanProgress: "3 de 12 cuotas abonadas",
-      loanRemainingInstallments: 9,
-      loanTotalInstallments: 12,
-      manualCoveredPayments: "0",
-      monthlyFolderId: "",
-      monthlyFolderStatus: undefined,
-      monthlyFolderViewUrl: "",
-      occurrencesPerMonth: "3",
-      occurrencesUnit: "",
-      isRecurring: false,
-      recurrenceStartMonth: "",
-      recurrenceEndMonth: "",
-      recurrenceIsActive: false,
-      paymentLink: "https://pagos.example.com/tarjeta",
-      paymentRecords: [],
-      receiptShareMessage: "Enviar comprobante",
-      receiptSharePhoneDigits: "5491122334455",
-      requiresReceiptShare: true,
-      receipts: [],
-      startMonth: "2026-01",
-      subtotal: "10",
-      total: "30.00",
-    });
+    expect(copiedRows[0]?.description).toBe("Tarjeta");
+    expect(copiedRows[0]?.isLoan).toBe(false);
+    expect(copiedRows[0]?.isRecurring).toBe(false);
+    expect(copiedRows[0]?.manualCoveredPayments).toBe("0");
+    expect(copiedRows[0]?.paymentRecords).toEqual([]);
     expect(copiedRows[0]?.allReceiptsFolderStatus).toBeUndefined();
     expect(copiedRows[0]?.monthlyFolderStatus).toBeUndefined();
     expect(copiedRows[0]?.receipts).toEqual([]);
@@ -3375,7 +3341,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(copiedRows[0]?.monthlyFolderViewUrl).toBe("");
   });
 
-  it("filters out loans with zero remaining installments when copying rows", () => {
+  it("excludes every loan from replication, keeping only plain expenses", () => {
     const copiedRows = copyMonthlyExpenseTemplatesToMonth("2026-03", [
       {
         allReceiptsFolderId: "",
@@ -3484,58 +3450,11 @@ registerMonthlyExpensesPageDefaultHooks({
       },
     ]);
 
-    expect(copiedRows).toHaveLength(2);
-    expect(copiedRows.map((row) => row.description)).toEqual([
-      "Deuda activa",
-      "Servicio",
-    ]);
-  });
-
-  it("copies a loan on its last installment month (e.g. 6 de 6)", () => {
-    const copiedRows = copyMonthlyExpenseTemplatesToMonth("2026-06", [
-      {
-        allReceiptsFolderId: "",
-        allReceiptsFolderViewUrl: "",
-        currency: "ARS",
-        description: "Última cuota",
-        expenseFolderId: "",
-        sortOrder: null,
-        id: "last-installment-loan",
-        installmentCount: "6",
-        isLoan: true,
-        isRecurring: false,
-        recurrenceStartMonth: "",
-        recurrenceEndMonth: "",
-        recurrenceIsActive: false,
-        lenderId: "lender-1",
-        lenderName: "Banco",
-        loanEndMonth: "2026-06",
-        loanPaidInstallments: 5,
-        loanProgress: "5 de 6 cuotas abonadas",
-        loanRemainingInstallments: 1,
-        loanTotalInstallments: 6,
-        manualCoveredPayments: "0",
-        monthlyFolderId: "",
-        monthlyFolderViewUrl: "",
-        occurrencesPerMonth: "1",
-        occurrencesUnit: "",
-        paymentLink: "",
-        receiptShareMessage: "",
-        receiptSharePhoneDigits: "",
-        requiresReceiptShare: false,
-        receipts: [],
-        startMonth: "2026-01",
-        subtotal: "1000",
-        total: "1000.00",
-      },
-    ]);
-
     expect(copiedRows).toHaveLength(1);
-    expect(copiedRows[0]?.description).toBe("Última cuota");
-    expect(copiedRows[0]?.loanProgress).toBe("6 de 6 cuotas abonadas");
+    expect(copiedRows.map((row) => row.description)).toEqual(["Servicio"]);
   });
 
-  it("does not copy a loan past its end month (e.g. 7 de 6)", () => {
+  it("does not copy any loan, regardless of its installment month", () => {
     const copiedRows = copyMonthlyExpenseTemplatesToMonth("2026-07", [
       {
         allReceiptsFolderId: "",
