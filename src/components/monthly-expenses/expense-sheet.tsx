@@ -296,12 +296,16 @@ function ExpenseSheetContent({
       : `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences}/mes`;
   const isLoanToggleDisabled = mode === "edit" || draft.isRecurring;
   // A plain expense can be converted to recurring while editing, so the toggle
-  // stays enabled in edit mode. A loan blocks it (mutually exclusive), and an
-  // expense that is already recurring keeps it disabled in edit: stopping it goes
-  // through "Cancelar recurrencia" so the change is bounded per month instead of
-  // wiping the recurrence from a single month.
+  // stays enabled in edit mode. A loan blocks it (mutually exclusive). The lock
+  // only applies to an expense that was ALREADY recurring before this edit (its
+  // recurrence is stopped via "Cancelar recurrencia", bounded per month): a
+  // recurrence the user just toggled on in this edit — `isRecurring` is in
+  // `changedFields` — stays editable so it can be unchecked/undone.
   const isRecurringToggleDisabled =
-    draft.isLoan || (mode === "edit" && draft.isRecurring);
+    draft.isLoan ||
+    (mode === "edit" &&
+      draft.isRecurring &&
+      !changedFields.has("isRecurring"));
   const shouldShowLoanSection = (isCreateMode || draft.isLoan) && !draft.isRecurring;
   // The recurring section is available whenever the expense is not a loan, in both
   // create and edit modes, so a plain expense can be turned into a recurring one.
