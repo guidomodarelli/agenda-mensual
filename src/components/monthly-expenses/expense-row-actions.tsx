@@ -136,7 +136,7 @@ export function ExpenseRowActions({
                   ariaLabel: `Confirmar cancelación de la recurrencia para ${normalizedDescription}`,
                   actionVariant: "default" as const,
                   description:
-                    "El gasto se sigue contando este mes y deja de repetirse en los meses siguientes. Podés reactivarlo cuando quieras.",
+                    "El gasto se sigue contando este mes y deja de repetirse en los meses siguientes. Para reactivarlo, abrí sus acciones desde el mes de la cancelación (o uno anterior) y elegí «Reactivar recurrencia».",
                   onConfirm: onCancelRecurrence,
                   title: "¿Querés cancelar la recurrencia?",
                 }

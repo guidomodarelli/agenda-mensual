@@ -2615,6 +2615,11 @@ export default function MonthlyExpensesPage({
   };
 
   const handleReactivateRecurrence = async (expenseId: string) => {
+    // Reactivation is only offered from months where the recurrence is still
+    // projected (up to its end month): projection cleanup removes a cancelled
+    // recurrence from later months, so there is no row to reactivate there. The
+    // row action is the only entry point and renders solely where a row exists,
+    // so this handler finds its target in the cancellation month or earlier.
     const targetRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!targetRow || !targetRow.isRecurring || !targetRow.recurrenceEndMonth) {
