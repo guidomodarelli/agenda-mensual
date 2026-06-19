@@ -536,6 +536,42 @@ describe("projectMonthlyExpenseLoans with recurring expenses", () => {
 });
 
 describe("getOutOfRangeStoredLoanIds", () => {
+  it("drops a cancelled recurring copy even when it is its own newest snapshot", () => {
+    const targetMonth = "2026-07";
+    // The only stored month is the future month itself, so it is its own newest
+    // snapshot; its recurrence ends in May, before July.
+    const targetDocument = buildDocument(targetMonth, [
+      buildRecurringItem({
+        recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+      }),
+    ]);
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents: [targetDocument],
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual(["rent-1"]);
+  });
+
+  it("keeps an active recurring copy that still covers the target month", () => {
+    const targetMonth = "2026-07";
+    const targetDocument = buildDocument(targetMonth, [
+      buildRecurringItem({
+        recurrence: { startMonth: "2026-03", endMonth: "2026-09" },
+      }),
+    ]);
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents: [targetDocument],
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
   it("reports a stored loan a newer canonical snapshot pushed out of range", () => {
     const targetMonth = "2026-08";
     const targetDocument = buildDocument(targetMonth, [
