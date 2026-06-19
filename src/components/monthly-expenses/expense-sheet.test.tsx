@@ -360,4 +360,64 @@ describe("ExpenseSheet", () => {
 
     expect(onRecurringToggle).toHaveBeenCalledWith(true);
   });
+
+  it("offers an enabled recurring toggle while editing a non-loan expense", () => {
+    renderExpenseSheet({ mode: "edit" });
+
+    const recurringToggle = screen.getByLabelText("Gasto recurrente");
+    expect(recurringToggle).toBeInTheDocument();
+    expect(recurringToggle).toBeEnabled();
+  });
+
+  it("converts an expense to recurring from the toggle while editing", async () => {
+    const user = userEvent.setup();
+    const onRecurringToggle = jest.fn();
+
+    render(
+      <TooltipProvider>
+        <ExpenseSheet
+          actionDisabled={false}
+          changedFields={new Set()}
+          draft={createDraftRow()}
+          expenseFolders={[]}
+          isOpen={true}
+          isSubmitting={false}
+          lenders={[]}
+          mode="edit"
+          onAddLender={jest.fn()}
+          onFieldChange={jest.fn()}
+          onFolderSelect={jest.fn()}
+          onManageFolders={jest.fn()}
+          onLenderSelect={jest.fn()}
+          onLoanToggle={jest.fn()}
+          onRecurringToggle={onRecurringToggle}
+          onReceiptShareToggle={jest.fn()}
+          onRequestClose={jest.fn()}
+          onSave={jest.fn()}
+          onUnsavedChangesClose={jest.fn()}
+          onUnsavedChangesDiscard={jest.fn()}
+          onUnsavedChangesSave={jest.fn()}
+          showUnsavedChangesDialog={false}
+          validationMessage={null}
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByLabelText("Gasto recurrente"));
+
+    expect(onRecurringToggle).toHaveBeenCalledWith(true);
+  });
+
+  it("keeps the recurring toggle disabled while editing an already-recurring expense", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        isRecurring: true,
+        recurrenceStartMonth: "2026-01",
+      },
+      mode: "edit",
+    });
+
+    expect(screen.getByLabelText("Gasto recurrente")).toBeDisabled();
+  });
 });

@@ -2688,10 +2688,9 @@ export default function MonthlyExpensesPage({
       if (!currentState.draft) {
         return currentState;
       }
-      if (currentState.mode === "edit") {
-        return currentState;
-      }
 
+      // Unlike loans, recurring can be toggled while editing so an existing
+      // expense can be converted into (or out of) a recurring one.
       return {
         ...currentState,
         draft: normalizeEditableRows(formState.month, [
