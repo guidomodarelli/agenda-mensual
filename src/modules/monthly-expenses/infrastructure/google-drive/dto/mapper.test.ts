@@ -103,6 +103,76 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     );
   });
 
+  it("round-trips recurrence metadata through Drive storage", () => {
+    const result = mapMonthlyExpensesDocumentToGoogleDriveFile({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          recurrence: {
+            startMonth: "2026-01",
+            endMonth: "2026-06",
+            isActive: false,
+          },
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          paymentLink: null,
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    const serializedItem = JSON.parse(result.content).items[0];
+    expect(serializedItem.recurrence).toEqual({
+      startMonth: "2026-01",
+      endMonth: "2026-06",
+    });
+
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      result.content,
+      "Loading monthly expenses",
+    );
+    expect(parsed.items[0]?.recurrence).toEqual({
+      startMonth: "2026-01",
+      endMonth: "2026-06",
+      // The document month (2026-03) falls inside [2026-01, 2026-06].
+      isActive: true,
+    });
+  });
+
+  it("omits a null recurrence end month when round-tripping through Drive storage", () => {
+    const result = mapMonthlyExpensesDocumentToGoogleDriveFile({
+      items: [
+        {
+          currency: "ARS",
+          description: "Expensas",
+          id: "expense-1",
+          recurrence: { startMonth: "2026-01", endMonth: null, isActive: true },
+          manualCoveredPayments: 0,
+          occurrencesPerMonth: 1,
+          paymentLink: null,
+          receipts: [],
+          subtotal: 90000,
+          total: 90000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    const serializedItem = JSON.parse(result.content).items[0];
+    expect(serializedItem.recurrence).toEqual({ startMonth: "2026-01" });
+
+    const parsed = parseGoogleDriveMonthlyExpensesContent(
+      result.content,
+      "Loading monthly expenses",
+    );
+    expect(parsed.items[0]?.recurrence?.endMonth).toBeNull();
+  });
+
   it("parses stored Drive content into the internal monthly document", () => {
     const result = parseGoogleDriveMonthlyExpensesContent(
       JSON.stringify({

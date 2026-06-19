@@ -72,6 +72,114 @@ describe("monthly-expenses-api client", () => {
     );
   });
 
+  it("accepts a recurrence in POST payloads and sends it to the API", async () => {
+    const fetchImplementation = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await saveMonthlyExpensesDocumentViaApi(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            recurrence: { startMonth: "2026-01", endMonth: "2026-06" },
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-03",
+      },
+      fetchImplementation,
+    );
+
+    const sentBody = JSON.parse(
+      (fetchImplementation.mock.calls[0][1] as { body: string }).body,
+    );
+    expect(sentBody.items[0].recurrence).toEqual({
+      startMonth: "2026-01",
+      endMonth: "2026-06",
+    });
+  });
+
+  it("rejects an item carrying both loan and recurrence before sending POST request", async () => {
+    const fetchImplementation = jest.fn();
+
+    await expect(
+      saveMonthlyExpensesDocumentViaApi(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-1",
+              loan: { installmentCount: 6, startMonth: "2026-01" },
+              recurrence: { startMonth: "2026-01" },
+              occurrencesPerMonth: 1,
+              subtotal: 350000,
+            },
+          ],
+          month: "2026-03",
+        },
+        fetchImplementation,
+      ),
+    ).rejects.toThrow();
+
+    expect(fetchImplementation).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reversed recurrence range before sending POST request", async () => {
+    const fetchImplementation = jest.fn();
+
+    await expect(
+      saveMonthlyExpensesDocumentViaApi(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-1",
+              recurrence: { startMonth: "2026-05", endMonth: "2026-01" },
+              occurrencesPerMonth: 1,
+              subtotal: 350000,
+            },
+          ],
+          month: "2026-03",
+        },
+        fetchImplementation,
+      ),
+    ).rejects.toThrow();
+
+    expect(fetchImplementation).not.toHaveBeenCalled();
+  });
+
+  it("rejects a recurrence inactive in the document month before sending POST request", async () => {
+    const fetchImplementation = jest.fn();
+
+    await expect(
+      saveMonthlyExpensesDocumentViaApi(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-1",
+              recurrence: { startMonth: "2026-01", endMonth: "2026-05" },
+              occurrencesPerMonth: 1,
+              subtotal: 350000,
+            },
+          ],
+          month: "2026-08",
+        },
+        fetchImplementation,
+      ),
+    ).rejects.toThrow();
+
+    expect(fetchImplementation).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid paymentLink before sending POST request", async () => {
     const fetchImplementation = jest.fn();
 

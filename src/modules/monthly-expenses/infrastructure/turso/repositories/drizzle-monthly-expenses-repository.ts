@@ -47,6 +47,8 @@ interface NormalizedExpenseRow {
   loanLenderId: string | null;
   loanLenderName: string | null;
   loanStartMonth: string | null;
+  recurrenceStartMonth: string | null;
+  recurrenceEndMonth: string | null;
   manualCoveredPayments: number;
   month: string;
   monthlyFolderId: string | null;
@@ -373,6 +375,8 @@ export class DrizzleMonthlyExpensesRepository
           loanLenderId: item.loan?.lenderId ?? null,
           loanLenderName: item.loan?.lenderName ?? null,
           loanStartMonth: item.loan?.startMonth ?? null,
+          recurrenceStartMonth: item.recurrence?.startMonth ?? null,
+          recurrenceEndMonth: item.recurrence?.endMonth ?? null,
           paymentLink: item.paymentLink ?? null,
           receiptShareMessage: item.receiptShareMessage ?? null,
           receiptSharePhoneDigits: item.receiptSharePhoneDigits ?? null,
@@ -393,6 +397,8 @@ export class DrizzleMonthlyExpensesRepository
             loanLenderId: item.loan?.lenderId ?? null,
             loanLenderName: item.loan?.lenderName ?? null,
             loanStartMonth: item.loan?.startMonth ?? null,
+            recurrenceStartMonth: item.recurrence?.startMonth ?? null,
+            recurrenceEndMonth: item.recurrence?.endMonth ?? null,
             paymentLink: item.paymentLink ?? null,
             receiptShareMessage: item.receiptShareMessage ?? null,
             receiptSharePhoneDigits: item.receiptSharePhoneDigits ?? null,
@@ -632,6 +638,8 @@ export class DrizzleMonthlyExpensesRepository
         loanLenderId: expensesTable.loanLenderId,
         loanLenderName: expensesTable.loanLenderName,
         loanStartMonth: expensesTable.loanStartMonth,
+        recurrenceStartMonth: expensesTable.recurrenceStartMonth,
+        recurrenceEndMonth: expensesTable.recurrenceEndMonth,
         manualCoveredPayments: expenseMonthsTable.manualCoveredPayments,
         month: expenseMonthsTable.month,
         monthlyFolderId: expenseMonthsTable.monthlyFolderId,
@@ -879,6 +887,16 @@ export class DrizzleMonthlyExpensesRepository
                   ...(row.loanLenderId ? { lenderId: row.loanLenderId } : {}),
                   ...(row.loanLenderName ? { lenderName: row.loanLenderName } : {}),
                   startMonth: row.loanStartMonth,
+                },
+              }
+            : {}),
+          ...(row.recurrenceStartMonth
+            ? {
+                recurrence: {
+                  startMonth: row.recurrenceStartMonth,
+                  ...(row.recurrenceEndMonth
+                    ? { endMonth: row.recurrenceEndMonth }
+                    : {}),
                 },
               }
             : {}),

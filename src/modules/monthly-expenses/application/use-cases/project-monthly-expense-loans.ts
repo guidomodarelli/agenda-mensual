@@ -1,7 +1,12 @@
 /**
- * Projects loan installments across every month within their active range so a
- * loan added in any month is reflected in the previous, current and following
+ * Projects recurring expenses (loans with a fixed installment range and
+ * open-ended recurring expenses) across every month within their active range so
+ * an item added in any month is reflected in the previous, current and following
  * months without manually copying or replicating it.
+ *
+ * A loan's range is `[startMonth, endMonth]` derived from its installment count;
+ * a recurring expense's range is `[startMonth, endMonth ?? open]`, where a present
+ * end month means the user cancelled it (months after it stop projecting).
  *
  * @module projectMonthlyExpenseLoans
  */
@@ -27,10 +32,16 @@ interface ProjectMonthlyExpenseLoansInput {
   targetMonth: string;
 }
 
-/** Snapshot of the latest known state of a single loan across all documents. */
+/** Snapshot of the latest known state of a single recurring item across all documents. */
 interface CanonicalLoanSnapshot {
   item: MonthlyExpenseItem;
   month: string;
+}
+
+/** A recurring item's active range; `endMonth === null` means open-ended. */
+interface RecurringRange {
+  startMonth: string;
+  endMonth: string | null;
 }
 
 function compareMonthIdentifiers(left: string, right: string): number {
@@ -38,43 +49,134 @@ function compareMonthIdentifiers(left: string, right: string): number {
 }
 
 /**
- * Tells whether the target month falls within a loan's installment range
- * `[startMonth, endMonth]`, where `endMonth` is derived from the installment count.
+ * Tells whether an item drives a projection (a loan or a recurring expense) and,
+ * when it does, returns its active range. A loan's range ends at the month derived
+ * from its installment count; a recurring expense's range ends at its `endMonth`
+ * (or stays open when the recurrence has not been cancelled).
  *
- * @param loan - Loan whose range is evaluated.
- * @param targetMonth - Month (`YYYY-MM`) to test.
- * @returns `true` when the month is covered by the loan range.
+ * @param item - Expense item to evaluate.
+ * @returns The recurring range, or `null` when the item is a plain expense.
  */
-function isMonthWithinLoanRange(
-  loan: NonNullable<MonthlyExpenseItem["loan"]>,
+function resolveRecurringRange(item: MonthlyExpenseItem): RecurringRange | null {
+  if (item.loan) {
+    return {
+      startMonth: item.loan.startMonth,
+      endMonth: calculateLoanEndMonth({
+        installmentCount: item.loan.installmentCount,
+        startMonth: item.loan.startMonth,
+      }),
+    };
+  }
+
+  if (item.recurrence) {
+    return {
+      startMonth: item.recurrence.startMonth,
+      endMonth: item.recurrence.endMonth,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Tells whether the target month falls within a recurring item's range. An
+ * open-ended range (`endMonth === null`) covers every month from its start.
+ *
+ * @param range - The item's active range.
+ * @param targetMonth - Month (`YYYY-MM`) to test.
+ * @returns `true` when the month is covered by the range.
+ */
+function isMonthWithinRange(
+  range: RecurringRange,
   targetMonth: string,
 ): boolean {
-  const endMonth = calculateLoanEndMonth({
-    installmentCount: loan.installmentCount,
-    startMonth: loan.startMonth,
-  });
-
   return (
-    compareMonthIdentifiers(targetMonth, loan.startMonth) >= 0 &&
-    compareMonthIdentifiers(targetMonth, endMonth) <= 0
+    compareMonthIdentifiers(targetMonth, range.startMonth) >= 0 &&
+    (range.endMonth === null ||
+      compareMonthIdentifiers(targetMonth, range.endMonth) <= 0)
   );
 }
 
 /**
- * Builds the canonical definition of every loan, keeping the snapshot from its
- * most recent month so changes (amount, installment count) propagate forward.
+ * Builds the canonical definition of every recurring item, keeping the snapshot
+ * from its most recent month so changes (amount, installment count) propagate
+ * forward.
  *
- * @param documents - Monthly documents to scan for loan items.
- * @returns Latest loan snapshot indexed by stable expense identifier.
+ * Recurrence cancellation is resolved separately from the newest-month rule:
+ *
+ * - The effective `endMonth` is the EARLIEST end month among all stored snapshots
+ *   that carry one, so a cancellation saved in an older month still bounds the
+ *   recurrence even when a newer, still-open snapshot exists.
+ * - The canonical DEFINITION (amount, payment link, folders, occurrences, etc.)
+ *   for a cancelled recurrence is taken from the newest snapshot WITHIN the active
+ *   range (document month on or before that earliest end), not from a later
+ *   out-of-range month. Otherwise a future month materialized before the
+ *   cancellation would leak stale definition fields while only the end month is
+ *   corrected. A recurrence without a cancellation (and every loan) keeps the
+ *   plain newest-snapshot definition.
+ *
+ * Reactivation clears the end month from every stored month, so no snapshot
+ * carries one and the recurrence becomes open again.
+ *
+ * @param documents - Monthly documents to scan for recurring items.
+ * @returns Canonical snapshot indexed by stable expense identifier, with each
+ *   recurrence's end month set to the earliest cancellation across all months.
  */
 function collectCanonicalLoanSnapshots(
   documents: MonthlyExpensesDocument[],
 ): Map<string, CanonicalLoanSnapshot> {
+  const earliestRecurrenceEndByExpenseId = new Map<string, string>();
+
+  // Pass 1: the earliest cancellation per recurrence id, across every month.
+  for (const document of documents) {
+    for (const item of document.items) {
+      const recurrenceEndMonth = item.recurrence?.endMonth;
+
+      if (recurrenceEndMonth) {
+        const currentEarliest = earliestRecurrenceEndByExpenseId.get(item.id);
+
+        if (
+          !currentEarliest ||
+          compareMonthIdentifiers(recurrenceEndMonth, currentEarliest) < 0
+        ) {
+          earliestRecurrenceEndByExpenseId.set(item.id, recurrenceEndMonth);
+        }
+      }
+    }
+  }
+
+  // Pass 2: the canonical definition. `snapshotsByExpenseId` keeps the newest
+  // snapshot WITHIN the active range (for a cancelled recurrence, ignoring months
+  // after the earliest end); `fallbackByExpenseId` keeps the unconstrained newest
+  // so an id whose only snapshots are out of range still resolves.
   const snapshotsByExpenseId = new Map<string, CanonicalLoanSnapshot>();
+  const fallbackByExpenseId = new Map<string, CanonicalLoanSnapshot>();
 
   for (const document of documents) {
     for (const item of document.items) {
-      if (!item.loan) {
+      if (!item.loan && !item.recurrence) {
+        continue;
+      }
+
+      const fallback = fallbackByExpenseId.get(item.id);
+
+      if (
+        !fallback ||
+        compareMonthIdentifiers(document.month, fallback.month) > 0
+      ) {
+        fallbackByExpenseId.set(item.id, { item, month: document.month });
+      }
+
+      // For a cancelled recurrence, a month after the earliest end is out of
+      // range and must not provide the canonical definition.
+      const earliestEnd = item.recurrence
+        ? earliestRecurrenceEndByExpenseId.get(item.id)
+        : undefined;
+
+      if (
+        earliestEnd &&
+        compareMonthIdentifiers(document.month, earliestEnd) > 0
+      ) {
         continue;
       }
 
@@ -86,6 +188,32 @@ function collectCanonicalLoanSnapshots(
       ) {
         snapshotsByExpenseId.set(item.id, { item, month: document.month });
       }
+    }
+  }
+
+  // Pathological fallback: every snapshot of this id is after the earliest end.
+  for (const [expenseId, fallback] of fallbackByExpenseId) {
+    if (!snapshotsByExpenseId.has(expenseId)) {
+      snapshotsByExpenseId.set(expenseId, fallback);
+    }
+  }
+
+  // Override each recurrence's canonical end month with the earliest cancellation
+  // seen across every stored month, so a cancellation from any month wins over a
+  // newer open snapshot. Loans are unaffected (their range comes from the
+  // installment count, not from a stored end month).
+  for (const [expenseId, snapshot] of snapshotsByExpenseId) {
+    const earliestEnd = earliestRecurrenceEndByExpenseId.get(expenseId);
+    const { recurrence } = snapshot.item;
+
+    if (recurrence && earliestEnd && recurrence.endMonth !== earliestEnd) {
+      snapshotsByExpenseId.set(expenseId, {
+        ...snapshot,
+        item: {
+          ...snapshot.item,
+          recurrence: { ...recurrence, endMonth: earliestEnd },
+        },
+      });
     }
   }
 
@@ -111,20 +239,32 @@ function collectCanonicalLoanSnapshots(
 function toProjectedLoanItemInput(
   item: MonthlyExpenseItem,
 ): MonthlyExpenseItemInput {
-  const loan = item.loan!;
+  const { loan, recurrence } = item;
 
   return {
     currency: item.currency,
     description: item.description,
     expenseFolderId: item.expenseFolderId ?? null,
     id: item.id,
-    loan: {
-      direction: loan.direction,
-      installmentCount: loan.installmentCount,
-      ...(loan.lenderId ? { lenderId: loan.lenderId } : {}),
-      ...(loan.lenderName ? { lenderName: loan.lenderName } : {}),
-      startMonth: loan.startMonth,
-    },
+    ...(loan
+      ? {
+          loan: {
+            direction: loan.direction,
+            installmentCount: loan.installmentCount,
+            ...(loan.lenderId ? { lenderId: loan.lenderId } : {}),
+            ...(loan.lenderName ? { lenderName: loan.lenderName } : {}),
+            startMonth: loan.startMonth,
+          },
+        }
+      : {}),
+    ...(recurrence
+      ? {
+          recurrence: {
+            startMonth: recurrence.startMonth,
+            ...(recurrence.endMonth ? { endMonth: recurrence.endMonth } : {}),
+          },
+        }
+      : {}),
     occurrencesPerMonth: item.occurrencesPerMonth,
     occurrencesUnit: item.occurrencesUnit ?? null,
     paymentLink: item.paymentLink ?? null,
@@ -231,21 +371,24 @@ export function projectMonthlyExpenseLoans({
 
   for (const snapshot of collectCanonicalLoanSnapshots(documents).values()) {
     const { item, month } = snapshot;
+    // collectCanonicalLoanSnapshots only keeps loan/recurrence items, so the
+    // range always resolves.
+    const range = resolveRecurringRange(item)!;
 
-    // A loan the user explicitly removed from this month is never reflected
-    // again, neither as an append nor as a refresh.
+    // A recurring item the user explicitly removed from this month is never
+    // reflected again, neither as an append nor as a refresh.
     if (excludedItemIds.has(item.id)) {
       continue;
     }
 
     if (existingItemIds.has(item.id)) {
-      // The loan is already stored in the target month. Refresh its definition
+      // The item is already stored in the target month. Refresh its definition
       // only when a newer month holds the canonical snapshot AND that canonical
       // range still covers the month; otherwise the stored copy is either already
       // the latest or now out of range (the caller drops out-of-range copies).
       if (
         compareMonthIdentifiers(month, targetMonth) > 0 &&
-        isMonthWithinLoanRange(item.loan!, targetMonth)
+        isMonthWithinRange(range, targetMonth)
       ) {
         projectedItems.push(toProjectedLoanItemInput(item));
       }
@@ -253,7 +396,7 @@ export function projectMonthlyExpenseLoans({
       continue;
     }
 
-    if (!isMonthWithinLoanRange(item.loan!, targetMonth)) {
+    if (!isMonthWithinRange(range, targetMonth)) {
       continue;
     }
 
@@ -264,17 +407,23 @@ export function projectMonthlyExpenseLoans({
 }
 
 /**
- * Returns the ids of loans stored in the target month whose CANONICAL (latest)
- * snapshot lives in a newer month and whose updated range no longer covers the
- * target month. These already-materialized copies are stale (e.g. the loan's
- * installment count was shortened or its start month moved later) and must be
- * dropped so a no-longer-active installment does not keep showing or get re-saved.
+ * Returns the ids of recurring items stored in the target month whose canonical
+ * range no longer covers the month, so the already-materialized copy is dropped
+ * instead of lingering and counting toward the month's totals.
  *
- * Only copies superseded by a *newer* snapshot are reported: a month's own
- * latest definition is left untouched even if it looks out of range.
+ * The rule differs by kind because the source of the range differs:
+ * - **Loans:** only a copy superseded by a *newer* snapshot is reported (its range
+ *   comes from the installment count, so a month's own latest definition is left
+ *   untouched even if it looks out of range).
+ * - **Recurring expenses:** the cancellation end month is an absolute bound. A
+ *   stored row is dropped whenever the target month falls outside the effective
+ *   recurrence range, even when this month is its own newest snapshot (e.g. a
+ *   future month was materialized before the user cancelled the recurrence from an
+ *   earlier month). The effective end month is the earliest cancellation across
+ *   all stored snapshots (see {@link collectCanonicalLoanSnapshots}).
  *
  * @param input - Stored documents, target month and the month's existing items.
- * @returns The stored loan ids to remove from the target month.
+ * @returns The stored recurring-item ids to remove from the target month.
  */
 export function getOutOfRangeStoredLoanIds({
   baseItems,
@@ -285,21 +434,35 @@ export function getOutOfRangeStoredLoanIds({
   const outOfRangeLoanIds: string[] = [];
 
   for (const item of baseItems) {
-    if (!item.loan) {
+    if (!item.loan && !item.recurrence) {
       continue;
     }
 
     const snapshot = canonicalSnapshots.get(item.id);
 
+    if (!snapshot) {
+      continue;
+    }
+
+    const canonicalRange = resolveRecurringRange(snapshot.item);
+
+    if (!canonicalRange) {
+      continue;
+    }
+
+    // Loans only drop when a newer snapshot supersedes the stored copy; a
+    // recurrence's stored end month bounds it absolutely, so it is also checked
+    // when this month holds its own newest snapshot.
+    const isRecurrence = Boolean(snapshot.item.recurrence);
+
     if (
-      !snapshot ||
-      !snapshot.item.loan ||
+      !isRecurrence &&
       compareMonthIdentifiers(snapshot.month, targetMonth) <= 0
     ) {
       continue;
     }
 
-    if (!isMonthWithinLoanRange(snapshot.item.loan, targetMonth)) {
+    if (!isMonthWithinRange(canonicalRange, targetMonth)) {
       outOfRangeLoanIds.push(item.id);
     }
   }

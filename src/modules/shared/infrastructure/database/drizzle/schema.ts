@@ -63,6 +63,8 @@ export const expensesTable = sqliteTable(
     loanLenderId: text("loan_lender_id"),
     loanLenderName: text("loan_lender_name"),
     loanStartMonth: text("loan_start_month"),
+    recurrenceStartMonth: text("recurrence_start_month"),
+    recurrenceEndMonth: text("recurrence_end_month"),
     paymentLink: text("payment_link"),
     receiptShareMessage: text("receipt_share_message"),
     receiptSharePhoneDigits: text("receipt_share_phone_digits"),

@@ -2,6 +2,7 @@ import type {
   MonthlyExpenseCurrency,
   MonthlyExpenseFolders,
   MonthlyExpenseLoan,
+  MonthlyExpenseRecurrence,
   MonthlyExpensePaymentRecord,
   MonthlyExpenseReceipt,
   MonthlyExpenseSubtotalUnit,
@@ -40,6 +41,7 @@ export interface MonthlyExpenseItemResult {
   id: string;
   isPaid?: boolean;
   loan?: MonthlyExpenseLoan;
+  recurrence?: MonthlyExpenseRecurrence;
   manualCoveredPayments?: number;
   occurrencesPerMonth: number;
   occurrencesUnit?: string;
@@ -95,6 +97,7 @@ export function toMonthlyExpensesDocumentResult(
           }
         : {}),
       ...(item.loan ? { loan: { ...item.loan } } : {}),
+      ...(item.recurrence ? { recurrence: { ...item.recurrence } } : {}),
       receipts: item.receipts.map((receipt) => ({
         ...receipt,
         ...(receiptStatusesByFileId[receipt.fileId]

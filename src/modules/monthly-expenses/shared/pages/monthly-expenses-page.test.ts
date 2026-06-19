@@ -3,6 +3,8 @@ import type { MonthlyExpenseItemResult } from "@/modules/monthly-expenses/applic
 
 import {
   copyMonthlyExpenseTemplatesToMonth,
+  createReplicationComparisonKey,
+  getChangedExpenseFields,
   getExpenseValidationMessage,
   getMaxManualCoveredPayments,
   toEditableRows,
@@ -185,6 +187,57 @@ describe("monthly expenses page mappers", () => {
         receipts: [],
         subtotal: 100,
         total: 100,
+      },
+    ];
+
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
+      "2026-05",
+      toEditableRows(sourceDocument),
+    );
+
+    expect(copiedRows).toHaveLength(0);
+  });
+
+  it("copies an active recurring expense into a later month", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+        receipts: [],
+        subtotal: 350000,
+        total: 350000,
+      },
+    ];
+
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
+      "2026-05",
+      toEditableRows(sourceDocument),
+    );
+
+    expect(copiedRows).toHaveLength(1);
+    expect(copiedRows[0]?.isRecurring).toBe(true);
+  });
+
+  it("does not copy a cancelled recurring expense into a month past its end", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        recurrence: {
+          startMonth: "2026-01",
+          endMonth: "2026-04",
+          isActive: true,
+        },
+        receipts: [],
+        subtotal: 350000,
+        total: 350000,
       },
     ];
 
@@ -497,6 +550,311 @@ describe("monthly expenses page mappers", () => {
 
     expect(getExpenseValidationMessage("2026-03", editableRow, "edit")).toBe(
       "Corregí los errores antes de continuar.",
+    );
+  });
+
+  it("blocks saving a recurring expense without a start month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage(
+        "2026-03",
+        { ...recurringRow, recurrenceStartMonth: "" },
+        "edit",
+      ),
+    ).toBe("Corregí los errores antes de continuar.");
+  });
+
+  it("blocks saving a recurring expense whose end month precedes its start month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage(
+        "2026-03",
+        {
+          ...recurringRow,
+          recurrenceStartMonth: "2026-05",
+          recurrenceEndMonth: "2026-01",
+        },
+        "edit",
+      ),
+    ).toBe("Corregí los errores antes de continuar.");
+  });
+
+  it("allows saving a valid recurring expense", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", endMonth: "2026-09", isActive: true },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage("2026-03", recurringRow, "create"),
+    ).toBeNull();
+  });
+
+  it("blocks saving a recurring expense whose start month is after the visible month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage(
+        "2026-03",
+        { ...recurringRow, recurrenceStartMonth: "2026-05" },
+        "create",
+      ),
+    ).toBe("Corregí los errores antes de continuar.");
+  });
+
+  it("blocks saving a recurring expense whose end month is before the visible month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", endMonth: "2026-05", isActive: true },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage("2026-08", recurringRow, "edit"),
+    ).toBe("Corregí los errores antes de continuar.");
+  });
+
+  it("allows saving a recurring expense cancelled exactly in the visible month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", endMonth: "2026-06", isActive: true },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-06",
+    });
+
+    expect(
+      getExpenseValidationMessage("2026-06", recurringRow, "edit"),
+    ).toBeNull();
+  });
+
+  it("builds a recurrence in the save command when creating a recurring expense", () => {
+    const recurringRow = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-03", isActive: true, endMonth: null },
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    const command = toSaveMonthlyExpensesCommand({
+      error: null,
+      exchangeRateLoadError: null,
+      exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
+      isSubmitting: false,
+      month: "2026-03",
+      rows: recurringRow,
+    });
+
+    expect(command.items[0]).toEqual(
+      expect.objectContaining({
+        recurrence: { startMonth: "2026-03" },
+      }),
+    );
+    expect(command.items[0]).not.toHaveProperty("loan");
+  });
+
+  it("carries the cancellation end month into the save command", () => {
+    const cancelledRow = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: {
+            startMonth: "2026-03",
+            endMonth: "2026-06",
+            isActive: false,
+          },
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-08",
+    });
+
+    const command = toSaveMonthlyExpensesCommand({
+      error: null,
+      exchangeRateLoadError: null,
+      exchangeRateSnapshot: null,
+      hasReplicatedFromPreviousMonth: false,
+      isSubmitting: false,
+      month: "2026-08",
+      rows: cancelledRow,
+    });
+
+    expect(command.items[0]).toEqual(
+      expect.objectContaining({
+        recurrence: { startMonth: "2026-03", endMonth: "2026-06" },
+      }),
+    );
+  });
+
+  it("detects recurrence month edits as changed fields", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+        receipts: [],
+        subtotal: 350000,
+        total: 350000,
+      },
+    ];
+    const [originalRow] = toEditableRows(sourceDocument);
+
+    const changedFields = getChangedExpenseFields(originalRow, {
+      ...originalRow,
+      recurrenceStartMonth: "2026-02",
+      recurrenceEndMonth: "2026-09",
+    });
+
+    expect(changedFields.has("recurrenceStartMonth")).toBe(true);
+    expect(changedFields.has("recurrenceEndMonth")).toBe(true);
+  });
+
+  it("detects toggling the recurring flag as a changed field", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Internet",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        receipts: [],
+        subtotal: 20000,
+        total: 20000,
+      },
+    ];
+    const [originalRow] = toEditableRows(sourceDocument);
+
+    const changedFields = getChangedExpenseFields(originalRow, {
+      ...originalRow,
+      isRecurring: true,
+      recurrenceStartMonth: "2026-03",
+    });
+
+    expect(changedFields.has("isRecurring")).toBe(true);
+  });
+
+  it("keys a recurring row distinctly from a one-off expense for copy de-duplication", () => {
+    const [oneOffRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          receipts: [],
+          subtotal: 20000,
+          total: 20000,
+        },
+      ],
+      month: "2026-03",
+    });
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-2",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 20000,
+          total: 20000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(createReplicationComparisonKey(recurringRow)).not.toBe(
+      createReplicationComparisonKey(oneOffRow),
     );
   });
 });

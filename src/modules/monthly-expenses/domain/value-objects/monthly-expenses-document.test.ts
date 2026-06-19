@@ -1169,4 +1169,149 @@ describe("monthlyExpensesDocument", () => {
 
     expect(revalidated.items[0]?.paymentRecords?.[0]?.sendStatus).toBe("sent");
   });
+
+  it("marks a recurring expense as active when the target month is within its open range", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+            recurrence: { startMonth: "2026-01" },
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.recurrence).toEqual({
+      startMonth: "2026-01",
+      endMonth: null,
+      isActive: true,
+    });
+  });
+
+  it("marks a recurring expense as inactive once the target month passes its end month", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+            recurrence: { startMonth: "2026-01", endMonth: "2026-02" },
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.recurrence).toEqual({
+      startMonth: "2026-01",
+      endMonth: "2026-02",
+      isActive: false,
+    });
+  });
+
+  it("treats an empty recurrence end month as an open-ended recurrence", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Expensas",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 90000,
+            recurrence: { startMonth: "2026-01", endMonth: "" },
+          },
+        ],
+        month: "2026-05",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.recurrence?.endMonth).toBeNull();
+    expect(result.items[0]?.recurrence?.isActive).toBe(true);
+  });
+
+  it("rejects a recurrence end month earlier than its start month", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 350000,
+              recurrence: { startMonth: "2026-05", endMonth: "2026-01" },
+            },
+          ],
+          month: "2026-05",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(/end month to be on or after the start month/);
+  });
+
+  it("rejects an expense that is both a loan and a recurring expense", () => {
+    expect(() =>
+      createMonthlyExpensesDocument(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 350000,
+              loan: { installmentCount: 6, startMonth: "2026-01" },
+              recurrence: { startMonth: "2026-01" },
+            },
+          ],
+          month: "2026-03",
+        },
+        "Saving monthly expenses",
+      ),
+    ).toThrow(/either a loan or a recurring expense, not both/);
+  });
+
+  it("preserves the recurrence across serialization round-trips and drops a null end month", () => {
+    const document = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+            recurrence: { startMonth: "2026-01" },
+          },
+        ],
+        month: "2026-03",
+      },
+      "Saving monthly expenses",
+    );
+
+    const reserialized = toMonthlyExpensesDocumentInput(document);
+
+    expect(reserialized.items[0]?.recurrence).toEqual({ startMonth: "2026-01" });
+
+    const revalidated = createMonthlyExpensesDocument(
+      reserialized,
+      "Saving monthly expenses",
+    );
+
+    expect(revalidated.items[0]?.recurrence?.endMonth).toBeNull();
+  });
 });

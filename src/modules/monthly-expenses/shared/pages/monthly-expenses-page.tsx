@@ -443,6 +443,10 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     manualCoveredPayments: "0",
     occurrencesPerMonth: "1",
     occurrencesUnit: "",
+    isRecurring: false,
+    recurrenceStartMonth: "",
+    recurrenceEndMonth: "",
+    recurrenceIsActive: false,
     paymentRecords: [],
     paymentLink: "",
     receiptShareMessage: "",
@@ -691,6 +695,10 @@ export function toEditableRows(
       : "",
     occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
     occurrencesUnit: item.occurrencesUnit?.trim() ?? "",
+    isRecurring: Boolean(item.recurrence),
+    recurrenceStartMonth: item.recurrence?.startMonth ?? "",
+    recurrenceEndMonth: item.recurrence?.endMonth ?? "",
+    recurrenceIsActive: item.recurrence?.isActive ?? false,
     paymentRecords,
     paymentLink: item.paymentLink?.trim() ?? "",
     receiptShareMessage: item.receiptShareMessage?.trim() ?? "",
@@ -1067,6 +1075,46 @@ function normalizeLoanPreview(
   };
 }
 
+function normalizeRecurrencePreview(
+  month: string,
+  row: MonthlyExpensesEditableRow,
+): Pick<
+  MonthlyExpensesEditableRow,
+  | "isRecurring"
+  | "recurrenceStartMonth"
+  | "recurrenceEndMonth"
+  | "recurrenceIsActive"
+> {
+  const normalizedMonth = month.trim();
+  const startMonth = row.recurrenceStartMonth.trim();
+  const endMonth = row.recurrenceEndMonth.trim();
+  const isActive =
+    MONTH_PATTERN.test(normalizedMonth) &&
+    MONTH_PATTERN.test(startMonth) &&
+    startMonth.localeCompare(normalizedMonth) <= 0 &&
+    (!endMonth || normalizedMonth.localeCompare(endMonth) <= 0);
+
+  return {
+    isRecurring: true,
+    recurrenceStartMonth: startMonth,
+    recurrenceEndMonth: endMonth,
+    recurrenceIsActive: isActive,
+  };
+}
+
+const CLEARED_RECURRENCE_FIELDS: Pick<
+  MonthlyExpensesEditableRow,
+  | "isRecurring"
+  | "recurrenceStartMonth"
+  | "recurrenceEndMonth"
+  | "recurrenceIsActive"
+> = {
+  isRecurring: false,
+  recurrenceStartMonth: "",
+  recurrenceEndMonth: "",
+  recurrenceIsActive: false,
+};
+
 function normalizeEditableRows(
   month: string,
   rows: MonthlyExpensesEditableRow[],
@@ -1087,6 +1135,11 @@ function normalizeEditableRows(
           loanTotalInstallments: null,
           startMonth: "",
         }),
+    // A loan and a recurring expense are mutually exclusive: loan wins, so a
+    // recurring flag is only honored when the row is not a loan.
+    ...(row.isRecurring && !row.isLoan
+      ? normalizeRecurrencePreview(month, row)
+      : CLEARED_RECURRENCE_FIELDS),
     total: calculateRowTotal(
       row.subtotal,
       row.occurrencesPerMonth,
@@ -1115,6 +1168,14 @@ export function copyMonthlyExpenseTemplatesToMonth(
   );
 
   return normalizedRowsToCopy.filter((row) => {
+    if (row.isRecurring) {
+      // A recurring expense is copied only while it is still active in the
+      // target month. A cancellation (end month before the target month) leaves
+      // `recurrenceIsActive` false after normalization, so it is not re-copied
+      // into the following months.
+      return row.recurrenceIsActive;
+    }
+
     if (!row.isLoan) {
       return true;
     }
@@ -1142,17 +1203,33 @@ function normalizeTextForReplicationComparison(value: string): string {
     .toLowerCase();
 }
 
-function createReplicationComparisonKey(row: MonthlyExpensesEditableRow): string {
+export function createReplicationComparisonKey(
+  row: MonthlyExpensesEditableRow,
+): string {
+  // A recurring expense is a distinct kind from a one-off expense (and from a
+  // loan), so it carries its own type token and recurrence months. Otherwise a
+  // recurring row and a one-off expense with the same description, currency and
+  // occurrences would collapse to the same key and be de-duplicated against each
+  // other in the copy-from-month flow. Loans and plain expenses keep their tokens
+  // and only gain empty recurrence segments, so their relative keys are unchanged.
+  const typeToken = row.isLoan
+    ? "loan"
+    : row.isRecurring
+      ? "recurring"
+      : "expense";
+
   return [
     normalizeTextForReplicationComparison(row.description),
     row.currency,
-    row.isLoan ? "loan" : "expense",
+    typeToken,
     row.loanDirection ?? "payable",
     row.installmentCount.trim(),
     row.startMonth.trim(),
     normalizeTextForReplicationComparison(row.lenderId),
     normalizeTextForReplicationComparison(row.lenderName),
     row.occurrencesPerMonth.trim(),
+    row.recurrenceStartMonth.trim(),
+    row.recurrenceEndMonth.trim(),
   ].join("|");
 }
 
@@ -1242,6 +1319,36 @@ export function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
+  // A recurring expense needs a valid start month, and an optional end month must
+  // be a valid month on or after the start month. Blocking the save here keeps an
+  // invalid recurrence from being serialized to the API as a technical error.
+  const recurrenceStartMonth = row.recurrenceStartMonth.trim();
+  const recurrenceEndMonth = row.recurrenceEndMonth.trim();
+
+  if (
+    row.isRecurring &&
+    (!MONTH_PATTERN.test(recurrenceStartMonth) ||
+      (recurrenceEndMonth !== "" &&
+        (!MONTH_PATTERN.test(recurrenceEndMonth) ||
+          recurrenceEndMonth < recurrenceStartMonth)))
+  ) {
+    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
+  }
+
+  // A recurring expense must be active in the visible month: saving a row whose
+  // range does not cover the month would store and count it outside its active
+  // range (its own snapshot would survive projection cleanup). The end month is
+  // inclusive, so a cancellation that sets it to the visible month stays active.
+  const visibleMonth = month.trim();
+
+  if (
+    row.isRecurring &&
+    (visibleMonth < recurrenceStartMonth ||
+      (recurrenceEndMonth !== "" && visibleMonth > recurrenceEndMonth))
+  ) {
+    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
+  }
+
   // In create mode any invalid (including empty) receipt-share phone blocks the
   // save. In edit mode a legacy empty value on a row that already had sharing on
   // is tolerated so unrelated fields stay editable, but the phone is still
@@ -1274,7 +1381,7 @@ export function getExpenseValidationMessage(
   return null;
 }
 
-function getChangedExpenseFields(
+export function getChangedExpenseFields(
   originalRow: MonthlyExpensesEditableRow | null,
   draft: MonthlyExpensesEditableRow | null,
 ): Set<string> {
@@ -1329,6 +1436,18 @@ function getChangedExpenseFields(
 
   if (originalRow.installmentCount !== draft.installmentCount) {
     changedFields.add("installmentCount");
+  }
+
+  if (originalRow.isRecurring !== draft.isRecurring) {
+    changedFields.add("isRecurring");
+  }
+
+  if (originalRow.recurrenceStartMonth !== draft.recurrenceStartMonth) {
+    changedFields.add("recurrenceStartMonth");
+  }
+
+  if (originalRow.recurrenceEndMonth !== draft.recurrenceEndMonth) {
+    changedFields.add("recurrenceEndMonth");
   }
 
   if (originalRow.manualCoveredPayments !== draft.manualCoveredPayments) {
@@ -1509,6 +1628,16 @@ export function toSaveMonthlyExpensesCommand(
                   ? { lenderName: row.lenderName.trim() }
                   : {}),
                 startMonth: row.startMonth.trim(),
+              },
+            }
+          : {}),
+        ...(row.isRecurring && !row.isLoan
+          ? {
+              recurrence: {
+                startMonth: row.recurrenceStartMonth.trim(),
+                ...(row.recurrenceEndMonth.trim()
+                  ? { endMonth: row.recurrenceEndMonth.trim() }
+                  : {}),
               },
             }
           : {}),
@@ -2463,6 +2592,50 @@ export default function MonthlyExpensesPage({
     });
   };
 
+  const handleCancelRecurrence = async (expenseId: string) => {
+    const targetRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!targetRow || !targetRow.isRecurring || targetRow.recurrenceEndMonth) {
+      return;
+    }
+
+    // Cancel from the visible month onward: it still counts this month and
+    // stops repeating in the following months.
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? { ...row, recurrenceEndMonth: formState.month }
+        : row,
+    );
+
+    await persistMonthlyExpensesRows(nextRows, {
+      loading: "Cancelando la recurrencia...",
+      success:
+        "Recurrencia cancelada. Deja de repetirse en los meses siguientes.",
+    });
+  };
+
+  const handleReactivateRecurrence = async (expenseId: string) => {
+    // Reactivation is only offered from months where the recurrence is still
+    // projected (up to its end month): projection cleanup removes a cancelled
+    // recurrence from later months, so there is no row to reactivate there. The
+    // row action is the only entry point and renders solely where a row exists,
+    // so this handler finds its target in the cancellation month or earlier.
+    const targetRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!targetRow || !targetRow.isRecurring || !targetRow.recurrenceEndMonth) {
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId ? { ...row, recurrenceEndMonth: "" } : row,
+    );
+
+    await persistMonthlyExpensesRows(nextRows, {
+      loading: "Reactivando la recurrencia...",
+      success: "Recurrencia reactivada. Vuelve a repetirse todos los meses.",
+    });
+  };
+
   const handleFolderFilterChange = (folderId: string) => {
     setFolderFilterId(folderId);
   };
@@ -2504,6 +2677,41 @@ export default function MonthlyExpensesPage({
                 loanEndMonth: "",
                 loanProgress: "",
                 startMonth: "",
+              },
+        ])[0],
+      };
+    });
+  };
+
+  const handleExpenseRecurringToggle = (checked: boolean) => {
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+      if (currentState.mode === "edit") {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        draft: normalizeEditableRows(formState.month, [
+          checked
+            ? {
+                ...currentState.draft,
+                // A recurring expense and a loan are mutually exclusive.
+                isLoan: false,
+                isRecurring: true,
+                // Default the recurrence to start on the visible month.
+                recurrenceStartMonth:
+                  currentState.draft.recurrenceStartMonth.trim() ||
+                  formState.month,
+                recurrenceEndMonth: "",
+              }
+            : {
+                ...currentState.draft,
+                isRecurring: false,
+                recurrenceStartMonth: "",
+                recurrenceEndMonth: "",
               },
         ])[0],
       };
@@ -4588,6 +4796,9 @@ export default function MonthlyExpensesPage({
                 onReorderFolders={handleReorderExpenseFolders}
                 onExpenseLenderSelect={handleExpenseLenderSelect}
                 onExpenseLoanToggle={handleExpenseLoanToggle}
+                onExpenseRecurringToggle={handleExpenseRecurringToggle}
+                onCancelRecurrence={handleCancelRecurrence}
+                onReactivateRecurrence={handleReactivateRecurrence}
                 onExpenseReceiptShareToggle={handleExpenseReceiptShareToggle}
                 onMonthChange={handleMonthChange}
                 onRequestCloseExpenseSheet={handleRequestCloseExpenseSheet}

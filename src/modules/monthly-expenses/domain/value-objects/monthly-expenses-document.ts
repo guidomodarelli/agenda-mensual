@@ -44,6 +44,23 @@ export interface MonthlyExpenseLoan extends MonthlyExpenseLoanInput {
   paidInstallments: number;
 }
 
+export interface MonthlyExpenseRecurrenceInput {
+  /** First month (`YYYY-MM`) the recurring expense applies to. */
+  startMonth: string;
+  /**
+   * Last month (`YYYY-MM`) the recurring expense still applies to. `null` (or
+   * absent) means the recurrence is open-ended and keeps projecting forward.
+   * Setting it cancels the recurrence: months after it stop being projected.
+   */
+  endMonth?: string | null;
+}
+
+export interface MonthlyExpenseRecurrence extends MonthlyExpenseRecurrenceInput {
+  endMonth: string | null;
+  /** Whether the recurrence covers the document month (target month) it lives in. */
+  isActive: boolean;
+}
+
 export interface MonthlyExpenseReceiptInput {
   allReceiptsFolderId: string;
   allReceiptsFolderViewUrl: string;
@@ -109,6 +126,7 @@ export interface MonthlyExpenseItemInput {
   manualCoveredPayments?: number;
   occurrencesPerMonth: number;
   occurrencesUnit?: string | null;
+  recurrence?: MonthlyExpenseRecurrenceInput;
   paymentRecords?: MonthlyExpensePaymentRecordInput[] | null;
   paymentLink?: string | null;
   receiptShareMessage?: string | null;
@@ -131,6 +149,7 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   expenseFolderId?: string | null;
   folders?: MonthlyExpenseFolders;
   loan?: MonthlyExpenseLoan;
+  recurrence?: MonthlyExpenseRecurrence;
   manualCoveredPayments: number;
   occurrencesUnit?: string;
   paymentLink?: string | null;
@@ -419,6 +438,64 @@ function validateLoan(
     }),
     startMonth,
   };
+}
+
+/**
+ * Compares two normalized `YYYY-MM` month identifiers. Returns a negative number
+ * when `left` is earlier, a positive number when it is later, and `0` when equal.
+ */
+function compareMonths(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
+/**
+ * Validates a recurring expense definition and resolves whether it is active in
+ * the target month. The recurrence is open-ended while `endMonth` is absent; a
+ * present `endMonth` (which must be on or after `startMonth`) cancels it, so the
+ * target month is only active when it falls inside `[startMonth, endMonth]`.
+ *
+ * @param recurrence - Raw recurrence definition.
+ * @param operationName - Operation name used in error messages.
+ * @param targetMonth - The document month the recurrence is evaluated against.
+ * @returns The normalized recurrence with its resolved `endMonth` and `isActive`.
+ * @throws When the months are malformed or `endMonth` precedes `startMonth`.
+ */
+function validateRecurrence(
+  recurrence: MonthlyExpenseRecurrenceInput,
+  operationName: string,
+  targetMonth: string,
+): MonthlyExpenseRecurrence {
+  const startMonth = validateMonth(
+    recurrence.startMonth,
+    operationName,
+    "a recurrence start month",
+  );
+
+  let endMonth: string | null = null;
+
+  if (recurrence.endMonth != null) {
+    const normalizedEndMonth = recurrence.endMonth.trim();
+
+    if (normalizedEndMonth) {
+      endMonth = validateMonth(
+        normalizedEndMonth,
+        operationName,
+        "a recurrence end month",
+      );
+
+      if (compareMonths(endMonth, startMonth) < 0) {
+        throw new Error(
+          `${operationName} requires the recurrence end month to be on or after the start month.`,
+        );
+      }
+    }
+  }
+
+  const isActive =
+    compareMonths(targetMonth, startMonth) >= 0 &&
+    (endMonth === null || compareMonths(targetMonth, endMonth) <= 0);
+
+  return { startMonth, endMonth, isActive };
 }
 
 function validatePaymentLink(
@@ -861,6 +938,7 @@ function validateItem(
     folders,
     isPaid,
     loan,
+    recurrence,
     manualCoveredPayments,
     occurrencesUnit,
     paymentLink,
@@ -936,6 +1014,12 @@ function validateItem(
     );
   }
 
+  if (loan && recurrence) {
+    throw new Error(
+      `${operationName} requires every expense to be either a loan or a recurring expense, not both.`,
+    );
+  }
+
   if (
     requiresReceiptShare !== undefined &&
     typeof requiresReceiptShare !== "boolean"
@@ -1006,6 +1090,9 @@ function validateItem(
     ...(normalizedFolders ? { folders: normalizedFolders } : {}),
     ...(normalizedIsPaid ? { isPaid: true } : {}),
     ...(loan ? { loan: validateLoan(loan, operationName, targetMonth) } : {}),
+    ...(recurrence
+      ? { recurrence: validateRecurrence(recurrence, operationName, targetMonth) }
+      : {}),
     manualCoveredPayments: normalizedManualCoveredPayments,
     ...(normalizedOccurrencesUnit
       ? { occurrencesUnit: normalizedOccurrencesUnit }
@@ -1185,6 +1272,16 @@ export function toMonthlyExpensesDocumentInput(
                 ? { lenderName: item.loan.lenderName }
                 : {}),
               startMonth: item.loan.startMonth,
+            },
+          }
+        : {}),
+      ...(item.recurrence
+        ? {
+            recurrence: {
+              startMonth: item.recurrence.startMonth,
+              ...(item.recurrence.endMonth
+                ? { endMonth: item.recurrence.endMonth }
+                : {}),
             },
           }
         : {}),

@@ -184,6 +184,17 @@ const monthlyExpenseItemSchema = z.object({
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })
     .optional(),
+  recurrence: z
+    .object({
+      startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+      endMonth: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .nullable()
+        .optional(),
+    })
+    .optional(),
   manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
   occurrencesUnit: z
@@ -217,13 +228,56 @@ const monthlyExpenseItemSchema = z.object({
       path: ["receiptSharePhoneDigits"],
     });
   }
+
+  if (value.loan && value.recurrence) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "monthly-expenses API requires every expense to be either a loan or a recurring expense, not both.",
+      path: ["recurrence"],
+    });
+  }
+
+  if (
+    value.recurrence?.endMonth &&
+    value.recurrence.endMonth < value.recurrence.startMonth
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "monthly-expenses API requires the recurrence end month to be on or after the start month.",
+      path: ["recurrence", "endMonth"],
+    });
+  }
 });
 
 const monthlyExpensesRequestBodySchema = z.object({
   hasReplicatedFromPreviousMonth: z.boolean().optional(),
   items: z.array(monthlyExpenseItemSchema),
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
-}).strict();
+}).strict().superRefine((value, context) => {
+  // A recurring expense must be active in the document month: storing a row
+  // whose range does not cover the month would count it outside its active
+  // range. The end month is inclusive (a cancellation at the document month is
+  // still active). Mirrors the UI save validation for direct API clients.
+  value.items.forEach((item, index) => {
+    if (!item.recurrence) {
+      return;
+    }
+
+    if (
+      value.month < item.recurrence.startMonth ||
+      (item.recurrence.endMonth && value.month > item.recurrence.endMonth)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "monthly-expenses API requires every recurring expense to be active in the document month.",
+        path: ["items", index, "recurrence"],
+      });
+    }
+  });
+});
 
 const monthlyExpensesGetQuerySchema = z.object({
   includeDriveStatuses: z.preprocess(
