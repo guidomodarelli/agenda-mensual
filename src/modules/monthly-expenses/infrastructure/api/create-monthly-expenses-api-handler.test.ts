@@ -419,6 +419,56 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
   });
 
+  it("passes recurrence metadata to the save use case when included", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-03",
+      name: "control-mensual-2026-marzo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            recurrence: { startMonth: "2026-01", endMonth: "2026-06" },
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: expect.objectContaining({
+          items: [
+            expect.objectContaining({
+              id: "expense-1",
+              recurrence: { startMonth: "2026-01", endMonth: "2026-06" },
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(response.statusCode).toBe(200);
+  });
+
   it("passes receivable loan direction to the save use case", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({

@@ -72,6 +72,38 @@ describe("monthly-expenses-api client", () => {
     );
   });
 
+  it("accepts a recurrence in POST payloads and sends it to the API", async () => {
+    const fetchImplementation = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await saveMonthlyExpensesDocumentViaApi(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            recurrence: { startMonth: "2026-01", endMonth: "2026-06" },
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-03",
+      },
+      fetchImplementation,
+    );
+
+    const sentBody = JSON.parse(
+      (fetchImplementation.mock.calls[0][1] as { body: string }).body,
+    );
+    expect(sentBody.items[0].recurrence).toEqual({
+      startMonth: "2026-01",
+      endMonth: "2026-06",
+    });
+  });
+
   it("rejects invalid paymentLink before sending POST request", async () => {
     const fetchImplementation = jest.fn();
 

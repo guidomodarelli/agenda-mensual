@@ -184,6 +184,17 @@ const monthlyExpenseItemSchema = z.object({
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })
     .optional(),
+  recurrence: z
+    .object({
+      startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+      endMonth: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .nullable()
+        .optional(),
+    })
+    .optional(),
   manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
   occurrencesUnit: z
