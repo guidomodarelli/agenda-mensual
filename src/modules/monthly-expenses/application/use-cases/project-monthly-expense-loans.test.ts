@@ -475,6 +475,36 @@ describe("projectMonthlyExpenseLoans with recurring expenses", () => {
     expect(projected?.manualCoveredPayments).toBeUndefined();
   });
 
+  it("promotes a stale plain row to a recurrence converted in an older month", () => {
+    const documents = [
+      // The expense was converted to recurring in March (canonical, older month).
+      buildDocument("2026-03", [
+        buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+      ]),
+      // May still stores a PLAIN row with the same id, left by a prior replication.
+      buildDocument("2026-05", [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "rent-1",
+          occurrencesPerMonth: 1,
+          subtotal: 350000,
+        },
+      ]),
+    ];
+    const mayDocument = documents[1];
+
+    const [projected] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth: "2026-05",
+      baseItems: mayDocument.items,
+    });
+
+    // The plain May row is refreshed (promoted) to the recurrence definition.
+    expect(projected?.id).toBe("rent-1");
+    expect(projected?.recurrence?.startMonth).toBe("2026-03");
+  });
+
   it("honors a cancellation saved in an older month over a newer open snapshot", () => {
     const documents = [
       // April carries the cancellation (recurrence ends in April)...

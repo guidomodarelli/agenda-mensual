@@ -365,6 +365,7 @@ export function projectMonthlyExpenseLoans({
   excludedLoanIds,
   targetMonth,
 }: ProjectMonthlyExpenseLoansInput): MonthlyExpenseItemInput[] {
+  const baseItemsById = new Map(baseItems.map((item) => [item.id, item]));
   const existingItemIds = new Set(baseItems.map((item) => item.id));
   const excludedItemIds = new Set(excludedLoanIds ?? []);
   const projectedItems: MonthlyExpenseItemInput[] = [];
@@ -383,12 +384,20 @@ export function projectMonthlyExpenseLoans({
 
     if (existingItemIds.has(item.id)) {
       // The item is already stored in the target month. Refresh its definition
-      // only when a newer month holds the canonical snapshot AND that canonical
-      // range still covers the month; otherwise the stored copy is either already
-      // the latest or now out of range (the caller drops out-of-range copies).
+      // when, within range, EITHER a newer month holds the canonical snapshot, OR
+      // the stored row is still a PLAIN expense while the canonical is a
+      // loan/recurrence. The latter promotes a one-off row left in a future month
+      // by a prior replication when the user converts the expense to recurring in
+      // an older month (the canonical snapshot is older, so the newer-month rule
+      // alone would never refresh it). Otherwise the stored copy is already the
+      // latest or out of range (the caller drops out-of-range copies).
+      const baseItem = baseItemsById.get(item.id);
+      const baseIsPlain =
+        baseItem != null && !baseItem.loan && !baseItem.recurrence;
+
       if (
-        compareMonthIdentifiers(month, targetMonth) > 0 &&
-        isMonthWithinRange(range, targetMonth)
+        isMonthWithinRange(range, targetMonth) &&
+        (compareMonthIdentifiers(month, targetMonth) > 0 || baseIsPlain)
       ) {
         projectedItems.push(toProjectedLoanItemInput(item));
       }
