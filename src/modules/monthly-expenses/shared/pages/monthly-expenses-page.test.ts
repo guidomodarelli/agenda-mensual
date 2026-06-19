@@ -196,6 +196,57 @@ describe("monthly expenses page mappers", () => {
     expect(copiedRows).toHaveLength(0);
   });
 
+  it("copies an active recurring expense into a later month", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+        receipts: [],
+        subtotal: 350000,
+        total: 350000,
+      },
+    ];
+
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
+      "2026-05",
+      toEditableRows(sourceDocument),
+    );
+
+    expect(copiedRows).toHaveLength(1);
+    expect(copiedRows[0]?.isRecurring).toBe(true);
+  });
+
+  it("does not copy a cancelled recurring expense into a month past its end", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        recurrence: {
+          startMonth: "2026-01",
+          endMonth: "2026-04",
+          isActive: true,
+        },
+        receipts: [],
+        subtotal: 350000,
+        total: 350000,
+      },
+    ];
+
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
+      "2026-05",
+      toEditableRows(sourceDocument),
+    );
+
+    expect(copiedRows).toHaveLength(0);
+  });
+
   it("synchronizes payment records from legacy manual coverage before saving", () => {
     const rows = toEditableRows({
       items: [

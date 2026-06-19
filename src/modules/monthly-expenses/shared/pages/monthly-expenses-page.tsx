@@ -1168,6 +1168,14 @@ export function copyMonthlyExpenseTemplatesToMonth(
   );
 
   return normalizedRowsToCopy.filter((row) => {
+    if (row.isRecurring) {
+      // A recurring expense is copied only while it is still active in the
+      // target month. A cancellation (end month before the target month) leaves
+      // `recurrenceIsActive` false after normalization, so it is not re-copied
+      // into the following months.
+      return row.recurrenceIsActive;
+    }
+
     if (!row.isLoan) {
       return true;
     }
