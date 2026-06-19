@@ -226,6 +226,39 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it("returns 400 when a recurrence end month precedes its start month", async () => {
+    const save = jest.fn();
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn(),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            recurrence: { startMonth: "2026-05", endMonth: "2026-01" },
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(400);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when paymentLink is not a valid URL", async () => {
     const handler = createMonthlyExpensesApiHandler({
       load: jest.fn(),

@@ -233,6 +233,18 @@ const monthlyExpenseItemSchema = z.object({
       path: ["recurrence"],
     });
   }
+
+  if (
+    value.recurrence?.endMonth &&
+    value.recurrence.endMonth < value.recurrence.startMonth
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "monthly-expenses-api requires the recurrence end month to be on or after the start month.",
+      path: ["recurrence", "endMonth"],
+    });
+  }
 });
 
 const monthlyExpensesRequestSchema = z.object({
