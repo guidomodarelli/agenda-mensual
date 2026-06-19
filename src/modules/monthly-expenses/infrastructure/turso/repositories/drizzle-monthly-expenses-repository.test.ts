@@ -167,6 +167,85 @@ describe("DrizzleMonthlyExpensesRepository", () => {
     expect(updatedExpenseRows[1].updatedFields).not.toContain("createdAtIso");
   });
 
+  it("persists recurrence columns on the expense row", async () => {
+    const insertedExpenseRows: Record<string, unknown>[] = [];
+    const selectMock = jest.fn().mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
+      }),
+    });
+    const insertMock = jest.fn((table: unknown) => ({
+      values: jest.fn((payload: unknown) => {
+        if (
+          table === expensesTable &&
+          payload &&
+          typeof payload === "object" &&
+          "expenseId" in payload
+        ) {
+          insertedExpenseRows.push(payload as Record<string, unknown>);
+        }
+
+        return {
+          onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+        };
+      }),
+    }));
+    const transactionExecutor = {
+      delete: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue(undefined),
+      }),
+      insert: insertMock,
+      select: selectMock,
+    };
+    const database = {
+      transaction: jest
+        .fn()
+        .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
+          callback(transactionExecutor),
+        ),
+    };
+    const repository = new DrizzleMonthlyExpensesRepository(
+      database as never,
+      "user-subject",
+    );
+    const document = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "rent-id",
+            occurrencesPerMonth: 1,
+            recurrence: { startMonth: "2026-01", endMonth: "2026-06" },
+            subtotal: 350000,
+          },
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "internet-id",
+            occurrencesPerMonth: 1,
+            subtotal: 20000,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Testing recurrence persistence",
+    );
+
+    await repository.save(document);
+
+    const recurringRow = insertedExpenseRows.find(
+      (row) => row.expenseId === "rent-id",
+    );
+    const plainRow = insertedExpenseRows.find(
+      (row) => row.expenseId === "internet-id",
+    );
+    expect(recurringRow?.recurrenceStartMonth).toBe("2026-01");
+    expect(recurringRow?.recurrenceEndMonth).toBe("2026-06");
+    expect(plainRow?.recurrenceStartMonth).toBeNull();
+    expect(plainRow?.recurrenceEndMonth).toBeNull();
+  });
+
   it("orders normalized reads by created timestamp and expense id", async () => {
     const metadataLimitMock = jest.fn().mockResolvedValue([]);
     const metadataWhereMock = jest.fn().mockReturnValue({

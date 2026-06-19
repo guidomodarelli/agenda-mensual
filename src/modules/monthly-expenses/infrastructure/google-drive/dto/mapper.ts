@@ -177,6 +177,17 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })
     .optional(),
+  recurrence: z
+    .object({
+      startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+      endMonth: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .nullable()
+        .optional(),
+    })
+    .optional(),
   manualCoveredPayments: z.number().int().nonnegative().optional(),
   occurrencesPerMonth: z.number().int().positive(),
   occurrencesUnit: z
@@ -287,6 +298,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             id,
             isPaid,
             loan,
+            recurrence,
             manualCoveredPayments,
             occurrencesPerMonth,
             occurrencesUnit,
@@ -320,6 +332,16 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
                     ...(loan.lenderId ? { lenderId: loan.lenderId } : {}),
                     ...(loan.lenderName ? { lenderName: loan.lenderName } : {}),
                     startMonth: loan.startMonth,
+                  },
+                }
+              : {}),
+            ...(recurrence
+              ? {
+                  recurrence: {
+                    startMonth: recurrence.startMonth,
+                    ...(recurrence.endMonth
+                      ? { endMonth: recurrence.endMonth }
+                      : {}),
                   },
                 }
               : {}),
@@ -473,6 +495,7 @@ export function parseGoogleDriveMonthlyExpensesContent(
           id: item.id,
           ...(item.isPaid === true ? { isPaid: true } : {}),
           ...(item.loan ? { loan: item.loan } : {}),
+          ...(item.recurrence ? { recurrence: item.recurrence } : {}),
           ...(item.manualCoveredPayments !== undefined
             ? { manualCoveredPayments: item.manualCoveredPayments }
             : {}),

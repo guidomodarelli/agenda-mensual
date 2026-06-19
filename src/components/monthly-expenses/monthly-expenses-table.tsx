@@ -2500,6 +2500,8 @@ export function MonthlyExpensesTable({
       handleToggleExpenseSelection,
       loanInstallmentRangeSortDirection,
       loanSortMode,
+      onCancelRecurrence,
+      onReactivateRecurrence,
       onDeleteAllReceiptsFolderReference,
       onDeleteExpense,
       onDeletePaymentLink,
