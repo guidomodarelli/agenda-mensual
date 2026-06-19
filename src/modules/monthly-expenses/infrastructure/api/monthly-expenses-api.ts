@@ -251,7 +251,28 @@ const monthlyExpensesRequestSchema = z.object({
   hasReplicatedFromPreviousMonth: z.boolean().optional(),
   items: z.array(monthlyExpenseItemSchema),
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
-}).strict();
+}).strict().superRefine((value, context) => {
+  // A recurring expense must be active in the document month: storing a row
+  // whose range does not cover the month would count it outside its active
+  // range. The end month is inclusive. Rejects before sending the request.
+  value.items.forEach((item, index) => {
+    if (!item.recurrence) {
+      return;
+    }
+
+    if (
+      value.month < item.recurrence.startMonth ||
+      (item.recurrence.endMonth && value.month > item.recurrence.endMonth)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "monthly-expenses-api requires every recurring expense to be active in the document month.",
+        path: ["items", index, "recurrence"],
+      });
+    }
+  });
+});
 
 const monthlyExpensesSaveWarningSchema = z.object({
   fileId: z.string().trim().min(1),

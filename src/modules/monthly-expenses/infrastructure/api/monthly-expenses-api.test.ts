@@ -155,6 +155,31 @@ describe("monthly-expenses-api client", () => {
     expect(fetchImplementation).not.toHaveBeenCalled();
   });
 
+  it("rejects a recurrence inactive in the document month before sending POST request", async () => {
+    const fetchImplementation = jest.fn();
+
+    await expect(
+      saveMonthlyExpensesDocumentViaApi(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-1",
+              recurrence: { startMonth: "2026-01", endMonth: "2026-05" },
+              occurrencesPerMonth: 1,
+              subtotal: 350000,
+            },
+          ],
+          month: "2026-08",
+        },
+        fetchImplementation,
+      ),
+    ).rejects.toThrow();
+
+    expect(fetchImplementation).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid paymentLink before sending POST request", async () => {
     const fetchImplementation = jest.fn();
 

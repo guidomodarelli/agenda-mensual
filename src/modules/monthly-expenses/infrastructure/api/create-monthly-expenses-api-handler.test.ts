@@ -259,6 +259,79 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it("returns 400 when a recurrence is inactive in the document month", async () => {
+    const save = jest.fn();
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn(),
+      getUserSubject: jest.fn(),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            // Recurrence ends in May, but the document month is August.
+            recurrence: { startMonth: "2026-01", endMonth: "2026-05" },
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-08",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(400);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("accepts a recurrence active in the document month at its inclusive end", async () => {
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-05",
+      name: "control-mensual-2026-mayo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue({} as TursoDatabase),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-1",
+            // The document month equals the inclusive end month.
+            recurrence: { startMonth: "2026-01", endMonth: "2026-05" },
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-05",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it("returns 400 when paymentLink is not a valid URL", async () => {
     const handler = createMonthlyExpensesApiHandler({
       load: jest.fn(),
