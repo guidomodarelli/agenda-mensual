@@ -1335,7 +1335,7 @@ export function getExpenseValidationMessage(
   return null;
 }
 
-function getChangedExpenseFields(
+export function getChangedExpenseFields(
   originalRow: MonthlyExpensesEditableRow | null,
   draft: MonthlyExpensesEditableRow | null,
 ): Set<string> {
@@ -1390,6 +1390,18 @@ function getChangedExpenseFields(
 
   if (originalRow.installmentCount !== draft.installmentCount) {
     changedFields.add("installmentCount");
+  }
+
+  if (originalRow.isRecurring !== draft.isRecurring) {
+    changedFields.add("isRecurring");
+  }
+
+  if (originalRow.recurrenceStartMonth !== draft.recurrenceStartMonth) {
+    changedFields.add("recurrenceStartMonth");
+  }
+
+  if (originalRow.recurrenceEndMonth !== draft.recurrenceEndMonth) {
+    changedFields.add("recurrenceEndMonth");
   }
 
   if (originalRow.manualCoveredPayments !== draft.manualCoveredPayments) {

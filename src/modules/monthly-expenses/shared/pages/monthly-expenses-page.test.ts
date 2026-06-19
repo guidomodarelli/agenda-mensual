@@ -3,6 +3,7 @@ import type { MonthlyExpenseItemResult } from "@/modules/monthly-expenses/applic
 
 import {
   copyMonthlyExpenseTemplatesToMonth,
+  getChangedExpenseFields,
   getExpenseValidationMessage,
   getMaxManualCoveredPayments,
   toEditableRows,
@@ -620,5 +621,55 @@ describe("monthly expenses page mappers", () => {
         recurrence: { startMonth: "2026-03", endMonth: "2026-06" },
       }),
     );
+  });
+
+  it("detects recurrence month edits as changed fields", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+        receipts: [],
+        subtotal: 350000,
+        total: 350000,
+      },
+    ];
+    const [originalRow] = toEditableRows(sourceDocument);
+
+    const changedFields = getChangedExpenseFields(originalRow, {
+      ...originalRow,
+      recurrenceStartMonth: "2026-02",
+      recurrenceEndMonth: "2026-09",
+    });
+
+    expect(changedFields.has("recurrenceStartMonth")).toBe(true);
+    expect(changedFields.has("recurrenceEndMonth")).toBe(true);
+  });
+
+  it("detects toggling the recurring flag as a changed field", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Internet",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        receipts: [],
+        subtotal: 20000,
+        total: 20000,
+      },
+    ];
+    const [originalRow] = toEditableRows(sourceDocument);
+
+    const changedFields = getChangedExpenseFields(originalRow, {
+      ...originalRow,
+      isRecurring: true,
+      recurrenceStartMonth: "2026-03",
+    });
+
+    expect(changedFields.has("isRecurring")).toBe(true);
   });
 });
