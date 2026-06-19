@@ -474,6 +474,65 @@ describe("projectMonthlyExpenseLoans with recurring expenses", () => {
     expect(projected?.paymentRecords).toBeUndefined();
     expect(projected?.manualCoveredPayments).toBeUndefined();
   });
+
+  it("honors a cancellation saved in an older month over a newer open snapshot", () => {
+    const documents = [
+      // April carries the cancellation (recurrence ends in April)...
+      buildDocument("2026-04", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-04" },
+        }),
+      ]),
+      // ...while a newer June month still holds an open-ended snapshot.
+      buildDocument("2026-06", [buildRecurringItem()]),
+    ];
+
+    const projectInto = (targetMonth: string) =>
+      projectMonthlyExpenseLoans({ documents, targetMonth, baseItems: [] });
+
+    // The April cancellation wins despite the newer open June snapshot.
+    expect(projectInto("2026-04")).toHaveLength(1);
+    expect(projectInto("2026-05")).toHaveLength(0);
+    expect(projectInto("2026-06")).toHaveLength(0);
+  });
+
+  it("uses the earliest cancellation when several months carry an end month", () => {
+    const documents = [
+      buildDocument("2026-05", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+        }),
+      ]),
+      buildDocument("2026-07", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-07" },
+        }),
+      ]),
+    ];
+
+    const projectInto = (targetMonth: string) =>
+      projectMonthlyExpenseLoans({ documents, targetMonth, baseItems: [] });
+
+    expect(projectInto("2026-05")).toHaveLength(1);
+    expect(projectInto("2026-06")).toHaveLength(0);
+  });
+
+  it("re-enables projection once reactivation clears every stored end month", () => {
+    // After reactivation no stored snapshot carries an end month, so the
+    // recurrence projects forward again.
+    const documents = [
+      buildDocument("2026-04", [buildRecurringItem()]),
+      buildDocument("2026-06", [buildRecurringItem()]),
+    ];
+
+    expect(
+      projectMonthlyExpenseLoans({
+        documents,
+        targetMonth: "2026-08",
+        baseItems: [],
+      }),
+    ).toHaveLength(1);
+  });
 });
 
 describe("getOutOfRangeStoredLoanIds", () => {
