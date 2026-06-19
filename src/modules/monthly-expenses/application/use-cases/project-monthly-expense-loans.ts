@@ -102,39 +102,34 @@ function isMonthWithinRange(
  * from its most recent month so changes (amount, installment count) propagate
  * forward.
  *
- * Recurrence cancellation is resolved separately from the newest-month rule: the
- * canonical recurrence's effective `endMonth` is the EARLIEST end month among all
- * stored snapshots that carry one. This way a cancellation saved in an older month
- * still bounds the recurrence even when a newer, still-open snapshot exists (e.g.
- * a later month was materialized before the user navigated back to cancel from an
- * earlier month). Reactivation clears the end month from every stored month, so
- * no snapshot carries one and the recurrence becomes open again.
+ * Recurrence cancellation is resolved separately from the newest-month rule:
+ *
+ * - The effective `endMonth` is the EARLIEST end month among all stored snapshots
+ *   that carry one, so a cancellation saved in an older month still bounds the
+ *   recurrence even when a newer, still-open snapshot exists.
+ * - The canonical DEFINITION (amount, payment link, folders, occurrences, etc.)
+ *   for a cancelled recurrence is taken from the newest snapshot WITHIN the active
+ *   range (document month on or before that earliest end), not from a later
+ *   out-of-range month. Otherwise a future month materialized before the
+ *   cancellation would leak stale definition fields while only the end month is
+ *   corrected. A recurrence without a cancellation (and every loan) keeps the
+ *   plain newest-snapshot definition.
+ *
+ * Reactivation clears the end month from every stored month, so no snapshot
+ * carries one and the recurrence becomes open again.
  *
  * @param documents - Monthly documents to scan for recurring items.
- * @returns Latest snapshot indexed by stable expense identifier, with each
+ * @returns Canonical snapshot indexed by stable expense identifier, with each
  *   recurrence's end month set to the earliest cancellation across all months.
  */
 function collectCanonicalLoanSnapshots(
   documents: MonthlyExpensesDocument[],
 ): Map<string, CanonicalLoanSnapshot> {
-  const snapshotsByExpenseId = new Map<string, CanonicalLoanSnapshot>();
   const earliestRecurrenceEndByExpenseId = new Map<string, string>();
 
+  // Pass 1: the earliest cancellation per recurrence id, across every month.
   for (const document of documents) {
     for (const item of document.items) {
-      if (!item.loan && !item.recurrence) {
-        continue;
-      }
-
-      const currentSnapshot = snapshotsByExpenseId.get(item.id);
-
-      if (
-        !currentSnapshot ||
-        compareMonthIdentifiers(document.month, currentSnapshot.month) > 0
-      ) {
-        snapshotsByExpenseId.set(item.id, { item, month: document.month });
-      }
-
       const recurrenceEndMonth = item.recurrence?.endMonth;
 
       if (recurrenceEndMonth) {
@@ -147,6 +142,59 @@ function collectCanonicalLoanSnapshots(
           earliestRecurrenceEndByExpenseId.set(item.id, recurrenceEndMonth);
         }
       }
+    }
+  }
+
+  // Pass 2: the canonical definition. `snapshotsByExpenseId` keeps the newest
+  // snapshot WITHIN the active range (for a cancelled recurrence, ignoring months
+  // after the earliest end); `fallbackByExpenseId` keeps the unconstrained newest
+  // so an id whose only snapshots are out of range still resolves.
+  const snapshotsByExpenseId = new Map<string, CanonicalLoanSnapshot>();
+  const fallbackByExpenseId = new Map<string, CanonicalLoanSnapshot>();
+
+  for (const document of documents) {
+    for (const item of document.items) {
+      if (!item.loan && !item.recurrence) {
+        continue;
+      }
+
+      const fallback = fallbackByExpenseId.get(item.id);
+
+      if (
+        !fallback ||
+        compareMonthIdentifiers(document.month, fallback.month) > 0
+      ) {
+        fallbackByExpenseId.set(item.id, { item, month: document.month });
+      }
+
+      // For a cancelled recurrence, a month after the earliest end is out of
+      // range and must not provide the canonical definition.
+      const earliestEnd = item.recurrence
+        ? earliestRecurrenceEndByExpenseId.get(item.id)
+        : undefined;
+
+      if (
+        earliestEnd &&
+        compareMonthIdentifiers(document.month, earliestEnd) > 0
+      ) {
+        continue;
+      }
+
+      const currentSnapshot = snapshotsByExpenseId.get(item.id);
+
+      if (
+        !currentSnapshot ||
+        compareMonthIdentifiers(document.month, currentSnapshot.month) > 0
+      ) {
+        snapshotsByExpenseId.set(item.id, { item, month: document.month });
+      }
+    }
+  }
+
+  // Pathological fallback: every snapshot of this id is after the earliest end.
+  for (const [expenseId, fallback] of fallbackByExpenseId) {
+    if (!snapshotsByExpenseId.has(expenseId)) {
+      snapshotsByExpenseId.set(expenseId, fallback);
     }
   }
 

@@ -496,6 +496,33 @@ describe("projectMonthlyExpenseLoans with recurring expenses", () => {
     expect(projectInto("2026-06")).toHaveLength(0);
   });
 
+  it("takes the canonical definition from within the active range, not a stale future month", () => {
+    const documents = [
+      // April is the cancellation month and the latest in-range definition
+      // (subtotal 1000)...
+      buildDocument("2026-04", [
+        buildRecurringItem({
+          subtotal: 1000,
+          recurrence: { startMonth: "2026-03", endMonth: "2026-04" },
+        }),
+      ]),
+      // ...while a newer, still-open June month carries a different (stale,
+      // out-of-range) subtotal that must NOT leak into the active range.
+      buildDocument("2026-06", [
+        buildRecurringItem({ subtotal: 1500 }),
+      ]),
+    ];
+
+    const [projected] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth: "2026-03",
+      baseItems: [],
+    });
+
+    expect(projected?.subtotal).toBe(1000);
+    expect(projected?.recurrence?.endMonth).toBe("2026-04");
+  });
+
   it("uses the earliest cancellation when several months carry an end month", () => {
     const documents = [
       buildDocument("2026-05", [
