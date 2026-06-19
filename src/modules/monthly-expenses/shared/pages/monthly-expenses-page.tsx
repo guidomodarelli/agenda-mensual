@@ -1303,6 +1303,22 @@ export function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
+  // A recurring expense needs a valid start month, and an optional end month must
+  // be a valid month on or after the start month. Blocking the save here keeps an
+  // invalid recurrence from being serialized to the API as a technical error.
+  const recurrenceStartMonth = row.recurrenceStartMonth.trim();
+  const recurrenceEndMonth = row.recurrenceEndMonth.trim();
+
+  if (
+    row.isRecurring &&
+    (!MONTH_PATTERN.test(recurrenceStartMonth) ||
+      (recurrenceEndMonth !== "" &&
+        (!MONTH_PATTERN.test(recurrenceEndMonth) ||
+          recurrenceEndMonth < recurrenceStartMonth)))
+  ) {
+    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
+  }
+
   // In create mode any invalid (including empty) receipt-share phone blocks the
   // save. In edit mode a legacy empty value on a row that already had sharing on
   // is tolerated so unrelated fields stay editable, but the phone is still

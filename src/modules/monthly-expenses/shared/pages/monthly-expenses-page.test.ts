@@ -552,6 +552,84 @@ describe("monthly expenses page mappers", () => {
     );
   });
 
+  it("blocks saving a recurring expense without a start month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage(
+        "2026-03",
+        { ...recurringRow, recurrenceStartMonth: "" },
+        "edit",
+      ),
+    ).toBe("Corregí los errores antes de continuar.");
+  });
+
+  it("blocks saving a recurring expense whose end month precedes its start month", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage(
+        "2026-03",
+        {
+          ...recurringRow,
+          recurrenceStartMonth: "2026-05",
+          recurrenceEndMonth: "2026-01",
+        },
+        "edit",
+      ),
+    ).toBe("Corregí los errores antes de continuar.");
+  });
+
+  it("allows saving a valid recurring expense", () => {
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", endMonth: "2026-09", isActive: true },
+          receipts: [],
+          subtotal: 350000,
+          total: 350000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(
+      getExpenseValidationMessage("2026-03", recurringRow, "create"),
+    ).toBeNull();
+  });
+
   it("builds a recurrence in the save command when creating a recurring expense", () => {
     const recurringRow = toEditableRows({
       items: [
