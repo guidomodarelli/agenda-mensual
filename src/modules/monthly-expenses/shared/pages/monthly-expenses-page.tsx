@@ -1319,6 +1319,20 @@ export function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
+  // A recurring expense must be active in the visible month: saving a row whose
+  // range does not cover the month would store and count it outside its active
+  // range (its own snapshot would survive projection cleanup). The end month is
+  // inclusive, so a cancellation that sets it to the visible month stays active.
+  const visibleMonth = month.trim();
+
+  if (
+    row.isRecurring &&
+    (visibleMonth < recurrenceStartMonth ||
+      (recurrenceEndMonth !== "" && visibleMonth > recurrenceEndMonth))
+  ) {
+    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
+  }
+
   // In create mode any invalid (including empty) receipt-share phone blocks the
   // save. In edit mode a legacy empty value on a row that already had sharing on
   // is tolerated so unrelated fields stay editable, but the phone is still
