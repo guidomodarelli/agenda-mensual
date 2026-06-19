@@ -3,6 +3,7 @@ import type { MonthlyExpenseItemResult } from "@/modules/monthly-expenses/applic
 
 import {
   copyMonthlyExpenseTemplatesToMonth,
+  createReplicationComparisonKey,
   getChangedExpenseFields,
   getExpenseValidationMessage,
   getMaxManualCoveredPayments,
@@ -819,5 +820,41 @@ describe("monthly expenses page mappers", () => {
     });
 
     expect(changedFields.has("isRecurring")).toBe(true);
+  });
+
+  it("keys a recurring row distinctly from a one-off expense for copy de-duplication", () => {
+    const [oneOffRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          receipts: [],
+          subtotal: 20000,
+          total: 20000,
+        },
+      ],
+      month: "2026-03",
+    });
+    const [recurringRow] = toEditableRows({
+      items: [
+        {
+          currency: "ARS",
+          description: "Internet",
+          id: "expense-2",
+          occurrencesPerMonth: 1,
+          recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
+          receipts: [],
+          subtotal: 20000,
+          total: 20000,
+        },
+      ],
+      month: "2026-03",
+    });
+
+    expect(createReplicationComparisonKey(recurringRow)).not.toBe(
+      createReplicationComparisonKey(oneOffRow),
+    );
   });
 });

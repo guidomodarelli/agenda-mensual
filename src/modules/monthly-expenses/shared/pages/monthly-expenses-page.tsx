@@ -1203,17 +1203,33 @@ function normalizeTextForReplicationComparison(value: string): string {
     .toLowerCase();
 }
 
-function createReplicationComparisonKey(row: MonthlyExpensesEditableRow): string {
+export function createReplicationComparisonKey(
+  row: MonthlyExpensesEditableRow,
+): string {
+  // A recurring expense is a distinct kind from a one-off expense (and from a
+  // loan), so it carries its own type token and recurrence months. Otherwise a
+  // recurring row and a one-off expense with the same description, currency and
+  // occurrences would collapse to the same key and be de-duplicated against each
+  // other in the copy-from-month flow. Loans and plain expenses keep their tokens
+  // and only gain empty recurrence segments, so their relative keys are unchanged.
+  const typeToken = row.isLoan
+    ? "loan"
+    : row.isRecurring
+      ? "recurring"
+      : "expense";
+
   return [
     normalizeTextForReplicationComparison(row.description),
     row.currency,
-    row.isLoan ? "loan" : "expense",
+    typeToken,
     row.loanDirection ?? "payable",
     row.installmentCount.trim(),
     row.startMonth.trim(),
     normalizeTextForReplicationComparison(row.lenderId),
     normalizeTextForReplicationComparison(row.lenderName),
     row.occurrencesPerMonth.trim(),
+    row.recurrenceStartMonth.trim(),
+    row.recurrenceEndMonth.trim(),
   ].join("|");
 }
 
