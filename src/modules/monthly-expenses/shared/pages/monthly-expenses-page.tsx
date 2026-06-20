@@ -1774,6 +1774,12 @@ export default function MonthlyExpensesPage({
     message: loadError,
   });
   const [isCopyingFromMonth, setIsCopyingFromMonth] = useState(false);
+  // UI-only: the month for which the user dismissed the (no-op) replicate control
+  // this session. It is NOT persisted and never reaches the save command, so an
+  // unrelated save cannot mark the month as replicated. Scoped per visible month.
+  const [dismissedReplicateMonth, setDismissedReplicateMonth] = useState<
+    string | null
+  >(null);
   const [replicateFromPreviousMonthDialogState, setReplicateFromPreviousMonthDialogState] =
     useState<ReplicateFromPreviousMonthDialogState>(
       createClosedReplicateFromPreviousMonthDialogState(),
@@ -1859,7 +1865,9 @@ export default function MonthlyExpensesPage({
     formState.isSubmitting ||
     isMonthTransitionPending;
   const copySourceMonth = copyableMonthsState.defaultSourceMonth;
-  const showCopyFromControls = !formState.hasReplicatedFromPreviousMonth;
+  const showCopyFromControls =
+    !formState.hasReplicatedFromPreviousMonth &&
+    dismissedReplicateMonth !== formState.month;
   const copyFromDisabled =
     actionDisabled ||
     isCopyingFromMonth ||
@@ -2216,25 +2224,19 @@ export default function MonthlyExpensesPage({
       const { copiedRows, missingRows } = buildReplicableRowsFromSourceMonth(sourceDocument);
 
       // Nothing to replicate from the source month (only loans/recurring
-      // expenses, or every plain expense is already here). Hide the replicate
-      // control for the session so the user is not re-prompted with a button that
-      // can only produce this same warning. This is a CLIENT-ONLY flag: we must
-      // not persist `formState.rows` here because they may be stale relative to
-      // the latest projections, and the save use case would treat any projected
-      // loan/recurrence missing from the command as excluded — wrongly blocking a
-      // concurrently added/reactivated item.
-      const hideReplicateControlForSession = () => {
-        updateFormState((currentState) => ({
-          ...currentState,
-          hasReplicatedFromPreviousMonth: true,
-        }));
-      };
+      // expenses, or every plain expense is already here). Dismiss the replicate
+      // control for THIS month using UI-only state, so the user is not re-prompted
+      // with a button that can only produce this same warning. We deliberately do
+      // NOT touch `formState.hasReplicatedFromPreviousMonth`: that would leak into
+      // later saves (their option defaults from formState) and persist the month
+      // as replicated, hiding the control even after a plain expense is added to
+      // the source month later.
 
       if (copiedRows.length === 0) {
         toast.warning(
           "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
         );
-        hideReplicateControlForSession();
+        setDismissedReplicateMonth(formState.month);
         return;
       }
 
@@ -2242,7 +2244,7 @@ export default function MonthlyExpensesPage({
         toast.warning(
           "No hay gastos faltantes para replicar desde el mes anterior.",
         );
-        hideReplicateControlForSession();
+        setDismissedReplicateMonth(formState.month);
         return;
       }
 
