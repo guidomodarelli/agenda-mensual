@@ -2916,12 +2916,25 @@ registerMonthlyExpensesPageDefaultHooks({
         "No hay gastos faltantes para replicar desde el mes anterior.",
       );
     });
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/storage/monthly-expenses",
-      expect.objectContaining({
-        method: "POST",
-      }),
-    );
+
+    // Nothing to replicate, so the month is marked handled (no new rows added)
+    // and the replicate control hides.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/storage/monthly-expenses",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    const payload = getMonthlyExpensesSavePayload(fetchMock);
+    expect(payload.hasReplicatedFromPreviousMonth).toBe(true);
+    expect(payload.items).toHaveLength(2);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", {
+          name: "Replicar gastos del mes anterior",
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("replicates rows with same description when business fields differ", async () => {
@@ -3094,15 +3107,28 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(mockedToast.warning).toHaveBeenCalledWith(
       "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
     );
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/storage/monthly-expenses",
-      expect.objectContaining({
-        method: "POST",
-      }),
-    );
+
+    // The loan is never offered; the month is marked handled (no new rows) so the
+    // control hides instead of re-prompting with the same warning.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/storage/monthly-expenses",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    const payload = getMonthlyExpensesSavePayload(fetchMock);
+    expect(payload.hasReplicatedFromPreviousMonth).toBe(true);
+    expect(payload.items).toHaveLength(0);
     expect(
       screen.queryByText("Tarjeta finalizada"),
     ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", {
+          name: "Replicar gastos del mes anterior",
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("preserves shared folder metadata when copying a month without monthly folder metadata", async () => {
