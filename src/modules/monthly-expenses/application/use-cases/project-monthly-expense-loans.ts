@@ -421,18 +421,24 @@ export function projectMonthlyExpenseLoans({
  * instead of lingering and counting toward the month's totals.
  *
  * The rule differs by kind because the source of the range differs:
- * - **Loans:** only a copy superseded by a *newer* snapshot is reported (its range
- *   comes from the installment count, so a month's own latest definition is left
- *   untouched even if it looks out of range).
+ * - **Loans:** only a materialized loan copy superseded by a *newer* snapshot is
+ *   reported (its range comes from the installment count, so a month's own latest
+ *   definition is left untouched even if it looks out of range).
  * - **Recurring expenses:** the cancellation end month is an absolute bound. A
  *   stored row is dropped whenever the target month falls outside the effective
  *   recurrence range, even when this month is its own newest snapshot (e.g. a
  *   future month was materialized before the user cancelled the recurrence from an
  *   earlier month). The effective end month is the earliest cancellation across
  *   all stored snapshots (see {@link collectCanonicalLoanSnapshots}).
+ * - **Stale plain copies:** a one-off row left in a future month by a prior
+ *   replication whose id later became a loan/recurrence is also bounded
+ *   absolutely. Once the canonical range no longer covers the month (the
+ *   recurrence ended/was cancelled before it), the stale plain copy is dropped so
+ *   it stops counting. A genuine plain expense with no loan/recurrence canonical
+ *   has no snapshot and is left alone.
  *
  * @param input - Stored documents, target month and the month's existing items.
- * @returns The stored recurring-item ids to remove from the target month.
+ * @returns The stored item ids to remove from the target month.
  */
 export function getOutOfRangeStoredLoanIds({
   baseItems,
@@ -443,10 +449,6 @@ export function getOutOfRangeStoredLoanIds({
   const outOfRangeLoanIds: string[] = [];
 
   for (const item of baseItems) {
-    if (!item.loan && !item.recurrence) {
-      continue;
-    }
-
     const snapshot = canonicalSnapshots.get(item.id);
 
     if (!snapshot) {
@@ -459,13 +461,16 @@ export function getOutOfRangeStoredLoanIds({
       continue;
     }
 
-    // Loans only drop when a newer snapshot supersedes the stored copy; a
-    // recurrence's stored end month bounds it absolutely, so it is also checked
-    // when this month holds its own newest snapshot.
+    // A materialized loan copy only drops when a newer snapshot supersedes it. A
+    // recurrence's stored end month — and a stale plain copy of any canonical —
+    // bounds absolutely, so it is checked even when this month holds its own
+    // newest snapshot.
+    const baseIsPlain = !item.loan && !item.recurrence;
     const isRecurrence = Boolean(snapshot.item.recurrence);
 
     if (
       !isRecurrence &&
+      !baseIsPlain &&
       compareMonthIdentifiers(snapshot.month, targetMonth) <= 0
     ) {
       continue;

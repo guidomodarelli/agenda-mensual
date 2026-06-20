@@ -688,4 +688,56 @@ describe("getOutOfRangeStoredLoanIds", () => {
       }),
     ).toEqual([]);
   });
+
+  it("reports a stale plain copy left after the recurrence ended before its month", () => {
+    const targetMonth = "2026-08";
+    // August still stores a PLAIN copy (same id) from a prior replication...
+    const targetDocument = buildDocument(targetMonth, [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "rent-1",
+        occurrencesPerMonth: 1,
+        subtotal: 350000,
+      },
+    ]);
+    // ...while the recurrence was cancelled to end in May, before August.
+    const documents = [
+      buildDocument("2026-05", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+        }),
+      ]),
+      targetDocument,
+    ];
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual(["rent-1"]);
+  });
+
+  it("does not report a genuine plain expense with no loan/recurrence canonical", () => {
+    const targetMonth = "2026-08";
+    const targetDocument = buildDocument(targetMonth, [
+      {
+        currency: "ARS",
+        description: "Internet",
+        id: "internet-1",
+        occurrencesPerMonth: 1,
+        subtotal: 20000,
+      },
+    ]);
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents: [targetDocument],
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
 });
