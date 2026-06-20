@@ -1228,6 +1228,31 @@ function createRowReplicationComparisonCounts(
   return counts;
 }
 
+/**
+ * Builds a stable signature of the inputs that determine whether replicating from
+ * the previous month is a no-op for the visible month: the target month, the
+ * candidate source month, and a fingerprint of the current rows (each row's id
+ * plus its replication comparison key).
+ *
+ * When the user dismisses a no-op replicate control, the page remembers this
+ * signature. The control reappears only once the signature changes, i.e. when the
+ * data backing the decision actually changed (a current-month row added, removed
+ * or edited, or a different source month). This keeps a genuine no-op hidden while
+ * re-exposing the action as soon as replication can do something.
+ */
+export function createReplicateDismissalSignature(
+  month: string,
+  sourceMonth: string | null,
+  rows: MonthlyExpensesEditableRow[],
+): string {
+  const rowsFingerprint = rows
+    .map((row) => `${row.id}::${createReplicationComparisonKey(row)}`)
+    .sort()
+    .join("§");
+
+  return [month, sourceMonth ?? "", rowsFingerprint].join("¶");
+}
+
 function createClosedExpenseSheetState(): ExpenseSheetState {
   return {
     draft: null,
@@ -1774,10 +1799,12 @@ export default function MonthlyExpensesPage({
     message: loadError,
   });
   const [isCopyingFromMonth, setIsCopyingFromMonth] = useState(false);
-  // UI-only: the month for which the user dismissed the (no-op) replicate control
-  // this session. It is NOT persisted and never reaches the save command, so an
-  // unrelated save cannot mark the month as replicated. Scoped per visible month.
-  const [dismissedReplicateMonth, setDismissedReplicateMonth] = useState<
+  // UI-only: the signature of the data that backed the user's dismissal of a
+  // (no-op) replicate control this session. It is NOT persisted and never reaches
+  // the save command, so an unrelated save cannot mark the month as replicated.
+  // Tying it to the data snapshot (not just the month string) re-exposes the
+  // control as soon as replication becomes actionable again.
+  const [dismissedReplicateSignature, setDismissedReplicateSignature] = useState<
     string | null
   >(null);
   const [replicateFromPreviousMonthDialogState, setReplicateFromPreviousMonthDialogState] =
@@ -1830,6 +1857,10 @@ export default function MonthlyExpensesPage({
     setFormState(createMonthlyExpensesFormState(initialDocument));
     setCopyableMonthsState(initialCopyableMonths);
     setIsCopyingFromMonth(false);
+    // Fresh server data for the visible month: drop any prior no-op dismissal so a
+    // source month that gained a plain expense (or a different reload) re-exposes
+    // the replicate control instead of staying hidden from a stale snapshot.
+    setDismissedReplicateSignature(null);
     setReplicateFromPreviousMonthDialogState(
       createClosedReplicateFromPreviousMonthDialogState(),
     );
@@ -1865,9 +1896,19 @@ export default function MonthlyExpensesPage({
     formState.isSubmitting ||
     isMonthTransitionPending;
   const copySourceMonth = copyableMonthsState.defaultSourceMonth;
+  // Signature of the inputs that decide whether replicating from the previous
+  // month is a no-op for the visible month. A dismissed no-op control is re-shown
+  // as soon as this signature changes (e.g. the user deletes a current-month
+  // expense that existed in the source), because replication may be actionable
+  // again. An unchanged signature means the no-op still holds, so it stays hidden.
+  const replicateDismissalSignature = createReplicateDismissalSignature(
+    formState.month,
+    copySourceMonth,
+    formState.rows,
+  );
   const showCopyFromControls =
     !formState.hasReplicatedFromPreviousMonth &&
-    dismissedReplicateMonth !== formState.month;
+    dismissedReplicateSignature !== replicateDismissalSignature;
   const copyFromDisabled =
     actionDisabled ||
     isCopyingFromMonth ||
@@ -2071,6 +2112,10 @@ export default function MonthlyExpensesPage({
           errorCode: null,
           message: null,
         });
+        // Fresh month data loaded in-session: clear any prior no-op replicate
+        // dismissal so the control is re-evaluated against the new month/source
+        // instead of staying hidden from a stale snapshot.
+        setDismissedReplicateSignature(null);
         setIsCopyingFromMonth(false);
         setExpenseSheetState(createClosedExpenseSheetState());
         setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
@@ -2246,7 +2291,7 @@ export default function MonthlyExpensesPage({
         toast.warning(
           "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
         );
-        setDismissedReplicateMonth(formState.month);
+        setDismissedReplicateSignature(replicateDismissalSignature);
         return;
       }
 
@@ -2254,7 +2299,7 @@ export default function MonthlyExpensesPage({
         toast.warning(
           "No hay gastos faltantes para replicar desde el mes anterior.",
         );
-        setDismissedReplicateMonth(formState.month);
+        setDismissedReplicateSignature(replicateDismissalSignature);
         return;
       }
 

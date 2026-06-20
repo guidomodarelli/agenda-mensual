@@ -2932,6 +2932,116 @@ registerMonthlyExpensesPageDefaultHooks({
     );
   });
 
+  it("re-shows the replicate control after a no-op when a current-month row is deleted", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock({
+      monthlyDocument: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-source-1",
+            occurrencesPerMonth: 1,
+            subtotal: 10000,
+            total: 10000,
+          },
+        ],
+        month: "2026-02",
+      },
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02"],
+          targetMonth: "2026-03",
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "internet",
+              id: "expense-current-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    // The only source row already exists in the current month: replicating is a
+    // no-op and the control hides for this snapshot.
+    await user.click(
+      screen.getByRole("button", { name: "Replicar gastos del mes anterior" }),
+    );
+    await waitFor(() => {
+      expect(mockedToast.warning).toHaveBeenCalledWith(
+        "No hay gastos faltantes para replicar desde el mes anterior.",
+      );
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", {
+          name: "Replicar gastos del mes anterior",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    // Deleting the current-month expense that matched the source makes the source
+    // row missing again: the backing snapshot changed, so the control reappears.
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Seleccionar todas las filas visibles",
+      }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Acciones masivas" }),
+      ).toBeEnabled();
+    });
+    await user.click(screen.getByRole("button", { name: "Acciones masivas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
+    const bulkDeleteDialog = screen.getByRole("alertdialog");
+    await user.click(
+      within(bulkDeleteDialog).getByRole("button", { name: "Eliminar" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("internet")).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    });
+
+    // The backing snapshot changed, so the replicate control is shown again. We
+    // assert via text because the just-closed Radix confirm dialog can leave a
+    // residual aria-hidden on the content in jsdom, which would hide the button
+    // from role queries even though it is rendered and interactive in a browser.
+    const replicateButton = await screen.findByText(
+      "Replicar gastos del mes anterior",
+    );
+    expect(replicateButton).toBeInTheDocument();
+    expect(replicateButton.closest("button")).not.toBeDisabled();
+  });
+
   it("replicates rows with same description when business fields differ", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock({
