@@ -2917,17 +2917,8 @@ registerMonthlyExpensesPageDefaultHooks({
       );
     });
 
-    // Nothing to replicate, so the month is marked handled (no new rows added)
-    // and the replicate control hides.
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/storage/monthly-expenses",
-        expect.objectContaining({ method: "POST" }),
-      );
-    });
-    const payload = getMonthlyExpensesSavePayload(fetchMock);
-    expect(payload.hasReplicatedFromPreviousMonth).toBe(true);
-    expect(payload.items).toHaveLength(2);
+    // Nothing to replicate: the control hides for the session WITHOUT persisting
+    // (persisting stale rows could wrongly exclude a concurrently added item).
     await waitFor(() => {
       expect(
         screen.queryByRole("button", {
@@ -2935,6 +2926,10 @@ registerMonthlyExpensesPageDefaultHooks({
         }),
       ).not.toBeInTheDocument();
     });
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   it("replicates rows with same description when business fields differ", async () => {
@@ -3108,20 +3103,8 @@ registerMonthlyExpensesPageDefaultHooks({
       "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
     );
 
-    // The loan is never offered; the month is marked handled (no new rows) so the
-    // control hides instead of re-prompting with the same warning.
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/storage/monthly-expenses",
-        expect.objectContaining({ method: "POST" }),
-      );
-    });
-    const payload = getMonthlyExpensesSavePayload(fetchMock);
-    expect(payload.hasReplicatedFromPreviousMonth).toBe(true);
-    expect(payload.items).toHaveLength(0);
-    expect(
-      screen.queryByText("Tarjeta finalizada"),
-    ).not.toBeInTheDocument();
+    // The loan is never offered; the control hides for the session WITHOUT
+    // persisting (no POST), so a concurrently added item is not wrongly excluded.
     await waitFor(() => {
       expect(
         screen.queryByRole("button", {
@@ -3129,6 +3112,13 @@ registerMonthlyExpensesPageDefaultHooks({
         }),
       ).not.toBeInTheDocument();
     });
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(
+      screen.queryByText("Tarjeta finalizada"),
+    ).not.toBeInTheDocument();
   });
 
   it("preserves shared folder metadata when copying a month without monthly folder metadata", async () => {

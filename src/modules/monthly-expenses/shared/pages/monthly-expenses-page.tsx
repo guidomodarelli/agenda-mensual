@@ -2216,30 +2216,25 @@ export default function MonthlyExpensesPage({
       const { copiedRows, missingRows } = buildReplicableRowsFromSourceMonth(sourceDocument);
 
       // Nothing to replicate from the source month (only loans/recurring
-      // expenses, or every plain expense is already here). Mark the month as
-      // replicated so the control hides and the user is not re-prompted with a
-      // button that can only produce this same warning. Persist silently (the
-      // warning is the only feedback) and keep the row set unchanged.
-      const markCurrentMonthAsReplicated = async () => {
-        const wasSaved = await persistMonthlyExpensesRows(
-          formState.rows,
-          undefined,
-          { hasReplicatedFromPreviousMonth: true, showToast: false },
-        );
-
-        if (wasSaved) {
-          updateFormState((currentState) => ({
-            ...currentState,
-            hasReplicatedFromPreviousMonth: true,
-          }));
-        }
+      // expenses, or every plain expense is already here). Hide the replicate
+      // control for the session so the user is not re-prompted with a button that
+      // can only produce this same warning. This is a CLIENT-ONLY flag: we must
+      // not persist `formState.rows` here because they may be stale relative to
+      // the latest projections, and the save use case would treat any projected
+      // loan/recurrence missing from the command as excluded — wrongly blocking a
+      // concurrently added/reactivated item.
+      const hideReplicateControlForSession = () => {
+        updateFormState((currentState) => ({
+          ...currentState,
+          hasReplicatedFromPreviousMonth: true,
+        }));
       };
 
       if (copiedRows.length === 0) {
         toast.warning(
           "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
         );
-        await markCurrentMonthAsReplicated();
+        hideReplicateControlForSession();
         return;
       }
 
@@ -2247,7 +2242,7 @@ export default function MonthlyExpensesPage({
         toast.warning(
           "No hay gastos faltantes para replicar desde el mes anterior.",
         );
-        await markCurrentMonthAsReplicated();
+        hideReplicateControlForSession();
         return;
       }
 
