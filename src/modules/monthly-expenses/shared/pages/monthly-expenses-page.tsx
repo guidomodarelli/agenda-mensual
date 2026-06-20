@@ -2181,8 +2181,18 @@ export default function MonthlyExpensesPage({
     }
 
     const currentRowCounts = createRowReplicationComparisonCounts(formState.rows);
+    const currentRowIds = new Set(formState.rows.map((row) => row.id));
 
     const missingRows = copiedRows.filter((row) => {
+      // Never offer a template whose id already exists in the target month:
+      // replicating it would append a second row with the same id (the comparison
+      // key differs when the existing row changed kind — e.g. a plain source row
+      // vs a now-recurring current row), colliding with table keys and id-based
+      // handlers.
+      if (currentRowIds.has(row.id)) {
+        return false;
+      }
+
       const comparisonKey = createReplicationComparisonKey(row);
       const currentCount = currentRowCounts.get(comparisonKey) ?? 0;
 

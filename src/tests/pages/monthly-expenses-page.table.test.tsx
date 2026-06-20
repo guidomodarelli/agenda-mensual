@@ -3121,6 +3121,79 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
+  it("does not offer a template whose id already exists in the current month", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock({
+      monthlyDocument: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "expense-x",
+            occurrencesPerMonth: 1,
+            subtotal: 350000,
+            total: 350000,
+          },
+        ],
+        month: "2026-02",
+      },
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: { email: "gus@example.com", name: "Gus" },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02"],
+          targetMonth: "2026-03",
+        }}
+        initialDocument={{
+          items: [
+            {
+              // Same id as the source plain expense, now a recurring expense.
+              currency: "ARS",
+              description: "Alquiler",
+              id: "expense-x",
+              occurrencesPerMonth: 1,
+              recurrence: { startMonth: "2026-03", isActive: true, endMonth: null },
+              subtotal: 350000,
+              total: 350000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Replicar gastos del mes anterior" }),
+    );
+
+    // The same-id template is excluded, so there is nothing left to offer.
+    await waitFor(() => {
+      expect(mockedToast.warning).toHaveBeenCalledWith(
+        "No hay gastos faltantes para replicar desde el mes anterior.",
+      );
+    });
+    expect(
+      screen.queryByRole("dialog", { name: /Seleccioná los gastos a replicar/i }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("preserves shared folder metadata when copying a month without monthly folder metadata", async () => {
     const user = userEvent.setup();
     const sharedReceiptsFolderViewUrl =
