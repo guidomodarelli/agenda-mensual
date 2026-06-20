@@ -720,6 +720,36 @@ describe("getOutOfRangeStoredLoanIds", () => {
     ).toEqual(["rent-1"]);
   });
 
+  it("keeps a historical plain copy stored before the recurrence start", () => {
+    const targetMonth = "2026-01";
+    // January stores a PLAIN copy (same id) from before the recurrence existed...
+    const targetDocument = buildDocument(targetMonth, [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "rent-1",
+        occurrencesPerMonth: 1,
+        subtotal: 350000,
+      },
+    ]);
+    // ...while the recurrence only starts in March.
+    const documents = [
+      targetDocument,
+      buildDocument("2026-03", [
+        buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    // The pre-recurrence one-off is historical and must be preserved.
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
   it("does not report a genuine plain expense with no loan/recurrence canonical", () => {
     const targetMonth = "2026-08";
     const targetDocument = buildDocument(targetMonth, [

@@ -431,11 +431,11 @@ export function projectMonthlyExpenseLoans({
  *   earlier month). The effective end month is the earliest cancellation across
  *   all stored snapshots (see {@link collectCanonicalLoanSnapshots}).
  * - **Stale plain copies:** a one-off row left in a future month by a prior
- *   replication whose id later became a loan/recurrence is also bounded
- *   absolutely. Once the canonical range no longer covers the month (the
- *   recurrence ended/was cancelled before it), the stale plain copy is dropped so
- *   it stops counting. A genuine plain expense with no loan/recurrence canonical
- *   has no snapshot and is left alone.
+ *   replication whose id later became a loan/recurrence is dropped only AFTER the
+ *   canonical range has ended (the recurrence ended/was cancelled before this
+ *   month). A plain copy BEFORE the canonical start is a legitimate historical
+ *   one-off that predates the recurrence/loan and is kept. A genuine plain expense
+ *   with no loan/recurrence canonical has no snapshot and is left alone.
  *
  * @param input - Stored documents, target month and the month's existing items.
  * @returns The stored item ids to remove from the target month.
@@ -461,16 +461,31 @@ export function getOutOfRangeStoredLoanIds({
       continue;
     }
 
-    // A materialized loan copy only drops when a newer snapshot supersedes it. A
-    // recurrence's stored end month — and a stale plain copy of any canonical —
-    // bounds absolutely, so it is checked even when this month holds its own
-    // newest snapshot.
     const baseIsPlain = !item.loan && !item.recurrence;
     const isRecurrence = Boolean(snapshot.item.recurrence);
 
+    if (baseIsPlain) {
+      // A stale plain copy left by a prior replication is dropped only AFTER the
+      // canonical range has ended (the recurrence/loan stopped before this month).
+      // A plain copy BEFORE the canonical start is a legitimate historical one-off
+      // that predates the recurrence/loan and must be kept.
+      const { endMonth } = canonicalRange;
+
+      if (
+        endMonth != null &&
+        compareMonthIdentifiers(targetMonth, endMonth) > 0
+      ) {
+        outOfRangeLoanIds.push(item.id);
+      }
+
+      continue;
+    }
+
+    // A materialized loan copy only drops when a newer snapshot supersedes it; a
+    // recurrence's stored end month bounds it absolutely, so it is also checked
+    // when this month holds its own newest snapshot.
     if (
       !isRecurrence &&
-      !baseIsPlain &&
       compareMonthIdentifiers(snapshot.month, targetMonth) <= 0
     ) {
       continue;
