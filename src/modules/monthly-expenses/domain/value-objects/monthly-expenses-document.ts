@@ -163,6 +163,21 @@ export interface MonthlyExpenseItem extends MonthlyExpenseItemInput {
   total: number;
 }
 
+/**
+ * A monthly expense is "replicable" (a plain one-off expense) when it is neither
+ * a loan/debt nor a recurring expense. Loans project across their installment
+ * range and recurring expenses project from their start month, so both carry over
+ * on their own and are intentionally excluded from manual month-to-month
+ * replication. This is the single source of truth for that rule: the
+ * copy-from-month candidates filter and the copyable-source-month gate both rely
+ * on it so they cannot drift apart.
+ */
+export function isReplicableMonthlyExpenseItem(
+  item: Pick<MonthlyExpenseItemInput, "loan" | "recurrence">,
+): boolean {
+  return !item.loan && !item.recurrence;
+}
+
 export interface MonthlyExpensesExchangeRateSnapshotInput {
   blueRate: number;
   month: string;

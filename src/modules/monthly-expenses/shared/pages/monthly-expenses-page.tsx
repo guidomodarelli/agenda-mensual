@@ -1167,31 +1167,12 @@ export function copyMonthlyExpenseTemplatesToMonth(
     })),
   );
 
-  return normalizedRowsToCopy.filter((row) => {
-    if (row.isRecurring) {
-      // A recurring expense is copied only while it is still active in the
-      // target month. A cancellation (end month before the target month) leaves
-      // `recurrenceIsActive` false after normalization, so it is not re-copied
-      // into the following months.
-      return row.recurrenceIsActive;
-    }
-
-    if (!row.isLoan) {
-      return true;
-    }
-
-    // Copiamos una deuda mientras conserve una cuota en el mes destino. La
-    // última cuota cae sobre el mes de fin (ej. "6 de 6") y debe copiarse; los
-    // meses posteriores al fin (ej. "7 de 6") ya no tienen cuota y se excluyen.
-    // No alcanza con mirar las cuotas restantes: tanto la última cuota como un
-    // mes posterior al fin dan cero restantes, así que comparamos contra el mes
-    // de fin del préstamo.
-    if (row.loanEndMonth === "") {
-      return true;
-    }
-
-    return month.trim() <= row.loanEndMonth;
-  });
+  // Only plain one-off expenses are offered for manual replication. Loans/debts
+  // and recurring expenses are intentionally excluded: both already carry over on
+  // their own (loans project across their installment range and recurring expenses
+  // project from their start month), so suggesting them here would be redundant and
+  // could create duplicates.
+  return normalizedRowsToCopy.filter((row) => !row.isLoan && !row.isRecurring);
 }
 
 function normalizeTextForReplicationComparison(value: string): string {
@@ -1245,6 +1226,31 @@ function createRowReplicationComparisonCounts(
   }
 
   return counts;
+}
+
+/**
+ * Builds a stable signature of the inputs that determine whether replicating from
+ * the previous month is a no-op for the visible month: the target month, the
+ * candidate source month, and a fingerprint of the current rows (each row's id
+ * plus its replication comparison key).
+ *
+ * When the user dismisses a no-op replicate control, the page remembers this
+ * signature. The control reappears only once the signature changes, i.e. when the
+ * data backing the decision actually changed (a current-month row added, removed
+ * or edited, or a different source month). This keeps a genuine no-op hidden while
+ * re-exposing the action as soon as replication can do something.
+ */
+export function createReplicateDismissalSignature(
+  month: string,
+  sourceMonth: string | null,
+  rows: MonthlyExpensesEditableRow[],
+): string {
+  const rowsFingerprint = rows
+    .map((row) => `${row.id}::${createReplicationComparisonKey(row)}`)
+    .sort()
+    .join("§");
+
+  return [month, sourceMonth ?? "", rowsFingerprint].join("¶");
 }
 
 function createClosedExpenseSheetState(): ExpenseSheetState {
@@ -1793,6 +1799,14 @@ export default function MonthlyExpensesPage({
     message: loadError,
   });
   const [isCopyingFromMonth, setIsCopyingFromMonth] = useState(false);
+  // UI-only: the signature of the data that backed the user's dismissal of a
+  // (no-op) replicate control this session. It is NOT persisted and never reaches
+  // the save command, so an unrelated save cannot mark the month as replicated.
+  // Tying it to the data snapshot (not just the month string) re-exposes the
+  // control as soon as replication becomes actionable again.
+  const [dismissedReplicateSignature, setDismissedReplicateSignature] = useState<
+    string | null
+  >(null);
   const [replicateFromPreviousMonthDialogState, setReplicateFromPreviousMonthDialogState] =
     useState<ReplicateFromPreviousMonthDialogState>(
       createClosedReplicateFromPreviousMonthDialogState(),
@@ -1843,6 +1857,10 @@ export default function MonthlyExpensesPage({
     setFormState(createMonthlyExpensesFormState(initialDocument));
     setCopyableMonthsState(initialCopyableMonths);
     setIsCopyingFromMonth(false);
+    // Fresh server data for the visible month: drop any prior no-op dismissal so a
+    // source month that gained a plain expense (or a different reload) re-exposes
+    // the replicate control instead of staying hidden from a stale snapshot.
+    setDismissedReplicateSignature(null);
     setReplicateFromPreviousMonthDialogState(
       createClosedReplicateFromPreviousMonthDialogState(),
     );
@@ -1878,7 +1896,19 @@ export default function MonthlyExpensesPage({
     formState.isSubmitting ||
     isMonthTransitionPending;
   const copySourceMonth = copyableMonthsState.defaultSourceMonth;
-  const showCopyFromControls = !formState.hasReplicatedFromPreviousMonth;
+  // Signature of the inputs that decide whether replicating from the previous
+  // month is a no-op for the visible month. A dismissed no-op control is re-shown
+  // as soon as this signature changes (e.g. the user deletes a current-month
+  // expense that existed in the source), because replication may be actionable
+  // again. An unchanged signature means the no-op still holds, so it stays hidden.
+  const replicateDismissalSignature = createReplicateDismissalSignature(
+    formState.month,
+    copySourceMonth,
+    formState.rows,
+  );
+  const showCopyFromControls =
+    !formState.hasReplicatedFromPreviousMonth &&
+    dismissedReplicateSignature !== replicateDismissalSignature;
   const copyFromDisabled =
     actionDisabled ||
     isCopyingFromMonth ||
@@ -2082,6 +2112,10 @@ export default function MonthlyExpensesPage({
           errorCode: null,
           message: null,
         });
+        // Fresh month data loaded in-session: clear any prior no-op replicate
+        // dismissal so the control is re-evaluated against the new month/source
+        // instead of staying hidden from a stale snapshot.
+        setDismissedReplicateSignature(null);
         setIsCopyingFromMonth(false);
         setExpenseSheetState(createClosedExpenseSheetState());
         setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
@@ -2192,8 +2226,18 @@ export default function MonthlyExpensesPage({
     }
 
     const currentRowCounts = createRowReplicationComparisonCounts(formState.rows);
+    const currentRowIds = new Set(formState.rows.map((row) => row.id));
 
     const missingRows = copiedRows.filter((row) => {
+      // Never offer a template whose id already exists in the target month:
+      // replicating it would append a second row with the same id (the comparison
+      // key differs when the existing row changed kind — e.g. a plain source row
+      // vs a now-recurring current row), colliding with table keys and id-based
+      // handlers.
+      if (currentRowIds.has(row.id)) {
+        return false;
+      }
+
       const comparisonKey = createReplicationComparisonKey(row);
       const currentCount = currentRowCounts.get(comparisonKey) ?? 0;
 
@@ -2234,17 +2278,28 @@ export default function MonthlyExpensesPage({
 
       const { copiedRows, missingRows } = buildReplicableRowsFromSourceMonth(sourceDocument);
 
+      // Nothing to replicate from the source month (only loans/recurring
+      // expenses, or every plain expense is already here). Dismiss the replicate
+      // control for THIS month using UI-only state, so the user is not re-prompted
+      // with a button that can only produce this same warning. We deliberately do
+      // NOT touch `formState.hasReplicatedFromPreviousMonth`: that would leak into
+      // later saves (their option defaults from formState) and persist the month
+      // as replicated, hiding the control even after a plain expense is added to
+      // the source month later.
+
       if (copiedRows.length === 0) {
         toast.warning(
-          "El mes seleccionado no tiene deudas vigentes para copiar.",
+          "El mes anterior no tiene gastos para replicar. Las deudas y los gastos recurrentes se aplican solos.",
         );
+        setDismissedReplicateSignature(replicateDismissalSignature);
         return;
       }
 
       if (missingRows.length === 0) {
         toast.warning(
-          "No hay gastos/deudas faltantes para replicar desde el mes anterior.",
+          "No hay gastos faltantes para replicar desde el mes anterior.",
         );
+        setDismissedReplicateSignature(replicateDismissalSignature);
         return;
       }
 
@@ -2349,8 +2404,8 @@ export default function MonthlyExpensesPage({
       const wasSaved = await persistMonthlyExpensesRows(
         [...formState.rows, ...selectedRows],
         {
-          loading: `Replicando gastos/deudas seleccionados desde ${sourceMonth}...`,
-          success: `Replicamos y guardamos los gastos/deudas seleccionados de ${sourceMonth} en ${formState.month}.`,
+          loading: `Replicando los gastos seleccionados desde ${sourceMonth}...`,
+          success: `Replicamos y guardamos los gastos seleccionados de ${sourceMonth} en ${formState.month}.`,
         },
         {
           hasReplicatedFromPreviousMonth: true,
@@ -2688,10 +2743,9 @@ export default function MonthlyExpensesPage({
       if (!currentState.draft) {
         return currentState;
       }
-      if (currentState.mode === "edit") {
-        return currentState;
-      }
 
+      // Unlike loans, recurring can be toggled while editing so an existing
+      // expense can be converted into (or out of) a recurring one.
       return {
         ...currentState,
         draft: normalizeEditableRows(formState.month, [

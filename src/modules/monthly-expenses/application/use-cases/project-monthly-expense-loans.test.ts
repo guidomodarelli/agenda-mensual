@@ -475,6 +475,36 @@ describe("projectMonthlyExpenseLoans with recurring expenses", () => {
     expect(projected?.manualCoveredPayments).toBeUndefined();
   });
 
+  it("promotes a stale plain row to a recurrence converted in an older month", () => {
+    const documents = [
+      // The expense was converted to recurring in March (canonical, older month).
+      buildDocument("2026-03", [
+        buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+      ]),
+      // May still stores a PLAIN row with the same id, left by a prior replication.
+      buildDocument("2026-05", [
+        {
+          currency: "ARS",
+          description: "Alquiler",
+          id: "rent-1",
+          occurrencesPerMonth: 1,
+          subtotal: 350000,
+        },
+      ]),
+    ];
+    const mayDocument = documents[1];
+
+    const [projected] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth: "2026-05",
+      baseItems: mayDocument.items,
+    });
+
+    // The plain May row is refreshed (promoted) to the recurrence definition.
+    expect(projected?.id).toBe("rent-1");
+    expect(projected?.recurrence?.startMonth).toBe("2026-03");
+  });
+
   it("honors a cancellation saved in an older month over a newer open snapshot", () => {
     const documents = [
       // April carries the cancellation (recurrence ends in April)...
@@ -648,6 +678,143 @@ describe("getOutOfRangeStoredLoanIds", () => {
     const targetMonth = "2026-08";
     const targetDocument = buildDocument(targetMonth, [
       buildLoanItem({ loan: { installmentCount: 3, startMonth: "2026-03" } }),
+    ]);
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents: [targetDocument],
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
+  it("reports a stale plain copy left after the recurrence ended before its month", () => {
+    const targetMonth = "2026-08";
+    // August still stores a PLAIN copy (same id) from a prior replication...
+    const targetDocument = buildDocument(targetMonth, [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "rent-1",
+        occurrencesPerMonth: 1,
+        subtotal: 350000,
+      },
+    ]);
+    // ...while the recurrence was cancelled to end in May, before August.
+    const documents = [
+      buildDocument("2026-05", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+        }),
+      ]),
+      targetDocument,
+    ];
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual(["rent-1"]);
+  });
+
+  it("keeps a historical plain copy stored before the recurrence start", () => {
+    const targetMonth = "2026-01";
+    // January stores a PLAIN copy (same id) from before the recurrence existed...
+    const targetDocument = buildDocument(targetMonth, [
+      {
+        currency: "ARS",
+        description: "Alquiler",
+        id: "rent-1",
+        occurrencesPerMonth: 1,
+        subtotal: 350000,
+      },
+    ]);
+    // ...while the recurrence only starts in March.
+    const documents = [
+      targetDocument,
+      buildDocument("2026-03", [
+        buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    // The pre-recurrence one-off is historical and must be preserved.
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
+  it("keeps a recurring copy stored before the recurrence start month", () => {
+    const targetMonth = "2026-01";
+    // The store shares one recurrence definition per expense id, so a copy
+    // replicated into a month BEFORE the chosen start loads carrying the
+    // recurrence (start in March) even though its own month predates it. This
+    // happens when an existing one-off with past replicas is converted into a
+    // recurring expense in a later month.
+    const targetDocument = buildDocument(targetMonth, [
+      buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-03", [
+        buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    // The pre-start occurrence is real historical data: dropping it would erase
+    // past monthly totals for the converted expense.
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
+  it("drops a recurring copy stored after the recurrence was cancelled", () => {
+    const targetMonth = "2026-08";
+    // A recurring copy still materialized in a month AFTER the cancellation end
+    // must be dropped so the cancelled expense stops counting.
+    const targetDocument = buildDocument(targetMonth, [
+      buildRecurringItem({
+        recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+      }),
+    ]);
+    const documents = [
+      buildDocument("2026-03", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+        }),
+      ]),
+      targetDocument,
+    ];
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual(["rent-1"]);
+  });
+
+  it("does not report a genuine plain expense with no loan/recurrence canonical", () => {
+    const targetMonth = "2026-08";
+    const targetDocument = buildDocument(targetMonth, [
+      {
+        currency: "ARS",
+        description: "Internet",
+        id: "internet-1",
+        occurrencesPerMonth: 1,
+        subtotal: 20000,
+      },
     ]);
 
     expect(

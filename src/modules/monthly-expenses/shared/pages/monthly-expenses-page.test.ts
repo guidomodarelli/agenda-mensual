@@ -170,7 +170,31 @@ describe("monthly expenses page mappers", () => {
     expect(command.items[0]?.folders).toBeUndefined();
   });
 
-  it("does not copy loans that are no longer active in the destination month", () => {
+  it("offers a plain expense for replication", () => {
+    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
+    sourceDocument.items = [
+      {
+        currency: "ARS",
+        description: "Internet",
+        id: "expense-1",
+        occurrencesPerMonth: 1,
+        receipts: [],
+        subtotal: 20000,
+        total: 20000,
+      },
+    ];
+
+    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
+      "2026-05",
+      toEditableRows(sourceDocument),
+    );
+
+    expect(copiedRows).toHaveLength(1);
+    expect(copiedRows[0]?.isLoan).toBe(false);
+    expect(copiedRows[0]?.isRecurring).toBe(false);
+  });
+
+  it("does not offer loans for replication (they project automatically)", () => {
     const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
     sourceDocument.items = [
       {
@@ -178,8 +202,8 @@ describe("monthly expenses page mappers", () => {
         description: "Prestamo",
         id: "expense-1",
         loan: {
-          endMonth: "2026-04",
-          installmentCount: 2,
+          endMonth: "2026-12",
+          installmentCount: 12,
           paidInstallments: 1,
           startMonth: "2026-03",
         },
@@ -198,7 +222,7 @@ describe("monthly expenses page mappers", () => {
     expect(copiedRows).toHaveLength(0);
   });
 
-  it("copies an active recurring expense into a later month", () => {
+  it("does not offer recurring expenses for replication (they project automatically)", () => {
     const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
     sourceDocument.items = [
       {
@@ -207,34 +231,6 @@ describe("monthly expenses page mappers", () => {
         id: "expense-1",
         occurrencesPerMonth: 1,
         recurrence: { startMonth: "2026-01", isActive: true, endMonth: null },
-        receipts: [],
-        subtotal: 350000,
-        total: 350000,
-      },
-    ];
-
-    const copiedRows = copyMonthlyExpenseTemplatesToMonth(
-      "2026-05",
-      toEditableRows(sourceDocument),
-    );
-
-    expect(copiedRows).toHaveLength(1);
-    expect(copiedRows[0]?.isRecurring).toBe(true);
-  });
-
-  it("does not copy a cancelled recurring expense into a month past its end", () => {
-    const sourceDocument = createEmptyMonthlyExpensesDocumentResult("2026-03");
-    sourceDocument.items = [
-      {
-        currency: "ARS",
-        description: "Alquiler",
-        id: "expense-1",
-        occurrencesPerMonth: 1,
-        recurrence: {
-          startMonth: "2026-01",
-          endMonth: "2026-04",
-          isActive: true,
-        },
         receipts: [],
         subtotal: 350000,
         total: 350000,

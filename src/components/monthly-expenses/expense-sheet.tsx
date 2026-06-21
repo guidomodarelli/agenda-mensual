@@ -295,10 +295,21 @@ function ExpenseSheetContent({
       ? `Subtotal ${totalFormulaSubtotal}/h × ${totalFormulaDuration}/mes`
       : `Subtotal ${totalFormulaSubtotal} × ${totalFormulaOccurrences}/mes`;
   const isLoanToggleDisabled = mode === "edit" || draft.isRecurring;
-  const isRecurringToggleDisabled = mode === "edit" || draft.isLoan;
+  // A plain expense can be converted to recurring while editing, so the toggle
+  // stays enabled in edit mode. A loan blocks it (mutually exclusive). The lock
+  // only applies to an expense that was ALREADY recurring before this edit (its
+  // recurrence is stopped via "Cancelar recurrencia", bounded per month): a
+  // recurrence the user just toggled on in this edit — `isRecurring` is in
+  // `changedFields` — stays editable so it can be unchecked/undone.
+  const isRecurringToggleDisabled =
+    draft.isLoan ||
+    (mode === "edit" &&
+      draft.isRecurring &&
+      !changedFields.has("isRecurring"));
   const shouldShowLoanSection = (isCreateMode || draft.isLoan) && !draft.isRecurring;
-  const shouldShowRecurringSection =
-    (isCreateMode || draft.isRecurring) && !draft.isLoan;
+  // The recurring section is available whenever the expense is not a loan, in both
+  // create and edit modes, so a plain expense can be turned into a recurring one.
+  const shouldShowRecurringSection = !draft.isLoan;
   const recurringHelpMessage =
     "Marcá esta opción para gastos que se repiten todos los meses, como alquiler, expensas, agua, gas o energía. Cuando dejes de pagarlo, podés cancelar la recurrencia y deja de aparecer en los meses siguientes.";
   const form = useForm<ExpenseSheetFormValues>({

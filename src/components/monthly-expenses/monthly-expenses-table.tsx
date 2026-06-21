@@ -2601,7 +2601,7 @@ export function MonthlyExpensesTable({
                   type="button"
                   variant="outline"
                 >
-                  Replicar gastos/deudas del mes anterior
+                  Replicar gastos del mes anterior
                 </Button>
               </div>
             </div>
@@ -2886,7 +2886,7 @@ export function MonthlyExpensesTable({
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Seleccioná los gastos/deudas a replicar</DialogTitle>
+              <DialogTitle>Seleccioná los gastos a replicar</DialogTitle>
               <DialogDescription>
                 Mostramos los gastos faltantes y vigentes del mes anterior.
                 Todos empiezan seleccionados.
@@ -2921,7 +2921,7 @@ export function MonthlyExpensesTable({
                 Cancelar
               </Button>
               <Button
-                aria-label="Confirmar replicación de gastos/deudas del mes anterior"
+                aria-label="Confirmar replicación de gastos del mes anterior"
                 disabled={isCopyFromDisabled || !isAnyReplicableOptionSelected}
                 onClick={() => {
                   onConfirmCopyFromMonth(selectedReplicableOptionIds);

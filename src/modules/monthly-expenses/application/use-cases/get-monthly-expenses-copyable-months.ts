@@ -1,4 +1,5 @@
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
+import { isReplicableMonthlyExpenseItem } from "../../domain/value-objects/monthly-expenses-document";
 import type { GetMonthlyExpensesCopyableMonthsQuery } from "../queries/get-monthly-expenses-copyable-months-query";
 import {
   createEmptyMonthlyExpensesCopyableMonthsResult,
@@ -53,6 +54,18 @@ export async function getMonthlyExpensesCopyableMonths({
   );
 
   if (!previousMonthIsCopyable) {
+    return createEmptyMonthlyExpensesCopyableMonthsResult(targetMonth);
+  }
+
+  // Having items is not enough: replication only offers plain expenses (loans and
+  // recurring expenses are excluded because they carry over on their own). A month
+  // whose items are exclusively loans and/or recurring expenses would produce a
+  // no-op replicate action, so it must not be exposed as a source.
+  const previousMonthDocument = await repository.getByMonth(previousMonth);
+  const previousMonthHasReplicableExpense =
+    previousMonthDocument?.items.some(isReplicableMonthlyExpenseItem) ?? false;
+
+  if (!previousMonthHasReplicableExpense) {
     return createEmptyMonthlyExpensesCopyableMonthsResult(targetMonth);
   }
 
