@@ -424,12 +424,16 @@ export function projectMonthlyExpenseLoans({
  * - **Loans:** only a materialized loan copy superseded by a *newer* snapshot is
  *   reported (its range comes from the installment count, so a month's own latest
  *   definition is left untouched even if it looks out of range).
- * - **Recurring expenses:** the cancellation end month is an absolute bound. A
- *   stored row is dropped whenever the target month falls outside the effective
- *   recurrence range, even when this month is its own newest snapshot (e.g. a
- *   future month was materialized before the user cancelled the recurrence from an
- *   earlier month). The effective end month is the earliest cancellation across
- *   all stored snapshots (see {@link collectCanonicalLoanSnapshots}).
+ * - **Recurring expenses:** only the cancellation end month bounds a stored row.
+ *   A copy still materialized AFTER the effective end is dropped, even when this
+ *   month is its own newest snapshot (e.g. a future month was materialized before
+ *   the user cancelled the recurrence from an earlier month). A copy stored BEFORE
+ *   the recurrence start is kept: because the store shares one recurrence
+ *   definition per id, converting a one-off with past replicas into a recurring
+ *   expense makes those past copies load as recurring rows before the start, and
+ *   they are real historical occurrences that must not be erased. The effective
+ *   end month is the earliest cancellation across all stored snapshots (see
+ *   {@link collectCanonicalLoanSnapshots}).
  * - **Stale plain copies:** a one-off row left in a future month by a prior
  *   replication whose id later became a loan/recurrence is dropped only AFTER the
  *   canonical range has ended (the recurrence ended/was cancelled before this
@@ -481,17 +485,31 @@ export function getOutOfRangeStoredLoanIds({
       continue;
     }
 
-    // A materialized loan copy only drops when a newer snapshot supersedes it; a
-    // recurrence's stored end month bounds it absolutely, so it is also checked
-    // when this month holds its own newest snapshot.
-    if (
-      !isRecurrence &&
-      compareMonthIdentifiers(snapshot.month, targetMonth) <= 0
-    ) {
+    if (!isRecurrence) {
+      // A materialized loan copy only drops when a NEWER snapshot supersedes it
+      // and pushes the installment range past this month; a month that holds its
+      // own newest snapshot keeps its definition untouched.
+      if (compareMonthIdentifiers(snapshot.month, targetMonth) <= 0) {
+        continue;
+      }
+
+      if (!isMonthWithinRange(canonicalRange, targetMonth)) {
+        outOfRangeLoanIds.push(item.id);
+      }
+
       continue;
     }
 
-    if (!isMonthWithinRange(canonicalRange, targetMonth)) {
+    // A recurrence shares one stored definition across every month of its id, so
+    // a copy replicated into a month BEFORE the chosen start loads carrying the
+    // recurrence (this happens when an existing one-off with past replicas is
+    // converted into a recurring expense in a later month). That pre-start copy
+    // is real historical data and must be kept; only a copy still materialized
+    // AFTER the cancellation end is dropped so a cancelled recurrence stops
+    // counting.
+    const { endMonth } = canonicalRange;
+
+    if (endMonth != null && compareMonthIdentifiers(targetMonth, endMonth) > 0) {
       outOfRangeLoanIds.push(item.id);
     }
   }

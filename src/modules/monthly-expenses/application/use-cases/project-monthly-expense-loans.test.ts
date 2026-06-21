@@ -750,6 +750,61 @@ describe("getOutOfRangeStoredLoanIds", () => {
     ).toEqual([]);
   });
 
+  it("keeps a recurring copy stored before the recurrence start month", () => {
+    const targetMonth = "2026-01";
+    // The store shares one recurrence definition per expense id, so a copy
+    // replicated into a month BEFORE the chosen start loads carrying the
+    // recurrence (start in March) even though its own month predates it. This
+    // happens when an existing one-off with past replicas is converted into a
+    // recurring expense in a later month.
+    const targetDocument = buildDocument(targetMonth, [
+      buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+    ]);
+    const documents = [
+      targetDocument,
+      buildDocument("2026-03", [
+        buildRecurringItem({ recurrence: { startMonth: "2026-03" } }),
+      ]),
+    ];
+
+    // The pre-start occurrence is real historical data: dropping it would erase
+    // past monthly totals for the converted expense.
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual([]);
+  });
+
+  it("drops a recurring copy stored after the recurrence was cancelled", () => {
+    const targetMonth = "2026-08";
+    // A recurring copy still materialized in a month AFTER the cancellation end
+    // must be dropped so the cancelled expense stops counting.
+    const targetDocument = buildDocument(targetMonth, [
+      buildRecurringItem({
+        recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+      }),
+    ]);
+    const documents = [
+      buildDocument("2026-03", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-03", endMonth: "2026-05" },
+        }),
+      ]),
+      targetDocument,
+    ];
+
+    expect(
+      getOutOfRangeStoredLoanIds({
+        documents,
+        targetMonth,
+        baseItems: targetDocument.items,
+      }),
+    ).toEqual(["rent-1"]);
+  });
+
   it("does not report a genuine plain expense with no loan/recurrence canonical", () => {
     const targetMonth = "2026-08";
     const targetDocument = buildDocument(targetMonth, [
