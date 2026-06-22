@@ -525,6 +525,13 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [uncontrolledFilterValue, setUncontrolledFilterValue] = React.useState("");
   const [filterQueryDraft, setFilterQueryDraft] = React.useState("");
+  // Filtros estructurados de la última query parseada. Se preservan para que la
+  // re-sincronización canónica (al perder foco) NO descarte los qualifiers sin
+  // columna (textMatch/folder) ni los negados, que no viven en
+  // `advancedFiltersAppliedByColumn` y quedarían como filtros activos invisibles.
+  const [appliedFiltersDraft, setAppliedFiltersDraft] = React.useState<
+    AppliedFilter[]
+  >([]);
   const [isQueryFilterFocused, setIsQueryFilterFocused] = React.useState(false);
   const [uncontrolledExcludeFilterValues, setUncontrolledExcludeFilterValues] =
     React.useState<string[]>([]);
@@ -639,6 +646,7 @@ export function DataTable<TData, TValue>({
           setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
         }
 
+        setAppliedFiltersDraft(parsedQuery.appliedFilters);
         onAppliedFiltersChange?.(parsedQuery.appliedFilters);
       });
     },
@@ -857,7 +865,7 @@ export function DataTable<TData, TValue>({
     return serializeFilterQuery(
       {
         advancedFiltersByColumn: advancedFiltersAppliedByColumn,
-        appliedFilters: [],
+        appliedFilters: appliedFiltersDraft,
         descriptionFilter: tableFilterValue,
         excludedDescriptionFilters: resolvedExcludeFilterValues,
         invalidTokens: [],
@@ -866,6 +874,7 @@ export function DataTable<TData, TValue>({
     );
   }, [
     advancedFiltersAppliedByColumn,
+    appliedFiltersDraft,
     queryFilterConfig,
     resolvedExcludeFilterValues,
     tableFilterValue,

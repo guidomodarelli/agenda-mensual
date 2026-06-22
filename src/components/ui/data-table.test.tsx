@@ -769,4 +769,46 @@ describe("DataTable", () => {
     ).toHaveValue("monto:20..30");
     expect(screen.queryByText("Item 40")).not.toBeInTheDocument();
   });
+
+  it("keeps non-column query filters in the bar after it loses focus", async () => {
+    const user = userEvent.setup();
+    type LinkRow = { label: string; link: string };
+    const rows: LinkRow[] = [{ label: "Item", link: "https://x" }];
+    const columns: ColumnDef<LinkRow>[] = [
+      { accessorKey: "label", filterFn: () => true, header: "Descripción" },
+    ];
+
+    function QueryHarness() {
+      const [descriptionFilter, setDescriptionFilter] = useState("");
+
+      return (
+        <DataTable
+          columns={columns}
+          data={rows}
+          emptyMessage="Sin datos"
+          filterColumnId="label"
+          filterValue={descriptionFilter}
+          onFilterValueChange={setDescriptionFilter}
+          queryFilterConfig={[
+            { key: "", kind: "text", label: "Descripción" },
+            { key: "link", kind: "textMatch", label: "Link de pago" },
+          ]}
+          queryFilterLabel="Filtro unificado"
+        />
+      );
+    }
+
+    render(<QueryHarness />);
+
+    const queryBar = screen.getByRole("combobox", { name: "Filtro unificado" });
+    await user.click(queryBar);
+    await user.type(queryBar, "link:^https");
+    // Al perder el foco la barra se re-sincroniza con la forma canónica; el
+    // filtro sin columna debe sobrevivir y no quedar como filtro invisible.
+    await user.tab();
+
+    expect(
+      screen.getByRole("combobox", { name: "Filtro unificado" }),
+    ).toHaveValue("link:^https");
+  });
 });
