@@ -281,6 +281,36 @@ function toProjectedLoanItemInput(
 }
 
 /**
+ * Builds the refresh input for a recurring expense already stored in the target
+ * month. It carries the canonical (shared) definition — description, currency,
+ * recurrence range, payment link, share fields, folders, etc. — but KEEPS the
+ * stored month's own amount (subtotal, quantity and their units).
+ *
+ * Recurring expenses can change price month to month (rent, utilities), so the
+ * amount is per-month state that must not be overwritten by the canonical
+ * snapshot; only newly materialized months inherit the latest amount (see
+ * {@link toNewProjectedLoanItemInput}). Loans keep the canonical amount instead,
+ * because a single installment value defines the whole debt.
+ *
+ * @param canonicalItem - Canonical recurring item providing the shared definition.
+ * @param storedItem - The month's already-stored copy providing the amount.
+ * @returns A recurring item input that propagates the definition while preserving
+ *   the stored month's amount.
+ */
+function toRefreshedRecurringItemInput(
+  canonicalItem: MonthlyExpenseItem,
+  storedItem: MonthlyExpenseItem,
+): MonthlyExpenseItemInput {
+  return {
+    ...toProjectedLoanItemInput(canonicalItem),
+    occurrencesPerMonth: storedItem.occurrencesPerMonth,
+    occurrencesUnit: storedItem.occurrencesUnit ?? null,
+    subtotal: storedItem.subtotal,
+    subtotalUnit: storedItem.subtotalUnit === "hour" ? "hour" : "occurrence",
+  };
+}
+
+/**
  * Resolves the loan's shared all-receipts folder (the per-loan Drive folder that
  * is stable across months), preferring explicit folder metadata and falling back
  * to the first receipt, mirroring the repository's own resolution. Returns `null`
@@ -399,7 +429,13 @@ export function projectMonthlyExpenseLoans({
         isMonthWithinRange(range, targetMonth) &&
         (compareMonthIdentifiers(month, targetMonth) > 0 || baseIsPlain)
       ) {
-        projectedItems.push(toProjectedLoanItemInput(item));
+        // A recurring expense keeps its own per-month amount; only its shared
+        // definition propagates. Loans keep the canonical amount.
+        projectedItems.push(
+          item.recurrence && baseItem
+            ? toRefreshedRecurringItemInput(item, baseItem)
+            : toProjectedLoanItemInput(item),
+        );
       }
 
       continue;
