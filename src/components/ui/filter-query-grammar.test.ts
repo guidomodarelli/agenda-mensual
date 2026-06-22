@@ -11,6 +11,7 @@ const CONFIGS: FilterQualifierConfig[] = [
   { key: "", kind: "text", label: "Descripción" },
   { columnId: "subtotal", key: "subtotal", kind: "numberRange", label: "Subtotal" },
   { columnId: "total", key: "total", kind: "numberRange", label: "Total" },
+  { key: "saldo", kind: "numberRange", label: "Saldo" },
   {
     columnId: "lenderName",
     key: "direccion",
@@ -213,6 +214,22 @@ describe("parseFilterQuery", () => {
     const parsed = parseFilterQuery("-Agua -agua -água", CONFIGS);
 
     expect(parsed.excludedDescriptionFilters).toEqual(["Agua"]);
+  });
+
+  it("merges and validates repeated ranges for column-less qualifiers", () => {
+    const valid = parseFilterQuery("saldo:>100 saldo:<500", CONFIGS);
+    expect(valid.appliedFilters).toEqual([
+      { key: "saldo", negated: false, value: { kind: "numberRange", max: 500, min: 100 } },
+    ]);
+    expect(valid.advancedFiltersByColumn).toEqual({});
+
+    const impossible = parseFilterQuery("saldo:>1000 saldo:<50", CONFIGS);
+    expect(impossible.appliedFilters).toEqual([
+      { key: "saldo", negated: false, value: { kind: "numberRange", min: 1000 } },
+    ]);
+    expect(impossible.invalidTokens).toEqual([
+      { raw: "saldo:<50", reason: "invalidValue" },
+    ]);
   });
 
   it("applies negated qualifiers through appliedFilters, not the column map", () => {

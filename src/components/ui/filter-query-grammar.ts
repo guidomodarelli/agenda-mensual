@@ -671,6 +671,9 @@ export function parseFilterQuery(
   const excludedDescriptionFilters: string[] = [];
   const advancedFiltersByColumn: Record<string, DataTableColumnFilterValue> = {};
   const appliedFilters: AppliedFilter[] = [];
+  // Índice en `appliedFilters` del último filtro de rango (no negado) por clave,
+  // para mergear y validar rangos repetidos de forma uniforme tengan o no columna.
+  const rangeAppliedIndexByKey = new Map<string, number>();
   const invalidTokens: InvalidFilterToken[] = [];
 
   for (const token of tokens) {
@@ -701,34 +704,78 @@ export function parseFilterQuery(
         continue;
       }
 
+      if (isColumnFilterValue(filterValue)) {
+        const isRange =
+          filterValue.kind === "numberRange" ||
+          filterValue.kind === "yearMonthRange";
+
+        // Los rangos repetidos de una misma clave (con o sin columna) se mergean
+        // y validan igual: una combinación imposible (p. ej.
+        // `subtotal:>1000 subtotal:<50`) se reporta inválida y conserva la cota
+        // previa, en vez de filtrar todas las filas en silencio.
+        if (!token.negated && isRange) {
+          const existingIndex = rangeAppliedIndexByKey.get(config.key);
+
+          if (existingIndex != null) {
+            const existingValue = appliedFilters[existingIndex]
+              .value as DataTableColumnFilterValue;
+            const mergedValue = mergeColumnFilterValue(existingValue, filterValue);
+
+            if (isImpossibleRange(mergedValue)) {
+              invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
+              continue;
+            }
+
+            appliedFilters[existingIndex] = {
+              ...appliedFilters[existingIndex],
+              value: mergedValue,
+            };
+
+            if (config.columnId) {
+              advancedFiltersByColumn[config.columnId] = mergedValue;
+            }
+
+            continue;
+          }
+
+          appliedFilters.push({
+            key: config.key,
+            negated: false,
+            value: filterValue,
+          });
+          rangeAppliedIndexByKey.set(config.key, appliedFilters.length - 1);
+
+          if (config.columnId) {
+            advancedFiltersByColumn[config.columnId] = filterValue;
+          }
+
+          continue;
+        }
+
+        // enum/presence (no rango) o negados: se agregan sin mergear. Los no
+        // negados con columna se proyectan al path clásico de TanStack.
+        appliedFilters.push({
+          key: config.key,
+          negated: token.negated,
+          value: filterValue,
+        });
+
+        if (!token.negated && config.columnId) {
+          advancedFiltersByColumn[config.columnId] = mergeColumnFilterValue(
+            advancedFiltersByColumn[config.columnId],
+            filterValue,
+          );
+        }
+
+        continue;
+      }
+
+      // textMatch / folder: sin columna y sin merge de rango.
       appliedFilters.push({
         key: config.key,
         negated: token.negated,
         value: filterValue,
       });
-
-      // Compat con el path de columnas de TanStack: solo qualifiers NO negados,
-      // con columna y de un kind de columna se proyectan a advancedFiltersByColumn.
-      if (
-        !token.negated &&
-        config.columnId &&
-        isColumnFilterValue(filterValue)
-      ) {
-        const mergedValue = mergeColumnFilterValue(
-          advancedFiltersByColumn[config.columnId],
-          filterValue,
-        );
-
-        // Si la combinación deja un rango imposible, no se aplica y se reporta;
-        // el filtro recién agregado se descarta para no contradecir el reporte.
-        if (isImpossibleRange(mergedValue)) {
-          appliedFilters.pop();
-          invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
-          continue;
-        }
-
-        advancedFiltersByColumn[config.columnId] = mergedValue;
-      }
 
       continue;
     }
