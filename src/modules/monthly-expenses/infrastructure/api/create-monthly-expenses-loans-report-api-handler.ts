@@ -17,6 +17,15 @@ import {
   createTechnicalErrorEnvelope,
 } from "@/modules/shared/infrastructure/errors/technical-error";
 
+/**
+ * Stable, client-safe message for any unexpected failure while loading the
+ * deferred debts report. The original error is always logged server-side; this
+ * message is what crosses to the browser so SQL/Turso details or provider
+ * payloads carried in `error.message` never leak to the client.
+ */
+const UNEXPECTED_REPORT_ERROR_MESSAGE =
+  "We could not load the monthly expenses report right now. Try again later.";
+
 async function getDefaultUserSubject(request: NextApiRequest) {
   const { getAuthenticatedUserSubjectFromRequest } = await import(
     "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
@@ -113,10 +122,13 @@ export function createMonthlyExpensesLoansReportApiHandler<TResult>({
       if (error instanceof Error) {
         // Carry the technical error code so the client (the only loader of the
         // deferred debts report) can surface an E#### code, matching the coded
-        // SSR failure path this deferral replaced.
+        // SSR failure path this deferral replaced. The message stays generic on
+        // purpose: `error.message` from the repository/cache path may embed
+        // SQL/Turso details or provider payloads, so only the code crosses to
+        // the client while the original error is logged server-side above.
         return response.status(400).json({
           ...createTechnicalErrorEnvelope(
-            error.message,
+            UNEXPECTED_REPORT_ERROR_MESSAGE,
             TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_REPORT_API_UNEXPECTED_ERROR,
           ),
         });
@@ -124,7 +136,7 @@ export function createMonthlyExpensesLoansReportApiHandler<TResult>({
 
       return response.status(500).json({
         ...createTechnicalErrorEnvelope(
-          "We could not load the monthly expenses report right now. Try again later.",
+          UNEXPECTED_REPORT_ERROR_MESSAGE,
           TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_REPORT_API_UNEXPECTED_ERROR,
         ),
       });

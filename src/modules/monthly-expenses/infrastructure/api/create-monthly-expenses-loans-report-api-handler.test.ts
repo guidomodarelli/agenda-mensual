@@ -97,13 +97,15 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it("logs and returns 400 with a technical error code when report loading fails with a typed error", async () => {
+  it("logs the original error but returns a stable generic message when report loading fails with a typed error", async () => {
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
     const database = {} as TursoDatabase;
+    const internalErrorMessage =
+      "SQLITE_ERROR: no such table: loans (libsql://agenda-mensual.turso.io)";
     const handler = createMonthlyExpensesLoansReportApiHandler({
       getDatabase: jest.fn().mockResolvedValue(database),
       getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      load: jest.fn().mockRejectedValue(new Error("report not available")),
+      load: jest.fn().mockRejectedValue(new Error(internalErrorMessage)),
     });
 
     const request = {
@@ -115,9 +117,12 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.body).toEqual({
-      error: "report not available",
+      error:
+        "We could not load the monthly expenses report right now. Try again later.",
       errorCode: "E1006",
     });
+    expect(JSON.stringify(response.body)).not.toContain("SQLITE_ERROR");
+    expect(JSON.stringify(response.body)).not.toContain("turso");
     expect(errorSpy).toHaveBeenCalled();
   });
 });
