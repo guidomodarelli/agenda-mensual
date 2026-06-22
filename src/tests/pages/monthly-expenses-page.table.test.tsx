@@ -115,7 +115,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-03");
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Guardar gastos" }),
@@ -879,7 +879,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "aa");
+    await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "aa");
     await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Aab", "Aaa"]);
@@ -2474,7 +2474,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.type(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
       "Agua",
     );
     await user.click(
@@ -2563,9 +2563,9 @@ registerMonthlyExpensesPageDefaultHooks({
       expect(screen.getByRole("button", { name: "Acciones masivas" })).toBeEnabled();
     });
 
-    await user.clear(screen.getByRole("textbox", { name: "Filtrar gastos" }));
+    await user.clear(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }));
     await user.type(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
       "No existe",
     );
 

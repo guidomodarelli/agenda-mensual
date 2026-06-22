@@ -1108,7 +1108,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
     await user.click(summaryFilterButton);
     expect(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
     ).toHaveValue("Servicio pendiente");
   });
 
@@ -1215,7 +1215,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
     ).toHaveValue("");
     expect(screen.getByText("Sin descripción")).toBeInTheDocument();
   });
@@ -2457,7 +2457,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PREST");
+    await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "PREST");
 
     const matchingDescription = screen.getByText(
       (_, element) => element?.textContent === "Préstamo tarjeta",
@@ -2495,7 +2495,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(clearFilterButton);
 
-    expect(screen.getByRole("textbox", { name: "Filtrar gastos" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Filtro unificado de gastos" })).toHaveValue("");
     expect(screen.getByText("Préstamo tarjeta")).toBeInTheDocument();
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(
@@ -2555,7 +2555,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "ipe");
+    await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "ipe");
     await user.click(screen.getByRole("button", { name: "Ordenar Pagos" }));
 
     expect(
@@ -2571,15 +2571,10 @@ registerMonthlyExpensesPageDefaultHooks({
       "Pijama + Pantuflas (Regalo July Cumple)",
     ]);
 
-    await user.click(
-      screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
+    await user.type(
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
+      " -ipe",
     );
-
-    const exclusionInput = screen.getByRole("textbox", {
-      name: "Excluir resultados",
-    });
-
-    await user.type(exclusionInput, "ipe{enter}");
 
     expect(screen.queryByText("Iphone")).not.toBeInTheDocument();
     expect(
@@ -2625,17 +2620,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PRESTAMO");
+    await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "PRESTAMO");
 
-    await user.click(
-      screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
-    );
-
-    const exclusionInput = screen.getByRole("textbox", {
-      name: "Excluir resultados",
+    const filterBar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
     });
-
-    await user.type(exclusionInput, "tarjeta{enter}");
+    await user.type(filterBar, " -tarjeta");
 
     expect(screen.getByText("− tarjeta")).toBeInTheDocument();
     expect(
@@ -2643,7 +2633,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).toBeInTheDocument();
     expect(screen.queryByText("Préstamo tarjeta")).not.toBeInTheDocument();
 
-    await user.type(exclusionInput, "auto{enter}");
+    await user.type(filterBar, " -auto");
 
     expect(screen.getByText("− auto")).toBeInTheDocument();
     expect(screen.queryByText("Préstamo auto")).not.toBeInTheDocument();
@@ -2708,17 +2698,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PRESTAMO");
+    await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "PRESTAMO");
 
-    await user.click(
-      screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
-    );
-
-    const exclusionInput = screen.getByRole("textbox", {
-      name: "Excluir resultados",
+    const filterBar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
     });
-
-    await user.type(exclusionInput, "auto{enter}");
+    await user.type(filterBar, " -auto");
 
     expect(
       screen.getByLabelText("Filas excluidas por auto: 2"),
@@ -2727,7 +2712,7 @@ registerMonthlyExpensesPageDefaultHooks({
       screen.getByLabelText("Total de filas excluidas únicas: 2"),
     ).toBeInTheDocument();
 
-    await user.type(exclusionInput, "tarjeta{enter}");
+    await user.type(filterBar, " -tarjeta");
 
     expect(
       screen.getByLabelText("Filas excluidas por auto: 2"),
@@ -2770,69 +2755,17 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
-    );
-
     await user.type(
-      screen.getByRole("textbox", { name: "Excluir resultados" }),
-      "internet{enter}",
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
+      "-internet",
     );
 
-    expect(screen.getByRole("textbox", { name: "Filtrar gastos" })).toHaveValue("");
+    expect(
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
+    ).toHaveValue("-internet");
     expect(screen.getByText("− internet")).toBeInTheDocument();
     expect(screen.queryByText("Internet casa")).not.toBeInTheDocument();
     expect(screen.getByText("Agua")).toBeInTheDocument();
-  });
-
-  it("shows reverse-filter feedback and applies exclusion only after pressing Enter", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Internet casa",
-              id: "expense-1",
-              occurrencesPerMonth: 1,
-              subtotal: 10000,
-              total: 10000,
-            },
-            {
-              currency: "ARS",
-              description: "Agua",
-              id: "expense-2",
-              occurrencesPerMonth: 1,
-              subtotal: 12000,
-              total: 12000,
-            },
-          ],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    const mainFilterInput = screen.getByRole("textbox", { name: "Filtrar gastos" });
-    await user.type(mainFilterInput, "-internet");
-
-    expect(mainFilterInput).toHaveValue("-internet");
-    expect(
-      screen.getByText("Estás escribiendo una exclusión. Presioná Enter para aplicarla."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Internet casa")).toBeInTheDocument();
-    expect(screen.getByText("Agua")).toBeInTheDocument();
-
-    await user.keyboard("{Enter}");
-
-    expect(mainFilterInput).toHaveValue("");
-    expect(screen.getByText("− internet")).toBeInTheDocument();
-    expect(screen.queryByText("Internet casa")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Estás escribiendo una exclusión. Presioná Enter para aplicarla."),
-    ).not.toBeInTheDocument();
   });
 
   it("shows validation when a debt is missing start month or installments", async () => {

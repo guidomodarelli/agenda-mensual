@@ -166,6 +166,8 @@ export interface FilterQueryBarProps {
   className?: string;
   /** Se dispara cuando el input gana o pierde el foco real del usuario. */
   onFocusChange?: (focused: boolean) => void;
+  /** Acción opcional a la derecha del input (p. ej. botón de filtros avanzados). */
+  trailingAction?: React.ReactNode;
 }
 
 function startsWithNormalized(candidate: string, prefix: string): boolean {
@@ -468,6 +470,7 @@ export function FilterQueryBar({
   ariaLabel = DEFAULT_ARIA_LABEL,
   className,
   onFocusChange,
+  trailingAction,
 }: FilterQueryBarProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const highlightOverlayRef = React.useRef<HTMLDivElement>(null);
@@ -693,8 +696,12 @@ export function FilterQueryBar({
               aria-label={ariaLabel}
               autoComplete="off"
               // El texto se vuelve transparente: lo dibuja el overlay coloreado de
-              // abajo. El caret queda visible con el color de texto normal.
-              className="w-full pr-9 text-transparent"
+              // abajo. El caret queda visible con el color de texto normal. El
+              // padding derecho deja lugar a los iconos (limpiar + acción opcional).
+              className={cn(
+                "w-full text-transparent",
+                trailingAction ? "pr-16" : "pr-9",
+              )}
               onChange={(event) => {
                 onValueChange(event.target.value);
                 setIsOpen(true);
@@ -724,25 +731,31 @@ export function FilterQueryBar({
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 flex items-center overflow-hidden rounded-lg border border-transparent px-2.5 pr-9 text-base text-foreground select-none md:text-sm"
+              className={cn(
+                "pointer-events-none absolute inset-0 flex items-center overflow-hidden rounded-lg border border-transparent px-2.5 text-base text-foreground select-none md:text-sm",
+                trailingAction ? "pr-16" : "pr-9",
+              )}
               ref={highlightOverlayRef}
             >
               <span className="whitespace-pre">
                 {renderHighlightedQuery(value, highlightRanges)}
               </span>
             </div>
-            {value ? (
-              <Button
-                aria-label={CLEAR_FILTER_ARIA_LABEL}
-                className="absolute right-1 top-1/2 -translate-y-1/2 active:-translate-y-1/2"
-                onClick={handleClear}
-                size="icon-xs"
-                type="button"
-                variant="ghost"
-              >
-                <X aria-hidden="true" />
-              </Button>
-            ) : null}
+            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+              {value ? (
+                <Button
+                  aria-label={CLEAR_FILTER_ARIA_LABEL}
+                  className="active:-translate-y-0"
+                  onClick={handleClear}
+                  size="icon-xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              ) : null}
+              {trailingAction}
+            </div>
           </div>
         </PopoverAnchor>
         <PopoverContent

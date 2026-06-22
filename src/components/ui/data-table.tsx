@@ -805,7 +805,7 @@ export function DataTable<TData, TValue>({
   const hasToolbarChanges = hasModifiedColumnVisibility;
   const shouldShowAdvancedFiltersToggle = advancedFiltersConfig.length > 0;
   const shouldShowStandaloneAdvancedFiltersToggle =
-    shouldShowAdvancedFiltersToggle && !filterColumnId;
+    shouldShowAdvancedFiltersToggle && !filterColumnId && !shouldShowQueryFilter;
   const shouldShowToolbarActions =
     shouldShowColumnVisibilityToggle ||
     shouldShowStandaloneAdvancedFiltersToggle ||
@@ -1299,6 +1299,28 @@ export function DataTable<TData, TValue>({
     </TableRow>
   );
 
+  const advancedFiltersToggleButton = shouldShowAdvancedFiltersToggle ? (
+    <Button
+      aria-label={advancedFiltersButtonLabel}
+      className="relative active:-translate-y-0"
+      onClick={handleOpenAdvancedFiltersDialog}
+      size="icon-xs"
+      type="button"
+      variant="ghost"
+    >
+      <Filter aria-hidden="true" />
+      {hasActiveAdvancedFilters ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
+          />
+          <span className="sr-only">{ADVANCED_FILTERS_ACTIVE_SR_LABEL}</span>
+        </>
+      ) : null}
+    </Button>
+  ) : null;
+
   return (
     <div className="grid gap-4">
       {shouldShowToolbar ? (
@@ -1310,12 +1332,17 @@ export function DataTable<TData, TValue>({
               onFocusChange={setIsQueryFilterFocused}
               onValueChange={handleQueryFilterChange}
               placeholder={queryFilterPlaceholder}
+              trailingAction={advancedFiltersToggleButton}
               value={filterQueryDraft}
             />
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             {filterColumnId ? (
               <div className="grid w-full max-w-sm gap-2">
+                {/* La barra unificada reemplaza estos inputs: solo se renderizan
+                    los de descripción/exclusión cuando NO hay barra de query. */}
+                {!shouldShowQueryFilter ? (
+                  <>
                 <div className="relative w-full">
                   <Input
                     aria-label={filterLabel}
@@ -1498,6 +1525,8 @@ export function DataTable<TData, TValue>({
                       {REVERSE_FILTER_PENDING_MESSAGE}
                     </p>
                   </div>
+                ) : null}
+                  </>
                 ) : null}
                 {showExcludeFilterToggle && resolvedExcludeFilterValues.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
