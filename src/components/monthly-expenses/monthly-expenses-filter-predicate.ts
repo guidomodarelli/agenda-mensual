@@ -131,7 +131,13 @@ export const MONTHLY_EXPENSES_FILTER_MATCHERS: Record<
   string,
   MonthlyExpenseFilterMatcher
 > = {
-  subtotal: numberRangeMatcher((row) => Number(row.subtotal)),
+  subtotal: numberRangeMatcher((row, context) =>
+    getArsComparableAmount({
+      exchangeRateSnapshot: context.exchangeRateSnapshot,
+      rowCurrency: row.currency,
+      value: row.subtotal,
+    }),
+  ),
   total: numberRangeMatcher((row, context) =>
     getArsComparableAmount({
       exchangeRateSnapshot: context.exchangeRateSnapshot,

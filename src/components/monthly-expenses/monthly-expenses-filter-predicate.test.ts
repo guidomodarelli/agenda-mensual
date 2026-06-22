@@ -154,6 +154,27 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(excludeA(createRow({ expenseFolderId: "b" }))).toBe(true);
   });
 
+  it("compares subtotal in ARS-displayed currency for USD rows", () => {
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: {
+        blueRate: 1500,
+        month: "2026-06",
+        officialRate: 1000,
+        solidarityRate: 1300,
+      },
+      vigenciaSortMode: "startMonth",
+    };
+    const matches = buildMonthlyExpensesQueryPredicate(
+      [{ key: "subtotal", negated: false, value: { kind: "numberRange", min: 10000 } }],
+      context,
+    );
+    // 10 USD * 1300 = 13000 ARS, lo que muestra la celda, así que matchea el
+    // umbral en ARS aunque el valor crudo en USD (10) no lo haría.
+    const usdRow = createRow({ currency: "USD", subtotal: "10" });
+
+    expect(matches(usdRow)).toBe(true);
+  });
+
   it("ANDs multiple filters of different kinds", () => {
     const matches = predicate([
       { key: "subtotal", negated: false, value: { kind: "numberRange", min: 500 } },
