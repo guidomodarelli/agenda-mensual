@@ -662,6 +662,21 @@ export function DataTable<TData, TValue>({
     ],
   );
 
+  // Si la config de qualifiers cambia (p. ej. se borra una carpeta y desaparece
+  // su opción `carpeta:<id>`), se re-parsea la query actual contra la nueva
+  // config y se re-propaga: así un filtro que quedó huérfano se descarta del
+  // predicado en vez de seguir filtrando de forma invisible.
+  React.useEffect(() => {
+    if (!queryFilterConfig || !filterQueryDraft) {
+      return;
+    }
+
+    handleQueryFilterChange(filterQueryDraft);
+    // Solo debe re-correr cuando cambia la config; `filterQueryDraft` se lee como
+    // valor actual y no como disparador para no re-parsear en cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryFilterConfig]);
+
   const addExcludeFilterValue = React.useCallback(
     (
       rawExcludeFilterValue: string,
