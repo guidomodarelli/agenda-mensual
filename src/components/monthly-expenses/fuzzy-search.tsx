@@ -272,5 +272,5 @@ export function renderHighlightedText(
     );
   }
 
-  return highlightedParts;
+  return <span key={`${keyPrefix}-highlighted`}>{highlightedParts}</span>;
 }
