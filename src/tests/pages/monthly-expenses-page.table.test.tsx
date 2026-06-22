@@ -2494,7 +2494,13 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(within(bulkDeleteDialog).getByRole("button", { name: "Eliminar" }));
 
     await waitFor(() => {
-      expect(screen.queryByText("Agua")).not.toBeInTheDocument();
+      // Se ignora el overlay de resaltado de la barra (aria-hidden), que refleja
+      // el filtro activo ("Agua"); solo interesa que la FILA "Agua" ya no esté.
+      expect(
+        screen.queryByText("Agua", {
+          ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *',
+        }),
+      ).not.toBeInTheDocument();
     });
 
     const payload = getMonthlyExpensesSavePayload(fetchMock);

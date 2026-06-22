@@ -12,7 +12,6 @@ import type { MonthlyExpensesEditableRow } from "./monthly-expenses-table.types"
 
 const CONTEXT: MonthlyExpenseFilterContext = {
   exchangeRateSnapshot: null,
-  vigenciaSortMode: "startMonth",
 };
 
 function createRow(
@@ -124,6 +123,32 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(pendingRow)).toBe(false);
   });
 
+  it("evaluates field presence for tiene:/no: meta filters", () => {
+    const hasLink = predicate([
+      { key: "link", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    expect(hasLink(createRow({ paymentLink: "https://x" }))).toBe(true);
+    expect(hasLink(createRow({ paymentLink: "" }))).toBe(false);
+
+    const noSent = predicate([
+      { key: "enviados", negated: false, value: { kind: "presence", value: "noValue" } },
+    ]);
+    const sentRow = createRow({
+      paymentRecords: [
+        { id: "a", coveredPayments: 1, registeredAt: null, sendStatus: "sent" },
+      ],
+    });
+    expect(noSent(sentRow)).toBe(false);
+    expect(noSent(createRow({ paymentRecords: [] }))).toBe(true);
+
+    // La presencia de carpeta se evalúa por campo (no por el bucket de folders).
+    const hasFolder = predicate([
+      { key: "carpeta", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    expect(hasFolder(createRow({ expenseFolderId: "f1" }))).toBe(true);
+    expect(hasFolder(createRow({ expenseFolderId: "" }))).toBe(false);
+  });
+
   it("matches link text and inverts on negation", () => {
     const startsWith = predicate([
       { key: "link", negated: false, value: { kind: "textMatch", op: "startsWith", text: "https" } },
@@ -136,6 +161,24 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     ]);
     expect(notContains(createRow({ paymentLink: "https://mp.com" }))).toBe(false);
     expect(notContains(createRow({ paymentLink: "https://x.com" }))).toBe(true);
+  });
+
+  it("matches an ends-with link ignoring the normalized trailing slash", () => {
+    // Los links se guardan con barra final (`.../`); `*.com.ar` debe matchear igual.
+    const endsWith = predicate([
+      {
+        key: "link",
+        negated: false,
+        value: { kind: "textMatch", op: "endsWith", text: ".com.ar" },
+      },
+    ]);
+
+    expect(
+      endsWith(createRow({ paymentLink: "https://oficinavirtual.coopelectric.com.ar/" })),
+    ).toBe(true);
+    expect(
+      endsWith(createRow({ paymentLink: "https://example.com/path" })),
+    ).toBe(false);
   });
 
   it("ORs positive folder filters and excludes negated ones", () => {
@@ -162,7 +205,6 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
         officialRate: 1000,
         solidarityRate: 1300,
       },
-      vigenciaSortMode: "startMonth",
     };
     const matches = buildMonthlyExpensesQueryPredicate(
       [{ key: "subtotal", negated: false, value: { kind: "numberRange", min: 10000 } }],
@@ -175,14 +217,24 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(usdRow)).toBe(true);
   });
 
+  it("matches prestamista by lender id (enum)", () => {
+    const matches = predicate([
+      { key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } },
+    ]);
+
+    expect(matches(createRow({ lenderId: "lender-1" }))).toBe(true);
+    expect(matches(createRow({ lenderId: "lender-2" }))).toBe(false);
+    expect(matches(createRow({ lenderId: "" }))).toBe(false);
+  });
+
   it("ANDs multiple filters of different kinds", () => {
     const matches = predicate([
       { key: "subtotal", negated: false, value: { kind: "numberRange", min: 500 } },
-      { key: "prestamista", negated: false, value: { kind: "textMatch", op: "equals", text: "juan" } },
+      { key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } },
     ]);
 
-    expect(matches(createRow({ subtotal: "1000", lenderName: "Juan" }))).toBe(true);
-    expect(matches(createRow({ subtotal: "100", lenderName: "Juan" }))).toBe(false);
-    expect(matches(createRow({ subtotal: "1000", lenderName: "Pedro" }))).toBe(false);
+    expect(matches(createRow({ subtotal: "1000", lenderId: "lender-1" }))).toBe(true);
+    expect(matches(createRow({ subtotal: "100", lenderId: "lender-1" }))).toBe(false);
+    expect(matches(createRow({ subtotal: "1000", lenderId: "lender-2" }))).toBe(false);
   });
 });

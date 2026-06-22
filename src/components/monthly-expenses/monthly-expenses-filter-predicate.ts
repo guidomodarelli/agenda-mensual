@@ -22,16 +22,14 @@ import { getPaymentProgress } from "./monthly-expenses-payment-progress";
 import type {
   ExchangeRateSnapshot,
   MonthlyExpensesEditableRow,
-  VigenciaSortMode,
 } from "./monthly-expenses-table.types";
 
 /**
- * Contexto necesario para evaluar algunos qualifiers que dependen de estado de
- * la tabla o de la cotización (total/usd en ARS, vigencia según modo de orden).
+ * Contexto necesario para evaluar los qualifiers que dependen de la cotización
+ * (total/usd/subtotal comparados en ARS).
  */
 export interface MonthlyExpenseFilterContext {
   exchangeRateSnapshot: ExchangeRateSnapshot | null;
-  vigenciaSortMode: VigenciaSortMode;
 }
 
 type MonthlyExpenseFilterMatcher = (
@@ -156,19 +154,15 @@ export const MONTHLY_EXPENSES_FILTER_MATCHERS: Record<
   pagos: numberRangeMatcher((row) => getPaymentProgress(row).coveredPayments),
   registros: numberRangeMatcher((row) => (row.paymentRecords ?? []).length),
   enviados: numberRangeMatcher((row) => getSentReceiptsCount(row)),
-  enviado: (row, value) =>
-    matchesAdvancedPresenceFilter(value, getSentReceiptsCount(row) > 0),
   "cuotas-pagadas": numberRangeMatcher((row) => row.loanPaidInstallments),
   "cuotas-restantes": numberRangeMatcher((row) => row.loanRemainingInstallments),
   "cuotas-total": numberRangeMatcher((row) => row.loanTotalInstallments),
   link: (row, value) =>
     value.kind === "textMatch"
-      ? matchesTextMatch(value, row.paymentLink)
+      ? matchesTextMatch(value, stripTrailingSlashes(row.paymentLink))
       : true,
   prestamista: (row, value) =>
-    value.kind === "textMatch"
-      ? matchesTextMatch(value, row.lenderName)
-      : true,
+    matchesAdvancedEnumFilter(value, row.lenderId),
   direccion: (row, value) =>
     matchesAdvancedEnumFilter(value, getLoanDirectionFilterValue(row)),
   deuda: (row, value) =>
@@ -183,15 +177,60 @@ export const MONTHLY_EXPENSES_FILTER_MATCHERS: Record<
       value,
       getYearMonthValue(row.loanEndMonth),
     ),
-  vigencia: (row, value, context) =>
-    matchesAdvancedYearMonthRangeFilter(
-      value,
-      getYearMonthValue(
-        context.vigenciaSortMode === "endMonth"
-          ? row.loanEndMonth
-          : row.startMonth,
-      ),
-    ),
+};
+
+/** `true` si un texto crudo tiene contenido (tras normalizar acentos/espacios). */
+function hasText(fieldValue: string): boolean {
+  return normalizeFilterSlug(fieldValue).length > 0;
+}
+
+/**
+ * Quita las barras finales del link de pago para compararlo. Los links se
+ * guardan normalizados con una barra final (p. ej. `https://x.com.ar/`), que de
+ * otro modo rompería un filtro "termina con" (`*.com.ar`) aunque el dominio sí
+ * termine ahí.
+ */
+function stripTrailingSlashes(link: string): string {
+  return link.replace(/\/+$/, "");
+}
+
+/** `true` si un monto crudo es un número finito distinto de cero. */
+function hasNonZeroAmount(rawAmount: string): boolean {
+  const amount = Number(rawAmount);
+
+  return Number.isFinite(amount) && amount !== 0;
+}
+
+type MonthlyExpensePresencePredicate = (
+  row: MonthlyExpensesEditableRow,
+  context: MonthlyExpenseFilterContext,
+) => boolean;
+
+/**
+ * Define, por campo, qué significa que ese campo "tenga valor". Lo consumen las
+ * meta-claves `tiene:<campo>` / `no:<campo>`, unificando la presencia de todos
+ * los kinds (monto > 0, cantidad > 0, texto no vacío, fecha válida, etc.).
+ */
+export const MONTHLY_EXPENSES_PRESENCE_PREDICATES: Record<
+  string,
+  MonthlyExpensePresencePredicate
+> = {
+  subtotal: (row) => hasNonZeroAmount(row.subtotal),
+  total: (row) => hasNonZeroAmount(row.total),
+  usd: (row) => hasNonZeroAmount(row.total),
+  pagos: (row) => getPaymentProgress(row).coveredPayments > 0,
+  registros: (row) => (row.paymentRecords ?? []).length > 0,
+  enviados: (row) => getSentReceiptsCount(row) > 0,
+  "cuotas-pagadas": (row) => (row.loanPaidInstallments ?? 0) > 0,
+  "cuotas-restantes": (row) => (row.loanRemainingInstallments ?? 0) > 0,
+  "cuotas-total": (row) => (row.loanTotalInstallments ?? 0) > 0,
+  link: (row) => hasText(row.paymentLink),
+  prestamista: (row) => hasText(row.lenderName),
+  direccion: (row) => row.isLoan,
+  deuda: (row) => row.isLoan && row.loanProgress.trim().length > 0,
+  inicio: (row) => getYearMonthValue(row.startMonth) != null,
+  fin: (row) => getYearMonthValue(row.loanEndMonth) != null,
+  carpeta: (row) => hasText(row.expenseFolderId),
 };
 
 /** `true` si la fila satisface un único filtro aplicado (sin negación). */
@@ -202,6 +241,17 @@ function matchesAppliedFilter(
 ): boolean {
   if (appliedFilter.value.kind === "folder") {
     return matchesFolder(appliedFilter.value, row.expenseFolderId);
+  }
+
+  // Presencia (`tiene:<campo>` / `no:<campo>`): se evalúa con el predicado de
+  // presencia del campo, no con su matcher de valor (que ignoraría el kind).
+  if (appliedFilter.value.kind === "presence") {
+    const isPresent = MONTHLY_EXPENSES_PRESENCE_PREDICATES[appliedFilter.key];
+
+    return matchesAdvancedPresenceFilter(
+      appliedFilter.value,
+      isPresent ? isPresent(row, context) : true,
+    );
   }
 
   const matcher = MONTHLY_EXPENSES_FILTER_MATCHERS[appliedFilter.key];

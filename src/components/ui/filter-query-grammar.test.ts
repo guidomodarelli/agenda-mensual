@@ -1,5 +1,6 @@
 import {
   getActiveFilterToken,
+  getValueHighlightRanges,
   parseFilterQuery,
   parseYearMonthSlug,
   serializeFilterQuery,
@@ -141,16 +142,63 @@ describe("parseFilterQuery", () => {
     ).toEqual({ total: { kind: "numberRange", min: 200 } });
   });
 
-  it("parses enum and presence values", () => {
+  it("parses enum values to the column map", () => {
     expect(parseFilterQuery("direccion:me-deben", CONFIGS).advancedFiltersByColumn).toEqual({
       lenderName: { kind: "enum", value: "receivable" },
     });
-    expect(parseFilterQuery("deuda:si", CONFIGS).advancedFiltersByColumn).toEqual({
-      loanProgress: { kind: "presence", value: "hasValue" },
+  });
+
+  it("tolerates a leading @ on enum values (mention style)", () => {
+    expect(parseFilterQuery("direccion:@me-deben", CONFIGS).advancedFiltersByColumn).toEqual({
+      lenderName: { kind: "enum", value: "receivable" },
     });
-    expect(parseFilterQuery("deuda:no", CONFIGS).advancedFiltersByColumn).toEqual({
-      loanProgress: { kind: "presence", value: "noValue" },
-    });
+  });
+
+  it("routes presence (<campo>:si/no) to applied filters, not the column map", () => {
+    // La presencia se unifica con las meta-claves: no proyecta a columna y vive
+    // en appliedFilters como filtro de presencia del campo destino.
+    const present = parseFilterQuery("deuda:si", CONFIGS);
+    expect(present.advancedFiltersByColumn).toEqual({});
+    expect(present.appliedFilters).toEqual([
+      { key: "deuda", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    expect(parseFilterQuery("deuda:no", CONFIGS).appliedFilters).toEqual([
+      { key: "deuda", negated: false, value: { kind: "presence", value: "noValue" } },
+    ]);
+  });
+
+  it("parses tiene:/no: meta-keys as field presence filters", () => {
+    expect(parseFilterQuery("tiene:saldo", CONFIGS).appliedFilters).toEqual([
+      { key: "saldo", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    expect(parseFilterQuery("no:carpeta", CONFIGS).appliedFilters).toEqual([
+      { key: "carpeta", negated: false, value: { kind: "presence", value: "noValue" } },
+    ]);
+    // La negación del token invierte el sentido, dejando un filtro canónico.
+    expect(parseFilterQuery("-tiene:saldo", CONFIGS).appliedFilters).toEqual([
+      { key: "saldo", negated: false, value: { kind: "presence", value: "noValue" } },
+    ]);
+    // Una meta-clave hacia un campo inexistente es un token inválido.
+    expect(parseFilterQuery("tiene:noexiste", CONFIGS).invalidTokens).toEqual([
+      { raw: "tiene:noexiste", reason: "invalidValue" },
+    ]);
+  });
+
+  it("parses year-month comparators (>=, <=) into single-bound ranges", () => {
+    expect(parseFilterQuery("inicio:>=2026-01", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "inicio",
+        negated: false,
+        value: { kind: "yearMonthRange", min: 202601, mode: "from" },
+      },
+    ]);
+    expect(parseFilterQuery("inicio:<=2026-06", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "inicio",
+        negated: false,
+        value: { kind: "yearMonthRange", max: 202606, mode: "to" },
+      },
+    ]);
   });
 
   it("parses year-month ranges and presence slugs", () => {
@@ -266,39 +314,43 @@ describe("parseFilterQuery", () => {
     ]);
   });
 
-  it("parses textMatch operators (presence, prefix, suffix, equals, contains)", () => {
+  it("parses glob textMatch operators (presence, starts, ends, contains, equals)", () => {
     expect(parseFilterQuery("link:si", CONFIGS).appliedFilters).toEqual([
       { key: "link", negated: false, value: { kind: "textMatch", op: "has" } },
     ]);
     expect(parseFilterQuery("link:no", CONFIGS).appliedFilters).toEqual([
       { key: "link", negated: false, value: { kind: "textMatch", op: "notHas" } },
     ]);
-    expect(parseFilterQuery("link:^https", CONFIGS).appliedFilters).toEqual([
+    // `texto*` -> empieza por.
+    expect(parseFilterQuery("link:https*", CONFIGS).appliedFilters).toEqual([
       {
         key: "link",
         negated: false,
         value: { kind: "textMatch", op: "startsWith", text: "https" },
       },
     ]);
-    expect(parseFilterQuery("link:pdf$", CONFIGS).appliedFilters).toEqual([
+    // `*texto` -> termina con.
+    expect(parseFilterQuery("link:*pdf", CONFIGS).appliedFilters).toEqual([
       {
         key: "link",
         negated: false,
         value: { kind: "textMatch", op: "endsWith", text: "pdf" },
       },
     ]);
-    expect(parseFilterQuery("prestamista:=Juan", CONFIGS).appliedFilters).toEqual([
-      {
-        key: "prestamista",
-        negated: false,
-        value: { kind: "textMatch", op: "equals", text: "juan" },
-      },
-    ]);
-    expect(parseFilterQuery("prestamista:juan", CONFIGS).appliedFilters).toEqual([
+    // `*texto*` -> contiene.
+    expect(parseFilterQuery("prestamista:*juan*", CONFIGS).appliedFilters).toEqual([
       {
         key: "prestamista",
         negated: false,
         value: { kind: "textMatch", op: "contains", text: "juan" },
+      },
+    ]);
+    // `texto` (sin comodín) -> igualdad exacta.
+    expect(parseFilterQuery("prestamista:Juan", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "equals", text: "juan" },
       },
     ]);
   });
@@ -344,8 +396,9 @@ describe("serializeFilterQuery", () => {
     const query = "luz subtotal:100..500 direccion:me-deben deuda:si vigencia:sin-fechas -agua";
     const parsed = parseFilterQuery(query, CONFIGS);
 
+    // La presencia se canoniza a meta-clave (`deuda:si` -> `tiene:deuda`).
     expect(serializeFilterQuery(parsed, CONFIGS)).toBe(
-      "luz subtotal:100..500 direccion:me-deben deuda:si vigencia:sin-fechas -agua",
+      "luz subtotal:100..500 direccion:me-deben vigencia:sin-fechas tiene:deuda -agua",
     );
   });
 
@@ -365,12 +418,24 @@ describe("serializeFilterQuery", () => {
   });
 
   it("round-trips textMatch, folder and negated qualifiers", () => {
-    const query = "link:^https -carpeta:hogar prestamista:juan direccion:me-deben";
+    const query = "link:https* -carpeta:hogar prestamista:*juan* direccion:me-deben";
     const parsed = parseFilterQuery(query, CONFIGS);
 
     expect(serializeFilterQuery(parsed, CONFIGS)).toBe(
-      "direccion:me-deben link:^https -carpeta:hogar prestamista:juan",
+      "direccion:me-deben link:https* -carpeta:hogar prestamista:*juan*",
     );
+  });
+
+  it("round-trips presence meta-keys and year-month comparators", () => {
+    const query = "tiene:saldo no:carpeta inicio:>=2026-01";
+    const parsed = parseFilterQuery(query, CONFIGS);
+
+    const serialized = serializeFilterQuery(parsed, CONFIGS);
+    expect(serialized).toBe("tiene:saldo no:carpeta inicio:2026-01..");
+    // Idempotente: re-parsear y re-serializar no cambia la forma canónica.
+    expect(
+      serializeFilterQuery(parseFilterQuery(serialized, CONFIGS), CONFIGS),
+    ).toBe(serialized);
   });
 
   it("quotes free-text description words that look like qualifiers (lossless)", () => {
@@ -412,6 +477,37 @@ describe("parseYearMonthSlug", () => {
     expect(parseYearMonthSlug("2026-06")).toBe(202606);
     expect(parseYearMonthSlug("2026-13")).toBeNull();
     expect(parseYearMonthSlug("nope")).toBeNull();
+  });
+});
+
+describe("getValueHighlightRanges", () => {
+  it("highlights only valid values after the colon", () => {
+    // Valor de enum válido -> se resalta el tramo del valor.
+    const enumQuery = "direccion:me-deben";
+    expect(getValueHighlightRanges(enumQuery, CONFIGS)).toEqual([
+      { end: enumQuery.length, start: "direccion:".length },
+    ]);
+
+    // Valor de enum inválido -> no se resalta.
+    expect(getValueHighlightRanges("direccion:noexiste", CONFIGS)).toEqual([]);
+
+    // Sin valor todavía (`clave:`) -> no se resalta.
+    expect(getValueHighlightRanges("direccion:", CONFIGS)).toEqual([]);
+
+    // Glob de texto válido -> se resalta.
+    const textQuery = "link:https*";
+    expect(getValueHighlightRanges(textQuery, CONFIGS)).toEqual([
+      { end: textQuery.length, start: "link:".length },
+    ]);
+
+    // Meta-clave hacia un campo existente -> se resalta el nombre del campo.
+    const metaQuery = "tiene:saldo";
+    expect(getValueHighlightRanges(metaQuery, CONFIGS)).toEqual([
+      { end: metaQuery.length, start: "tiene:".length },
+    ]);
+
+    // Meta-clave hacia un campo inexistente -> no se resalta.
+    expect(getValueHighlightRanges("tiene:noexiste", CONFIGS)).toEqual([]);
   });
 });
 

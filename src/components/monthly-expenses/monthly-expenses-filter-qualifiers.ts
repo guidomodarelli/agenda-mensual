@@ -6,10 +6,8 @@ import {
 } from "@/components/ui/filter-query-grammar";
 
 import type { ExpenseFolderOption } from "./expense-folder-picker";
-import {
-  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-  LOAN_SORT_COLUMN_ID,
-} from "./monthly-expenses-table-column-ids";
+import type { LenderOption } from "./lender-picker";
+import { LOAN_SORT_COLUMN_ID } from "./monthly-expenses-table-column-ids";
 
 /**
  * Catálogo completo de qualifiers de la barra unificada estilo GitHub para la
@@ -25,10 +23,11 @@ import {
 export const DESCRIPTION_QUALIFIER_LABEL = "Descripción";
 
 /** Opciones de dirección de préstamo (slug tipeable → valor interno). */
+// "Sin deuda/préstamo" se omite a propósito: equivale a `no:direccion` (ausencia
+// de préstamo), así que se filtra con la meta-clave de ausencia, no como enum.
 const LOAN_DIRECTION_QUALIFIER_OPTIONS: FilterQualifierOption[] = [
   { label: "Yo debo", slug: "yo-debo", value: "payable" },
   { label: "Me deben", slug: "me-deben", value: "receivable" },
-  { label: "Sin deuda/préstamo", slug: "sin-deuda", value: "none" },
 ];
 
 /** Slug de la opción "sin carpeta asignada" dentro del qualifier de carpeta. */
@@ -48,33 +47,30 @@ export function slugifyFolderName(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Slug base de una carpeta (no vacío). */
-function getFolderBaseSlug(name: string): string {
-  return slugifyFolderName(name) || "carpeta";
-}
-
 /**
- * Desambigua el slug de una carpeta de forma ESTABLE por id. Cuando varias
- * carpetas comparten el slug base (p. ej. `Hogar` y `Hógar`), o cuando el base
- * colisiona con el slug reservado de "sin carpeta", se sufija con el id de la
- * carpeta. Es deterministico por id (no por orden): reordenar las carpetas no
- * cambia a qué carpeta resuelve un `carpeta:<slug>` ya tipeado.
+ * Construye opciones (`slug` tipeable → id) para entidades con nombre,
+ * desambiguando los slugs de forma ESTABLE por id: cuando varias entidades
+ * comparten el slug base, o este colisiona con un slug reservado, se sufija con
+ * el id de la entidad. Una pass final garantiza unicidad. Es determinístico por
+ * id (no por orden): reordenar las entidades no cambia a qué id resuelve un
+ * `<slug>` ya tipeado.
  */
-function buildFolderQualifierOptions(
-  expenseFolders: ExpenseFolderOption[],
+function buildUniqueSlugOptions(
+  entities: ReadonlyArray<{ id: string; name: string }>,
+  {
+    fallbackSlug,
+    reservedSlugs = [],
+  }: { fallbackSlug: string; reservedSlugs?: string[] },
 ): FilterQualifierOption[] {
+  const toBaseSlug = (name: string): string => slugifyFolderName(name) || fallbackSlug;
   const baseSlugCounts = new Map<string, number>();
 
-  for (const expenseFolder of expenseFolders) {
-    const base = getFolderBaseSlug(expenseFolder.name);
+  for (const entity of entities) {
+    const base = toBaseSlug(entity.name);
     baseSlugCounts.set(base, (baseSlugCounts.get(base) ?? 0) + 1);
   }
 
-  // Pass de unicidad FINAL: el slug por id puede chocar con el base de otra
-  // carpeta (p. ej. `hogar-01abc` vs una carpeta llamada "Hogar 01abc"). Si el
-  // slug ya está usado, se sufija con un contador como último recurso para
-  // garantizar que `parseFolderValue` resuelva cada carpeta sin ambigüedad.
-  const usedSlugs = new Set<string>([UNASSIGNED_FOLDER_QUALIFIER_SLUG]);
+  const usedSlugs = new Set<string>(reservedSlugs);
 
   const ensureUniqueSlug = (candidate: string): string => {
     if (!usedSlugs.has(candidate)) {
@@ -93,40 +89,58 @@ function buildFolderQualifierOptions(
     return unique;
   };
 
+  return entities.map((entity) => {
+    const base = toBaseSlug(entity.name);
+    const collides =
+      (baseSlugCounts.get(base) ?? 0) > 1 || reservedSlugs.includes(base);
+    const candidate = collides
+      ? `${base}-${slugifyFolderName(entity.id) || entity.id}`
+      : base;
+
+    return {
+      label: entity.name,
+      slug: ensureUniqueSlug(candidate),
+      value: entity.id,
+    };
+  });
+}
+
+/** Opciones de carpeta: "Sin carpeta" + una por carpeta existente (slug único). */
+function buildFolderQualifierOptions(
+  expenseFolders: ExpenseFolderOption[],
+): FilterQualifierOption[] {
   return [
     {
       label: "Sin carpeta",
       slug: UNASSIGNED_FOLDER_QUALIFIER_SLUG,
       value: UNASSIGNED_FOLDER_FILTER_VALUE,
     },
-    ...expenseFolders.map((expenseFolder) => {
-      const base = getFolderBaseSlug(expenseFolder.name);
-      const collides =
-        (baseSlugCounts.get(base) ?? 0) > 1 ||
-        base === UNASSIGNED_FOLDER_QUALIFIER_SLUG;
-      const candidate = collides
-        ? `${base}-${slugifyFolderName(expenseFolder.id) || expenseFolder.id}`
-        : base;
-
-      return {
-        label: expenseFolder.name,
-        slug: ensureUniqueSlug(candidate),
-        value: expenseFolder.id,
-      };
+    ...buildUniqueSlugOptions(expenseFolders, {
+      fallbackSlug: "carpeta",
+      reservedSlugs: [UNASSIGNED_FOLDER_QUALIFIER_SLUG],
     }),
   ];
 }
 
+/** Opciones de prestamista: una por prestamista cargado (slug único, valor=id). */
+function buildLenderQualifierOptions(
+  lenders: LenderOption[],
+): FilterQualifierOption[] {
+  return buildUniqueSlugOptions(lenders, { fallbackSlug: "prestamista" });
+}
+
 export interface BuildMonthlyExpensesFilterQualifiersOptions {
   expenseFolders: ExpenseFolderOption[];
+  lenders: LenderOption[];
 }
 
 /**
  * Construye los qualifiers de la barra para los gastos mensuales. Las opciones
- * de carpeta se derivan en runtime de las carpetas existentes.
+ * de carpeta y prestamista se derivan en runtime de las entidades existentes.
  */
 export function buildMonthlyExpensesFilterQualifiers({
   expenseFolders,
+  lenders,
 }: BuildMonthlyExpensesFilterQualifiersOptions): FilterQualifierConfig[] {
   return [
     { key: "", kind: "text", label: DESCRIPTION_QUALIFIER_LABEL },
@@ -145,13 +159,18 @@ export function buildMonthlyExpensesFilterQualifiers({
       kind: "numberRange",
       label: "Registros",
     },
-    { key: "enviados", kind: "numberRange", label: "Enviados (cantidad)" },
-    { key: "enviado", kind: "presence", label: "Tiene enviados" },
+    { key: "enviados", kind: "numberRange", label: "Enviados" },
     { key: "cuotas-pagadas", kind: "numberRange", label: "Cuotas pagadas" },
     { key: "cuotas-restantes", kind: "numberRange", label: "Cuotas restantes" },
     { key: "cuotas-total", kind: "numberRange", label: "Cuotas totales" },
     { key: "link", kind: "textMatch", label: "Link de pago" },
-    { key: "prestamista", kind: "textMatch", label: "Prestamista" },
+    {
+      iconName: "user",
+      key: "prestamista",
+      kind: "enum",
+      label: "Prestamista",
+      options: buildLenderQualifierOptions(lenders),
+    },
     {
       columnId: "lenderName",
       key: "direccion",
@@ -167,12 +186,6 @@ export function buildMonthlyExpensesFilterQualifiers({
     },
     { key: "inicio", kind: "yearMonthRange", label: "Inicio de cuota" },
     { key: "fin", kind: "yearMonthRange", label: "Fin de cuota" },
-    {
-      columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-      key: "vigencia",
-      kind: "yearMonthRange",
-      label: "Vigencia",
-    },
     {
       key: "carpeta",
       kind: "folder",
@@ -190,5 +203,4 @@ export const COLUMN_BACKED_QUALIFIER_KEYS: ReadonlySet<string> = new Set([
   "registros",
   "direccion",
   "deuda",
-  "vigencia",
 ]);

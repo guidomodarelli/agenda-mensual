@@ -234,6 +234,7 @@ const VIGENCIA_SORT_OPTIONS: Array<{ label: string; value: VigenciaSortMode }> =
     value: "endMonth",
   },
 ];
+// "Sin deuda/préstamo" se omite: equivale a `no:direccion` (ausencia de préstamo).
 const LOAN_DIRECTION_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
   {
     label: "Yo debo",
@@ -242,10 +243,6 @@ const LOAN_DIRECTION_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
   {
     label: "Me deben",
     value: "receivable",
-  },
-  {
-    label: "Sin deuda/préstamo",
-    value: "none",
   },
 ];
 
@@ -298,11 +295,6 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
     enumOptions: LOAN_DIRECTION_FILTER_OPTIONS,
     label: "Dirección",
     type: "enum",
-  },
-  {
-    columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-    label: "Vigencia",
-    type: "yearMonthRange",
   },
 ];
 
@@ -1000,8 +992,8 @@ export function MonthlyExpensesTable({
     [],
   );
   const monthlyExpensesFilterQualifiers = useMemo(
-    () => buildMonthlyExpensesFilterQualifiers({ expenseFolders }),
-    [expenseFolders],
+    () => buildMonthlyExpensesFilterQualifiers({ expenseFolders, lenders }),
+    [expenseFolders, lenders],
   );
   const [paymentLinkDialogState, setPaymentLinkDialogState] =
     useState<PaymentLinkDialogState | null>(null);
@@ -1236,6 +1228,7 @@ export function MonthlyExpensesTable({
       queryAppliedFilters.filter(
         (appliedFilter) =>
           appliedFilter.negated ||
+          appliedFilter.value.kind === "presence" ||
           !COLUMN_BACKED_QUALIFIER_KEYS.has(appliedFilter.key),
       ),
     [queryAppliedFilters],
@@ -1247,7 +1240,7 @@ export function MonthlyExpensesTable({
 
     const matchesQuery = buildMonthlyExpensesQueryPredicate(
       queryPredicateFilters,
-      { exchangeRateSnapshot, vigenciaSortMode },
+      { exchangeRateSnapshot },
     );
 
     return rowsExcludingDescriptions.filter(matchesQuery);
@@ -1255,7 +1248,6 @@ export function MonthlyExpensesTable({
     exchangeRateSnapshot,
     queryPredicateFilters,
     rowsExcludingDescriptions,
-    vigenciaSortMode,
   ]);
   const hasManualSorting = sorting.length > 0;
   const rowsMatchingFolderFilter = useMemo(() => {

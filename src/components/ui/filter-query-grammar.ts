@@ -20,6 +20,16 @@ export const YEAR_MONTH_HAS_VALUE_SLUG = "con-fechas";
 export const PRESENCE_TRUE_SLUG = "si";
 export const PRESENCE_FALSE_SLUG = "no";
 
+/**
+ * Meta-claves estilo GitHub para filtrar por presencia/ausencia de CUALQUIER
+ * campo: `tiene:<campo>` (el campo tiene valor) y `no:<campo>` (el campo está
+ * vacío). El valor del token es la clave del qualifier destino (p. ej.
+ * `tiene:enviados`, `no:carpeta`). Unifican la presencia de todos los kinds en
+ * una sola sintaxis, en vez de un `<campo>:si/no` por qualifier.
+ */
+export const PRESENCE_HAS_META_KEY = "tiene";
+export const PRESENCE_NO_META_KEY = "no";
+
 export type FilterQualifierKind =
   | "text"
   | "numberRange"
@@ -97,6 +107,12 @@ export interface FilterQualifierConfig {
   label: string;
   /** Valores sugeridos para enum/presence. */
   options?: FilterQualifierOption[];
+  /**
+   * Nombre lógico del icono a mostrar en la barra (UI-agnóstico; la barra lo
+   * mapea a un componente). Ej.: `"user"` para prestamistas. Si se omite, la
+   * barra usa el icono por defecto según el `kind`.
+   */
+  iconName?: string;
 }
 
 export interface FilterQueryToken {
@@ -268,7 +284,11 @@ function buildToken(
   startIndex: number,
   endIndex: number,
 ): FilterQueryToken {
-  const negated = raw.startsWith("-") && raw.length > 1;
+  // Un `-` inicial marca exclusión, incluso si es el único carácter: así, al
+  // empezar una exclusión desde la barra (`-`), el token ya está en modo negado
+  // y el autocompletado puede ofrecer los campos a excluir. Un `-` suelto se
+  // ignora al parsear (valor vacío), no filtra nada.
+  const negated = raw.startsWith("-");
   const remainder = negated ? raw.slice(1) : raw;
   const colonIndex = findKeyColonIndex(remainder);
 
@@ -423,6 +443,18 @@ function parseYearMonthRangeValue(
     return { kind: "yearMonthRange", mode: "hasValue" };
   }
 
+  // Comparadores `>=`/`>` (desde) y `<=`/`<` (hasta), análogos a los numéricos,
+  // para poder acotar fechas con un solo extremo sin escribir un rango `A..`.
+  if (normalized.startsWith(">=") || normalized.startsWith(">")) {
+    const min = parseYearMonthSlug(normalized.replace(/^>=?/, ""));
+    return min == null ? null : { kind: "yearMonthRange", min, mode: "from" };
+  }
+
+  if (normalized.startsWith("<=") || normalized.startsWith("<")) {
+    const max = parseYearMonthSlug(normalized.replace(/^<=?/, ""));
+    return max == null ? null : { kind: "yearMonthRange", max, mode: "to" };
+  }
+
   if (normalized.includes(RANGE_SEPARATOR)) {
     const [rawFrom, rawTo] = normalized.split(RANGE_SEPARATOR, 2);
     const hasFrom = rawFrom.trim().length > 0;
@@ -477,7 +509,8 @@ function buildColumnFilterValue(
   }
 
   if (config.kind === "enum") {
-    const normalized = normalizeFilterSlug(value);
+    // Se tolera un `@` inicial al estilo "mención" (p. ej. `prestamista:@vero`).
+    const normalized = normalizeFilterSlug(value).replace(/^@/, "");
     const option = (config.options ?? []).find(
       (candidate) => normalizeFilterSlug(candidate.slug) === normalized,
     );
@@ -503,10 +536,10 @@ function buildColumnFilterValue(
 }
 
 /**
- * Parsea el valor de un qualifier de texto (`textMatch`). Acepta presencia
- * (`si`/`no`), prefijo (`^x`), sufijo (`x$`), igualdad (`=x`) y, por defecto,
- * "contiene" (`x`). El texto se normaliza (sin acentos, minúsculas) para que el
- * matcher compare de forma case/acento-insensible.
+ * Parsea el valor de un qualifier de texto (`textMatch`) con sintaxis glob.
+ * Acepta presencia (`si`/`no`) y comodines `*`: `texto*` empieza por, `*texto`
+ * termina con, `*texto*` contiene y `texto` (sin comodín) es igualdad exacta. El
+ * texto se normaliza (sin acentos, minúsculas) para comparar case/acento-insensible.
  */
 export function parseTextMatchValue(value: string): TextMatchFilterValue | null {
   const trimmed = value.trim();
@@ -525,24 +558,27 @@ export function parseTextMatchValue(value: string): TextMatchFilterValue | null 
     return { kind: "textMatch", op: "notHas" };
   }
 
-  if (trimmed.startsWith("=")) {
-    const text = normalizeFilterSlug(trimmed.slice(1));
-    return text ? { kind: "textMatch", op: "equals", text } : null;
+  const startsWithStar = trimmed.startsWith("*");
+  const endsWithStar = trimmed.endsWith("*");
+
+  if (startsWithStar && endsWithStar) {
+    const text = normalizeFilterSlug(trimmed.slice(1, -1));
+    return text ? { kind: "textMatch", op: "contains", text } : null;
   }
 
-  if (trimmed.startsWith("^")) {
-    const text = normalizeFilterSlug(trimmed.slice(1));
+  if (endsWithStar) {
+    const text = normalizeFilterSlug(trimmed.slice(0, -1));
     return text ? { kind: "textMatch", op: "startsWith", text } : null;
   }
 
-  if (trimmed.endsWith("$")) {
-    const text = normalizeFilterSlug(trimmed.slice(0, -1));
+  if (startsWithStar) {
+    const text = normalizeFilterSlug(trimmed.slice(1));
     return text ? { kind: "textMatch", op: "endsWith", text } : null;
   }
 
   const text = normalizeFilterSlug(trimmed);
 
-  return text ? { kind: "textMatch", op: "contains", text } : null;
+  return text ? { kind: "textMatch", op: "equals", text } : null;
 }
 
 /**
@@ -716,7 +752,43 @@ export function parseFilterQuery(
 
   for (const token of tokens) {
     if (token.hasColon && token.rawKey) {
-      const config = lookup.get(normalizeFilterSlug(token.rawKey));
+      const normalizedKey = normalizeFilterSlug(token.rawKey);
+
+      // Meta-claves de presencia (`tiene:<campo>` / `no:<campo>`): el valor es la
+      // clave del campo destino. Producen un filtro de presencia que el predicado
+      // de dominio evalúa por campo; no pasan por el path de columnas.
+      if (
+        normalizedKey === PRESENCE_HAS_META_KEY ||
+        normalizedKey === PRESENCE_NO_META_KEY
+      ) {
+        const fieldKey = normalizeFilterSlug(token.value ?? "");
+
+        if (!fieldKey) {
+          continue;
+        }
+
+        const fieldConfig = lookup.get(fieldKey);
+
+        if (!fieldConfig) {
+          invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
+          continue;
+        }
+
+        // La negación del token (`-tiene:x`) invierte el sentido, dejando un
+        // único filtro de presencia canónico (sin negación residual).
+        const hasValue =
+          (normalizedKey === PRESENCE_HAS_META_KEY) !== token.negated;
+
+        appliedFilters.push({
+          key: fieldConfig.key,
+          negated: false,
+          value: { kind: "presence", value: hasValue ? "hasValue" : "noValue" },
+        });
+
+        continue;
+      }
+
+      const config = lookup.get(normalizedKey);
 
       if (!config) {
         invalidTokens.push({ raw: token.raw, reason: "unknownKey" });
@@ -798,7 +870,13 @@ export function parseFilterQuery(
           value: filterValue,
         });
 
-        if (!token.negated && config.columnId) {
+        // La presencia (`<campo>:si/no`) se unifica con las meta-claves y la
+        // resuelve el predicado de dominio, así que nunca se proyecta a columna.
+        if (
+          !token.negated &&
+          config.columnId &&
+          filterValue.kind !== "presence"
+        ) {
           advancedFiltersByColumn[config.columnId] = mergeColumnFilterValue(
             advancedFiltersByColumn[config.columnId],
             filterValue,
@@ -903,12 +981,12 @@ function serializeTextMatch(key: string, value: TextMatchFilterValue): string {
 
   const text = value.text ?? "";
   const decorated =
-    value.op === "equals"
-      ? `=${text}`
-      : value.op === "startsWith"
-        ? `^${text}`
-        : value.op === "endsWith"
-          ? `${text}$`
+    value.op === "startsWith"
+      ? `${text}*`
+      : value.op === "endsWith"
+        ? `*${text}`
+        : value.op === "contains"
+          ? `*${text}*`
           : text;
 
   return `${key}:${quoteTokenIfNeeded(decorated)}`;
@@ -953,7 +1031,11 @@ function serializeAppliedFilterValue(
     return serializeFolderValue(config, value);
   }
 
-  return `${config.key}:${value.value === "hasValue" ? PRESENCE_TRUE_SLUG : PRESENCE_FALSE_SLUG}`;
+  // Presencia: forma canónica con meta-claves (`tiene:<campo>` / `no:<campo>`).
+  const metaKey =
+    value.value === "hasValue" ? PRESENCE_HAS_META_KEY : PRESENCE_NO_META_KEY;
+
+  return `${metaKey}:${config.key}`;
 }
 
 /**
@@ -969,7 +1051,8 @@ function isCoveredByColumnSerialization(
     !appliedFilter.negated &&
     config.columnId != null &&
     appliedFilter.value.kind !== "textMatch" &&
-    appliedFilter.value.kind !== "folder"
+    appliedFilter.value.kind !== "folder" &&
+    appliedFilter.value.kind !== "presence"
   );
 }
 
@@ -1035,6 +1118,70 @@ export function serializeFilterQuery(
   return segments.join(" ");
 }
 
+/** Rango de caracteres (en la query) de un valor a resaltar. */
+export interface ValueHighlightRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * Devuelve los rangos de caracteres de los VALORES (lo que va después del `:`)
+ * que son válidos para su qualifier, para resaltarlos en la barra. Un valor
+ * inválido, desconocido o incompleto no produce rango (no se resalta). Cubre las
+ * meta-claves de presencia (`tiene:`/`no:` con un campo existente) y los
+ * qualifiers normales (valor parseable según su kind: enum, rango, texto, etc.).
+ */
+export function getValueHighlightRanges(
+  query: string,
+  configs: FilterQualifierConfig[],
+): ValueHighlightRange[] {
+  const tokens = tokenizeFilterQuery(query);
+  const lookup = buildQualifierLookup(configs);
+  const ranges: ValueHighlightRange[] = [];
+
+  for (const token of tokens) {
+    if (!token.hasColon || !token.rawKey) {
+      continue;
+    }
+
+    const negationOffset = token.negated ? 1 : 0;
+    const colonIndex = findKeyColonIndex(token.raw.slice(negationOffset));
+
+    if (colonIndex === -1) {
+      continue;
+    }
+
+    const valueStart = token.startIndex + negationOffset + colonIndex + 1;
+
+    // Sin valor todavía (`clave:`): nada para resaltar.
+    if (valueStart >= token.endIndex) {
+      continue;
+    }
+
+    const normalizedKey = normalizeFilterSlug(token.rawKey);
+    const rawValue = token.value ?? "";
+    let isValid = false;
+
+    if (
+      normalizedKey === PRESENCE_HAS_META_KEY ||
+      normalizedKey === PRESENCE_NO_META_KEY
+    ) {
+      // El valor de una meta-clave es la clave de un campo existente.
+      isValid = lookup.has(normalizeFilterSlug(rawValue));
+    } else {
+      const config = lookup.get(normalizedKey);
+      isValid =
+        config != null && buildAppliedFilterValue(config, rawValue) != null;
+    }
+
+    if (isValid) {
+      ranges.push({ end: token.endIndex, start: valueStart });
+    }
+  }
+
+  return ranges;
+}
+
 export type FilterSuggestionMode = "key" | "value";
 
 export interface ActiveFilterToken {
@@ -1050,6 +1197,12 @@ export interface ActiveFilterToken {
   /** Rango de la query a reemplazar al insertar una sugerencia. */
   replaceStart: number;
   replaceEnd: number;
+  /**
+   * Inicio del token completo (incluyendo `-` y la clave). Permite reemplazar el
+   * token entero al insertar una meta-clave (`tiene:<campo>`) o una exclusión
+   * (`-<campo>:`), no solo el tramo del valor.
+   */
+  tokenStart: number;
 }
 
 /**
@@ -1073,6 +1226,7 @@ export function getActiveFilterToken(
       replaceEnd: caretIndex,
       replaceStart: caretIndex,
       resolvedKey: null,
+      tokenStart: caretIndex,
       valuePart: "",
     };
   }
@@ -1090,6 +1244,7 @@ export function getActiveFilterToken(
       replaceEnd: activeToken.endIndex,
       replaceStart: activeToken.startIndex,
       resolvedKey: null,
+      tokenStart: activeToken.startIndex,
       valuePart: "",
     };
   }
@@ -1103,6 +1258,7 @@ export function getActiveFilterToken(
     replaceEnd: activeToken.endIndex,
     replaceStart: valueStart,
     resolvedKey: remainder.slice(0, colonIndex),
+    tokenStart: activeToken.startIndex,
     valuePart: remainder.slice(colonIndex + 1),
   };
 }

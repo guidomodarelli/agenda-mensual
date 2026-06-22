@@ -271,59 +271,6 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     expect(screen.getByText("Prestamo a tercero")).toBeInTheDocument();
   });
 
-  it("filters loans by their vigencia range", async () => {
-    const user = userEvent.setup();
-
-    renderMonthlyExpensesTable([
-      createRow({
-        description: "Cuota marzo",
-        id: "loan-march",
-        installmentCount: "3",
-        isLoan: true,
-        lenderId: "lender-1",
-        lenderName: "Banco",
-        loanDirection: "payable",
-        loanEndMonth: "2026-05",
-        loanPaidInstallments: 1,
-        loanProgress: "1 de 3 cuotas abonadas",
-        loanRemainingInstallments: 2,
-        loanTotalInstallments: 3,
-        startMonth: "2026-03",
-      }),
-      createRow({
-        description: "Cuota agosto",
-        id: "loan-august",
-        installmentCount: "3",
-        isLoan: true,
-        lenderId: "lender-1",
-        lenderName: "Banco",
-        loanDirection: "payable",
-        loanEndMonth: "2026-10",
-        loanPaidInstallments: 1,
-        loanProgress: "1 de 3 cuotas abonadas",
-        loanRemainingInstallments: 2,
-        loanTotalInstallments: 3,
-        startMonth: "2026-08",
-      }),
-    ]);
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Rango" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
-      "02/2026",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
-      "06/2026",
-    );
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-
-    expect(screen.getByText("Cuota marzo")).toBeInTheDocument();
-    expect(screen.queryByText("Cuota agosto")).not.toBeInTheDocument();
-  });
-
   it("associates receipt label with the file input in register payment dialog", async () => {
     renderMonthlyExpensesTable([createRow()]);
 
@@ -705,7 +652,7 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
       createRow({ description: "SinLink", id: "expense-2", paymentLink: "" }),
     ]);
 
-    await typeQuery("link:^https");
+    await typeQuery("link:https*");
 
     await waitFor(() => {
       expect(screen.queryByText("SinLink")).not.toBeInTheDocument();
