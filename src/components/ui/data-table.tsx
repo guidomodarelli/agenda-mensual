@@ -23,6 +23,7 @@ import { FilterQueryBar } from "@/components/ui/filter-query-bar";
 import {
   parseFilterQuery,
   serializeFilterQuery,
+  type AppliedFilter,
   type FilterQualifierConfig,
 } from "@/components/ui/filter-query-grammar";
 import {
@@ -163,6 +164,12 @@ interface DataTableProps<TData, TValue> {
   queryFilterConfig?: FilterQualifierConfig[];
   queryFilterPlaceholder?: string;
   queryFilterLabel?: string;
+  /**
+   * Notifica los filtros estructurados parseados desde la barra unificada
+   * (cualquier kind, con o sin columna, incluyendo negados) para que el
+   * consumidor los aplique con su propio predicado de dominio.
+   */
+  onAppliedFiltersChange?: (appliedFilters: AppliedFilter[]) => void;
   showExcludeFilterToggle?: boolean;
   excludeFilterValues?: string[];
   onExcludeFilterValuesChange?: (values: string[]) => void;
@@ -491,6 +498,7 @@ export function DataTable<TData, TValue>({
   queryFilterConfig,
   queryFilterPlaceholder,
   queryFilterLabel,
+  onAppliedFiltersChange,
   showExcludeFilterToggle = false,
   excludeFilterValues: controlledExcludeFilterValues,
   onExcludeFilterValuesChange,
@@ -630,12 +638,15 @@ export function DataTable<TData, TValue>({
         ) {
           setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
         }
+
+        onAppliedFiltersChange?.(parsedQuery.appliedFilters);
       });
     },
     [
       advancedFiltersAppliedByColumn,
       handleExcludeFilterValuesChange,
       isFilterValueControlled,
+      onAppliedFiltersChange,
       onFilterValueChange,
       queryFilterConfig,
       resolvedExcludeFilterValues,
@@ -846,6 +857,7 @@ export function DataTable<TData, TValue>({
     return serializeFilterQuery(
       {
         advancedFiltersByColumn: advancedFiltersAppliedByColumn,
+        appliedFilters: [],
         descriptionFilter: tableFilterValue,
         excludedDescriptionFilters: resolvedExcludeFilterValues,
         invalidTokens: [],

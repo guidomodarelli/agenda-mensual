@@ -54,7 +54,9 @@ function renderMonthlyExpensesTable(
   overrides: Partial<
     Pick<
       ComponentProps<typeof MonthlyExpensesTable>,
-      "onUpdateExpenseDetails" | "onUpdatePaymentRecordSendStatus"
+      | "onUpdateExpenseDetails"
+      | "onUpdatePaymentRecordSendStatus"
+      | "expenseFolders"
     >
   > = {},
 ) {
@@ -665,5 +667,75 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
       paymentRecordId: "payment-1",
       sendStatus: "sent",
     });
+  });
+});
+
+describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () => {
+  async function typeQuery(value: string) {
+    const user = userEvent.setup();
+    const bar = screen.getByLabelText("Filtro unificado de gastos");
+
+    await user.click(bar);
+    await user.type(bar, value);
+
+    return user;
+  }
+
+  it("filters by subtotal range (a column-less qualifier)", async () => {
+    renderMonthlyExpensesTable([
+      createRow({ description: "Barato", id: "expense-1", subtotal: "100" }),
+      createRow({ description: "Caro", id: "expense-2", subtotal: "9000" }),
+    ]);
+
+    await typeQuery("subtotal:>1000");
+
+    await waitFor(() => {
+      expect(screen.queryByText("Barato")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Caro")).toBeInTheDocument();
+  });
+
+  it("filters by payment-link presence and prefix", async () => {
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "ConLink",
+        id: "expense-1",
+        paymentLink: "https://pago.com/abc",
+      }),
+      createRow({ description: "SinLink", id: "expense-2", paymentLink: "" }),
+    ]);
+
+    await typeQuery("link:^https");
+
+    await waitFor(() => {
+      expect(screen.queryByText("SinLink")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("ConLink")).toBeInTheDocument();
+  });
+
+  it("includes and excludes folders from the bar", async () => {
+    const expenseFolders = [
+      { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },
+      { color: "violet" as const, icon: "card" as const, id: "folder-2", name: "Tarjeta" },
+    ];
+    const rows = [
+      createRow({ description: "EnHogar", expenseFolderId: "folder-1", id: "expense-1" }),
+      createRow({ description: "EnTarjeta", expenseFolderId: "folder-2", id: "expense-2" }),
+    ];
+
+    const { unmount } = renderMonthlyExpensesTable(rows, { expenseFolders });
+    await typeQuery("carpeta:hogar");
+    await waitFor(() => {
+      expect(screen.queryByText("EnTarjeta")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    unmount();
+
+    renderMonthlyExpensesTable(rows, { expenseFolders });
+    await typeQuery("-carpeta:hogar");
+    await waitFor(() => {
+      expect(screen.queryByText("EnHogar")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("EnTarjeta")).toBeInTheDocument();
   });
 });
