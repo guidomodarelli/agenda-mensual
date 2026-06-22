@@ -132,7 +132,12 @@ import {
   matchesAdvancedPresenceFilter,
   matchesAdvancedNumberRangeFilter,
 } from "./monthly-expenses-advanced-filters";
-import { buildMonthlyExpensesFilterQualifiers } from "./monthly-expenses-filter-qualifiers";
+import {
+  buildMonthlyExpensesFilterQualifiers,
+  COLUMN_BACKED_QUALIFIER_KEYS,
+} from "./monthly-expenses-filter-qualifiers";
+import { buildMonthlyExpensesQueryPredicate } from "./monthly-expenses-filter-predicate";
+import type { AppliedFilter } from "@/components/ui/filter-query-grammar";
 import {
   compareValuesKeepingInvalidLast,
   getColumnSortDirection,
@@ -301,13 +306,6 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
   },
 ];
 
-/**
- * Qualifiers para la barra de filtro unificada estilo GitHub, derivados de la
- * misma config de filtros avanzados para mantener ambas vistas sincronizadas.
- */
-const MONTHLY_EXPENSES_FILTER_QUALIFIERS = buildMonthlyExpensesFilterQualifiers(
-  MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG,
-);
 const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
 const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
   "Filtrar por campo o palabra (ej. total:>1000 direccion:me-deben)";
@@ -998,6 +996,13 @@ export function MonthlyExpensesTable({
   const [excludedDescriptionFilters, setExcludedDescriptionFilters] = useState<
     string[]
   >([]);
+  const [queryAppliedFilters, setQueryAppliedFilters] = useState<AppliedFilter[]>(
+    [],
+  );
+  const monthlyExpensesFilterQualifiers = useMemo(
+    () => buildMonthlyExpensesFilterQualifiers({ expenseFolders }),
+    [expenseFolders],
+  );
   const [paymentLinkDialogState, setPaymentLinkDialogState] =
     useState<PaymentLinkDialogState | null>(null);
   const [paymentLinkDraftValue, setPaymentLinkDraftValue] = useState("");
@@ -1205,6 +1210,13 @@ export function MonthlyExpensesTable({
   const hasActiveDescriptionFiltering =
     primaryDescriptionFilter.trim().length > 0 ||
     nonEmptyExcludedDescriptionFilters.length > 0;
+  // Cualquier filtro activo (descripción, qualifiers de la barra —incluidos los
+  // sin columna y negados— o carpeta) hace que un resultado vacío sea "sin
+  // resultados para el filtro", no "no hay gastos cargados".
+  const hasActiveFiltering =
+    hasActiveDescriptionFiltering ||
+    queryAppliedFilters.length > 0 ||
+    folderFilterId.length > 0;
   const rowsExcludingDescriptions = useMemo(
     () =>
       rows.filter(
@@ -1216,20 +1228,49 @@ export function MonthlyExpensesTable({
       ),
     [nonEmptyExcludedDescriptionFilters, rows],
   );
-  const hasManualSorting = sorting.length > 0;
-  const rowsMatchingFolderFilter = useMemo(() => {
-    if (!folderFilterId) {
+  // Qualifiers que NO usan el path de columnas de TanStack (sin columna) o que
+  // están negados se aplican con el predicado de dominio, desacoplado de las
+  // columnas. Los respaldados por columna y no negados los filtra TanStack.
+  const queryPredicateFilters = useMemo(
+    () =>
+      queryAppliedFilters.filter(
+        (appliedFilter) =>
+          appliedFilter.negated ||
+          !COLUMN_BACKED_QUALIFIER_KEYS.has(appliedFilter.key),
+      ),
+    [queryAppliedFilters],
+  );
+  const rowsMatchingQueryPredicate = useMemo(() => {
+    if (queryPredicateFilters.length === 0) {
       return rowsExcludingDescriptions;
     }
 
-    if (folderFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID) {
-      return rowsExcludingDescriptions.filter((row) => !row.expenseFolderId);
+    const matchesQuery = buildMonthlyExpensesQueryPredicate(
+      queryPredicateFilters,
+      { exchangeRateSnapshot, vigenciaSortMode },
+    );
+
+    return rowsExcludingDescriptions.filter(matchesQuery);
+  }, [
+    exchangeRateSnapshot,
+    queryPredicateFilters,
+    rowsExcludingDescriptions,
+    vigenciaSortMode,
+  ]);
+  const hasManualSorting = sorting.length > 0;
+  const rowsMatchingFolderFilter = useMemo(() => {
+    if (!folderFilterId) {
+      return rowsMatchingQueryPredicate;
     }
 
-    return rowsExcludingDescriptions.filter(
+    if (folderFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID) {
+      return rowsMatchingQueryPredicate.filter((row) => !row.expenseFolderId);
+    }
+
+    return rowsMatchingQueryPredicate.filter(
       (row) => row.expenseFolderId === folderFilterId,
     );
-  }, [folderFilterId, rowsExcludingDescriptions]);
+  }, [folderFilterId, rowsMatchingQueryPredicate]);
   const rowsForTable = useMemo(() => {
     if (!moveCompletedToEnd || hasManualSorting) {
       return rowsMatchingFolderFilter;
@@ -2778,7 +2819,7 @@ export function MonthlyExpensesTable({
               }
               data={rowsForTable}
               emptyMessage={
-                hasActiveDescriptionFiltering
+                hasActiveFiltering
                   ? MONTHLY_EXPENSES_FILTERED_EMPTY_MESSAGE
                   : MONTHLY_EXPENSES_EMPTY_MESSAGE
               }
@@ -2819,11 +2860,12 @@ export function MonthlyExpensesTable({
               onExcludeFilterValuesChange={setExcludedDescriptionFilters}
               getRowClassName={getMonthlyExpenseRowClassName}
               onCellClick={handleTableCellClick}
+              onAppliedFiltersChange={setQueryAppliedFilters}
               onFilterValueChange={setDescriptionFilter}
               onVisibleRowsChange={handleVisibleRowsChange}
               onColumnVisibilityChange={setColumnVisibility}
               onSortingChange={setSorting}
-              queryFilterConfig={MONTHLY_EXPENSES_FILTER_QUALIFIERS}
+              queryFilterConfig={monthlyExpensesFilterQualifiers}
               queryFilterLabel={MONTHLY_EXPENSES_QUERY_FILTER_LABEL}
               queryFilterPlaceholder={MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER}
               selectAllColumnsLabel="Restablecer"

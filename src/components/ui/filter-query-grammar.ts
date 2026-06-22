@@ -25,7 +25,53 @@ export type FilterQualifierKind =
   | "numberRange"
   | "enum"
   | "presence"
-  | "yearMonthRange";
+  | "yearMonthRange"
+  | "textMatch"
+  | "folder";
+
+/** Operadores soportados por un qualifier de texto (`textMatch`). */
+export type TextMatchOperator =
+  | "has"
+  | "notHas"
+  | "startsWith"
+  | "endsWith"
+  | "equals"
+  | "contains";
+
+/** Valor estructurado de un qualifier de texto (link, prestamista, etc.). */
+export interface TextMatchFilterValue {
+  kind: "textMatch";
+  op: TextMatchOperator;
+  /** Texto a comparar (normalizado). Ausente para `has`/`notHas`. */
+  text?: string;
+}
+
+/** Identificador de "sin carpeta asignada" en un qualifier de carpeta. */
+export const UNASSIGNED_FOLDER_FILTER_VALUE = "__unassigned__";
+
+/** Valor de un qualifier de carpeta (un token; el predicado agrupa varios). */
+export interface FolderFilterValue {
+  kind: "folder";
+  /** Id de carpeta, o `UNASSIGNED_FOLDER_FILTER_VALUE` para sin carpeta. */
+  folderId: string;
+}
+
+/**
+ * Valor estructurado que viaja al predicado de filtrado, independiente de las
+ * columnas de TanStack. Une los valores clásicos por columna con los nuevos
+ * (texto y carpeta) que no tienen columna.
+ */
+export type AppliedFilterValue =
+  | DataTableColumnFilterValue
+  | TextMatchFilterValue
+  | FolderFilterValue;
+
+/** Un filtro aplicado parseado desde la query: `clave`, negación y valor. */
+export interface AppliedFilter {
+  key: string;
+  negated: boolean;
+  value: AppliedFilterValue;
+}
 
 export interface FilterQualifierOption {
   /** Slug que el usuario tipea (sin acentos ni espacios). */
@@ -82,8 +128,17 @@ export interface ParsedFilterQuery {
   descriptionFilter: string;
   /** Textos a excluir (`-texto`), crudos como espera la tabla. */
   excludedDescriptionFilters: string[];
-  /** Filtros avanzados listos para inyectar a TanStack, por columnId. */
+  /**
+   * Filtros avanzados clásicos por `columnId`, derivados para compatibilidad con
+   * el path de columnas de TanStack. Solo incluye qualifiers no negados con
+   * columna. La fuente de verdad completa es {@link ParsedFilterQuery.appliedFilters}.
+   */
   advancedFiltersByColumn: Record<string, DataTableColumnFilterValue>;
+  /**
+   * Lista completa de filtros aplicados (cualquier kind, con o sin columna,
+   * incluyendo negados). El predicado de dominio consume esta lista.
+   */
+  appliedFilters: AppliedFilter[];
   /** Tokens que no se pudieron aplicar (clave o valor inválidos). */
   invalidTokens: InvalidFilterToken[];
 }
@@ -447,6 +502,93 @@ function buildColumnFilterValue(
   return null;
 }
 
+/**
+ * Parsea el valor de un qualifier de texto (`textMatch`). Acepta presencia
+ * (`si`/`no`), prefijo (`^x`), sufijo (`x$`), igualdad (`=x`) y, por defecto,
+ * "contiene" (`x`). El texto se normaliza (sin acentos, minúsculas) para que el
+ * matcher compare de forma case/acento-insensible.
+ */
+export function parseTextMatchValue(value: string): TextMatchFilterValue | null {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalizedSlug = normalizeFilterSlug(trimmed);
+
+  if (normalizedSlug === PRESENCE_TRUE_SLUG) {
+    return { kind: "textMatch", op: "has" };
+  }
+
+  if (normalizedSlug === PRESENCE_FALSE_SLUG) {
+    return { kind: "textMatch", op: "notHas" };
+  }
+
+  if (trimmed.startsWith("=")) {
+    const text = normalizeFilterSlug(trimmed.slice(1));
+    return text ? { kind: "textMatch", op: "equals", text } : null;
+  }
+
+  if (trimmed.startsWith("^")) {
+    const text = normalizeFilterSlug(trimmed.slice(1));
+    return text ? { kind: "textMatch", op: "startsWith", text } : null;
+  }
+
+  if (trimmed.endsWith("$")) {
+    const text = normalizeFilterSlug(trimmed.slice(0, -1));
+    return text ? { kind: "textMatch", op: "endsWith", text } : null;
+  }
+
+  const text = normalizeFilterSlug(trimmed);
+
+  return text ? { kind: "textMatch", op: "contains", text } : null;
+}
+
+/**
+ * Parsea el valor de un qualifier de carpeta (`folder`) contra sus opciones
+ * dinámicas (slug→folderId). `sin-carpeta` mapea al sentinel de "sin asignar".
+ */
+export function parseFolderValue(
+  config: FilterQualifierConfig,
+  value: string,
+): FolderFilterValue | null {
+  const normalized = normalizeFilterSlug(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const option = (config.options ?? []).find(
+    (candidate) => normalizeFilterSlug(candidate.slug) === normalized,
+  );
+
+  return option ? { kind: "folder", folderId: option.value } : null;
+}
+
+/** Construye el valor estructurado de un qualifier según su kind. */
+function buildAppliedFilterValue(
+  config: FilterQualifierConfig,
+  value: string,
+): AppliedFilterValue | null {
+  if (config.kind === "textMatch") {
+    return parseTextMatchValue(value);
+  }
+
+  if (config.kind === "folder") {
+    return parseFolderValue(config, value);
+  }
+
+  return buildColumnFilterValue(config, value);
+}
+
+/** Discrimina un valor que vive en el path de columnas de TanStack. */
+function isColumnFilterValue(
+  value: AppliedFilterValue,
+): value is DataTableColumnFilterValue {
+  return value.kind !== "textMatch" && value.kind !== "folder";
+}
+
 function mergeColumnFilterValue(
   existing: DataTableColumnFilterValue | undefined,
   next: DataTableColumnFilterValue,
@@ -469,6 +611,44 @@ function mergeColumnFilterValue(
 
     return {
       kind: "numberRange",
+      ...(mergedMax != null ? { max: mergedMax } : {}),
+      ...(mergedMin != null ? { min: mergedMin } : {}),
+    };
+  }
+
+  if (
+    existing &&
+    existing.kind === "yearMonthRange" &&
+    next.kind === "yearMonthRange"
+  ) {
+    const isBounded = (mode: typeof existing.mode) =>
+      mode === "range" || mode === "from" || mode === "to";
+
+    // Los modos de presencia (con/sin fechas) no combinan con cotas: gana el
+    // último. Para range/from/to se intersectan las cotas (mayor desde, menor
+    // hasta), igual que `numberRange`, en vez de descartar la primera cota.
+    if (!isBounded(existing.mode) || !isBounded(next.mode)) {
+      return next;
+    }
+
+    const mergedMin =
+      existing.min != null && next.min != null
+        ? Math.max(existing.min, next.min)
+        : (next.min ?? existing.min);
+    const mergedMax =
+      existing.max != null && next.max != null
+        ? Math.min(existing.max, next.max)
+        : (next.max ?? existing.max);
+    const mode =
+      mergedMin != null && mergedMax != null
+        ? "range"
+        : mergedMin != null
+          ? "from"
+          : "to";
+
+    return {
+      kind: "yearMonthRange",
+      mode,
       ...(mergedMax != null ? { max: mergedMax } : {}),
       ...(mergedMin != null ? { min: mergedMin } : {}),
     };
@@ -528,13 +708,17 @@ export function parseFilterQuery(
   const descriptionParts: string[] = [];
   const excludedDescriptionFilters: string[] = [];
   const advancedFiltersByColumn: Record<string, DataTableColumnFilterValue> = {};
+  const appliedFilters: AppliedFilter[] = [];
+  // Índice en `appliedFilters` del último filtro de rango (no negado) por clave,
+  // para mergear y validar rangos repetidos de forma uniforme tengan o no columna.
+  const rangeAppliedIndexByKey = new Map<string, number>();
   const invalidTokens: InvalidFilterToken[] = [];
 
   for (const token of tokens) {
     if (token.hasColon && token.rawKey) {
       const config = lookup.get(normalizeFilterSlug(token.rawKey));
 
-      if (!config || !config.columnId) {
+      if (!config) {
         invalidTokens.push({ raw: token.raw, reason: "unknownKey" });
         const freeText = token.negated ? token.raw.slice(1) : token.raw;
 
@@ -548,7 +732,7 @@ export function parseFilterQuery(
       }
 
       const value = token.value ?? "";
-      const filterValue = buildColumnFilterValue(config, value);
+      const filterValue = buildAppliedFilterValue(config, value);
 
       if (!filterValue) {
         if (value.trim()) {
@@ -558,23 +742,78 @@ export function parseFilterQuery(
         continue;
       }
 
-      // La negación de qualifiers no se soporta en v1: se ignora el token.
-      if (token.negated) {
+      if (isColumnFilterValue(filterValue)) {
+        const isRange =
+          filterValue.kind === "numberRange" ||
+          filterValue.kind === "yearMonthRange";
+
+        // Los rangos repetidos de una misma clave (con o sin columna) se mergean
+        // y validan igual: una combinación imposible (p. ej.
+        // `subtotal:>1000 subtotal:<50`) se reporta inválida y conserva la cota
+        // previa, en vez de filtrar todas las filas en silencio.
+        if (!token.negated && isRange) {
+          const existingIndex = rangeAppliedIndexByKey.get(config.key);
+
+          if (existingIndex != null) {
+            const existingValue = appliedFilters[existingIndex]
+              .value as DataTableColumnFilterValue;
+            const mergedValue = mergeColumnFilterValue(existingValue, filterValue);
+
+            if (isImpossibleRange(mergedValue)) {
+              invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
+              continue;
+            }
+
+            appliedFilters[existingIndex] = {
+              ...appliedFilters[existingIndex],
+              value: mergedValue,
+            };
+
+            if (config.columnId) {
+              advancedFiltersByColumn[config.columnId] = mergedValue;
+            }
+
+            continue;
+          }
+
+          appliedFilters.push({
+            key: config.key,
+            negated: false,
+            value: filterValue,
+          });
+          rangeAppliedIndexByKey.set(config.key, appliedFilters.length - 1);
+
+          if (config.columnId) {
+            advancedFiltersByColumn[config.columnId] = filterValue;
+          }
+
+          continue;
+        }
+
+        // enum/presence (no rango) o negados: se agregan sin mergear. Los no
+        // negados con columna se proyectan al path clásico de TanStack.
+        appliedFilters.push({
+          key: config.key,
+          negated: token.negated,
+          value: filterValue,
+        });
+
+        if (!token.negated && config.columnId) {
+          advancedFiltersByColumn[config.columnId] = mergeColumnFilterValue(
+            advancedFiltersByColumn[config.columnId],
+            filterValue,
+          );
+        }
+
         continue;
       }
 
-      const mergedValue = mergeColumnFilterValue(
-        advancedFiltersByColumn[config.columnId],
-        filterValue,
-      );
-
-      // Si la combinación deja un rango imposible, no se aplica y se reporta.
-      if (isImpossibleRange(mergedValue)) {
-        invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
-        continue;
-      }
-
-      advancedFiltersByColumn[config.columnId] = mergedValue;
+      // textMatch / folder: sin columna y sin merge de rango.
+      appliedFilters.push({
+        key: config.key,
+        negated: token.negated,
+        value: filterValue,
+      });
 
       continue;
     }
@@ -594,6 +833,7 @@ export function parseFilterQuery(
 
   return {
     advancedFiltersByColumn,
+    appliedFilters,
     descriptionFilter: descriptionParts.join(" "),
     excludedDescriptionFilters: dedupeByNormalizedSlug(excludedDescriptionFilters),
     invalidTokens,
@@ -652,9 +892,42 @@ function serializeYearMonthRange(
   return null;
 }
 
-function serializeAdvancedFilter(
+function serializeTextMatch(key: string, value: TextMatchFilterValue): string {
+  if (value.op === "has") {
+    return `${key}:${PRESENCE_TRUE_SLUG}`;
+  }
+
+  if (value.op === "notHas") {
+    return `${key}:${PRESENCE_FALSE_SLUG}`;
+  }
+
+  const text = value.text ?? "";
+  const decorated =
+    value.op === "equals"
+      ? `=${text}`
+      : value.op === "startsWith"
+        ? `^${text}`
+        : value.op === "endsWith"
+          ? `${text}$`
+          : text;
+
+  return `${key}:${quoteTokenIfNeeded(decorated)}`;
+}
+
+function serializeFolderValue(
   config: FilterQualifierConfig,
-  value: DataTableColumnFilterValue,
+  value: FolderFilterValue,
+): string | null {
+  const option = (config.options ?? []).find(
+    (candidate) => candidate.value === value.folderId,
+  );
+
+  return option ? `${config.key}:${option.slug}` : null;
+}
+
+function serializeAppliedFilterValue(
+  config: FilterQualifierConfig,
+  value: AppliedFilterValue,
 ): string | null {
   if (value.kind === "numberRange") {
     return serializeNumberRange(config.key, value);
@@ -672,7 +945,32 @@ function serializeAdvancedFilter(
     return option ? `${config.key}:${option.slug}` : null;
   }
 
+  if (value.kind === "textMatch") {
+    return serializeTextMatch(config.key, value);
+  }
+
+  if (value.kind === "folder") {
+    return serializeFolderValue(config, value);
+  }
+
   return `${config.key}:${value.value === "hasValue" ? PRESENCE_TRUE_SLUG : PRESENCE_FALSE_SLUG}`;
+}
+
+/**
+ * `true` cuando el filtro ya queda cubierto por la serialización clásica desde
+ * `advancedFiltersByColumn` (no negado, con columna y de kind de columna), para
+ * no serializarlo dos veces al recorrer también `appliedFilters`.
+ */
+function isCoveredByColumnSerialization(
+  appliedFilter: AppliedFilter,
+  config: FilterQualifierConfig,
+): boolean {
+  return (
+    !appliedFilter.negated &&
+    config.columnId != null &&
+    appliedFilter.value.kind !== "textMatch" &&
+    appliedFilter.value.kind !== "folder"
+  );
 }
 
 /** Reconstruye una query canónica a partir de un resultado parseado. */
@@ -681,12 +979,17 @@ export function serializeFilterQuery(
   configs: FilterQualifierConfig[],
 ): string {
   const segments: string[] = [];
+  const configsByKey = new Map(
+    configs.map((config) => [normalizeFilterSlug(config.key), config]),
+  );
   const descriptionFilter = parsed.descriptionFilter.trim();
 
   if (descriptionFilter) {
     segments.push(serializeDescriptionFilter(descriptionFilter));
   }
 
+  // Filtros clásicos por columna (orden de config), para compatibilidad con
+  // consumidores que construyen el parsed solo con `advancedFiltersByColumn`.
   for (const config of configs) {
     if (!config.columnId) {
       continue;
@@ -698,10 +1001,26 @@ export function serializeFilterQuery(
       continue;
     }
 
-    const serialized = serializeAdvancedFilter(config, value);
+    const serialized = serializeAppliedFilterValue(config, value);
 
     if (serialized) {
       segments.push(serialized);
+    }
+  }
+
+  // Extras que el path por columna no cubre: negados, textMatch, folder y
+  // qualifiers sin columna.
+  for (const appliedFilter of parsed.appliedFilters ?? []) {
+    const config = configsByKey.get(normalizeFilterSlug(appliedFilter.key));
+
+    if (!config || isCoveredByColumnSerialization(appliedFilter, config)) {
+      continue;
+    }
+
+    const serialized = serializeAppliedFilterValue(config, appliedFilter.value);
+
+    if (serialized) {
+      segments.push(appliedFilter.negated ? `-${serialized}` : serialized);
     }
   }
 

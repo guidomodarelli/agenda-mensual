@@ -41,10 +41,24 @@ const YEAR_MONTH_VALUE_SUGGESTIONS: Array<{ slug: string; label: string }> = [
   { label: "Sin fechas", slug: YEAR_MONTH_NO_VALUE_SLUG },
 ];
 
-const NUMBER_RANGE_VALUE_SUGGESTIONS: Array<{ slug: string; label: string }> = [
+/** Opción de valor sugerida. `keepOpen` mantiene el popover para completar texto. */
+interface ValueSuggestionOption {
+  slug: string;
+  label: string;
+  keepOpen?: boolean;
+}
+
+const NUMBER_RANGE_VALUE_SUGGESTIONS: ValueSuggestionOption[] = [
   { label: "Mayor o igual (≥)", slug: ">=" },
   { label: "Menor o igual (≤)", slug: "<=" },
   { label: "Rango (100..500)", slug: ".." },
+];
+
+const TEXT_MATCH_VALUE_SUGGESTIONS: ValueSuggestionOption[] = [
+  { label: "Tiene", slug: PRESENCE_TRUE_SLUG },
+  { label: "No tiene", slug: PRESENCE_FALSE_SLUG },
+  { keepOpen: true, label: "Empieza por…", slug: "^" },
+  { keepOpen: true, label: "Igual a…", slug: "=" },
 ];
 
 interface FilterSuggestion {
@@ -102,8 +116,8 @@ function buildKeySuggestions(
 
 function getValueSuggestionSource(
   config: FilterQualifierConfig,
-): Array<{ slug: string; label: string }> {
-  if (config.kind === "enum") {
+): ValueSuggestionOption[] {
+  if (config.kind === "enum" || config.kind === "folder") {
     return (config.options ?? []).map((option) => ({
       label: option.label,
       slug: option.slug,
@@ -122,6 +136,10 @@ function getValueSuggestionSource(
     return NUMBER_RANGE_VALUE_SUGGESTIONS;
   }
 
+  if (config.kind === "textMatch") {
+    return TEXT_MATCH_VALUE_SUGGESTIONS;
+  }
+
   return [];
 }
 
@@ -129,20 +147,24 @@ function buildValueSuggestions(
   config: FilterQualifierConfig,
   valuePart: string,
 ): FilterSuggestion[] {
-  // Los operadores numéricos no se cierran al insertarse: el usuario completa
-  // el número, por eso mantienen el popover abierto.
-  const keepOpen = config.kind === "numberRange";
+  // Los operadores (numéricos y de texto como `^`/`=`) no cierran el popover:
+  // el usuario completa el número o el texto a continuación.
+  const defaultKeepOpen = config.kind === "numberRange";
 
   return getValueSuggestionSource(config)
     .filter((option) => startsWithNormalized(option.slug, valuePart))
-    .map((option) => ({
-      group: "value" as const,
-      hint: option.slug,
-      id: `${OPTION_ID_PREFIX}-value-${config.key}-${option.slug}`,
-      insertText: keepOpen ? option.slug : `${option.slug} `,
-      keepOpen,
-      label: option.label,
-    }));
+    .map((option) => {
+      const keepOpen = option.keepOpen ?? defaultKeepOpen;
+
+      return {
+        group: "value" as const,
+        hint: option.slug,
+        id: `${OPTION_ID_PREFIX}-value-${config.key}-${option.slug}`,
+        insertText: keepOpen ? option.slug : `${option.slug} `,
+        keepOpen,
+        label: option.label,
+      };
+    });
 }
 
 function resolveConfigByKey(
@@ -195,9 +217,10 @@ export function FilterQueryBar({
   const suggestions = React.useMemo<FilterSuggestion[]>(() => {
     const activeToken = getActiveFilterToken(value, caretIndex);
 
-    // Los qualifiers negados (`-clave:valor`) no tienen efecto al parsear, así
-    // que no se sugieren: un token negado es una exclusión de texto (`-texto`).
-    if (activeToken.negated) {
+    // En modo clave, un `-` inicial es una exclusión de texto (`-texto`); no se
+    // sugieren claves para no pisar la negación al insertar. En modo valor
+    // (`-clave:`) sí se sugieren valores: la negación queda antes del `:`.
+    if (activeToken.negated && activeToken.mode === "key") {
       return [];
     }
 

@@ -23,6 +23,7 @@ import { FilterQueryBar } from "@/components/ui/filter-query-bar";
 import {
   parseFilterQuery,
   serializeFilterQuery,
+  type AppliedFilter,
   type FilterQualifierConfig,
 } from "@/components/ui/filter-query-grammar";
 import {
@@ -163,6 +164,12 @@ interface DataTableProps<TData, TValue> {
   queryFilterConfig?: FilterQualifierConfig[];
   queryFilterPlaceholder?: string;
   queryFilterLabel?: string;
+  /**
+   * Notifica los filtros estructurados parseados desde la barra unificada
+   * (cualquier kind, con o sin columna, incluyendo negados) para que el
+   * consumidor los aplique con su propio predicado de dominio.
+   */
+  onAppliedFiltersChange?: (appliedFilters: AppliedFilter[]) => void;
   showExcludeFilterToggle?: boolean;
   excludeFilterValues?: string[];
   onExcludeFilterValuesChange?: (values: string[]) => void;
@@ -491,6 +498,7 @@ export function DataTable<TData, TValue>({
   queryFilterConfig,
   queryFilterPlaceholder,
   queryFilterLabel,
+  onAppliedFiltersChange,
   showExcludeFilterToggle = false,
   excludeFilterValues: controlledExcludeFilterValues,
   onExcludeFilterValuesChange,
@@ -517,6 +525,13 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [uncontrolledFilterValue, setUncontrolledFilterValue] = React.useState("");
   const [filterQueryDraft, setFilterQueryDraft] = React.useState("");
+  // Filtros estructurados de la última query parseada. Se preservan para que la
+  // re-sincronización canónica (al perder foco) NO descarte los qualifiers sin
+  // columna (textMatch/folder) ni los negados, que no viven en
+  // `advancedFiltersAppliedByColumn` y quedarían como filtros activos invisibles.
+  const [appliedFiltersDraft, setAppliedFiltersDraft] = React.useState<
+    AppliedFilter[]
+  >([]);
   const [isQueryFilterFocused, setIsQueryFilterFocused] = React.useState(false);
   const [uncontrolledExcludeFilterValues, setUncontrolledExcludeFilterValues] =
     React.useState<string[]>([]);
@@ -630,18 +645,37 @@ export function DataTable<TData, TValue>({
         ) {
           setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
         }
+
+        setAppliedFiltersDraft(parsedQuery.appliedFilters);
+        onAppliedFiltersChange?.(parsedQuery.appliedFilters);
       });
     },
     [
       advancedFiltersAppliedByColumn,
       handleExcludeFilterValuesChange,
       isFilterValueControlled,
+      onAppliedFiltersChange,
       onFilterValueChange,
       queryFilterConfig,
       resolvedExcludeFilterValues,
       resolvedFilterValue,
     ],
   );
+
+  // Si la config de qualifiers cambia (p. ej. se borra una carpeta y desaparece
+  // su opción `carpeta:<id>`), se re-parsea la query actual contra la nueva
+  // config y se re-propaga: así un filtro que quedó huérfano se descarta del
+  // predicado en vez de seguir filtrando de forma invisible.
+  React.useEffect(() => {
+    if (!queryFilterConfig || !filterQueryDraft) {
+      return;
+    }
+
+    handleQueryFilterChange(filterQueryDraft);
+    // Solo debe re-correr cuando cambia la config; `filterQueryDraft` se lee como
+    // valor actual y no como disparador para no re-parsear en cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryFilterConfig]);
 
   const addExcludeFilterValue = React.useCallback(
     (
@@ -846,6 +880,7 @@ export function DataTable<TData, TValue>({
     return serializeFilterQuery(
       {
         advancedFiltersByColumn: advancedFiltersAppliedByColumn,
+        appliedFilters: appliedFiltersDraft,
         descriptionFilter: tableFilterValue,
         excludedDescriptionFilters: resolvedExcludeFilterValues,
         invalidTokens: [],
@@ -854,6 +889,7 @@ export function DataTable<TData, TValue>({
     );
   }, [
     advancedFiltersAppliedByColumn,
+    appliedFiltersDraft,
     queryFilterConfig,
     resolvedExcludeFilterValues,
     tableFilterValue,

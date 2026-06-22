@@ -19,6 +19,16 @@ const CONFIGS: FilterQualifierConfig[] = [
     ],
   },
   { columnId: "loanProgress", key: "deuda", kind: "presence", label: "Deuda / cuotas" },
+  { key: "link", kind: "textMatch", label: "Link de pago" },
+  {
+    key: "carpeta",
+    kind: "folder",
+    label: "Carpeta",
+    options: [
+      { label: "Sin carpeta", slug: "sin-carpeta", value: "__unassigned__" },
+      { label: "Hogar", slug: "hogar", value: "folder-1" },
+    ],
+  },
 ];
 
 function FilterQueryBarHarness() {
@@ -171,14 +181,21 @@ describe("FilterQueryBar", () => {
     expect(combobox).toHaveValue("sub");
   });
 
-  it("does not suggest qualifiers for a negated token", async () => {
+  it("suggests qualifier values inside a negated token but not bare keys", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);
 
-    await user.click(screen.getByRole("combobox"));
-    await user.keyboard("-direccion:");
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
 
+    // Modo clave negado (`-dir`): no se sugiere para no pisar la exclusión.
+    await user.keyboard("-dir");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+
+    // Modo valor negado (`-direccion:`): sí se sugieren los valores del enum.
+    await user.keyboard("eccion:");
+    const listbox = await screen.findByRole("listbox");
+    expect(within(listbox).getAllByRole("option").length).toBeGreaterThan(0);
   });
 
   it("lets Tab move focus when no suggestion was navigated", async () => {
@@ -229,5 +246,54 @@ describe("FilterQueryBar", () => {
     );
 
     expect(combobox).toHaveValue("");
+  });
+
+  it("suggests textMatch operators for a text qualifier", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("link:");
+
+    const listbox = await screen.findByRole("listbox");
+    const options = within(listbox).getAllByRole("option");
+    const labels = options.map((option) => option.textContent);
+
+    expect(labels.some((label) => label?.includes("Tiene"))).toBe(true);
+    expect(labels.some((label) => label?.includes("Empieza por"))).toBe(true);
+  });
+
+  it("suggests folder values, including unassigned", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("carpeta:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+
+    expect(labels.some((label) => label?.includes("Hogar"))).toBe(true);
+    expect(labels.some((label) => label?.includes("Sin carpeta"))).toBe(true);
+  });
+
+  it("suggests folder values inside a negated qualifier token", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("-carpeta:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+
+    expect(labels.some((label) => label?.includes("Hogar"))).toBe(true);
   });
 });

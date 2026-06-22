@@ -11,6 +11,8 @@ const CONFIGS: FilterQualifierConfig[] = [
   { key: "", kind: "text", label: "Descripción" },
   { columnId: "subtotal", key: "subtotal", kind: "numberRange", label: "Subtotal" },
   { columnId: "total", key: "total", kind: "numberRange", label: "Total" },
+  { key: "saldo", kind: "numberRange", label: "Saldo" },
+  { key: "inicio", kind: "yearMonthRange", label: "Inicio" },
   {
     columnId: "lenderName",
     key: "direccion",
@@ -28,6 +30,18 @@ const CONFIGS: FilterQualifierConfig[] = [
     key: "vigencia",
     kind: "yearMonthRange",
     label: "Vigencia",
+  },
+  { key: "link", kind: "textMatch", label: "Link de pago" },
+  { key: "prestamista", kind: "textMatch", label: "Prestamista" },
+  {
+    key: "carpeta",
+    kind: "folder",
+    label: "Carpeta",
+    options: [
+      { label: "Sin carpeta", slug: "sin-carpeta", value: "__unassigned__" },
+      { label: "Hogar", slug: "hogar", value: "folder-1" },
+      { label: "Viajes", slug: "viajes", value: "folder-2" },
+    ],
   },
 ];
 
@@ -203,11 +217,118 @@ describe("parseFilterQuery", () => {
     expect(parsed.excludedDescriptionFilters).toEqual(["Agua"]);
   });
 
-  it("does not apply negated qualifiers (unsupported in v1)", () => {
+  it("merges repeated year-month bounds into a range instead of replacing", () => {
+    const merged = parseFilterQuery("inicio:2026-01.. inicio:..2026-06", CONFIGS);
+    expect(merged.appliedFilters).toEqual([
+      {
+        key: "inicio",
+        negated: false,
+        value: { kind: "yearMonthRange", max: 202606, min: 202601, mode: "range" },
+      },
+    ]);
+
+    const impossible = parseFilterQuery("inicio:2026-12.. inicio:..2026-06", CONFIGS);
+    expect(impossible.appliedFilters).toEqual([
+      {
+        key: "inicio",
+        negated: false,
+        value: { kind: "yearMonthRange", min: 202612, mode: "from" },
+      },
+    ]);
+    expect(impossible.invalidTokens).toEqual([
+      { raw: "inicio:..2026-06", reason: "invalidValue" },
+    ]);
+  });
+
+  it("merges and validates repeated ranges for column-less qualifiers", () => {
+    const valid = parseFilterQuery("saldo:>100 saldo:<500", CONFIGS);
+    expect(valid.appliedFilters).toEqual([
+      { key: "saldo", negated: false, value: { kind: "numberRange", max: 500, min: 100 } },
+    ]);
+    expect(valid.advancedFiltersByColumn).toEqual({});
+
+    const impossible = parseFilterQuery("saldo:>1000 saldo:<50", CONFIGS);
+    expect(impossible.appliedFilters).toEqual([
+      { key: "saldo", negated: false, value: { kind: "numberRange", min: 1000 } },
+    ]);
+    expect(impossible.invalidTokens).toEqual([
+      { raw: "saldo:<50", reason: "invalidValue" },
+    ]);
+  });
+
+  it("applies negated qualifiers through appliedFilters, not the column map", () => {
     const parsed = parseFilterQuery("-direccion:yo-debo", CONFIGS);
 
     expect(parsed.advancedFiltersByColumn).toEqual({});
     expect(parsed.excludedDescriptionFilters).toEqual([]);
+    expect(parsed.appliedFilters).toEqual([
+      { key: "direccion", negated: true, value: { kind: "enum", value: "payable" } },
+    ]);
+  });
+
+  it("parses textMatch operators (presence, prefix, suffix, equals, contains)", () => {
+    expect(parseFilterQuery("link:si", CONFIGS).appliedFilters).toEqual([
+      { key: "link", negated: false, value: { kind: "textMatch", op: "has" } },
+    ]);
+    expect(parseFilterQuery("link:no", CONFIGS).appliedFilters).toEqual([
+      { key: "link", negated: false, value: { kind: "textMatch", op: "notHas" } },
+    ]);
+    expect(parseFilterQuery("link:^https", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "link",
+        negated: false,
+        value: { kind: "textMatch", op: "startsWith", text: "https" },
+      },
+    ]);
+    expect(parseFilterQuery("link:pdf$", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "link",
+        negated: false,
+        value: { kind: "textMatch", op: "endsWith", text: "pdf" },
+      },
+    ]);
+    expect(parseFilterQuery("prestamista:=Juan", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "equals", text: "juan" },
+      },
+    ]);
+    expect(parseFilterQuery("prestamista:juan", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "contains", text: "juan" },
+      },
+    ]);
+  });
+
+  it("parses folder qualifiers (include, exclude, unassigned)", () => {
+    expect(
+      parseFilterQuery("carpeta:hogar carpeta:viajes", CONFIGS).appliedFilters,
+    ).toEqual([
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-1" } },
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-2" } },
+    ]);
+    expect(parseFilterQuery("-carpeta:hogar", CONFIGS).appliedFilters).toEqual([
+      { key: "carpeta", negated: true, value: { kind: "folder", folderId: "folder-1" } },
+    ]);
+    expect(parseFilterQuery("carpeta:sin-carpeta", CONFIGS).appliedFilters).toEqual([
+      {
+        key: "carpeta",
+        negated: false,
+        value: { kind: "folder", folderId: "__unassigned__" },
+      },
+    ]);
+  });
+
+  it("reports unknown folder slugs as invalid values", () => {
+    const parsed = parseFilterQuery("carpeta:noexiste", CONFIGS);
+
+    expect(parsed.appliedFilters).toEqual([]);
+    expect(parsed.invalidTokens).toEqual([
+      { raw: "carpeta:noexiste", reason: "invalidValue" },
+    ]);
   });
 
   it("ignores incomplete qualifiers while typing", () => {
@@ -243,9 +364,19 @@ describe("serializeFilterQuery", () => {
     expect(serializeFilterQuery(parsed, CONFIGS)).toBe('-"super mercado"');
   });
 
+  it("round-trips textMatch, folder and negated qualifiers", () => {
+    const query = "link:^https -carpeta:hogar prestamista:juan direccion:me-deben";
+    const parsed = parseFilterQuery(query, CONFIGS);
+
+    expect(serializeFilterQuery(parsed, CONFIGS)).toBe(
+      "direccion:me-deben link:^https -carpeta:hogar prestamista:juan",
+    );
+  });
+
   it("quotes free-text description words that look like qualifiers (lossless)", () => {
     const parsed = {
       advancedFiltersByColumn: {},
+      appliedFilters: [],
       descriptionFilter: "total:100 luz",
       excludedDescriptionFilters: [],
       invalidTokens: [],
@@ -262,6 +393,7 @@ describe("serializeFilterQuery", () => {
   it("quotes excluded values that look like qualifiers", () => {
     const parsed = {
       advancedFiltersByColumn: {},
+      appliedFilters: [],
       descriptionFilter: "",
       excludedDescriptionFilters: ["total:100"],
       invalidTokens: [],
