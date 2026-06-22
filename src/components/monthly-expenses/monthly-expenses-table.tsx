@@ -1210,6 +1210,13 @@ export function MonthlyExpensesTable({
   const hasActiveDescriptionFiltering =
     primaryDescriptionFilter.trim().length > 0 ||
     nonEmptyExcludedDescriptionFilters.length > 0;
+  // Cualquier filtro activo (descripción, qualifiers de la barra —incluidos los
+  // sin columna y negados— o carpeta) hace que un resultado vacío sea "sin
+  // resultados para el filtro", no "no hay gastos cargados".
+  const hasActiveFiltering =
+    hasActiveDescriptionFiltering ||
+    queryAppliedFilters.length > 0 ||
+    folderFilterId.length > 0;
   const rowsExcludingDescriptions = useMemo(
     () =>
       rows.filter(
@@ -2812,7 +2819,7 @@ export function MonthlyExpensesTable({
               }
               data={rowsForTable}
               emptyMessage={
-                hasActiveDescriptionFiltering
+                hasActiveFiltering
                   ? MONTHLY_EXPENSES_FILTERED_EMPTY_MESSAGE
                   : MONTHLY_EXPENSES_EMPTY_MESSAGE
               }

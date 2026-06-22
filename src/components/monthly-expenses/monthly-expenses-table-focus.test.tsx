@@ -738,4 +738,21 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
     });
     expect(screen.getByText("EnTarjeta")).toBeInTheDocument();
   });
+
+  it("shows the filtered-empty message when a column-less filter removes all rows", async () => {
+    renderMonthlyExpensesTable([
+      createRow({ description: "SinLink", id: "expense-1", paymentLink: "" }),
+    ]);
+
+    await typeQuery("link:si");
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No hay resultados para los filtros actuales."),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText("No hay gastos cargados para este mes."),
+    ).not.toBeInTheDocument();
+  });
 });
