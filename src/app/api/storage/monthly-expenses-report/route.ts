@@ -1,3 +1,4 @@
+import { createGetMonthlyExchangeRateSnapshot } from "@/modules/exchange-rates/infrastructure/create-get-monthly-exchange-rate-snapshot";
 import { getLendersCatalog } from "@/modules/lenders/application/use-cases/get-lenders-catalog";
 import { DrizzleLendersRepository } from "@/modules/lenders/infrastructure/turso/repositories/drizzle-lenders-repository";
 import {
@@ -7,6 +8,9 @@ import {
 import { createMonthlyExpensesLoansReportApiHandler } from "@/modules/monthly-expenses/infrastructure/api/create-monthly-expenses-loans-report-api-handler";
 import { getCachedMonthlyExpensesLoansReport } from "@/modules/monthly-expenses/infrastructure/cache/monthly-expenses-loans-report-cache";
 import { DrizzleMonthlyExpensesRepository } from "@/modules/monthly-expenses/infrastructure/turso/repositories/drizzle-monthly-expenses-repository";
+import {
+  appLogger,
+} from "@/modules/shared/infrastructure/observability/app-logger";
 import { createAppRouteHandler } from "@/modules/shared/infrastructure/next-app/next-api-handler-adapter";
 
 const handler = createAppRouteHandler(createMonthlyExpensesLoansReportApiHandler({
@@ -23,11 +27,40 @@ const handler = createAppRouteHandler(createMonthlyExpensesLoansReportApiHandler
         const lendersCatalog = await getLendersCatalog({
           repository: new DrizzleLendersRepository(database, userSubject),
         });
+        const getExchangeRateSnapshot = createGetMonthlyExchangeRateSnapshot(
+          database,
+        );
 
         return getMonthlyExpensesLoansReport({
           currentMonth,
           lenders: lendersCatalog.lenders,
           repository: new DrizzleMonthlyExpensesRepository(database, userSubject),
+          // Backfill a real USD→ARS rate for legacy months persisted without an
+          // exchange-rate snapshot, so the deferred report (which reads DB state
+          // only) does not value USD loans as ARS and cache that wrong result.
+          // Failure to resolve degrades to the native amount rather than breaking
+          // the whole report.
+          resolveFallbackSolidarityRate: async () => {
+            try {
+              const snapshot = await getExchangeRateSnapshot(currentMonth);
+
+              return snapshot.solidarityRate;
+            } catch (exchangeRateError) {
+              appLogger.warn(
+                "monthly-expenses-report could not resolve a fallback exchange rate",
+                {
+                  context: {
+                    month: currentMonth,
+                    operation:
+                      "monthly-expenses-report:resolve-fallback-exchange-rate",
+                  },
+                  error: exchangeRateError,
+                },
+              );
+
+              return null;
+            }
+          },
         });
       },
     });

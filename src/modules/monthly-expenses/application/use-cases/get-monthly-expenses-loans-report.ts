@@ -43,6 +43,18 @@ interface GetMonthlyExpensesLoansReportDependencies {
   currentMonth?: string;
   lenders: ReportLenderInput[];
   repository: MonthlyExpensesRepository;
+  /**
+   * Resolves a fallback USD→ARS solidarity rate, used only when no stored document
+   * carries an exchange-rate snapshot. Legacy months persisted before snapshots
+   * existed leave their USD loans without a stored rate; without this resolver the
+   * report would silently value those USD amounts as ARS (and cache that wrong
+   * first result). The resolver lets the report backfill a real rate from the
+   * exchange-rate source instead. Optional: omit for ARS-only data or unit tests;
+   * when omitted (or it resolves `null`) the native amount remains the last
+   * resort, preserving previous behavior. It is invoked at most once, and only
+   * when at least one USD loan lacks any stored rate.
+   */
+  resolveFallbackSolidarityRate?: () => Promise<number | null>;
 }
 
 /**
@@ -314,16 +326,31 @@ export async function getMonthlyExpensesLoansReport({
   currentMonth = getCurrentMonthIdentifier(),
   lenders,
   repository,
+  resolveFallbackSolidarityRate,
 }: GetMonthlyExpensesLoansReportDependencies): Promise<MonthlyExpensesLoansReportResult> {
   const documents =
     typeof (repository as Partial<MonthlyExpensesRepository>).listAll === "function"
       ? await repository.listAll()
       : [];
-  const fallbackSolidarityRate = getLatestSolidarityRate(documents);
+  const loanSnapshots = createLoanSnapshots(documents);
+  // Prefer the latest rate stored across documents. Only when none exists do we
+  // resolve a real fallback from the exchange-rate source, and only if there is a
+  // USD loan that would otherwise be valued as ARS. This keeps legacy months
+  // (persisted without a snapshot) from producing a wrong, then cached, report.
+  const storedFallbackSolidarityRate = getLatestSolidarityRate(documents);
+  const hasUsdLoanMissingRate =
+    storedFallbackSolidarityRate === null &&
+    loanSnapshots.some(
+      (snapshot) => snapshot.currency === "USD" && snapshot.solidarityRate === null,
+    );
+  const fallbackSolidarityRate =
+    hasUsdLoanMissingRate && resolveFallbackSolidarityRate
+      ? await resolveFallbackSolidarityRate()
+      : storedFallbackSolidarityRate;
   const dueSoonThresholdMonth = addMonthsToMonthIdentifier(currentMonth, 1);
   const latestSnapshotsByLoan = new Map<string, LoanSnapshot>();
 
-  for (const snapshot of createLoanSnapshots(documents)) {
+  for (const snapshot of loanSnapshots) {
     const snapshotKey = getLoanSnapshotKey(snapshot);
     const currentSnapshot = latestSnapshotsByLoan.get(snapshotKey);
 

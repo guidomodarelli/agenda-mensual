@@ -797,6 +797,180 @@ describe("getMonthlyExpensesLoansReport", () => {
     expect(result.entries[0]?.remainingAmount).toBe(1280000);
   });
 
+  it("resolves a fallback solidarity rate when no stored document carries a snapshot", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "USD",
+              description: "Iphone",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2027-10",
+                installmentCount: 17,
+                lenderId: "lender-1",
+                lenderName: "Camila",
+                paidInstallments: 0,
+                startMonth: "2026-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(1000);
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [{ id: "lender-1", name: "Camila", type: "other" }],
+      repository,
+      resolveFallbackSolidarityRate,
+    });
+
+    expect(resolveFallbackSolidarityRate).toHaveBeenCalledTimes(1);
+    expect(result.entries[0]?.remainingAmount).toBe(1600000);
+    expect(result.entries[0]?.activeLoans[0]?.remainingAmountOriginal).toBe(1600);
+  });
+
+  it("does not invoke the fallback resolver when a stored snapshot rate exists", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          exchangeRateSnapshot: {
+            blueRate: 1100,
+            month: "2026-06",
+            officialRate: 950,
+            solidarityRate: 1000,
+          },
+          items: [
+            {
+              currency: "USD",
+              description: "Iphone",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2027-10",
+                installmentCount: 17,
+                lenderId: "lender-1",
+                lenderName: "Camila",
+                paidInstallments: 0,
+                startMonth: "2026-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(5000);
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [{ id: "lender-1", name: "Camila", type: "other" }],
+      repository,
+      resolveFallbackSolidarityRate,
+    });
+
+    expect(resolveFallbackSolidarityRate).not.toHaveBeenCalled();
+    expect(result.entries[0]?.remainingAmount).toBe(1600000);
+  });
+
+  it("falls back to the native USD amount when the resolver yields no rate", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "USD",
+              description: "Iphone",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2027-10",
+                installmentCount: 17,
+                lenderId: "lender-1",
+                lenderName: "Camila",
+                paidInstallments: 0,
+                startMonth: "2026-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(null);
+
+    const result = await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [{ id: "lender-1", name: "Camila", type: "other" }],
+      repository,
+      resolveFallbackSolidarityRate,
+    });
+
+    expect(resolveFallbackSolidarityRate).toHaveBeenCalledTimes(1);
+    expect(result.entries[0]?.remainingAmount).toBe(1600);
+  });
+
+  it("does not invoke the fallback resolver when no USD loan is missing a rate", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn(),
+      listAll: jest.fn().mockResolvedValue([
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Tarjeta",
+              id: "expense-1",
+              loan: {
+                direction: "payable",
+                endMonth: "2026-12",
+                installmentCount: 12,
+                lenderId: "lender-1",
+                lenderName: "Papa",
+                paidInstallments: 0,
+                startMonth: "2026-06",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 50000,
+              total: 50000,
+            },
+          ],
+          month: "2026-06",
+        },
+      ]),
+      save: jest.fn(),
+    };
+    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(1000);
+
+    await getMonthlyExpensesLoansReport({
+      currentMonth: "2026-06",
+      lenders: [{ id: "lender-1", name: "Papa", type: "family" }],
+      repository,
+      resolveFallbackSolidarityRate,
+    });
+
+    expect(resolveFallbackSolidarityRate).not.toHaveBeenCalled();
+  });
+
   it("lists each active loan separately even when they share a description", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
