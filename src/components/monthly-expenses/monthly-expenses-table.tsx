@@ -896,6 +896,18 @@ function isBrokenDriveStatus(
   return status === "trashed" || status === "missing";
 }
 
+/**
+ * Clase de fila para gastos completados. Se define a nivel de módulo (referencia
+ * estable) para no recrearla en cada render: una función inline invalidaría la
+ * memo del cuerpo de la tabla en `DataTable` y forzaría un re-render completo de
+ * todas las filas en cada tecla, aunque las filas no hayan cambiado.
+ */
+function getMonthlyExpenseRowClassName(
+  row: MonthlyExpensesEditableRow,
+): string | undefined {
+  return isPaymentCompleted(row) ? styles.paidRow : undefined;
+}
+
 export function MonthlyExpensesTable({
   actionDisabled,
   changedFields,
@@ -1602,12 +1614,21 @@ export function MonthlyExpensesTable({
     handleCloseReceiptShareDialog();
   };
 
+  // El comparador de relevancia lee el filtro vigente desde una ref para
+  // mantener una identidad estable entre renders. Si dependiera de
+  // `primaryDescriptionFilter` directamente, cambiaría en cada tecla y obligaría
+  // a reconstruir todo el array de `columns` (y con él, el row model de TanStack
+  // y todas las filas), duplicando el costo de cada pulsación.
+  const primaryDescriptionFilterRef = useRef(primaryDescriptionFilter);
+  useEffect(() => {
+    primaryDescriptionFilterRef.current = primaryDescriptionFilter;
+  }, [primaryDescriptionFilter]);
   const compareRowsByDescriptionFilterRelevance = useCallback(
     (
       leftRow: MonthlyExpensesEditableRow,
       rightRow: MonthlyExpensesEditableRow,
     ): number => {
-      const normalizedFilterValue = primaryDescriptionFilter.trim();
+      const normalizedFilterValue = primaryDescriptionFilterRef.current.trim();
 
       if (!normalizedFilterValue) {
         return 0;
@@ -1674,7 +1695,7 @@ export function MonthlyExpensesTable({
 
       return 0;
     },
-    [primaryDescriptionFilter],
+    [],
   );
 
   const foldersById = useMemo(() => {
@@ -2796,9 +2817,7 @@ export function MonthlyExpensesTable({
               filterPlaceholder="Filtrar gastos por descripción"
               filterValue={descriptionFilter}
               onExcludeFilterValuesChange={setExcludedDescriptionFilters}
-              getRowClassName={(row) =>
-                isPaymentCompleted(row) ? styles.paidRow : undefined
-              }
+              getRowClassName={getMonthlyExpenseRowClassName}
               onCellClick={handleTableCellClick}
               onFilterValueChange={setDescriptionFilter}
               onVisibleRowsChange={handleVisibleRowsChange}

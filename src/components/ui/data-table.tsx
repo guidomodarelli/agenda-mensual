@@ -408,6 +408,68 @@ function areColumnFiltersEqual(
   );
 }
 
+function areStringArraysEqual(
+  leftValues: readonly string[],
+  rightValues: readonly string[],
+): boolean {
+  if (leftValues.length !== rightValues.length) {
+    return false;
+  }
+
+  return leftValues.every((value, index) => value === rightValues[index]);
+}
+
+function areColumnFilterValuesEqual(
+  leftValue: DataTableColumnFilterValue,
+  rightValue: DataTableColumnFilterValue,
+): boolean {
+  if (leftValue.kind !== rightValue.kind) {
+    return false;
+  }
+
+  if (leftValue.kind === "numberRange" && rightValue.kind === "numberRange") {
+    return leftValue.min === rightValue.min && leftValue.max === rightValue.max;
+  }
+
+  if (leftValue.kind === "yearMonthRange" && rightValue.kind === "yearMonthRange") {
+    return (
+      leftValue.mode === rightValue.mode &&
+      leftValue.min === rightValue.min &&
+      leftValue.max === rightValue.max
+    );
+  }
+
+  if (leftValue.kind === "enum" && rightValue.kind === "enum") {
+    return leftValue.value === rightValue.value;
+  }
+
+  if (leftValue.kind === "presence" && rightValue.kind === "presence") {
+    return leftValue.value === rightValue.value;
+  }
+
+  return false;
+}
+
+function areAdvancedFilterMapsEqual(
+  leftMap: Record<string, DataTableColumnFilterValue>,
+  rightMap: Record<string, DataTableColumnFilterValue>,
+): boolean {
+  const leftKeys = Object.keys(leftMap);
+  const rightKeys = Object.keys(rightMap);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every((key) => {
+    const rightValue = rightMap[key];
+
+    return (
+      rightValue != null && areColumnFilterValuesEqual(leftMap[key], rightValue)
+    );
+  });
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -539,20 +601,45 @@ export function DataTable<TData, TValue>({
       // corriera urgente. Se difiere como transición de baja prioridad para que
       // el tipeo y las sugerencias no se cuelguen.
       React.startTransition(() => {
-        if (!isFilterValueControlled) {
-          setUncontrolledFilterValue(parsedQuery.descriptionFilter);
+        // Cada canal se actualiza solo si cambió. Propagar valores iguales
+        // (p. ej. una lista de exclusiones vacía nueva en cada tecla) dispararía
+        // re-cálculos de memos y un re-render extra de todas las filas sin
+        // ningún cambio observable.
+        if (parsedQuery.descriptionFilter !== resolvedFilterValue) {
+          if (!isFilterValueControlled) {
+            setUncontrolledFilterValue(parsedQuery.descriptionFilter);
+          }
+
+          onFilterValueChange?.(parsedQuery.descriptionFilter);
         }
 
-        onFilterValueChange?.(parsedQuery.descriptionFilter);
-        handleExcludeFilterValuesChange(parsedQuery.excludedDescriptionFilters);
-        setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
+        if (
+          !areStringArraysEqual(
+            parsedQuery.excludedDescriptionFilters,
+            resolvedExcludeFilterValues,
+          )
+        ) {
+          handleExcludeFilterValuesChange(parsedQuery.excludedDescriptionFilters);
+        }
+
+        if (
+          !areAdvancedFilterMapsEqual(
+            parsedQuery.advancedFiltersByColumn,
+            advancedFiltersAppliedByColumn,
+          )
+        ) {
+          setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
+        }
       });
     },
     [
+      advancedFiltersAppliedByColumn,
       handleExcludeFilterValuesChange,
       isFilterValueControlled,
       onFilterValueChange,
       queryFilterConfig,
+      resolvedExcludeFilterValues,
+      resolvedFilterValue,
     ],
   );
 
@@ -640,10 +727,16 @@ export function DataTable<TData, TValue>({
   );
 
   // TanStack Table manages internal reactive state through this hook.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     columns,
     data,
+    // La tabla no pagina (no hay `getPaginationRowModel`). Con el auto-reset por
+    // defecto, cada cambio de filtro dispara `resetPageIndex` → `setPagination`,
+    // que vuelve a renderizar y re-dispara el reset en bucle: "Maximum update
+    // depth exceeded" y la página colgada al tipear. Se desactivan los
+    // auto-resets porque no hay estado de paginado/expansión que reiniciar.
+    autoResetPageIndex: false,
+    autoResetExpanded: false,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -1117,20 +1210,7 @@ export function DataTable<TData, TValue>({
   // callbacks de fila. Sin esto, cada tecla disparaba varios re-render completos
   // del cuerpo y colgaba la página. Se sigue el patrón de memoización de
   // TanStack: no se depende de la identidad de `table`, que cambia en cada render.
-  const tableBodyContent = React.useMemo(() => {
-    if (!tableRowModelRows.length) {
-      return (
-        <TableRow>
-          <TableCell
-            className="h-24 text-center"
-            colSpan={Math.max(visibleLeafColumnsCount, 1)}
-          >
-            {emptyMessage}
-          </TableCell>
-        </TableRow>
-      );
-    }
-
+  const tableBodyRows = React.useMemo(() => {
     return tableRowModelRows.map((row) => {
       const rowClassName = getRowClassName?.(row.original);
 
@@ -1164,15 +1244,24 @@ export function DataTable<TData, TValue>({
     // `row.getVisibleCells()` sin cambiar la referencia de `tableRowModelRows`,
     // por lo que es necesaria para invalidar la memo al mostrar/ocultar columnas
     // aunque el linter no la vea referenciada léxicamente.
+    // `emptyMessage` se mantiene FUERA de esta memo a propósito: cambia al pasar
+    // de "sin filtro" a "con filtro" y, si estuviera acá, invalidaría la memo y
+    // re-renderizaría todas las filas en la primera tecla aunque no cambien.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    columnVisibility,
-    emptyMessage,
-    getRowClassName,
-    onCellClick,
-    tableRowModelRows,
-    visibleLeafColumnsCount,
-  ]);
+  }, [columnVisibility, getRowClassName, onCellClick, tableRowModelRows]);
+
+  const tableBodyContent = tableBodyRows.length ? (
+    tableBodyRows
+  ) : (
+    <TableRow>
+      <TableCell
+        className="h-24 text-center"
+        colSpan={Math.max(visibleLeafColumnsCount, 1)}
+      >
+        {emptyMessage}
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <div className="grid gap-4">
