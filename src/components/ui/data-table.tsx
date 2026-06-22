@@ -524,6 +524,8 @@ export function DataTable<TData, TValue>({
   // exclusiones y avanzados), de modo que ambas vistas queden sincronizadas.
   const handleQueryFilterChange = React.useCallback(
     (nextQuery: string) => {
+      // Update urgente: mantiene el input y el dropdown de sugerencias
+      // respondiendo de inmediato a cada tecla.
       setFilterQueryDraft(nextQuery);
 
       if (!queryFilterConfig) {
@@ -532,13 +534,19 @@ export function DataTable<TData, TValue>({
 
       const parsedQuery = parseFilterQuery(nextQuery, queryFilterConfig);
 
-      if (!isFilterValueControlled) {
-        setUncontrolledFilterValue(parsedQuery.descriptionFilter);
-      }
+      // El re-filtrado vuelve a renderizar toda la tabla (celdas con popovers,
+      // tooltips y menús por fila), lo que bloquearía el commit del dropdown si
+      // corriera urgente. Se difiere como transición de baja prioridad para que
+      // el tipeo y las sugerencias no se cuelguen.
+      React.startTransition(() => {
+        if (!isFilterValueControlled) {
+          setUncontrolledFilterValue(parsedQuery.descriptionFilter);
+        }
 
-      onFilterValueChange?.(parsedQuery.descriptionFilter);
-      handleExcludeFilterValuesChange(parsedQuery.excludedDescriptionFilters);
-      setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
+        onFilterValueChange?.(parsedQuery.descriptionFilter);
+        handleExcludeFilterValuesChange(parsedQuery.excludedDescriptionFilters);
+        setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
+      });
     },
     [
       handleExcludeFilterValuesChange,
