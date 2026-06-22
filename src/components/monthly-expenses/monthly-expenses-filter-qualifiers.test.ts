@@ -108,6 +108,26 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
     expect(reordered.get("folder-b")).toBe(direct.get("folder-b"));
   });
 
+  it("guarantees unique final slugs when an id-suffixed slug hits another base", () => {
+    // "Hogar"/"Hógar" colisionan -> "hogar-a"/"hogar-b"; una tercera carpeta
+    // llamada "Hogar a" tiene base "hogar-a", que ya está tomado -> debe deduparse.
+    const carpeta = buildMonthlyExpensesFilterQualifiers({
+      expenseFolders: [
+        { color: "blue" as const, icon: "home" as const, id: "a", name: "Hogar" },
+        { color: "teal" as const, icon: "home" as const, id: "b", name: "Hógar" },
+        { color: "red" as const, icon: "home" as const, id: "c", name: "Hogar a" },
+      ],
+    }).find((qualifier) => qualifier.key === "carpeta");
+
+    const slugs = (carpeta?.options ?? []).map((option) => option.slug);
+    expect(new Set(slugs).size).toBe(slugs.length); // todos únicos
+    const byValue = new Map(
+      (carpeta?.options ?? []).map((option) => [option.value, option.slug]),
+    );
+    expect(byValue.get("a")).toBe("hogar-a");
+    expect(byValue.get("c")).not.toBe("hogar-a");
+  });
+
   it("derives direction enum options with typeable slugs", () => {
     const direction = buildQualifiers().find(
       (qualifier) => qualifier.key === "direccion",

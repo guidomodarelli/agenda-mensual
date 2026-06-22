@@ -70,6 +70,29 @@ function buildFolderQualifierOptions(
     baseSlugCounts.set(base, (baseSlugCounts.get(base) ?? 0) + 1);
   }
 
+  // Pass de unicidad FINAL: el slug por id puede chocar con el base de otra
+  // carpeta (p. ej. `hogar-01abc` vs una carpeta llamada "Hogar 01abc"). Si el
+  // slug ya está usado, se sufija con un contador como último recurso para
+  // garantizar que `parseFolderValue` resuelva cada carpeta sin ambigüedad.
+  const usedSlugs = new Set<string>([UNASSIGNED_FOLDER_QUALIFIER_SLUG]);
+
+  const ensureUniqueSlug = (candidate: string): string => {
+    if (!usedSlugs.has(candidate)) {
+      usedSlugs.add(candidate);
+      return candidate;
+    }
+
+    let suffix = 2;
+
+    while (usedSlugs.has(`${candidate}-${suffix}`)) {
+      suffix += 1;
+    }
+
+    const unique = `${candidate}-${suffix}`;
+    usedSlugs.add(unique);
+    return unique;
+  };
+
   return [
     {
       label: "Sin carpeta",
@@ -81,13 +104,13 @@ function buildFolderQualifierOptions(
       const collides =
         (baseSlugCounts.get(base) ?? 0) > 1 ||
         base === UNASSIGNED_FOLDER_QUALIFIER_SLUG;
-      const slug = collides
+      const candidate = collides
         ? `${base}-${slugifyFolderName(expenseFolder.id) || expenseFolder.id}`
         : base;
 
       return {
         label: expenseFolder.name,
-        slug,
+        slug: ensureUniqueSlug(candidate),
         value: expenseFolder.id,
       };
     }),
