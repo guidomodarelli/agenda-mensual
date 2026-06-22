@@ -68,6 +68,20 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
     ]);
   });
 
+  it("slugifies multi-word folder names into a single token", () => {
+    const carpeta = buildMonthlyExpensesFilterQualifiers({
+      expenseFolders: [
+        { color: "violet", icon: "card", id: "folder-3", name: "Tarjeta Visa" },
+      ],
+    }).find((qualifier) => qualifier.key === "carpeta");
+    const visaOption = carpeta?.options?.find(
+      (option) => option.value === "folder-3",
+    );
+
+    expect(visaOption?.slug).toBe("tarjeta-visa");
+    expect(visaOption?.slug).not.toMatch(/\s/);
+  });
+
   it("derives direction enum options with typeable slugs", () => {
     const direction = buildQualifiers().find(
       (qualifier) => qualifier.key === "direccion",

@@ -34,6 +34,20 @@ const LOAN_DIRECTION_QUALIFIER_OPTIONS: FilterQualifierOption[] = [
 /** Slug de la opción "sin carpeta asignada" dentro del qualifier de carpeta. */
 export const UNASSIGNED_FOLDER_QUALIFIER_SLUG = "sin-carpeta";
 
+/**
+ * Convierte el nombre de una carpeta en un slug tipeable de un solo token. Más
+ * allá de quitar acentos/mayúsculas, reemplaza los separadores de token del
+ * tokenizer (espacios y `:`) por guiones: sin esto, un nombre como
+ * "Tarjeta Visa" produciría el slug `tarjeta visa`, que `carpeta:tarjeta visa`
+ * parsearía como `carpeta:tarjeta` + texto libre `visa` (filtro inválido).
+ */
+export function slugifyFolderName(name: string): string {
+  return normalizeFilterSlug(name)
+    .replace(/[\s:]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function buildFolderQualifierOptions(
   expenseFolders: ExpenseFolderOption[],
 ): FilterQualifierOption[] {
@@ -45,7 +59,7 @@ function buildFolderQualifierOptions(
     },
     ...expenseFolders.map((expenseFolder) => ({
       label: expenseFolder.name,
-      slug: normalizeFilterSlug(expenseFolder.name),
+      slug: slugifyFolderName(expenseFolder.name),
       value: expenseFolder.id,
     })),
   ];
