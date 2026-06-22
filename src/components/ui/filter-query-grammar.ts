@@ -303,6 +303,11 @@ function parseNumberRangeValue(
       return null;
     }
 
+    // Un rango invertido (`100..50`) no puede matchear ninguna fila: es inválido.
+    if (min != null && max != null && min > max) {
+      return null;
+    }
+
     return {
       kind: "numberRange",
       ...(max != null ? { max } : {}),
@@ -380,6 +385,11 @@ function parseYearMonthRangeValue(
     }
 
     if (min != null && max != null) {
+      // Rango invertido (`2026-12..2026-06`): imposible de matchear, inválido.
+      if (min > max) {
+        return null;
+      }
+
       return { kind: "yearMonthRange", max, min, mode: "range" };
     }
 
@@ -460,6 +470,47 @@ function mergeColumnFilterValue(
   return next;
 }
 
+/**
+ * Detecta un rango imposible (`min > max`), por ejemplo tras combinar
+ * `total:>100 total:<50`. El matcher rechazaría toda fila, así que se reporta el
+ * token como inválido en vez de aplicar un filtro vacío.
+ */
+function isImpossibleRange(value: DataTableColumnFilterValue): boolean {
+  if (value.kind === "numberRange") {
+    return value.min != null && value.max != null && value.min > value.max;
+  }
+
+  if (value.kind === "yearMonthRange") {
+    return (
+      value.mode === "range" &&
+      value.min != null &&
+      value.max != null &&
+      value.min > value.max
+    );
+  }
+
+  return false;
+}
+
+/** Quita duplicados de exclusiones comparando por su forma normalizada. */
+function dedupeByNormalizedSlug(values: string[]): string[] {
+  const seenKeys = new Set<string>();
+  const dedupedValues: string[] = [];
+
+  for (const value of values) {
+    const normalizedKey = normalizeFilterSlug(value);
+
+    if (!normalizedKey || seenKeys.has(normalizedKey)) {
+      continue;
+    }
+
+    seenKeys.add(normalizedKey);
+    dedupedValues.push(value);
+  }
+
+  return dedupedValues;
+}
+
 /** Parsea la query completa contra la configuración de qualifiers. */
 export function parseFilterQuery(
   query: string,
@@ -505,10 +556,18 @@ export function parseFilterQuery(
         continue;
       }
 
-      advancedFiltersByColumn[config.columnId] = mergeColumnFilterValue(
+      const mergedValue = mergeColumnFilterValue(
         advancedFiltersByColumn[config.columnId],
         filterValue,
       );
+
+      // Si la combinación deja un rango imposible, no se aplica y se reporta.
+      if (isImpossibleRange(mergedValue)) {
+        invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
+        continue;
+      }
+
+      advancedFiltersByColumn[config.columnId] = mergedValue;
 
       continue;
     }
@@ -529,7 +588,7 @@ export function parseFilterQuery(
   return {
     advancedFiltersByColumn,
     descriptionFilter: descriptionParts.join(" "),
-    excludedDescriptionFilters,
+    excludedDescriptionFilters: dedupeByNormalizedSlug(excludedDescriptionFilters),
     invalidTokens,
   };
 }

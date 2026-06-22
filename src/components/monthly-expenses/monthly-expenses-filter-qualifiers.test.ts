@@ -8,6 +8,7 @@ import {
 
 const ADVANCED_CONFIG: DataTableAdvancedFilterConfig[] = [
   { columnId: "subtotal", label: "Subtotal", type: "numberRange" },
+  { columnId: "total", label: "Total", type: "numberRange" },
   { columnId: "usd", label: "USD", type: "numberRange" },
   { columnId: LOAN_SORT_COLUMN_ID, label: "Deuda / cuotas", type: "presence" },
   {
@@ -42,8 +43,8 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
         .map((qualifier) => [qualifier.columnId, qualifier]),
     );
 
-    expect(byColumnId.get("subtotal")).toMatchObject({
-      key: "subtotal",
+    expect(byColumnId.get("total")).toMatchObject({
+      key: "total",
       kind: "numberRange",
     });
     expect(byColumnId.get(LOAN_SORT_COLUMN_ID)).toMatchObject({
@@ -54,6 +55,14 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
       key: "vigencia",
       kind: "yearMonthRange",
     });
+  });
+
+  it("does not expose the subtotal qualifier (no backing table column)", () => {
+    const qualifiers = buildMonthlyExpensesFilterQualifiers(ADVANCED_CONFIG);
+
+    expect(
+      qualifiers.some((qualifier) => qualifier.columnId === "subtotal"),
+    ).toBe(false);
   });
 
   it("derives direction enum options with typeable slugs", () => {

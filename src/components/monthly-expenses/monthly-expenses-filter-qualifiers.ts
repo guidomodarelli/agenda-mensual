@@ -24,9 +24,15 @@ interface QualifierDescriptor {
   label: string;
 }
 
-/** Mapeo de columnId → slug en español + etiqueta visible del qualifier. */
+/**
+ * Mapeo de columnId → slug en español + etiqueta visible del qualifier.
+ *
+ * Nota: `subtotal` NO se incluye a propósito. La tabla no define una columna
+ * TanStack con ese id (el subtotal se renderiza dentro de la columna `total`),
+ * así que exponer `subtotal:` en la barra produciría un filtro sin efecto. Los
+ * columnId sin descriptor se omiten al construir los qualifiers.
+ */
 const QUALIFIER_DESCRIPTORS: Record<string, QualifierDescriptor> = {
-  subtotal: { label: "Subtotal", slug: "subtotal" },
   total: { label: "Total", slug: "total" },
   usd: { label: "USD", slug: "usd" },
   paymentsProgress: { label: "Pagos", slug: "pagos" },

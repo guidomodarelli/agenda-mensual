@@ -159,6 +159,41 @@ describe("parseFilterQuery", () => {
     ]);
   });
 
+  it("rejects an inverted numeric range as invalid", () => {
+    const parsed = parseFilterQuery("total:100..50", CONFIGS);
+
+    expect(parsed.advancedFiltersByColumn).toEqual({});
+    expect(parsed.invalidTokens).toEqual([
+      { raw: "total:100..50", reason: "invalidValue" },
+    ]);
+  });
+
+  it("rejects a merged range that becomes inverted, keeping the first bound", () => {
+    const parsed = parseFilterQuery("total:>100 total:<50", CONFIGS);
+
+    expect(parsed.advancedFiltersByColumn).toEqual({
+      total: { kind: "numberRange", min: 100 },
+    });
+    expect(parsed.invalidTokens).toEqual([
+      { raw: "total:<50", reason: "invalidValue" },
+    ]);
+  });
+
+  it("rejects an inverted year-month range", () => {
+    const parsed = parseFilterQuery("vigencia:2026-12..2026-06", CONFIGS);
+
+    expect(parsed.advancedFiltersByColumn).toEqual({});
+    expect(parsed.invalidTokens).toEqual([
+      { raw: "vigencia:2026-12..2026-06", reason: "invalidValue" },
+    ]);
+  });
+
+  it("deduplicates exclusions by their normalized form", () => {
+    const parsed = parseFilterQuery("-Agua -agua -água", CONFIGS);
+
+    expect(parsed.excludedDescriptionFilters).toEqual(["Agua"]);
+  });
+
   it("does not apply negated qualifiers (unsupported in v1)", () => {
     const parsed = parseFilterQuery("-direccion:yo-debo", CONFIGS);
 
