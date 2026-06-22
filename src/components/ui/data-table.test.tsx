@@ -668,4 +668,105 @@ describe("DataTable", () => {
       screen.getByRole("button", { name: "Aplicar filtros" }),
     ).toBeDisabled();
   });
+
+  it("filters rows from the unified query bar and reflects the modal back into it", async () => {
+    const user = userEvent.setup();
+    type QueryRow = { amount: number; label: string };
+    const allRows: QueryRow[] = [
+      { amount: 10, label: "Item 10" },
+      { amount: 25, label: "Item 25" },
+      { amount: 40, label: "Item 40" },
+    ];
+    const columns: ColumnDef<QueryRow>[] = [
+      {
+        accessorKey: "label",
+        filterFn: (row, columnId, filterValue) => {
+          const query = String(filterValue ?? "").toLowerCase();
+          return String(row.getValue(columnId) ?? "")
+            .toLowerCase()
+            .includes(query);
+        },
+        header: "Descripción",
+      },
+      {
+        accessorKey: "amount",
+        cell: ({ row }) => String(row.original.amount),
+        filterFn: (row, _columnId, filterValue) => {
+          if (
+            !filterValue ||
+            typeof filterValue !== "object" ||
+            (filterValue as { kind?: string }).kind !== "numberRange"
+          ) {
+            return true;
+          }
+
+          const parsed = filterValue as { max?: number; min?: number };
+          const rowAmount = row.original.amount;
+
+          if (parsed.min != null && rowAmount < parsed.min) {
+            return false;
+          }
+
+          return parsed.max == null || rowAmount <= parsed.max;
+        },
+        header: "Monto",
+      },
+    ];
+
+    function QueryHarness() {
+      const [descriptionFilter, setDescriptionFilter] = useState("");
+      const [excluded, setExcluded] = useState<string[]>([]);
+      const data = allRows.filter(
+        (row) =>
+          !excluded.some((value) =>
+            row.label.toLowerCase().includes(value.toLowerCase()),
+          ),
+      );
+
+      return (
+        <DataTable
+          advancedFiltersConfig={[
+            { columnId: "amount", label: "Monto", type: "numberRange" },
+          ]}
+          columns={columns}
+          data={data}
+          emptyMessage="Sin datos"
+          excludeFilterValues={excluded}
+          filterColumnId="label"
+          filterValue={descriptionFilter}
+          onExcludeFilterValuesChange={setExcluded}
+          onFilterValueChange={setDescriptionFilter}
+          queryFilterConfig={[
+            { key: "", kind: "text", label: "Descripción" },
+            { columnId: "amount", key: "monto", kind: "numberRange", label: "Monto" },
+          ]}
+          queryFilterLabel="Filtro unificado"
+          showExcludeFilterToggle
+        />
+      );
+    }
+
+    render(<QueryHarness />);
+
+    const queryBar = screen.getByRole("combobox", { name: "Filtro unificado" });
+    await user.click(queryBar);
+    await user.type(queryBar, "monto:>20");
+
+    expect(screen.queryByText("Item 10")).not.toBeInTheDocument();
+    expect(screen.getByText("Item 25")).toBeInTheDocument();
+    expect(screen.getByText("Item 40")).toBeInTheDocument();
+
+    // Editar desde el modal clásico debe reflejarse en la barra unificada.
+    await user.clear(queryBar);
+    await user.tab();
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.type(screen.getByRole("spinbutton", { name: "Monto Mínimo" }), "20");
+    await user.type(screen.getByRole("spinbutton", { name: "Monto Máximo" }), "30");
+    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+
+    expect(
+      screen.getByRole("combobox", { name: "Filtro unificado" }),
+    ).toHaveValue("monto:20..30");
+    expect(screen.queryByText("Item 40")).not.toBeInTheDocument();
+  });
 });
