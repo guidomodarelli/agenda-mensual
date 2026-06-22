@@ -82,18 +82,30 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
     expect(visaOption?.slug).not.toMatch(/\s/);
   });
 
-  it("disambiguates folders that normalize to the same slug", () => {
-    const carpeta = buildMonthlyExpensesFilterQualifiers({
-      expenseFolders: [
-        { color: "blue", icon: "home", id: "folder-a", name: "Hogar" },
-        { color: "teal", icon: "home", id: "folder-b", name: "Hógar" },
-      ],
-    }).find((qualifier) => qualifier.key === "carpeta");
+  it("disambiguates colliding folder slugs stably per id (order-independent)", () => {
+    const folders = [
+      { color: "blue" as const, icon: "home" as const, id: "folder-a", name: "Hogar" },
+      { color: "teal" as const, icon: "home" as const, id: "folder-b", name: "Hógar" },
+    ];
+    const slugByValue = (expenseFolders: typeof folders) => {
+      const carpeta = buildMonthlyExpensesFilterQualifiers({ expenseFolders }).find(
+        (qualifier) => qualifier.key === "carpeta",
+      );
+      const slugs = (carpeta?.options ?? []).map((option) => option.slug);
+      expect(new Set(slugs).size).toBe(slugs.length); // todos únicos
+      return new Map(
+        (carpeta?.options ?? []).map((option) => [option.value, option.slug]),
+      );
+    };
 
-    const slugs = (carpeta?.options ?? []).map((option) => option.slug);
-    expect(new Set(slugs).size).toBe(slugs.length); // todos únicos
-    expect(carpeta?.options?.find((o) => o.value === "folder-a")?.slug).toBe("hogar");
-    expect(carpeta?.options?.find((o) => o.value === "folder-b")?.slug).toBe("hogar-2");
+    const direct = slugByValue(folders);
+    expect(direct.get("folder-a")).toBe("hogar-folder-a");
+    expect(direct.get("folder-b")).toBe("hogar-folder-b");
+
+    // Reordenar las carpetas NO cambia el slug que resuelve cada id.
+    const reordered = slugByValue([folders[1], folders[0]]);
+    expect(reordered.get("folder-a")).toBe(direct.get("folder-a"));
+    expect(reordered.get("folder-b")).toBe(direct.get("folder-b"));
   });
 
   it("derives direction enum options with typeable slugs", () => {

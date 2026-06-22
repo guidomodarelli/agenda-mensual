@@ -48,35 +48,27 @@ export function slugifyFolderName(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/**
- * Asegura un slug único para cada carpeta. Si dos carpetas normalizan al mismo
- * slug (p. ej. `Hogar` y `Hógar`, o nombres duplicados), las posteriores reciben
- * un sufijo `-2`, `-3`, … Sin esto, `parseFolderValue` resolvería siempre la
- * primera coincidencia y la segunda carpeta sería imposible de targetear.
- */
-function disambiguateFolderSlug(
-  baseSlug: string,
-  usedSlugs: Set<string>,
-): string {
-  const base = baseSlug || "carpeta";
-
-  if (!usedSlugs.has(base)) {
-    return base;
-  }
-
-  let suffix = 2;
-
-  while (usedSlugs.has(`${base}-${suffix}`)) {
-    suffix += 1;
-  }
-
-  return `${base}-${suffix}`;
+/** Slug base de una carpeta (no vacío). */
+function getFolderBaseSlug(name: string): string {
+  return slugifyFolderName(name) || "carpeta";
 }
 
+/**
+ * Desambigua el slug de una carpeta de forma ESTABLE por id. Cuando varias
+ * carpetas comparten el slug base (p. ej. `Hogar` y `Hógar`), o cuando el base
+ * colisiona con el slug reservado de "sin carpeta", se sufija con el id de la
+ * carpeta. Es deterministico por id (no por orden): reordenar las carpetas no
+ * cambia a qué carpeta resuelve un `carpeta:<slug>` ya tipeado.
+ */
 function buildFolderQualifierOptions(
   expenseFolders: ExpenseFolderOption[],
 ): FilterQualifierOption[] {
-  const usedSlugs = new Set<string>([UNASSIGNED_FOLDER_QUALIFIER_SLUG]);
+  const baseSlugCounts = new Map<string, number>();
+
+  for (const expenseFolder of expenseFolders) {
+    const base = getFolderBaseSlug(expenseFolder.name);
+    baseSlugCounts.set(base, (baseSlugCounts.get(base) ?? 0) + 1);
+  }
 
   return [
     {
@@ -85,12 +77,13 @@ function buildFolderQualifierOptions(
       value: UNASSIGNED_FOLDER_FILTER_VALUE,
     },
     ...expenseFolders.map((expenseFolder) => {
-      const slug = disambiguateFolderSlug(
-        slugifyFolderName(expenseFolder.name),
-        usedSlugs,
-      );
-
-      usedSlugs.add(slug);
+      const base = getFolderBaseSlug(expenseFolder.name);
+      const collides =
+        (baseSlugCounts.get(base) ?? 0) > 1 ||
+        base === UNASSIGNED_FOLDER_QUALIFIER_SLUG;
+      const slug = collides
+        ? `${base}-${slugifyFolderName(expenseFolder.id) || expenseFolder.id}`
+        : base;
 
       return {
         label: expenseFolder.name,
