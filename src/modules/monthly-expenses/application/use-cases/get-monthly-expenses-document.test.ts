@@ -729,6 +729,69 @@ describe("getMonthlyExpensesDocument", () => {
     expect(repository.save).not.toHaveBeenCalled();
   });
 
+  it("keeps each month's own amount for a recurring expense whose price changed", async () => {
+    // A recurring expense stored in February at 350000 must keep that amount even
+    // though a newer March snapshot raised it to 400000: recurring expenses can
+    // change price month to month.
+    const februaryDocument = createMonthlyExpensesDocument(
+      {
+        exchangeRateSnapshot: {
+          blueRate: 1290,
+          month: "2026-02",
+          officialRate: 1200,
+          solidarityRate: 1476,
+        },
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "rent-1",
+            occurrencesPerMonth: 1,
+            recurrence: { startMonth: "2026-01" },
+            subtotal: 350000,
+          },
+        ],
+        month: "2026-02",
+      },
+      "Building February document",
+    );
+    const marchDocument = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Alquiler",
+            id: "rent-1",
+            occurrencesPerMonth: 1,
+            recurrence: { startMonth: "2026-01" },
+            subtotal: 400000,
+          },
+        ],
+        month: "2026-03",
+      },
+      "Building March document",
+    );
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue(februaryDocument),
+      listAll: jest.fn().mockResolvedValue([februaryDocument, marchDocument]),
+      save: jest.fn(),
+    };
+
+    const result = await getMonthlyExpensesDocument({
+      getExchangeRateSnapshot,
+      query: {
+        includeDriveStatuses: false,
+        month: "2026-02",
+      },
+      repository,
+    });
+
+    const rentItem = result.items.find((item) => item.id === "rent-1");
+    expect(result.items).toHaveLength(1);
+    expect(rentItem?.subtotal).toBe(350000);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
   it("does not re-project a loan the stored month marks as excluded", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue({

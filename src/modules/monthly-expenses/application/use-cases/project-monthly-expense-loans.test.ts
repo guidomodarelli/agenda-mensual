@@ -454,6 +454,65 @@ describe("projectMonthlyExpenseLoans with recurring expenses", () => {
     ).toEqual(["rent-1"]);
   });
 
+  it("keeps each month's own amount when refreshing a recurring expense from a newer snapshot", () => {
+    const targetMonth = "2026-02";
+    // February stores the recurrence at its own price (350000)...
+    const storedFebruary = buildRecurringItem({
+      recurrence: { startMonth: "2026-01" },
+      subtotal: 350000,
+    });
+    const targetDocument = buildDocument(targetMonth, [storedFebruary]);
+    // ...while a newer March snapshot raised the price and renamed it.
+    const documents = [
+      targetDocument,
+      buildDocument("2026-03", [
+        buildRecurringItem({
+          description: "Alquiler actualizado",
+          recurrence: { startMonth: "2026-01" },
+          subtotal: 400000,
+        }),
+      ]),
+    ];
+
+    const [projected] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth,
+      baseItems: targetDocument.items,
+    });
+
+    // Recurring expenses can change price month to month: February keeps its own
+    // amount, while the shared definition (description) still propagates.
+    expect(projected?.id).toBe("rent-1");
+    expect(projected?.subtotal).toBe(350000);
+    expect(projected?.description).toBe("Alquiler actualizado");
+  });
+
+  it("uses the latest amount when projecting a recurring expense into a new month", () => {
+    const documents = [
+      buildDocument("2026-01", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-01" },
+          subtotal: 350000,
+        }),
+      ]),
+      buildDocument("2026-03", [
+        buildRecurringItem({
+          recurrence: { startMonth: "2026-01" },
+          subtotal: 400000,
+        }),
+      ]),
+    ];
+
+    // A month with no stored copy inherits the most recent amount.
+    const [projected] = projectMonthlyExpenseLoans({
+      documents,
+      targetMonth: "2026-05",
+      baseItems: [],
+    });
+
+    expect(projected?.subtotal).toBe(400000);
+  });
+
   it("projects recurring expenses without any per-month payment state", () => {
     const documents = [
       buildDocument("2026-03", [
