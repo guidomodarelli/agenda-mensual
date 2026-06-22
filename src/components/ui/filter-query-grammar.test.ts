@@ -118,6 +118,15 @@ describe("parseFilterQuery", () => {
     });
   });
 
+  it("intersects repeated range qualifiers with the same bound direction", () => {
+    expect(
+      parseFilterQuery("total:<300 total:<500", CONFIGS).advancedFiltersByColumn,
+    ).toEqual({ total: { kind: "numberRange", max: 300 } });
+    expect(
+      parseFilterQuery("total:>200 total:>100", CONFIGS).advancedFiltersByColumn,
+    ).toEqual({ total: { kind: "numberRange", min: 200 } });
+  });
+
   it("parses enum and presence values", () => {
     expect(parseFilterQuery("direccion:me-deben", CONFIGS).advancedFiltersByColumn).toEqual({
       lenderName: { kind: "enum", value: "receivable" },

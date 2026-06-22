@@ -456,14 +456,21 @@ function mergeColumnFilterValue(
     existing.kind === "numberRange" &&
     next.kind === "numberRange"
   ) {
+    // Qualifiers repetidos se ANDean: nos quedamos con la cota más ajustada
+    // (mayor mínimo, menor máximo) para que el resultado no dependa del orden.
+    const mergedMin =
+      existing.min != null && next.min != null
+        ? Math.max(existing.min, next.min)
+        : (next.min ?? existing.min);
+    const mergedMax =
+      existing.max != null && next.max != null
+        ? Math.min(existing.max, next.max)
+        : (next.max ?? existing.max);
+
     return {
       kind: "numberRange",
-      ...(next.max ?? existing.max) != null
-        ? { max: next.max ?? existing.max }
-        : {},
-      ...(next.min ?? existing.min) != null
-        ? { min: next.min ?? existing.min }
-        : {},
+      ...(mergedMax != null ? { max: mergedMax } : {}),
+      ...(mergedMin != null ? { min: mergedMin } : {}),
     };
   }
 

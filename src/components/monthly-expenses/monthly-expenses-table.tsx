@@ -310,7 +310,7 @@ const MONTHLY_EXPENSES_FILTER_QUALIFIERS = buildMonthlyExpensesFilterQualifiers(
 );
 const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
 const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
-  "Filtrar por campo o palabra (ej. subtotal:>1000 direccion:me-deben)";
+  "Filtrar por campo o palabra (ej. total:>1000 direccion:me-deben)";
 
 function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
   return [

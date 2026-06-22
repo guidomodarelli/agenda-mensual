@@ -25,7 +25,7 @@ import {
 
 const DEFAULT_PLACEHOLDER = "Filtrar por campo o palabra clave";
 const DEFAULT_ARIA_LABEL = "Filtrar gastos";
-const CLEAR_FILTER_ARIA_LABEL = "Limpiar filtro";
+const CLEAR_FILTER_ARIA_LABEL = "Limpiar todos los filtros";
 const KEY_GROUP_LABEL = "Campos";
 const VALUE_GROUP_LABEL = "Valores";
 const LISTBOX_ID = "filter-query-bar-listbox";

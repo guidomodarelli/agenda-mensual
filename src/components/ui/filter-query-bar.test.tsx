@@ -224,7 +224,9 @@ describe("FilterQueryBar", () => {
     await user.click(combobox);
     await user.keyboard("subtotal:>100");
 
-    await user.click(screen.getByRole("button", { name: "Limpiar filtro" }));
+    await user.click(
+      screen.getByRole("button", { name: "Limpiar todos los filtros" }),
+    );
 
     expect(combobox).toHaveValue("");
   });
