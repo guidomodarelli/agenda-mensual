@@ -48,20 +48,56 @@ export function slugifyFolderName(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Asegura un slug único para cada carpeta. Si dos carpetas normalizan al mismo
+ * slug (p. ej. `Hogar` y `Hógar`, o nombres duplicados), las posteriores reciben
+ * un sufijo `-2`, `-3`, … Sin esto, `parseFolderValue` resolvería siempre la
+ * primera coincidencia y la segunda carpeta sería imposible de targetear.
+ */
+function disambiguateFolderSlug(
+  baseSlug: string,
+  usedSlugs: Set<string>,
+): string {
+  const base = baseSlug || "carpeta";
+
+  if (!usedSlugs.has(base)) {
+    return base;
+  }
+
+  let suffix = 2;
+
+  while (usedSlugs.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${base}-${suffix}`;
+}
+
 function buildFolderQualifierOptions(
   expenseFolders: ExpenseFolderOption[],
 ): FilterQualifierOption[] {
+  const usedSlugs = new Set<string>([UNASSIGNED_FOLDER_QUALIFIER_SLUG]);
+
   return [
     {
       label: "Sin carpeta",
       slug: UNASSIGNED_FOLDER_QUALIFIER_SLUG,
       value: UNASSIGNED_FOLDER_FILTER_VALUE,
     },
-    ...expenseFolders.map((expenseFolder) => ({
-      label: expenseFolder.name,
-      slug: slugifyFolderName(expenseFolder.name),
-      value: expenseFolder.id,
-    })),
+    ...expenseFolders.map((expenseFolder) => {
+      const slug = disambiguateFolderSlug(
+        slugifyFolderName(expenseFolder.name),
+        usedSlugs,
+      );
+
+      usedSlugs.add(slug);
+
+      return {
+        label: expenseFolder.name,
+        slug,
+        value: expenseFolder.id,
+      };
+    }),
   ];
 }
 

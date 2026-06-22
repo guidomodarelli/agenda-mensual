@@ -82,6 +82,20 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
     expect(visaOption?.slug).not.toMatch(/\s/);
   });
 
+  it("disambiguates folders that normalize to the same slug", () => {
+    const carpeta = buildMonthlyExpensesFilterQualifiers({
+      expenseFolders: [
+        { color: "blue", icon: "home", id: "folder-a", name: "Hogar" },
+        { color: "teal", icon: "home", id: "folder-b", name: "Hógar" },
+      ],
+    }).find((qualifier) => qualifier.key === "carpeta");
+
+    const slugs = (carpeta?.options ?? []).map((option) => option.slug);
+    expect(new Set(slugs).size).toBe(slugs.length); // todos únicos
+    expect(carpeta?.options?.find((o) => o.value === "folder-a")?.slug).toBe("hogar");
+    expect(carpeta?.options?.find((o) => o.value === "folder-b")?.slug).toBe("hogar-2");
+  });
+
   it("derives direction enum options with typeable slugs", () => {
     const direction = buildQualifiers().find(
       (qualifier) => qualifier.key === "direccion",
