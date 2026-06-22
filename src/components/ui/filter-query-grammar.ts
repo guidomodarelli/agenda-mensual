@@ -616,6 +616,44 @@ function mergeColumnFilterValue(
     };
   }
 
+  if (
+    existing &&
+    existing.kind === "yearMonthRange" &&
+    next.kind === "yearMonthRange"
+  ) {
+    const isBounded = (mode: typeof existing.mode) =>
+      mode === "range" || mode === "from" || mode === "to";
+
+    // Los modos de presencia (con/sin fechas) no combinan con cotas: gana el
+    // último. Para range/from/to se intersectan las cotas (mayor desde, menor
+    // hasta), igual que `numberRange`, en vez de descartar la primera cota.
+    if (!isBounded(existing.mode) || !isBounded(next.mode)) {
+      return next;
+    }
+
+    const mergedMin =
+      existing.min != null && next.min != null
+        ? Math.max(existing.min, next.min)
+        : (next.min ?? existing.min);
+    const mergedMax =
+      existing.max != null && next.max != null
+        ? Math.min(existing.max, next.max)
+        : (next.max ?? existing.max);
+    const mode =
+      mergedMin != null && mergedMax != null
+        ? "range"
+        : mergedMin != null
+          ? "from"
+          : "to";
+
+    return {
+      kind: "yearMonthRange",
+      mode,
+      ...(mergedMax != null ? { max: mergedMax } : {}),
+      ...(mergedMin != null ? { min: mergedMin } : {}),
+    };
+  }
+
   return next;
 }
 

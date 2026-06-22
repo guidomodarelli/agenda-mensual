@@ -12,6 +12,7 @@ const CONFIGS: FilterQualifierConfig[] = [
   { columnId: "subtotal", key: "subtotal", kind: "numberRange", label: "Subtotal" },
   { columnId: "total", key: "total", kind: "numberRange", label: "Total" },
   { key: "saldo", kind: "numberRange", label: "Saldo" },
+  { key: "inicio", kind: "yearMonthRange", label: "Inicio" },
   {
     columnId: "lenderName",
     key: "direccion",
@@ -214,6 +215,29 @@ describe("parseFilterQuery", () => {
     const parsed = parseFilterQuery("-Agua -agua -água", CONFIGS);
 
     expect(parsed.excludedDescriptionFilters).toEqual(["Agua"]);
+  });
+
+  it("merges repeated year-month bounds into a range instead of replacing", () => {
+    const merged = parseFilterQuery("inicio:2026-01.. inicio:..2026-06", CONFIGS);
+    expect(merged.appliedFilters).toEqual([
+      {
+        key: "inicio",
+        negated: false,
+        value: { kind: "yearMonthRange", max: 202606, min: 202601, mode: "range" },
+      },
+    ]);
+
+    const impossible = parseFilterQuery("inicio:2026-12.. inicio:..2026-06", CONFIGS);
+    expect(impossible.appliedFilters).toEqual([
+      {
+        key: "inicio",
+        negated: false,
+        value: { kind: "yearMonthRange", min: 202612, mode: "from" },
+      },
+    ]);
+    expect(impossible.invalidTokens).toEqual([
+      { raw: "inicio:..2026-06", reason: "invalidValue" },
+    ]);
   });
 
   it("merges and validates repeated ranges for column-less qualifiers", () => {
