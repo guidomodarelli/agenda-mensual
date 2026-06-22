@@ -186,9 +186,20 @@ export function FilterQueryBar({
   const [caretIndex, setCaretIndex] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(0);
+  // El popover se abre al enfocar; sin esta marca, Tab insertaría la primera
+  // sugerencia en vez de mover el foco. Solo interceptamos Tab cuando el usuario
+  // navegó explícitamente las sugerencias con las flechas.
+  const [hasNavigatedSuggestions, setHasNavigatedSuggestions] =
+    React.useState(false);
 
   const suggestions = React.useMemo<FilterSuggestion[]>(() => {
     const activeToken = getActiveFilterToken(value, caretIndex);
+
+    // Los qualifiers negados (`-clave:valor`) no tienen efecto al parsear, así
+    // que no se sugieren: un token negado es una exclusión de texto (`-texto`).
+    if (activeToken.negated) {
+      return [];
+    }
 
     if (activeToken.mode === "key") {
       return buildKeySuggestions(configs, activeToken.keyPart);
@@ -249,6 +260,7 @@ export function FilterQueryBar({
       onValueChange(nextValue);
       setIsOpen(true);
       setActiveIndex(0);
+      setHasNavigatedSuggestions(false);
 
       if (!suggestion.keepOpen) {
         // El valor quedó completo; el siguiente token reabrirá en modo claves.
@@ -262,6 +274,7 @@ export function FilterQueryBar({
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "ArrowDown") {
         event.preventDefault();
+        setHasNavigatedSuggestions(true);
 
         if (!isPopoverOpen) {
           setIsOpen(true);
@@ -278,6 +291,7 @@ export function FilterQueryBar({
 
       if (event.key === "ArrowUp") {
         event.preventDefault();
+        setHasNavigatedSuggestions(true);
 
         if (!isPopoverOpen) {
           setIsOpen(true);
@@ -298,7 +312,13 @@ export function FilterQueryBar({
         return;
       }
 
-      if (event.key === "Tab" && activeSuggestion) {
+      // Tab solo acepta una sugerencia si el usuario la resaltó con las flechas;
+      // de lo contrario deja que el foco se mueva con normalidad.
+      if (
+        event.key === "Tab" &&
+        hasNavigatedSuggestions &&
+        activeSuggestion
+      ) {
         event.preventDefault();
         applySuggestion(activeSuggestion);
         return;
@@ -310,7 +330,13 @@ export function FilterQueryBar({
         setIsOpen(false);
       }
     },
-    [activeSuggestion, applySuggestion, isPopoverOpen, suggestions.length],
+    [
+      activeSuggestion,
+      applySuggestion,
+      hasNavigatedSuggestions,
+      isPopoverOpen,
+      suggestions.length,
+    ],
   );
 
   const handleClear = React.useCallback(() => {
@@ -337,10 +363,14 @@ export function FilterQueryBar({
                 onValueChange(event.target.value);
                 setIsOpen(true);
                 setActiveIndex(0);
+                setHasNavigatedSuggestions(false);
                 setCaretIndex(event.target.selectionStart ?? event.target.value.length);
               }}
               onClick={syncCaretFromInput}
-              onBlur={() => onFocusChange?.(false)}
+              onBlur={() => {
+                setHasNavigatedSuggestions(false);
+                onFocusChange?.(false);
+              }}
               onFocus={() => {
                 syncCaretFromInput();
                 setIsOpen(true);

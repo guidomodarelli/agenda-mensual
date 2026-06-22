@@ -308,7 +308,7 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
 const MONTHLY_EXPENSES_FILTER_QUALIFIERS = buildMonthlyExpensesFilterQualifiers(
   MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG,
 );
-const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtrar gastos";
+const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
 const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
   "Filtrar por campo o palabra (ej. subtotal:>1000 direccion:me-deben)";
 

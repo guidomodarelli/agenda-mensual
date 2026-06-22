@@ -198,6 +198,37 @@ describe("serializeFilterQuery", () => {
 
     expect(serializeFilterQuery(parsed, CONFIGS)).toBe('-"super mercado"');
   });
+
+  it("quotes free-text description words that look like qualifiers (lossless)", () => {
+    const parsed = {
+      advancedFiltersByColumn: {},
+      descriptionFilter: "total:100 luz",
+      excludedDescriptionFilters: [],
+      invalidTokens: [],
+    };
+    const serialized = serializeFilterQuery(parsed, CONFIGS);
+
+    expect(serialized).toBe('"total:100" luz');
+    // Re-parsing must keep it as a description filter, not an advanced filter.
+    const reparsed = parseFilterQuery(serialized, CONFIGS);
+    expect(reparsed.descriptionFilter).toBe("total:100 luz");
+    expect(reparsed.advancedFiltersByColumn).toEqual({});
+  });
+
+  it("quotes excluded values that look like qualifiers", () => {
+    const parsed = {
+      advancedFiltersByColumn: {},
+      descriptionFilter: "",
+      excludedDescriptionFilters: ["total:100"],
+      invalidTokens: [],
+    };
+    const serialized = serializeFilterQuery(parsed, CONFIGS);
+
+    expect(serialized).toBe('-"total:100"');
+    expect(parseFilterQuery(serialized, CONFIGS).excludedDescriptionFilters).toEqual([
+      "total:100",
+    ]);
+  });
 });
 
 describe("parseYearMonthSlug", () => {

@@ -171,6 +171,51 @@ describe("FilterQueryBar", () => {
     expect(combobox).toHaveValue("sub");
   });
 
+  it("does not suggest qualifiers for a negated token", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    await user.click(screen.getByRole("combobox"));
+    await user.keyboard("-direccion:");
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("lets Tab move focus when no suggestion was navigated", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <FilterQueryBarHarness />
+        <button type="button">Después</button>
+      </>,
+    );
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await screen.findByRole("listbox");
+
+    await user.tab();
+
+    // Tab no insertó la primera sugerencia y movió el foco al botón siguiente.
+    expect(combobox).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Después" })).toHaveFocus();
+  });
+
+  it("accepts a suggestion with Tab after navigating with the arrows", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("sub");
+    await screen.findByRole("listbox");
+
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Tab}");
+
+    expect(combobox).toHaveValue("subtotal:");
+  });
+
   it("clears the whole query with the clear button", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);

@@ -115,8 +115,30 @@ function stripSurroundingQuotes(value: string): string {
   return value;
 }
 
-function quoteIfNeeded(value: string): string {
-  return /\s/.test(value) ? `"${value}"` : value;
+/**
+ * Envuelve en comillas un valor que, sin comillas, se re-tokenizaría distinto:
+ * espacios, un `:` (se interpretaría como `clave:valor`) o un `-` inicial (se
+ * interpretaría como exclusión). Mantiene la query como fuente de verdad sin
+ * pérdida entre la barra unificada y los controles clásicos.
+ */
+function quoteTokenIfNeeded(value: string): string {
+  return /[\s:]/.test(value) || value.startsWith("-")
+    ? `"${value}"`
+    : value;
+}
+
+/**
+ * Serializa el texto libre de descripción citando, palabra por palabra, los
+ * segmentos que se parsearían como un token (por ejemplo `total:100`), de modo
+ * que un filtro de descripción no se transforme en un filtro avanzado al
+ * re-parsear la query.
+ */
+function serializeDescriptionFilter(descriptionFilter: string): string {
+  return descriptionFilter
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .map(quoteTokenIfNeeded)
+    .join(" ");
 }
 
 /**
@@ -596,7 +618,7 @@ export function serializeFilterQuery(
   const descriptionFilter = parsed.descriptionFilter.trim();
 
   if (descriptionFilter) {
-    segments.push(descriptionFilter);
+    segments.push(serializeDescriptionFilter(descriptionFilter));
   }
 
   for (const config of configs) {
@@ -621,7 +643,7 @@ export function serializeFilterQuery(
     const trimmed = excluded.trim();
 
     if (trimmed) {
-      segments.push(`-${quoteIfNeeded(trimmed)}`);
+      segments.push(`-${quoteTokenIfNeeded(trimmed)}`);
     }
   }
 
