@@ -78,6 +78,7 @@ export function Highlighter({
   useEffect(() => {
     const element = elementRef.current
     let resizeObserver: ResizeObserver | null = null
+    let redrawFrameId: number | null = null
 
     if (shouldShow && element) {
       const annotationConfig = {
@@ -96,17 +97,31 @@ export function Highlighter({
       annotation.show()
 
       if (typeof ResizeObserver !== "undefined") {
+        // Solo se observa el elemento anotado, nunca `document.body`: redibujar
+        // la anotación inserta un SVG en el body, y observar el body provocaba
+        // un loop infinito (resize -> redibujo -> resize) que colgaba la página.
+        // El redibujo se difiere a un frame y se coalescen ráfagas para evitar
+        // el warning «ResizeObserver loop» y trabajo redundante.
         resizeObserver = new ResizeObserver(() => {
-          annotation.hide()
-          annotation.show()
+          if (redrawFrameId != null) {
+            return
+          }
+
+          redrawFrameId = window.requestAnimationFrame(() => {
+            redrawFrameId = null
+            annotation.hide()
+            annotation.show()
+          })
         })
 
         resizeObserver.observe(element)
-        resizeObserver.observe(document.body)
       }
     }
 
     return () => {
+      if (redrawFrameId != null) {
+        window.cancelAnimationFrame(redrawFrameId)
+      }
       if (annotationRef.current) {
         annotationRef.current.remove()
         annotationRef.current = null
