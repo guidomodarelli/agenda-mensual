@@ -1107,6 +1107,73 @@ export function DataTable<TData, TValue>({
     <div className="grid gap-1">{filterExtraContent}</div>
   ) : null;
 
+  const tableRowModelRows = table.getRowModel().rows;
+  const visibleLeafColumnsCount = table.getVisibleLeafColumns().length;
+  // El cuerpo de la tabla es la parte más cara de renderizar (cientos de celdas
+  // con popovers, tooltips y menús). Se memoiza para que los cambios de estado
+  // locales del toolbar —el draft de la barra de query, el foco, los inputs de
+  // filtros— no vuelvan a renderizar todas las filas. Solo se recalcula cuando
+  // cambia el row model (datos/filtros/orden), la visibilidad de columnas o los
+  // callbacks de fila. Sin esto, cada tecla disparaba varios re-render completos
+  // del cuerpo y colgaba la página. Se sigue el patrón de memoización de
+  // TanStack: no se depende de la identidad de `table`, que cambia en cada render.
+  const tableBodyContent = React.useMemo(() => {
+    if (!tableRowModelRows.length) {
+      return (
+        <TableRow>
+          <TableCell
+            className="h-24 text-center"
+            colSpan={Math.max(visibleLeafColumnsCount, 1)}
+          >
+            {emptyMessage}
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return tableRowModelRows.map((row) => {
+      const rowClassName = getRowClassName?.(row.original);
+
+      return (
+        <TableRow className={rowClassName} key={row.id}>
+          {row.getVisibleCells().map((cell) => {
+            const columnMeta = cell.column.columnDef.meta as
+              | DataTableColumnMeta
+              | undefined;
+            const handleCellClick =
+              onCellClick && columnMeta?.isClickable
+                ? (event: React.MouseEvent<HTMLTableCellElement>) => {
+                    onCellClick(event, row.original, cell.column.id);
+                  }
+                : undefined;
+
+            return (
+              <TableCell
+                className={columnMeta?.cellClassName}
+                key={cell.id}
+                onClick={handleCellClick}
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            );
+          })}
+        </TableRow>
+      );
+    });
+    // `columnVisibility` se incluye a propósito: alterna qué celdas devuelve
+    // `row.getVisibleCells()` sin cambiar la referencia de `tableRowModelRows`,
+    // por lo que es necesaria para invalidar la memo al mostrar/ocultar columnas
+    // aunque el linter no la vea referenciada léxicamente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    columnVisibility,
+    emptyMessage,
+    getRowClassName,
+    onCellClick,
+    tableRowModelRows,
+    visibleLeafColumnsCount,
+  ]);
+
   return (
     <div className="grid gap-4">
       {shouldShowToolbar ? (
@@ -1511,48 +1578,7 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => {
-                const rowClassName = getRowClassName?.(row.original);
-
-                return (
-                  <TableRow className={rowClassName} key={row.id}>
-                    {row.getVisibleCells().map((cell) => {
-                      const columnMeta = cell.column.columnDef.meta as
-                        | DataTableColumnMeta
-                        | undefined;
-                      const handleCellClick =
-                        onCellClick && columnMeta?.isClickable
-                          ? (event: React.MouseEvent<HTMLTableCellElement>) => {
-                              onCellClick(event, row.original, cell.column.id);
-                            }
-                          : undefined;
-
-                      return (
-                        <TableCell
-                          className={columnMeta?.cellClassName}
-                          key={cell.id}
-                          onClick={handleCellClick}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell
-                  className="h-24 text-center"
-                  colSpan={Math.max(table.getVisibleLeafColumns().length, 1)}
-                >
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+          <TableBody>{tableBodyContent}</TableBody>
 
           {hasFooterContent ? (
             <TableFooter>
