@@ -132,6 +132,7 @@ import {
   matchesAdvancedPresenceFilter,
   matchesAdvancedNumberRangeFilter,
 } from "./monthly-expenses-advanced-filters";
+import { buildMonthlyExpensesFilterQualifiers } from "./monthly-expenses-filter-qualifiers";
 import {
   compareValuesKeepingInvalidLast,
   getColumnSortDirection,
@@ -299,6 +300,17 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
     type: "yearMonthRange",
   },
 ];
+
+/**
+ * Qualifiers para la barra de filtro unificada estilo GitHub, derivados de la
+ * misma config de filtros avanzados para mantener ambas vistas sincronizadas.
+ */
+const MONTHLY_EXPENSES_FILTER_QUALIFIERS = buildMonthlyExpensesFilterQualifiers(
+  MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG,
+);
+const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
+const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
+  "Filtrar por campo o palabra (ej. total:>1000 direccion:me-deben)";
 
 function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
   return [
@@ -2792,6 +2804,9 @@ export function MonthlyExpensesTable({
               onVisibleRowsChange={handleVisibleRowsChange}
               onColumnVisibilityChange={setColumnVisibility}
               onSortingChange={setSorting}
+              queryFilterConfig={MONTHLY_EXPENSES_FILTER_QUALIFIERS}
+              queryFilterLabel={MONTHLY_EXPENSES_QUERY_FILTER_LABEL}
+              queryFilterPlaceholder={MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER}
               selectAllColumnsLabel="Restablecer"
               showExcludeFilterToggle
               showColumnVisibilityToggle={true}

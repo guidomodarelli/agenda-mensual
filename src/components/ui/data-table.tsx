@@ -19,6 +19,12 @@ import { CircleAlert, ChevronDown, Ellipsis, Eraser, Filter, X } from "lucide-re
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { FilterQueryBar } from "@/components/ui/filter-query-bar";
+import {
+  parseFilterQuery,
+  serializeFilterQuery,
+  type FilterQualifierConfig,
+} from "@/components/ui/filter-query-grammar";
 import {
   Dialog,
   DialogContent,
@@ -147,6 +153,16 @@ interface DataTableProps<TData, TValue> {
   filterExtraContent?: React.ReactNode;
   filterValue?: string;
   onFilterValueChange?: (value: string) => void;
+  /**
+   * Cuando se provee, agrega una barra de query unificada estilo GitHub
+   * (autocompletado de `clave:valor`) por encima de los controles de filtro
+   * clásicos. Ambas vistas comparten la misma fuente de verdad: la barra parsea
+   * la query y escribe en los canales de descripción, exclusiones y avanzados,
+   * y se re-sincroniza cuando esos controles clásicos cambian.
+   */
+  queryFilterConfig?: FilterQualifierConfig[];
+  queryFilterPlaceholder?: string;
+  queryFilterLabel?: string;
   showExcludeFilterToggle?: boolean;
   excludeFilterValues?: string[];
   onExcludeFilterValuesChange?: (values: string[]) => void;
@@ -410,6 +426,9 @@ export function DataTable<TData, TValue>({
   filterExtraContent,
   filterValue: controlledFilterValue,
   onFilterValueChange,
+  queryFilterConfig,
+  queryFilterPlaceholder,
+  queryFilterLabel,
   showExcludeFilterToggle = false,
   excludeFilterValues: controlledExcludeFilterValues,
   onExcludeFilterValuesChange,
@@ -435,6 +454,8 @@ export function DataTable<TData, TValue>({
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [uncontrolledFilterValue, setUncontrolledFilterValue] = React.useState("");
+  const [filterQueryDraft, setFilterQueryDraft] = React.useState("");
+  const [isQueryFilterFocused, setIsQueryFilterFocused] = React.useState(false);
   const [uncontrolledExcludeFilterValues, setUncontrolledExcludeFilterValues] =
     React.useState<string[]>([]);
   const [excludeFilterInputValue, setExcludeFilterInputValue] = React.useState("");
@@ -453,6 +474,7 @@ export function DataTable<TData, TValue>({
     React.useState<Record<string, DataTableColumnFilterValue>>({});
   const sorting = controlledSorting ?? uncontrolledSorting;
   const columnVisibility = controlledColumnVisibility ?? uncontrolledColumnVisibility;
+  const shouldShowQueryFilter = queryFilterConfig != null;
   const isFilterValueControlled = controlledFilterValue != null;
   const isExcludeFilterValuesControlled = controlledExcludeFilterValues != null;
   const resolvedFilterValue = isFilterValueControlled
@@ -468,13 +490,21 @@ export function DataTable<TData, TValue>({
   );
   const hasPendingReverseFilter =
     showExcludeFilterToggle && resolvedFilterValue.trimStart().startsWith("-");
-  const advancedFilterColumnIds = React.useMemo(
-    () =>
-      new Set(
-        advancedFiltersConfig.map((advancedFilterConfig) => advancedFilterConfig.columnId),
-      ),
-    [advancedFiltersConfig],
-  );
+  const advancedFilterColumnIds = React.useMemo(() => {
+    const columnIds = new Set<string>();
+
+    for (const advancedFilterConfig of advancedFiltersConfig) {
+      columnIds.add(advancedFilterConfig.columnId);
+    }
+
+    for (const queryQualifier of queryFilterConfig ?? []) {
+      if (queryQualifier.columnId) {
+        columnIds.add(queryQualifier.columnId);
+      }
+    }
+
+    return columnIds;
+  }, [advancedFiltersConfig, queryFilterConfig]);
   const hasActiveAdvancedFilters =
     Object.keys(advancedFiltersAppliedByColumn).length > 0;
 
@@ -487,6 +517,35 @@ export function DataTable<TData, TValue>({
       onExcludeFilterValuesChange?.(nextExcludeFilterValues);
     },
     [isExcludeFilterValuesControlled, onExcludeFilterValuesChange],
+  );
+
+  // La barra de query es la fuente de verdad mientras se tipea: parsea el texto
+  // y escribe en los mismos canales que usan los controles clásicos (descripción,
+  // exclusiones y avanzados), de modo que ambas vistas queden sincronizadas.
+  const handleQueryFilterChange = React.useCallback(
+    (nextQuery: string) => {
+      setFilterQueryDraft(nextQuery);
+
+      if (!queryFilterConfig) {
+        return;
+      }
+
+      const parsedQuery = parseFilterQuery(nextQuery, queryFilterConfig);
+
+      if (!isFilterValueControlled) {
+        setUncontrolledFilterValue(parsedQuery.descriptionFilter);
+      }
+
+      onFilterValueChange?.(parsedQuery.descriptionFilter);
+      handleExcludeFilterValuesChange(parsedQuery.excludedDescriptionFilters);
+      setAdvancedFiltersAppliedByColumn(parsedQuery.advancedFiltersByColumn);
+    },
+    [
+      handleExcludeFilterValuesChange,
+      isFilterValueControlled,
+      onFilterValueChange,
+      queryFilterConfig,
+    ],
   );
 
   const addExcludeFilterValue = React.useCallback(
@@ -617,6 +676,7 @@ export function DataTable<TData, TValue>({
     shouldShowStandaloneAdvancedFiltersToggle ||
     toolbarActions != null;
   const shouldShowToolbar =
+    shouldShowQueryFilter ||
     Boolean(filterColumnId) ||
     shouldShowToolbarActions ||
     shouldShowAdvancedFiltersToggle;
@@ -675,6 +735,43 @@ export function DataTable<TData, TValue>({
 
     filterColumn.setFilterValue(tableFilterValue);
   }, [filterColumn, tableFilterValue]);
+
+  // Forma canónica de los filtros activos, para reflejarlos en la barra de query.
+  const canonicalQueryFromFilters = React.useMemo(() => {
+    if (!queryFilterConfig) {
+      return "";
+    }
+
+    return serializeFilterQuery(
+      {
+        advancedFiltersByColumn: advancedFiltersAppliedByColumn,
+        descriptionFilter: tableFilterValue,
+        excludedDescriptionFilters: resolvedExcludeFilterValues,
+        invalidTokens: [],
+      },
+      queryFilterConfig,
+    );
+  }, [
+    advancedFiltersAppliedByColumn,
+    queryFilterConfig,
+    resolvedExcludeFilterValues,
+    tableFilterValue,
+  ]);
+
+  // Mientras la barra está enfocada, el usuario es la fuente de verdad y no se
+  // pisa su texto; al perder el foco (o al editar los controles clásicos) la
+  // barra se re-sincroniza con la forma canónica de los filtros activos.
+  React.useEffect(() => {
+    if (!queryFilterConfig || isQueryFilterFocused) {
+      return;
+    }
+
+    setFilterQueryDraft((previousDraft) =>
+      previousDraft === canonicalQueryFromFilters
+        ? previousDraft
+        : canonicalQueryFromFilters,
+    );
+  }, [canonicalQueryFromFilters, isQueryFilterFocused, queryFilterConfig]);
 
   React.useEffect(() => {
     if (
@@ -978,10 +1075,44 @@ export function DataTable<TData, TValue>({
     table,
   ]);
 
+  const sortingBadgeNode = shouldShowSortingBadge ? (
+    <Badge
+      aria-live="polite"
+      className="inline-flex w-fit items-center gap-1.5"
+      variant="secondary"
+    >
+      <span>
+        {`Ordenado por: ${activeSortingColumnLabel} ${activeSortingDirectionSymbol}`}
+      </span>
+      <span className="sr-only">{`Orden ${activeSortingDirectionLabel}`}</span>
+      <button
+        aria-label="Quitar orden"
+        className="inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={handleResetSorting}
+        type="button"
+      >
+        <X aria-hidden="true" className="size-3" />
+      </button>
+    </Badge>
+  ) : null;
+  const filterExtraContentNode = filterExtraContent ? (
+    <div className="grid gap-1">{filterExtraContent}</div>
+  ) : null;
+
   return (
     <div className="grid gap-4">
       {shouldShowToolbar ? (
         <div className="grid gap-2">
+          {shouldShowQueryFilter ? (
+            <FilterQueryBar
+              ariaLabel={queryFilterLabel}
+              configs={queryFilterConfig}
+              onFocusChange={setIsQueryFilterFocused}
+              onValueChange={handleQueryFilterChange}
+              placeholder={queryFilterPlaceholder}
+              value={filterQueryDraft}
+            />
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             {filterColumnId ? (
               <div className="grid w-full max-w-sm gap-2">
@@ -1222,29 +1353,8 @@ export function DataTable<TData, TValue>({
                     })}
                   </div>
                 ) : null}
-                {shouldShowSortingBadge ? (
-                  <Badge
-                    aria-live="polite"
-                    className="inline-flex w-fit items-center gap-1.5"
-                    variant="secondary"
-                  >
-                    <span>
-                      {`Ordenado por: ${activeSortingColumnLabel} ${activeSortingDirectionSymbol}`}
-                    </span>
-                    <span className="sr-only">{`Orden ${activeSortingDirectionLabel}`}</span>
-                    <button
-                      aria-label="Quitar orden"
-                      className="inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={handleResetSorting}
-                      type="button"
-                    >
-                      <X aria-hidden="true" className="size-3" />
-                    </button>
-                  </Badge>
-                ) : null}
-                {filterExtraContent ? (
-                  <div className="grid gap-1">{filterExtraContent}</div>
-                ) : null}
+                {sortingBadgeNode}
+                {filterExtraContentNode}
               </div>
             ) : null}
 
