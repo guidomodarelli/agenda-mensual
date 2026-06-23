@@ -169,6 +169,37 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
     expect(byValue.get("c")).not.toBe("hogar-a");
   });
 
+  it("resolves slug collisions identically regardless of entity list order", () => {
+    // Reproduce el escenario del comentario #3456959620: "Hogar"/"Hógar" colisionan
+    // en el slug base y producen el candidato "hogar-a" (id de "Hogar a"), mientras
+    // que "Hogar a" tiene ese mismo slug como base. El slug asignado a cada id no
+    // debe cambiar si se reordena la lista.
+    const folders = [
+      { color: "blue" as const, icon: "home" as const, id: "hogar-a", name: "Hogar a" },
+      { color: "teal" as const, icon: "home" as const, id: "1", name: "Hogar" },
+      { color: "red" as const, icon: "home" as const, id: "2", name: "Hógar" },
+    ];
+
+    const slugsByValue = (expenseFolders: typeof folders) => {
+      const carpeta = buildMonthlyExpensesFilterQualifiers({
+        expenseFolders,
+        lenders: [],
+      }).find((qualifier) => qualifier.key === "carpeta");
+      const slugs = (carpeta?.options ?? []).map((option) => option.slug);
+      expect(new Set(slugs).size).toBe(slugs.length); // todos únicos
+      return new Map(
+        (carpeta?.options ?? []).map((option) => [option.value, option.slug]),
+      );
+    };
+
+    const direct = slugsByValue(folders);
+    // Reordenar no cambia la asignación slug→id
+    const reversed = slugsByValue([...folders].reverse());
+    expect(reversed.get("hogar-a")).toBe(direct.get("hogar-a"));
+    expect(reversed.get("1")).toBe(direct.get("1"));
+    expect(reversed.get("2")).toBe(direct.get("2"));
+  });
+
   it("derives direction enum options with typeable slugs", () => {
     const direction = buildQualifiers().find(
       (qualifier) => qualifier.key === "direccion",

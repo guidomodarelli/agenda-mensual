@@ -68,6 +68,14 @@ export function slugifyLenderName(name: string): string {
  * el id de la entidad. Una pass final garantiza unicidad. Es determinístico por
  * id (no por orden): reordenar las entidades no cambia a qué id resuelve un
  * `<slug>` ya tipeado.
+ *
+ * La unicidad final se resuelve en dos pasos separados para evitar dependencia
+ * del orden de iteración:
+ *  1. Se computan los candidatos de TODAS las entidades y se ordenan por
+ *     `(candidate, id)` antes de asignar slugs finales.
+ *  2. Se aplica `ensureUniqueSlug` sobre el orden determinista, de modo que
+ *     cuando dos candidatos colisionan entre sí el que tiene el id
+ *     lexicográficamente menor siempre gana el slug sin sufijo numérico.
  */
 function buildUniqueSlugOptions(
   entities: ReadonlyArray<{ id: string; name: string }>,
@@ -89,6 +97,27 @@ function buildUniqueSlugOptions(
     baseSlugCounts.set(base, (baseSlugCounts.get(base) ?? 0) + 1);
   }
 
+  // Paso 1: calcular el candidato crudo de cada entidad (sin llamar a
+  // ensureUniqueSlug todavía) y ordenar por (candidate, id) para que la
+  // resolución de colisiones sea independiente del orden de la lista original.
+  const entityCandidates = entities
+    .map((entity) => {
+      const base = toBaseSlug(entity.name);
+      const collides =
+        (baseSlugCounts.get(base) ?? 0) > 1 || reservedSlugs.includes(base);
+      const candidate = collides
+        ? `${base}-${slugify(entity.id) || entity.id}`
+        : base;
+      return { entity, candidate };
+    })
+    .sort((entryA, entryB) => {
+      const candidateOrder = entryA.candidate.localeCompare(entryB.candidate);
+      return candidateOrder !== 0
+        ? candidateOrder
+        : entryA.entity.id.localeCompare(entryB.entity.id);
+    });
+
+  // Paso 2: asignar slugs finales en el orden determinista.
   const usedSlugs = new Set<string>(reservedSlugs);
 
   const ensureUniqueSlug = (candidate: string): string => {
@@ -108,20 +137,21 @@ function buildUniqueSlugOptions(
     return unique;
   };
 
-  return entities.map((entity) => {
-    const base = toBaseSlug(entity.name);
-    const collides =
-      (baseSlugCounts.get(base) ?? 0) > 1 || reservedSlugs.includes(base);
-    const candidate = collides
-      ? `${base}-${slugify(entity.id) || entity.id}`
-      : base;
+  const slugById = new Map<string, string>(
+    entityCandidates.map(({ entity, candidate }) => [
+      entity.id,
+      ensureUniqueSlug(candidate),
+    ]),
+  );
 
-    return {
-      label: entity.name,
-      slug: ensureUniqueSlug(candidate),
-      value: entity.id,
-    };
-  });
+  // Paso 3: devolver los resultados en el orden original de la lista.
+  return entities.map((entity) => ({
+    label: entity.name,
+    // slugById siempre tiene la clave porque entityCandidates fue derivado de
+    // las mismas entidades; el fallback es defensivo.
+    slug: slugById.get(entity.id) ?? toBaseSlug(entity.name),
+    value: entity.id,
+  }));
 }
 
 /** Opciones de carpeta: "Sin carpeta" + una por carpeta existente (slug único). */
