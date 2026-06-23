@@ -712,6 +712,47 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
     expect(screen.queryByText("EnTarjeta")).not.toBeInTheDocument();
   });
 
+  it("drops a carpeta presence filter when a folder chip or Todas is clicked", async () => {
+    const expenseFolders = [
+      { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },
+      { color: "violet" as const, icon: "card" as const, id: "folder-2", name: "Tarjeta" },
+    ];
+    const rows = [
+      createRow({ description: "EnHogar", expenseFolderId: "folder-1", id: "expense-1" }),
+      createRow({ description: "SinCarpeta", expenseFolderId: "", id: "expense-2" }),
+    ];
+
+    // Presencia de carpeta previa en la barra (`no:carpeta` = sin carpeta asignada).
+    const { unmount } = renderMonthlyExpensesTable(rows, { expenseFolders });
+    let user = await typeQuery("no:carpeta");
+
+    // Click en el chip "Hogar": debe quedar SOLO `carpeta:hogar`, sin el
+    // `no:carpeta` contradictorio (que junto al chip dejaría la tabla vacía).
+    await user.click(screen.getByRole("button", { name: /^Hogar/ }));
+
+    let bar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await waitFor(() => {
+      expect(bar).toHaveValue("carpeta:hogar");
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    expect(screen.queryByText("SinCarpeta")).not.toBeInTheDocument();
+    unmount();
+
+    // "Todas" después de `no:carpeta` limpia todo filtro de carpeta (barra vacía).
+    renderMonthlyExpensesTable(rows, { expenseFolders });
+    user = await typeQuery("no:carpeta");
+    await user.click(screen.getByRole("button", { name: /^Todas/ }));
+
+    bar = screen.getByRole("combobox", { name: "Filtro unificado de gastos" });
+    await waitFor(() => {
+      expect(bar).toHaveValue("");
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    expect(screen.getByText("SinCarpeta")).toBeInTheDocument();
+  });
+
   it("shows the filtered-empty message when a column-less filter removes all rows", async () => {
     renderMonthlyExpensesTable([
       createRow({ description: "SinLink", id: "expense-1", paymentLink: "" }),

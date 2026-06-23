@@ -712,8 +712,14 @@ export function DataTable<TData, TValue>({
       }
 
       const parsedQuery = parseFilterQuery(filterQueryDraft, queryFilterConfig);
+      // Limpia TODO filtro que apunte a la key de carpeta —tanto `carpeta:<id>`
+      // (kind "folder") como la presencia `tiene:carpeta`/`no:carpeta`—, para que
+      // el chip sea la única fuente de verdad y no queden filtros contradictorios
+      // (p. ej. `no:carpeta` + `carpeta:hogar`, que oculta todas las filas).
       const nonFolderFilters = parsedQuery.appliedFilters.filter(
-        (appliedFilter) => appliedFilter.value.kind !== "folder",
+        (appliedFilter) =>
+          appliedFilter.value.kind !== "folder" &&
+          appliedFilter.key !== folderQualifierKey,
       );
       const nextAppliedFilters =
         folderId == null
