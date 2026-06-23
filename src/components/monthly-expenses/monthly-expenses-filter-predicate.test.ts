@@ -282,6 +282,55 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(createRow({ lenderId: "", lenderName: "" }))).toBe(false);
   });
 
+  it("matches a negated vigencia year-month range without emptying the table", () => {
+    // `-vigencia:2026-01..` se rutea por el predicado de dominio; sin matcher la
+    // negación rechazaría todas las filas. Por defecto la vigencia usa startMonth.
+    const excludesFromJan = predicate([
+      {
+        key: "vigencia",
+        negated: true,
+        value: { kind: "yearMonthRange", mode: "from", min: 202601 },
+      },
+    ]);
+
+    // En vigencia (startMonth) anterior al rango: la negación la conserva.
+    expect(excludesFromJan(createRow({ startMonth: "2025-12" }))).toBe(true);
+    // Dentro del rango negado: se excluye.
+    expect(excludesFromJan(createRow({ startMonth: "2026-03" }))).toBe(false);
+  });
+
+  it("uses loanEndMonth for vigencia when the sort mode is endMonth", () => {
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: null,
+      vigenciaSortMode: "endMonth",
+    };
+    const matches = buildMonthlyExpensesQueryPredicate(
+      [{ key: "vigencia", negated: false, value: { kind: "yearMonthRange", mode: "from", min: 202601 } }],
+      context,
+    );
+
+    // La vigencia se mide por el mes de fin, no por el de inicio.
+    expect(matches(createRow({ startMonth: "2025-01", loanEndMonth: "2026-06" }))).toBe(true);
+    expect(matches(createRow({ startMonth: "2026-06", loanEndMonth: "2025-01" }))).toBe(false);
+  });
+
+  it("evaluates vigencia presence from the active sort-mode month", () => {
+    const hasVigencia = predicate([
+      { key: "vigencia", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    // startMonth válido => presente; vacío => ausente.
+    expect(hasVigencia(createRow({ startMonth: "2026-01" }))).toBe(true);
+    expect(hasVigencia(createRow({ startMonth: "" }))).toBe(false);
+
+    const lacksVigenciaByEnd = buildMonthlyExpensesQueryPredicate(
+      [{ key: "vigencia", negated: false, value: { kind: "presence", value: "noValue" } }],
+      { exchangeRateSnapshot: null, vigenciaSortMode: "endMonth" },
+    );
+    // Con modo endMonth la presencia depende de loanEndMonth.
+    expect(lacksVigenciaByEnd(createRow({ startMonth: "2026-01", loanEndMonth: "" }))).toBe(true);
+    expect(lacksVigenciaByEnd(createRow({ loanEndMonth: "2026-01" }))).toBe(false);
+  });
+
   it("ANDs multiple filters of different kinds", () => {
     const matches = predicate([
       { key: "subtotal", negated: false, value: { kind: "numberRange", min: 500 } },
