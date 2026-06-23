@@ -1,6 +1,9 @@
 import type { ExpenseFolderOption } from "./expense-folder-picker";
 import type { LenderOption } from "./lender-picker";
-import { buildMonthlyExpensesFilterQualifiers } from "./monthly-expenses-filter-qualifiers";
+import {
+  buildMonthlyExpensesFilterQualifiers,
+  slugifyLenderName,
+} from "./monthly-expenses-filter-qualifiers";
 import { LOAN_INSTALLMENT_RANGE_COLUMN_ID } from "./monthly-expenses-table-column-ids";
 
 const EXPENSE_FOLDERS: ExpenseFolderOption[] = [
@@ -175,5 +178,35 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
       { label: "Yo debo", slug: "yo-debo", value: "payable" },
       { label: "Me deben", slug: "me-deben", value: "receivable" },
     ]);
+  });
+
+  it("strips single and double quotes from lender slugs to avoid tokenizer issues", () => {
+    // Un prestamista con apóstrofe produciría un slug con `'` que el tokenizer
+    // interpreta como inicio de segmento entrecomillado, invalidando tokens posteriores.
+    expect(slugifyLenderName("O'Connor")).toBe("oconnor");
+    expect(slugifyLenderName('D"Angelo')).toBe("dangelo");
+    expect(slugifyLenderName("Banco O'Brien SA")).toBe("banco-obrien-sa");
+  });
+
+  it("uses textMatch kind for prestamista when the lender catalog is empty", () => {
+    // Si el catálogo de prestamistas falla al cargar o está vacío, el qualifier
+    // debe caer a textMatch para que el usuario igual pueda filtrar por nombre visible.
+    const prestamista = buildMonthlyExpensesFilterQualifiers({
+      expenseFolders: [],
+      lenders: [],
+    }).find((qualifier) => qualifier.key === "prestamista");
+
+    expect(prestamista?.kind).toBe("textMatch");
+    expect(prestamista?.iconName).toBe("user");
+    expect(prestamista?.options).toBeUndefined();
+  });
+
+  it("uses enum kind for prestamista when the lender catalog has entries", () => {
+    // Confirma que la rama enum sigue activa cuando hay lenders cargados.
+    const prestamista = buildQualifiers().find(
+      (qualifier) => qualifier.key === "prestamista",
+    );
+
+    expect(prestamista?.kind).toBe("enum");
   });
 });

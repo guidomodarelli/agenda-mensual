@@ -51,6 +51,17 @@ export function slugifyFolderName(name: string): string {
 }
 
 /**
+ * Convierte el nombre de un prestamista en un slug tipeable de un solo token.
+ * Extiende {@link slugifyFolderName} eliminando también las comillas simples y
+ * dobles: sin esto, un nombre como `O'Connor` produce el slug `o'connor`, que el
+ * tokenizer interpreta como inicio de un segmento entrecomillado y consume el
+ * resto de la query cuando hay tokens adicionales después.
+ */
+export function slugifyLenderName(name: string): string {
+  return slugifyFolderName(name.replace(/['"]/g, ""));
+}
+
+/**
  * Construye opciones (`slug` tipeable → id) para entidades con nombre,
  * desambiguando los slugs de forma ESTABLE por id: cuando varias entidades
  * comparten el slug base, o este colisiona con un slug reservado, se sufija con
@@ -63,9 +74,14 @@ function buildUniqueSlugOptions(
   {
     fallbackSlug,
     reservedSlugs = [],
-  }: { fallbackSlug: string; reservedSlugs?: string[] },
+    slugify = slugifyFolderName,
+  }: {
+    fallbackSlug: string;
+    reservedSlugs?: string[];
+    slugify?: (name: string) => string;
+  },
 ): FilterQualifierOption[] {
-  const toBaseSlug = (name: string): string => slugifyFolderName(name) || fallbackSlug;
+  const toBaseSlug = (name: string): string => slugify(name) || fallbackSlug;
   const baseSlugCounts = new Map<string, number>();
 
   for (const entity of entities) {
@@ -97,7 +113,7 @@ function buildUniqueSlugOptions(
     const collides =
       (baseSlugCounts.get(base) ?? 0) > 1 || reservedSlugs.includes(base);
     const candidate = collides
-      ? `${base}-${slugifyFolderName(entity.id) || entity.id}`
+      ? `${base}-${slugify(entity.id) || entity.id}`
       : base;
 
     return {
@@ -129,7 +145,10 @@ function buildFolderQualifierOptions(
 function buildLenderQualifierOptions(
   lenders: LenderOption[],
 ): FilterQualifierOption[] {
-  return buildUniqueSlugOptions(lenders, { fallbackSlug: "prestamista" });
+  return buildUniqueSlugOptions(lenders, {
+    fallbackSlug: "prestamista",
+    slugify: slugifyLenderName,
+  });
 }
 
 export interface BuildMonthlyExpensesFilterQualifiersOptions {
@@ -167,13 +186,20 @@ export function buildMonthlyExpensesFilterQualifiers({
     { key: "cuotas-restantes", kind: "numberRange", label: "Cuotas restantes" },
     { key: "cuotas-total", kind: "numberRange", label: "Cuotas totales" },
     { key: "link", kind: "textMatch", label: "Link de pago" },
-    {
-      iconName: "user",
-      key: "prestamista",
-      kind: "enum",
-      label: "Prestamista",
-      options: buildLenderQualifierOptions(lenders),
-    },
+    lenders.length > 0
+      ? {
+          iconName: "user",
+          key: "prestamista",
+          kind: "enum",
+          label: "Prestamista",
+          options: buildLenderQualifierOptions(lenders),
+        }
+      : {
+          iconName: "user",
+          key: "prestamista",
+          kind: "textMatch",
+          label: "Prestamista",
+        },
     {
       columnId: "lenderName",
       key: "direccion",
