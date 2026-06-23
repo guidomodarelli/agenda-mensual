@@ -386,6 +386,65 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByText("Gasto grande")).toBeInTheDocument();
   }, ADVANCED_FILTERS_TEST_TIMEOUT_MS);
 
+  // Regresión: la entrada de Vigencia (LOAN_INSTALLMENT_RANGE_COLUMN_ID) se había
+  // caído del config de filtros avanzados, dejando el filtro de rango de meses de
+  // Vigencia inalcanzable desde el diálogo aunque la columna lo siga soportando.
+  it("exposes the Vigencia year-month range in the advanced filters dialog", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo viejo",
+              id: "expense-1",
+              loan: {
+                endMonth: "2026-12",
+                installmentCount: 12,
+                paidInstallments: 3,
+                startMonth: "2025-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo nuevo",
+              id: "expense-2",
+              loan: {
+                endMonth: "2027-12",
+                installmentCount: 12,
+                paidInstallments: 1,
+                startMonth: "2026-08",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 200,
+              total: 200,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
+    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
+    await user.click(screen.getByRole("option", { name: "Desde" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
+      "06/2026",
+    );
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    expect(screen.queryByText("Prestamo viejo")).not.toBeInTheDocument();
+    expect(screen.getByText("Prestamo nuevo")).toBeInTheDocument();
+    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
+  }, ADVANCED_FILTERS_TEST_TIMEOUT_MS);
+
   it("allows selecting and deselecting all hideable columns from the selector", async () => {
     const user = userEvent.setup();
 

@@ -297,6 +297,11 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
     label: "Dirección",
     type: "enum",
   },
+  {
+    columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+    label: "Vigencia",
+    type: "yearMonthRange",
+  },
 ];
 
 const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
