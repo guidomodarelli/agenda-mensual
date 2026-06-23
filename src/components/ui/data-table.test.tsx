@@ -517,4 +517,65 @@ describe("DataTable", () => {
 
     expect(onAppliedFiltersChange).toHaveBeenLastCalledWith([]);
   });
+
+  it("keeps a folder filter selected when its folder is renamed", async () => {
+    const user = userEvent.setup();
+    const onAppliedFiltersChange = jest.fn();
+
+    function QueryHarness() {
+      // El renombrado cambia el slug visible de la opción pero conserva el mismo
+      // `folderId`, replicando una edición de catálogo de carpetas.
+      const [folderSlug, setFolderSlug] = useState("hogar");
+
+      return (
+        <>
+          <button onClick={() => setFolderSlug("casa")} type="button">
+            Renombrar carpeta
+          </button>
+          <DataTable
+            columns={[{ accessorKey: "label", filterFn: () => true, header: "L" }]}
+            data={[{ label: "Item" }]}
+            emptyMessage="Sin datos"
+            onAppliedFiltersChange={onAppliedFiltersChange}
+            queryFilterConfig={[
+              { key: "", kind: "text", label: "Descripción" },
+              {
+                key: "carpeta",
+                kind: "folder" as const,
+                label: "Carpeta",
+                options: [
+                  { label: "Hogar", slug: folderSlug, value: "folder-1" },
+                ],
+              },
+            ]}
+            queryFilterLabel="Filtro unificado"
+          />
+        </>
+      );
+    }
+
+    render(<QueryHarness />);
+
+    await user.click(screen.getByRole("combobox", { name: "Filtro unificado" }));
+    await user.type(
+      screen.getByRole("combobox", { name: "Filtro unificado" }),
+      "carpeta:hogar",
+    );
+
+    expect(onAppliedFiltersChange).toHaveBeenLastCalledWith([
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-1" } },
+    ]);
+
+    // Al renombrar la carpeta, el slug serializado cambia, pero el filtro
+    // id-backed (mismo `folderId`) debe sobrevivir y no quedar huérfano.
+    onAppliedFiltersChange.mockClear();
+    await user.click(screen.getByRole("button", { name: "Renombrar carpeta" }));
+
+    expect(onAppliedFiltersChange).toHaveBeenLastCalledWith([
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-1" } },
+    ]);
+    expect(
+      screen.getByRole("combobox", { name: "Filtro unificado" }),
+    ).toHaveValue("carpeta:casa");
+  });
 });

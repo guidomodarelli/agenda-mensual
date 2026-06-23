@@ -504,20 +504,75 @@ export function DataTable<TData, TValue>({
     ],
   );
 
-  // Si la config de qualifiers cambia (p. ej. se borra una carpeta y desaparece
-  // su opción `carpeta:<id>`), se re-parsea la query actual contra la nueva
-  // config y se re-propaga: así un filtro que quedó huérfano se descarta del
-  // predicado en vez de seguir filtrando de forma invisible.
+  // Forma canónica de los filtros activos, para reflejarlos en la barra de query.
+  // Se serializa desde los filtros aplicados id-backed (no desde el texto de la
+  // barra), de modo que un filtro de carpeta apunte siempre por `folderId`: si la
+  // carpeta se renombra, su slug se re-deriva del nombre nuevo; si desaparece, el
+  // filtro se descarta. Definida antes del efecto de reparse para que este pueda
+  // re-propagar la forma id-backed cuando cambia la config.
+  const canonicalQueryFromFilters = React.useMemo(() => {
+    if (!queryFilterConfig) {
+      return "";
+    }
+
+    return serializeFilterQuery(
+      {
+        advancedFiltersByColumn: advancedFiltersAppliedByColumn,
+        appliedFilters: appliedFiltersDraft,
+        descriptionFilter: tableFilterValue,
+        excludedDescriptionFilters: resolvedExcludeFilterValues,
+        invalidTokens: [],
+      },
+      queryFilterConfig,
+    );
+  }, [
+    advancedFiltersAppliedByColumn,
+    appliedFiltersDraft,
+    queryFilterConfig,
+    resolvedExcludeFilterValues,
+    tableFilterValue,
+  ]);
+
+  // Firma estructural de la config de qualifiers: dispara la reconciliación solo
+  // cuando su CONTENIDO cambia (no en cada render con una referencia de array
+  // nueva), evitando re-propagar la forma canónica mientras el usuario tipea.
+  const queryFilterConfigSignature = React.useMemo(
+    () => (queryFilterConfig ? JSON.stringify(queryFilterConfig) : ""),
+    [queryFilterConfig],
+  );
+  const previousQueryFilterConfigSignatureRef = React.useRef<string | null>(null);
+
+  // Si la config de qualifiers cambia (p. ej. se renombra una carpeta y su opción
+  // pasa de `carpeta:hogar` a `carpeta:casa`, o se borra y desaparece), se
+  // re-propaga la forma canónica id-backed contra la NUEVA config en vez de
+  // re-parsear el texto con el slug viejo. Así un filtro de carpeta seleccionado
+  // sobrevive a renames y colisiones de slug (se vuelve a serializar por
+  // `folderId`), mientras que un filtro realmente huérfano (cuyo `folderId` ya no
+  // existe) se descarta del predicado en vez de seguir filtrando de forma
+  // invisible.
   React.useEffect(() => {
-    if (!queryFilterConfig || !filterQueryDraft) {
+    const previousSignature = previousQueryFilterConfigSignatureRef.current;
+    previousQueryFilterConfigSignatureRef.current = queryFilterConfigSignature;
+
+    // Primer render o config sin contenido: nada que reconciliar todavía.
+    if (previousSignature === null) {
       return;
     }
 
-    handleQueryFilterChange(filterQueryDraft);
-    // Solo debe re-correr cuando cambia la config; `filterQueryDraft` se lee como
-    // valor actual y no como disparador para no re-parsear en cada tecla.
+    if (
+      !queryFilterConfig ||
+      !filterQueryDraft ||
+      previousSignature === queryFilterConfigSignature
+    ) {
+      return;
+    }
+
+    handleQueryFilterChange(canonicalQueryFromFilters);
+    // Solo debe re-correr cuando cambia el contenido de la config; el resto de los
+    // valores se leen como estado actual y no como disparadores para no re-parsear
+    // en cada tecla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryFilterConfig]);
+  }, [queryFilterConfigSignature]);
 
   // Reemplaza los filtros de carpeta de la barra por un único `carpeta:<id>` (o
   // ninguno si `folderId` es `null`), preservando el resto. Lo usa el consumidor
@@ -768,30 +823,6 @@ export function DataTable<TData, TValue>({
 
     filterColumn.setFilterValue(tableFilterValue);
   }, [filterColumn, tableFilterValue]);
-
-  // Forma canónica de los filtros activos, para reflejarlos en la barra de query.
-  const canonicalQueryFromFilters = React.useMemo(() => {
-    if (!queryFilterConfig) {
-      return "";
-    }
-
-    return serializeFilterQuery(
-      {
-        advancedFiltersByColumn: advancedFiltersAppliedByColumn,
-        appliedFilters: appliedFiltersDraft,
-        descriptionFilter: tableFilterValue,
-        excludedDescriptionFilters: resolvedExcludeFilterValues,
-        invalidTokens: [],
-      },
-      queryFilterConfig,
-    );
-  }, [
-    advancedFiltersAppliedByColumn,
-    appliedFiltersDraft,
-    queryFilterConfig,
-    resolvedExcludeFilterValues,
-    tableFilterValue,
-  ]);
 
   // Mientras la barra está enfocada, el usuario es la fuente de verdad y no se
   // pisa su texto; al perder el foco (o al editar los controles clásicos) la
