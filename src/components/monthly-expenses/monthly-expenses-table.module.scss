@@ -1356,6 +1356,23 @@
     border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   }
 
+  /* Total: el monto se agrupa a la derecha junto al menú de opciones, en vez de
+     quedar pegado al label «TOTAL» con el kebab lejos al otro extremo. */
+  .tableWrapper .totalCell {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .tableWrapper .totalSummary {
+    flex: 0 1 auto;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .tableWrapper .subtotalTrailing {
+    margin-left: 0;
+  }
+
   /* Header de la card = checkbox + descripción en la misma línea, sticky en el
      tope (debajo de la barra del shell) mientras se scrollea la card. */
   .tableWrapper .selectionTableCell,
