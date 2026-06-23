@@ -21,11 +21,11 @@ export const PRESENCE_TRUE_SLUG = "si";
 export const PRESENCE_FALSE_SLUG = "no";
 
 /**
- * Meta-claves estilo GitHub para filtrar por presencia/ausencia de CUALQUIER
- * campo: `tiene:<campo>` (el campo tiene valor) y `no:<campo>` (el campo está
- * vacío). El valor del token es la clave del qualifier destino (p. ej.
- * `tiene:enviados`, `no:carpeta`). Unifican la presencia de todos los kinds en
- * una sola sintaxis, en vez de un `<campo>:si/no` por qualifier.
+ * GitHub-style meta-keys to filter by presence/absence of ANY field:
+ * `tiene:<field>` (the field has a value) and `no:<field>` (the field is empty).
+ * The token value is the key of the target qualifier (e.g. `tiene:enviados`,
+ * `no:carpeta`). They unify presence across every kind into a single syntax,
+ * instead of a `<field>:si/no` per qualifier.
  */
 export const PRESENCE_HAS_META_KEY = "tiene";
 export const PRESENCE_NO_META_KEY = "no";
@@ -108,9 +108,9 @@ export interface FilterQualifierConfig {
   /** Valores sugeridos para enum/presence. */
   options?: FilterQualifierOption[];
   /**
-   * Nombre lógico del icono a mostrar en la barra (UI-agnóstico; la barra lo
-   * mapea a un componente). Ej.: `"user"` para prestamistas. Si se omite, la
-   * barra usa el icono por defecto según el `kind`.
+   * Logical name of the icon to show in the bar (UI-agnostic; the bar maps it
+   * to a component). E.g. `"user"` for lenders. When omitted, the bar uses the
+   * default icon for the `kind`.
    */
   iconName?: string;
 }
@@ -284,10 +284,10 @@ function buildToken(
   startIndex: number,
   endIndex: number,
 ): FilterQueryToken {
-  // Un `-` inicial marca exclusión, incluso si es el único carácter: así, al
-  // empezar una exclusión desde la barra (`-`), el token ya está en modo negado
-  // y el autocompletado puede ofrecer los campos a excluir. Un `-` suelto se
-  // ignora al parsear (valor vacío), no filtra nada.
+  // A leading `-` marks exclusion, even when it is the only character: this way,
+  // when starting an exclusion from the bar (`-`), the token is already negated
+  // and autocompletion can offer the fields to exclude. A lone `-` is ignored
+  // when parsing (empty value) and filters nothing.
   const negated = raw.startsWith("-");
   const remainder = negated ? raw.slice(1) : raw;
   const colonIndex = findKeyColonIndex(remainder);
@@ -443,8 +443,8 @@ function parseYearMonthRangeValue(
     return { kind: "yearMonthRange", mode: "hasValue" };
   }
 
-  // Comparadores `>=`/`>` (desde) y `<=`/`<` (hasta), análogos a los numéricos,
-  // para poder acotar fechas con un solo extremo sin escribir un rango `A..`.
+  // Comparators `>=`/`>` (from) and `<=`/`<` (to), analogous to the numeric
+  // ones, to bound dates with a single endpoint without writing an `A..` range.
   if (normalized.startsWith(">=") || normalized.startsWith(">")) {
     const min = parseYearMonthSlug(normalized.replace(/^>=?/, ""));
     return min == null ? null : { kind: "yearMonthRange", min, mode: "from" };
@@ -509,7 +509,7 @@ function buildColumnFilterValue(
   }
 
   if (config.kind === "enum") {
-    // Se tolera un `@` inicial al estilo "mención" (p. ej. `prestamista:@vero`).
+    // A leading `@` mention-style prefix is tolerated (e.g. `prestamista:@vero`).
     const normalized = normalizeFilterSlug(value).replace(/^@/, "");
     const option = (config.options ?? []).find(
       (candidate) => normalizeFilterSlug(candidate.slug) === normalized,
@@ -536,10 +536,10 @@ function buildColumnFilterValue(
 }
 
 /**
- * Parsea el valor de un qualifier de texto (`textMatch`) con sintaxis glob.
- * Acepta presencia (`si`/`no`) y comodines `*`: `texto*` empieza por, `*texto`
- * termina con, `*texto*` contiene y `texto` (sin comodín) es igualdad exacta. El
- * texto se normaliza (sin acentos, minúsculas) para comparar case/acento-insensible.
+ * Parses the value of a text qualifier (`textMatch`) with glob syntax. Accepts
+ * presence (`si`/`no`) and `*` wildcards: `text*` starts with, `*text` ends
+ * with, `*text*` contains, and `text` (no wildcard) is exact equality. The text
+ * is normalized (no accents, lowercase) to compare case/accent-insensitively.
  */
 export function parseTextMatchValue(value: string): TextMatchFilterValue | null {
   const trimmed = value.trim();
@@ -757,9 +757,9 @@ export function parseFilterQuery(
     if (token.hasColon && token.rawKey) {
       const normalizedKey = normalizeFilterSlug(token.rawKey);
 
-      // Meta-claves de presencia (`tiene:<campo>` / `no:<campo>`): el valor es la
-      // clave del campo destino. Producen un filtro de presencia que el predicado
-      // de dominio evalúa por campo; no pasan por el path de columnas.
+      // Presence meta-keys (`tiene:<field>` / `no:<field>`): the value is the
+      // key of the target field. They produce a presence filter that the domain
+      // predicate evaluates per field; they do not go through the column path.
       if (
         normalizedKey === PRESENCE_HAS_META_KEY ||
         normalizedKey === PRESENCE_NO_META_KEY
@@ -777,8 +777,8 @@ export function parseFilterQuery(
           continue;
         }
 
-        // La negación del token (`-tiene:x`) invierte el sentido, dejando un
-        // único filtro de presencia canónico (sin negación residual).
+        // Token negation (`-tiene:x`) flips the meaning, leaving a single
+        // canonical presence filter (without residual negation).
         const hasValue =
           (normalizedKey === PRESENCE_HAS_META_KEY) !== token.negated;
 
@@ -865,16 +865,17 @@ export function parseFilterQuery(
           continue;
         }
 
-        // enum/presence (no rango) o negados: se agregan sin mergear. Los no
-        // negados con columna se proyectan al path clásico de TanStack.
+        // enum/presence (not range) or negated: added without merging. The
+        // non-negated ones with a column are projected to the classic TanStack
+        // path.
         appliedFilters.push({
           key: config.key,
           negated: token.negated,
           value: filterValue,
         });
 
-        // La presencia (`<campo>:si/no`) se unifica con las meta-claves y la
-        // resuelve el predicado de dominio, así que nunca se proyecta a columna.
+        // Presence (`<field>:si/no`) is unified with the meta-keys and resolved
+        // by the domain predicate, so it is never projected to a column.
         if (
           !token.negated &&
           config.columnId &&
@@ -1034,7 +1035,7 @@ function serializeAppliedFilterValue(
     return serializeFolderValue(config, value);
   }
 
-  // Presencia: forma canónica con meta-claves (`tiene:<campo>` / `no:<campo>`).
+  // Presence: canonical form with meta-keys (`tiene:<field>` / `no:<field>`).
   const metaKey =
     value.value === "hasValue" ? PRESENCE_HAS_META_KEY : PRESENCE_NO_META_KEY;
 
@@ -1042,21 +1043,36 @@ function serializeAppliedFilterValue(
 }
 
 /**
- * `true` cuando el filtro ya queda cubierto por la serialización clásica desde
- * `advancedFiltersByColumn` (no negado, con columna y de kind de columna), para
- * no serializarlo dos veces al recorrer también `appliedFilters`.
+ * `true` when the filter is already emitted by the classic serialization from
+ * `advancedFiltersByColumn` (not negated, with a column, and of a column kind),
+ * so it is not serialized twice while also iterating `appliedFilters`.
+ *
+ * `textMatch` and `folder` never live in the column map, so they are never
+ * covered. Presence is special: parsing keeps it only in `appliedFilters`, but a
+ * consumer (the advanced dialog) may also place it in the column map. It counts
+ * as covered only when that same column actually holds a value, so a presence
+ * that lives solely in `appliedFilters` is still serialized once and one that
+ * lives in both is not duplicated.
  */
 function isCoveredByColumnSerialization(
   appliedFilter: AppliedFilter,
   config: FilterQualifierConfig,
+  advancedFiltersByColumn: Record<string, DataTableColumnFilterValue>,
 ): boolean {
-  return (
-    !appliedFilter.negated &&
-    config.columnId != null &&
-    appliedFilter.value.kind !== "textMatch" &&
-    appliedFilter.value.kind !== "folder" &&
-    appliedFilter.value.kind !== "presence"
-  );
+  if (
+    appliedFilter.negated ||
+    config.columnId == null ||
+    appliedFilter.value.kind === "textMatch" ||
+    appliedFilter.value.kind === "folder"
+  ) {
+    return false;
+  }
+
+  if (appliedFilter.value.kind === "presence") {
+    return advancedFiltersByColumn[config.columnId] != null;
+  }
+
+  return true;
 }
 
 /** Reconstruye una query canónica a partir de un resultado parseado. */
@@ -1074,8 +1090,8 @@ export function serializeFilterQuery(
     segments.push(serializeDescriptionFilter(descriptionFilter));
   }
 
-  // Filtros clásicos por columna (orden de config), para compatibilidad con
-  // consumidores que construyen el parsed solo con `advancedFiltersByColumn`.
+  // Classic per-column filters (config order), for compatibility with consumers
+  // that build the parsed result only from `advancedFiltersByColumn`.
   for (const config of configs) {
     if (!config.columnId) {
       continue;
@@ -1094,12 +1110,19 @@ export function serializeFilterQuery(
     }
   }
 
-  // Extras que el path por columna no cubre: negados, textMatch, folder y
-  // qualifiers sin columna.
+  // Extras the column path does not cover: negated, textMatch, folder, and
+  // qualifiers without a column.
   for (const appliedFilter of parsed.appliedFilters ?? []) {
     const config = configsByKey.get(normalizeFilterSlug(appliedFilter.key));
 
-    if (!config || isCoveredByColumnSerialization(appliedFilter, config)) {
+    if (
+      !config ||
+      isCoveredByColumnSerialization(
+        appliedFilter,
+        config,
+        parsed.advancedFiltersByColumn,
+      )
+    ) {
       continue;
     }
 
@@ -1121,18 +1144,18 @@ export function serializeFilterQuery(
   return segments.join(" ");
 }
 
-/** Rango de caracteres (en la query) de un valor a resaltar. */
+/** Character range (within the query) of a value to highlight. */
 export interface ValueHighlightRange {
   start: number;
   end: number;
 }
 
 /**
- * Devuelve los rangos de caracteres de los VALORES (lo que va después del `:`)
- * que son válidos para su qualifier, para resaltarlos en la barra. Un valor
- * inválido, desconocido o incompleto no produce rango (no se resalta). Cubre las
- * meta-claves de presencia (`tiene:`/`no:` con un campo existente) y los
- * qualifiers normales (valor parseable según su kind: enum, rango, texto, etc.).
+ * Returns the character ranges of the VALUES (whatever comes after the `:`) that
+ * are valid for their qualifier, to highlight them in the bar. An invalid,
+ * unknown, or incomplete value produces no range (no highlight). Covers the
+ * presence meta-keys (`tiene:`/`no:` with an existing field) and the normal
+ * qualifiers (value parseable per its kind: enum, range, text, etc.).
  */
 export function getValueHighlightRanges(
   query: string,
@@ -1156,7 +1179,7 @@ export function getValueHighlightRanges(
 
     const valueStart = token.startIndex + negationOffset + colonIndex + 1;
 
-    // Sin valor todavía (`clave:`): nada para resaltar.
+    // No value yet (`key:`): nothing to highlight.
     if (valueStart >= token.endIndex) {
       continue;
     }
@@ -1169,7 +1192,7 @@ export function getValueHighlightRanges(
       normalizedKey === PRESENCE_HAS_META_KEY ||
       normalizedKey === PRESENCE_NO_META_KEY
     ) {
-      // El valor de una meta-clave es la clave de un campo existente.
+      // A meta-key's value is the key of an existing field.
       isValid = lookup.has(normalizeFilterSlug(rawValue));
     } else {
       const config = lookup.get(normalizedKey);
@@ -1201,9 +1224,9 @@ export interface ActiveFilterToken {
   replaceStart: number;
   replaceEnd: number;
   /**
-   * Inicio del token completo (incluyendo `-` y la clave). Permite reemplazar el
-   * token entero al insertar una meta-clave (`tiene:<campo>`) o una exclusión
-   * (`-<campo>:`), no solo el tramo del valor.
+   * Start of the whole token (including `-` and the key). Allows replacing the
+   * entire token when inserting a meta-key (`tiene:<field>`) or an exclusion
+   * (`-<field>:`), not just the value segment.
    */
   tokenStart: number;
 }

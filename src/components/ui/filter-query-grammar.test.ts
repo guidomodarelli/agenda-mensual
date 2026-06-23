@@ -444,6 +444,26 @@ describe("serializeFilterQuery", () => {
     ).toBe(serialized);
   });
 
+  it("does not duplicate a presence filter held by both the column map and applied filters", () => {
+    const parsed = {
+      advancedFiltersByColumn: {
+        loanProgress: { kind: "presence", value: "hasValue" } as const,
+      },
+      appliedFilters: [
+        {
+          key: "deuda",
+          negated: false,
+          value: { kind: "presence", value: "hasValue" } as const,
+        },
+      ],
+      descriptionFilter: "",
+      excludedDescriptionFilters: [],
+      invalidTokens: [],
+    };
+
+    expect(serializeFilterQuery(parsed, CONFIGS)).toBe("tiene:deuda");
+  });
+
   it("quotes free-text description words that look like qualifiers (lossless)", () => {
     const parsed = {
       advancedFiltersByColumn: {},
