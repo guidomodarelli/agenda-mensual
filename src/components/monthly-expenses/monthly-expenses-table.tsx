@@ -101,6 +101,7 @@ import {
   ExpenseFolderFilterBar,
   ExpenseFolderRowBadge,
 } from "./expense-folder-organizer";
+import { UNASSIGNED_EXPENSE_FOLDER_FILTER_ID } from "./expense-folder-visuals";
 import {
   formatReceiptSharePhoneDisplay,
   normalizeReceiptSharePhoneDigits,
@@ -947,13 +948,26 @@ export function MonthlyExpensesTable({
     const excluded = new Set<string>();
 
     for (const appliedFilter of queryAppliedFilters) {
-      if (appliedFilter.value.kind !== "folder") {
+      if (appliedFilter.value.kind === "folder") {
+        (appliedFilter.negated ? excluded : included).add(
+          appliedFilter.value.folderId,
+        );
         continue;
       }
 
-      (appliedFilter.negated ? excluded : included).add(
-        appliedFilter.value.folderId,
-      );
+      // `no:carpeta` / `tiene:carpeta` → reflect on the "Sin carpeta" chip.
+      if (
+        appliedFilter.key === "carpeta" &&
+        appliedFilter.value.kind === "presence"
+      ) {
+        if (appliedFilter.value.value === "noValue") {
+          // no:carpeta — only rows without a folder are shown → select "Sin carpeta".
+          included.add(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID);
+        } else {
+          // tiene:carpeta — rows with a folder are shown → exclude "Sin carpeta".
+          excluded.add(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID);
+        }
+      }
     }
 
     return { excluded, included };
