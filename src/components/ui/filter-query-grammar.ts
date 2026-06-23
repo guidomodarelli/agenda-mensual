@@ -589,7 +589,10 @@ export function parseFolderValue(
   config: FilterQualifierConfig,
   value: string,
 ): FolderFilterValue | null {
-  const normalized = normalizeFilterSlug(value);
+  // Se tolera un `@` inicial al estilo "mención" (p. ej. `carpeta:@hogar`),
+  // igual que el parser de enum, para que completar el token tipeando/Enter
+  // coincida con la sugerencia que filtra strip-eando ese `@`.
+  const normalized = normalizeFilterSlug(value).replace(/^@/, "");
 
   if (!normalized) {
     return null;

@@ -374,6 +374,12 @@ describe("parseFilterQuery", () => {
     ]);
   });
 
+  it("tolerates a leading @ on folder values (mention style)", () => {
+    expect(parseFilterQuery("carpeta:@hogar", CONFIGS).appliedFilters).toEqual([
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-1" } },
+    ]);
+  });
+
   it("reports unknown folder slugs as invalid values", () => {
     const parsed = parseFilterQuery("carpeta:noexiste", CONFIGS);
 
