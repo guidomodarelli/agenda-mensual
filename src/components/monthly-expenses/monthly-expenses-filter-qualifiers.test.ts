@@ -1,6 +1,7 @@
 import type { ExpenseFolderOption } from "./expense-folder-picker";
 import type { LenderOption } from "./lender-picker";
 import { buildMonthlyExpensesFilterQualifiers } from "./monthly-expenses-filter-qualifiers";
+import { LOAN_INSTALLMENT_RANGE_COLUMN_ID } from "./monthly-expenses-table-column-ids";
 
 const EXPENSE_FOLDERS: ExpenseFolderOption[] = [
   { color: "blue", icon: "home", id: "folder-1", name: "Hogar" },
@@ -49,10 +50,21 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
       "deuda",
       "inicio",
       "fin",
+      "vigencia",
       "carpeta",
     ]) {
       expect(keys).toContain(key);
     }
+  });
+
+  it("registers vigencia as a column-backed year-month range qualifier", () => {
+    const vigencia = buildQualifiers().find(
+      (qualifier) => qualifier.key === "vigencia",
+    );
+
+    expect(vigencia?.kind).toBe("yearMonthRange");
+    expect(vigencia?.label).toBe("Vigencia");
+    expect(vigencia?.columnId).toBe(LOAN_INSTALLMENT_RANGE_COLUMN_ID);
   });
 
   it("uses the right kinds for the new text and folder qualifiers", () => {

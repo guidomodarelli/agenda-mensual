@@ -658,6 +658,33 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
     expect(screen.getByText("ConLink")).toBeInTheDocument();
   });
 
+  it("filters loan rows by the combined vigencia year-month range from the bar", async () => {
+    // La columna Vigencia usa el modo de orden por defecto (startMonth).
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "VigenciaVieja",
+        id: "expense-1",
+        isLoan: true,
+        loanEndMonth: "2025-12",
+        startMonth: "2025-01",
+      }),
+      createRow({
+        description: "VigenciaNueva",
+        id: "expense-2",
+        isLoan: true,
+        loanEndMonth: "2027-02",
+        startMonth: "2026-08",
+      }),
+    ]);
+
+    await typeQuery("vigencia:2026-06..2026-12");
+
+    await waitFor(() => {
+      expect(screen.queryByText("VigenciaVieja")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("VigenciaNueva")).toBeInTheDocument();
+  });
+
   it("includes and excludes folders from the bar", async () => {
     const expenseFolders = [
       { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },

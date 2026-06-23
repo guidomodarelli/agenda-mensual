@@ -7,7 +7,10 @@ import {
 
 import type { ExpenseFolderOption } from "./expense-folder-picker";
 import type { LenderOption } from "./lender-picker";
-import { LOAN_SORT_COLUMN_ID } from "./monthly-expenses-table-column-ids";
+import {
+  LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+  LOAN_SORT_COLUMN_ID,
+} from "./monthly-expenses-table-column-ids";
 
 /**
  * Catálogo completo de qualifiers de la barra unificada estilo GitHub para la
@@ -187,6 +190,12 @@ export function buildMonthlyExpensesFilterQualifiers({
     { key: "inicio", kind: "yearMonthRange", label: "Inicio de cuota" },
     { key: "fin", kind: "yearMonthRange", label: "Fin de cuota" },
     {
+      columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
+      key: "vigencia",
+      kind: "yearMonthRange",
+      label: "Vigencia",
+    },
+    {
       key: "carpeta",
       kind: "folder",
       label: "Carpeta",
@@ -203,4 +212,5 @@ export const COLUMN_BACKED_QUALIFIER_KEYS: ReadonlySet<string> = new Set([
   "registros",
   "direccion",
   "deuda",
+  "vigencia",
 ]);
