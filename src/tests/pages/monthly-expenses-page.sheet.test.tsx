@@ -2459,7 +2459,10 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "PREST");
 
-    const matchingDescription = screen.getByText(
+    // El highlight envuelve la descripción en varios nodos (la celda y el
+    // contenedor interno), así que el textContent exacto matchea más de un
+    // elemento; tomamos el primero solo para ubicar la fila.
+    const [matchingDescription] = screen.getAllByText(
       (_, element) => element?.textContent === "Préstamo tarjeta",
     );
     const matchingRow = matchingDescription.closest("tr");
@@ -2490,7 +2493,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(highlightedText).toBe("Prést");
 
     const clearFilterButton = screen.getByRole("button", {
-      name: "Limpiar filtro",
+      name: "Limpiar todos los filtros",
     });
 
     await user.click(clearFilterButton);
@@ -2500,7 +2503,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Limpiar filtro",
+        name: "Limpiar todos los filtros",
       }),
     ).not.toBeInTheDocument();
   });
@@ -2558,11 +2561,15 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "ipe");
     await user.click(screen.getByRole("button", { name: "Ordenar Pagos" }));
 
+    // El highlight parte la descripción en varios nodos con el mismo textContent;
+    // basta con que exista al menos uno.
     expect(
-      screen.getByText((_, element) => element?.textContent === "Iphone"),
+      screen.getAllByText((_, element) => element?.textContent === "Iphone")[0],
     ).toBeInTheDocument();
     expect(
-      screen.getByText((_, element) => element?.textContent === "Limpieza Doméstica (Yesi)"),
+      screen.getAllByText(
+        (_, element) => element?.textContent === "Limpieza Doméstica (Yesi)",
+      )[0],
     ).toBeInTheDocument();
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Iphone",
@@ -2578,7 +2585,9 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(screen.queryByText("Iphone")).not.toBeInTheDocument();
     expect(
-      screen.getByText((_, element) => element?.textContent === "Limpieza Doméstica (Yesi)"),
+      screen.getAllByText(
+        (_, element) => element?.textContent === "Limpieza Doméstica (Yesi)",
+      )[0],
     ).toBeInTheDocument();
   });
 
@@ -2629,7 +2638,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(screen.getByText("− tarjeta")).toBeInTheDocument();
     expect(
-      screen.getByText((_, element) => element?.textContent === "Préstamo auto"),
+      screen.getAllByText((_, element) => element?.textContent === "Préstamo auto")[0],
     ).toBeInTheDocument();
     expect(screen.queryByText("Préstamo tarjeta")).not.toBeInTheDocument();
 
@@ -2645,7 +2654,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(screen.queryByText("− auto")).not.toBeInTheDocument();
     expect(
-      screen.getByText((_, element) => element?.textContent === "Préstamo auto"),
+      screen.getAllByText((_, element) => element?.textContent === "Préstamo auto")[0],
     ).toBeInTheDocument();
     expect(
       screen.queryByText("No hay resultados para los filtros actuales."),

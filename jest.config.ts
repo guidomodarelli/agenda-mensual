@@ -11,6 +11,10 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
+  // Los tests de integración del expense sheet (Radix Select + userEvent en
+  // jsdom) son pesados y rozan el límite por defecto; un margen mayor evita
+  // timeouts intermitentes bajo carga de workers en paralelo.
+  testTimeout: 20000,
   testEnvironment: "jsdom",
   testPathIgnorePatterns: [
     "<rootDir>/e2e/",
