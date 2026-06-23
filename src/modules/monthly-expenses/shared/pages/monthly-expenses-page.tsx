@@ -1779,7 +1779,6 @@ export default function MonthlyExpensesPage({
     useState<ExpenseFoldersCatalogState>(
       createExpenseFoldersCatalogState(initialExpenseFoldersCatalog),
     );
-  const [folderFilterId, setFolderFilterId] = useState("");
   const [isFoldersManagerOpen, setIsFoldersManagerOpen] = useState(false);
   const [reportState, setReportState] = useState<LoansReportState>(
     createLoansReportState(
@@ -2689,10 +2688,6 @@ export default function MonthlyExpensesPage({
       loading: "Reactivando la recurrencia...",
       success: "Recurrencia reactivada. Vuelve a repetirse todos los meses.",
     });
-  };
-
-  const handleFolderFilterChange = (folderId: string) => {
-    setFolderFilterId(folderId);
   };
 
   const handleOpenFoldersManager = () => {
@@ -4672,10 +4667,8 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    setFolderFilterId((currentFilter) =>
-      currentFilter === folderId ? "" : currentFilter,
-    );
-
+    // El filtro `carpeta:<id>` de la barra que apunte a la carpeta borrada se
+    // descarta solo al re-parsear contra el nuevo catálogo de qualifiers.
     const hasAssignedExpenses = formState.rows.some(
       (row) => row.expenseFolderId === folderId,
     );
@@ -4811,7 +4804,6 @@ export default function MonthlyExpensesPage({
                 exchangeRateLoadError={formState.exchangeRateLoadError}
                 exchangeRateSnapshot={formState.exchangeRateSnapshot}
                 expenseFolders={expenseFoldersState.folders}
-                folderFilterId={folderFilterId}
                 feedbackMessage={feedbackMessage}
                 feedbackErrorCode={formState.errorCode}
                 feedbackTone={feedbackTone}
@@ -4844,7 +4836,6 @@ export default function MonthlyExpensesPage({
                 onEditExpense={handleEditExpense}
                 onExpenseFieldChange={handleExpenseFieldChange}
                 onExpenseFolderSelect={handleExpenseFolderSelect}
-                onFolderFilterChange={handleFolderFilterChange}
                 onManageFolders={handleOpenFoldersManager}
                 onMoveExpenseToFolder={handleMoveExpenseToFolder}
                 onReorderFolders={handleReorderExpenseFolders}

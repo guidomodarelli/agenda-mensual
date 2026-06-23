@@ -20,6 +20,16 @@ export const YEAR_MONTH_HAS_VALUE_SLUG = "con-fechas";
 export const PRESENCE_TRUE_SLUG = "si";
 export const PRESENCE_FALSE_SLUG = "no";
 
+/**
+ * GitHub-style meta-keys to filter by presence/absence of ANY field:
+ * `tiene:<field>` (the field has a value) and `no:<field>` (the field is empty).
+ * The token value is the key of the target qualifier (e.g. `tiene:enviados`,
+ * `no:carpeta`). They unify presence across every kind into a single syntax,
+ * instead of a `<field>:si/no` per qualifier.
+ */
+export const PRESENCE_HAS_META_KEY = "tiene";
+export const PRESENCE_NO_META_KEY = "no";
+
 export type FilterQualifierKind =
   | "text"
   | "numberRange"
@@ -97,6 +107,12 @@ export interface FilterQualifierConfig {
   label: string;
   /** Valores sugeridos para enum/presence. */
   options?: FilterQualifierOption[];
+  /**
+   * Logical name of the icon to show in the bar (UI-agnostic; the bar maps it
+   * to a component). E.g. `"user"` for lenders. When omitted, the bar uses the
+   * default icon for the `kind`.
+   */
+  iconName?: string;
 }
 
 export interface FilterQueryToken {
@@ -268,7 +284,11 @@ function buildToken(
   startIndex: number,
   endIndex: number,
 ): FilterQueryToken {
-  const negated = raw.startsWith("-") && raw.length > 1;
+  // A leading `-` marks exclusion, even when it is the only character: this way,
+  // when starting an exclusion from the bar (`-`), the token is already negated
+  // and autocompletion can offer the fields to exclude. A lone `-` is ignored
+  // when parsing (empty value) and filters nothing.
+  const negated = raw.startsWith("-");
   const remainder = negated ? raw.slice(1) : raw;
   const colonIndex = findKeyColonIndex(remainder);
 
@@ -423,6 +443,18 @@ function parseYearMonthRangeValue(
     return { kind: "yearMonthRange", mode: "hasValue" };
   }
 
+  // Comparators `>=`/`>` (from) and `<=`/`<` (to), analogous to the numeric
+  // ones, to bound dates with a single endpoint without writing an `A..` range.
+  if (normalized.startsWith(">=") || normalized.startsWith(">")) {
+    const min = parseYearMonthSlug(normalized.replace(/^>=?/, ""));
+    return min == null ? null : { kind: "yearMonthRange", min, mode: "from" };
+  }
+
+  if (normalized.startsWith("<=") || normalized.startsWith("<")) {
+    const max = parseYearMonthSlug(normalized.replace(/^<=?/, ""));
+    return max == null ? null : { kind: "yearMonthRange", max, mode: "to" };
+  }
+
   if (normalized.includes(RANGE_SEPARATOR)) {
     const [rawFrom, rawTo] = normalized.split(RANGE_SEPARATOR, 2);
     const hasFrom = rawFrom.trim().length > 0;
@@ -477,7 +509,8 @@ function buildColumnFilterValue(
   }
 
   if (config.kind === "enum") {
-    const normalized = normalizeFilterSlug(value);
+    // A leading `@` mention-style prefix is tolerated (e.g. `prestamista:@vero`).
+    const normalized = normalizeFilterSlug(value).replace(/^@/, "");
     const option = (config.options ?? []).find(
       (candidate) => normalizeFilterSlug(candidate.slug) === normalized,
     );
@@ -503,10 +536,10 @@ function buildColumnFilterValue(
 }
 
 /**
- * Parsea el valor de un qualifier de texto (`textMatch`). Acepta presencia
- * (`si`/`no`), prefijo (`^x`), sufijo (`x$`), igualdad (`=x`) y, por defecto,
- * "contiene" (`x`). El texto se normaliza (sin acentos, minúsculas) para que el
- * matcher compare de forma case/acento-insensible.
+ * Parses the value of a text qualifier (`textMatch`) with glob syntax. Accepts
+ * presence (`si`/`no`) and `*` wildcards: `text*` starts with, `*text` ends
+ * with, `*text*` contains, and `text` (no wildcard) is exact equality. The text
+ * is normalized (no accents, lowercase) to compare case/accent-insensitively.
  */
 export function parseTextMatchValue(value: string): TextMatchFilterValue | null {
   const trimmed = value.trim();
@@ -525,24 +558,27 @@ export function parseTextMatchValue(value: string): TextMatchFilterValue | null 
     return { kind: "textMatch", op: "notHas" };
   }
 
-  if (trimmed.startsWith("=")) {
-    const text = normalizeFilterSlug(trimmed.slice(1));
-    return text ? { kind: "textMatch", op: "equals", text } : null;
+  const startsWithStar = trimmed.startsWith("*");
+  const endsWithStar = trimmed.endsWith("*");
+
+  if (startsWithStar && endsWithStar) {
+    const text = normalizeFilterSlug(trimmed.slice(1, -1));
+    return text ? { kind: "textMatch", op: "contains", text } : null;
   }
 
-  if (trimmed.startsWith("^")) {
-    const text = normalizeFilterSlug(trimmed.slice(1));
+  if (endsWithStar) {
+    const text = normalizeFilterSlug(trimmed.slice(0, -1));
     return text ? { kind: "textMatch", op: "startsWith", text } : null;
   }
 
-  if (trimmed.endsWith("$")) {
-    const text = normalizeFilterSlug(trimmed.slice(0, -1));
+  if (startsWithStar) {
+    const text = normalizeFilterSlug(trimmed.slice(1));
     return text ? { kind: "textMatch", op: "endsWith", text } : null;
   }
 
   const text = normalizeFilterSlug(trimmed);
 
-  return text ? { kind: "textMatch", op: "contains", text } : null;
+  return text ? { kind: "textMatch", op: "equals", text } : null;
 }
 
 /**
@@ -553,7 +589,10 @@ export function parseFolderValue(
   config: FilterQualifierConfig,
   value: string,
 ): FolderFilterValue | null {
-  const normalized = normalizeFilterSlug(value);
+  // Se tolera un `@` inicial al estilo "mención" (p. ej. `carpeta:@hogar`),
+  // igual que el parser de enum, para que completar el token tipeando/Enter
+  // coincida con la sugerencia que filtra strip-eando ese `@`.
+  const normalized = normalizeFilterSlug(value).replace(/^@/, "");
 
   if (!normalized) {
     return null;
@@ -716,7 +755,43 @@ export function parseFilterQuery(
 
   for (const token of tokens) {
     if (token.hasColon && token.rawKey) {
-      const config = lookup.get(normalizeFilterSlug(token.rawKey));
+      const normalizedKey = normalizeFilterSlug(token.rawKey);
+
+      // Presence meta-keys (`tiene:<field>` / `no:<field>`): the value is the
+      // key of the target field. They produce a presence filter that the domain
+      // predicate evaluates per field; they do not go through the column path.
+      if (
+        normalizedKey === PRESENCE_HAS_META_KEY ||
+        normalizedKey === PRESENCE_NO_META_KEY
+      ) {
+        const fieldKey = normalizeFilterSlug(token.value ?? "");
+
+        if (!fieldKey) {
+          continue;
+        }
+
+        const fieldConfig = lookup.get(fieldKey);
+
+        if (!fieldConfig) {
+          invalidTokens.push({ raw: token.raw, reason: "invalidValue" });
+          continue;
+        }
+
+        // Token negation (`-tiene:x`) flips the meaning, leaving a single
+        // canonical presence filter (without residual negation).
+        const hasValue =
+          (normalizedKey === PRESENCE_HAS_META_KEY) !== token.negated;
+
+        appliedFilters.push({
+          key: fieldConfig.key,
+          negated: false,
+          value: { kind: "presence", value: hasValue ? "hasValue" : "noValue" },
+        });
+
+        continue;
+      }
+
+      const config = lookup.get(normalizedKey);
 
       if (!config) {
         invalidTokens.push({ raw: token.raw, reason: "unknownKey" });
@@ -790,15 +865,22 @@ export function parseFilterQuery(
           continue;
         }
 
-        // enum/presence (no rango) o negados: se agregan sin mergear. Los no
-        // negados con columna se proyectan al path clásico de TanStack.
+        // enum/presence (not range) or negated: added without merging. The
+        // non-negated ones with a column are projected to the classic TanStack
+        // path.
         appliedFilters.push({
           key: config.key,
           negated: token.negated,
           value: filterValue,
         });
 
-        if (!token.negated && config.columnId) {
+        // Presence (`<field>:si/no`) is unified with the meta-keys and resolved
+        // by the domain predicate, so it is never projected to a column.
+        if (
+          !token.negated &&
+          config.columnId &&
+          filterValue.kind !== "presence"
+        ) {
           advancedFiltersByColumn[config.columnId] = mergeColumnFilterValue(
             advancedFiltersByColumn[config.columnId],
             filterValue,
@@ -903,12 +985,12 @@ function serializeTextMatch(key: string, value: TextMatchFilterValue): string {
 
   const text = value.text ?? "";
   const decorated =
-    value.op === "equals"
-      ? `=${text}`
-      : value.op === "startsWith"
-        ? `^${text}`
-        : value.op === "endsWith"
-          ? `${text}$`
+    value.op === "startsWith"
+      ? `${text}*`
+      : value.op === "endsWith"
+        ? `*${text}`
+        : value.op === "contains"
+          ? `*${text}*`
           : text;
 
   return `${key}:${quoteTokenIfNeeded(decorated)}`;
@@ -953,24 +1035,44 @@ function serializeAppliedFilterValue(
     return serializeFolderValue(config, value);
   }
 
-  return `${config.key}:${value.value === "hasValue" ? PRESENCE_TRUE_SLUG : PRESENCE_FALSE_SLUG}`;
+  // Presence: canonical form with meta-keys (`tiene:<field>` / `no:<field>`).
+  const metaKey =
+    value.value === "hasValue" ? PRESENCE_HAS_META_KEY : PRESENCE_NO_META_KEY;
+
+  return `${metaKey}:${config.key}`;
 }
 
 /**
- * `true` cuando el filtro ya queda cubierto por la serialización clásica desde
- * `advancedFiltersByColumn` (no negado, con columna y de kind de columna), para
- * no serializarlo dos veces al recorrer también `appliedFilters`.
+ * `true` when the filter is already emitted by the classic serialization from
+ * `advancedFiltersByColumn` (not negated, with a column, and of a column kind),
+ * so it is not serialized twice while also iterating `appliedFilters`.
+ *
+ * `textMatch` and `folder` never live in the column map, so they are never
+ * covered. Presence is special: parsing keeps it only in `appliedFilters`, but a
+ * consumer (the advanced dialog) may also place it in the column map. It counts
+ * as covered only when that same column actually holds a value, so a presence
+ * that lives solely in `appliedFilters` is still serialized once and one that
+ * lives in both is not duplicated.
  */
 function isCoveredByColumnSerialization(
   appliedFilter: AppliedFilter,
   config: FilterQualifierConfig,
+  advancedFiltersByColumn: Record<string, DataTableColumnFilterValue>,
 ): boolean {
-  return (
-    !appliedFilter.negated &&
-    config.columnId != null &&
-    appliedFilter.value.kind !== "textMatch" &&
-    appliedFilter.value.kind !== "folder"
-  );
+  if (
+    appliedFilter.negated ||
+    config.columnId == null ||
+    appliedFilter.value.kind === "textMatch" ||
+    appliedFilter.value.kind === "folder"
+  ) {
+    return false;
+  }
+
+  if (appliedFilter.value.kind === "presence") {
+    return advancedFiltersByColumn[config.columnId] != null;
+  }
+
+  return true;
 }
 
 /** Reconstruye una query canónica a partir de un resultado parseado. */
@@ -988,8 +1090,8 @@ export function serializeFilterQuery(
     segments.push(serializeDescriptionFilter(descriptionFilter));
   }
 
-  // Filtros clásicos por columna (orden de config), para compatibilidad con
-  // consumidores que construyen el parsed solo con `advancedFiltersByColumn`.
+  // Classic per-column filters (config order), for compatibility with consumers
+  // that build the parsed result only from `advancedFiltersByColumn`.
   for (const config of configs) {
     if (!config.columnId) {
       continue;
@@ -1008,12 +1110,19 @@ export function serializeFilterQuery(
     }
   }
 
-  // Extras que el path por columna no cubre: negados, textMatch, folder y
-  // qualifiers sin columna.
+  // Extras the column path does not cover: negated, textMatch, folder, and
+  // qualifiers without a column.
   for (const appliedFilter of parsed.appliedFilters ?? []) {
     const config = configsByKey.get(normalizeFilterSlug(appliedFilter.key));
 
-    if (!config || isCoveredByColumnSerialization(appliedFilter, config)) {
+    if (
+      !config ||
+      isCoveredByColumnSerialization(
+        appliedFilter,
+        config,
+        parsed.advancedFiltersByColumn,
+      )
+    ) {
       continue;
     }
 
@@ -1035,6 +1144,70 @@ export function serializeFilterQuery(
   return segments.join(" ");
 }
 
+/** Character range (within the query) of a value to highlight. */
+export interface ValueHighlightRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * Returns the character ranges of the VALUES (whatever comes after the `:`) that
+ * are valid for their qualifier, to highlight them in the bar. An invalid,
+ * unknown, or incomplete value produces no range (no highlight). Covers the
+ * presence meta-keys (`tiene:`/`no:` with an existing field) and the normal
+ * qualifiers (value parseable per its kind: enum, range, text, etc.).
+ */
+export function getValueHighlightRanges(
+  query: string,
+  configs: FilterQualifierConfig[],
+): ValueHighlightRange[] {
+  const tokens = tokenizeFilterQuery(query);
+  const lookup = buildQualifierLookup(configs);
+  const ranges: ValueHighlightRange[] = [];
+
+  for (const token of tokens) {
+    if (!token.hasColon || !token.rawKey) {
+      continue;
+    }
+
+    const negationOffset = token.negated ? 1 : 0;
+    const colonIndex = findKeyColonIndex(token.raw.slice(negationOffset));
+
+    if (colonIndex === -1) {
+      continue;
+    }
+
+    const valueStart = token.startIndex + negationOffset + colonIndex + 1;
+
+    // No value yet (`key:`): nothing to highlight.
+    if (valueStart >= token.endIndex) {
+      continue;
+    }
+
+    const normalizedKey = normalizeFilterSlug(token.rawKey);
+    const rawValue = token.value ?? "";
+    let isValid = false;
+
+    if (
+      normalizedKey === PRESENCE_HAS_META_KEY ||
+      normalizedKey === PRESENCE_NO_META_KEY
+    ) {
+      // A meta-key's value is the key of an existing field.
+      isValid = lookup.has(normalizeFilterSlug(rawValue));
+    } else {
+      const config = lookup.get(normalizedKey);
+      isValid =
+        config != null && buildAppliedFilterValue(config, rawValue) != null;
+    }
+
+    if (isValid) {
+      ranges.push({ end: token.endIndex, start: valueStart });
+    }
+  }
+
+  return ranges;
+}
+
 export type FilterSuggestionMode = "key" | "value";
 
 export interface ActiveFilterToken {
@@ -1050,6 +1223,12 @@ export interface ActiveFilterToken {
   /** Rango de la query a reemplazar al insertar una sugerencia. */
   replaceStart: number;
   replaceEnd: number;
+  /**
+   * Start of the whole token (including `-` and the key). Allows replacing the
+   * entire token when inserting a meta-key (`tiene:<field>`) or an exclusion
+   * (`-<field>:`), not just the value segment.
+   */
+  tokenStart: number;
 }
 
 /**
@@ -1073,6 +1252,7 @@ export function getActiveFilterToken(
       replaceEnd: caretIndex,
       replaceStart: caretIndex,
       resolvedKey: null,
+      tokenStart: caretIndex,
       valuePart: "",
     };
   }
@@ -1090,6 +1270,7 @@ export function getActiveFilterToken(
       replaceEnd: activeToken.endIndex,
       replaceStart: activeToken.startIndex,
       resolvedKey: null,
+      tokenStart: activeToken.startIndex,
       valuePart: "",
     };
   }
@@ -1103,6 +1284,7 @@ export function getActiveFilterToken(
     replaceEnd: activeToken.endIndex,
     replaceStart: valueStart,
     resolvedKey: remainder.slice(0, colonIndex),
+    tokenStart: activeToken.startIndex,
     valuePart: remainder.slice(colonIndex + 1),
   };
 }

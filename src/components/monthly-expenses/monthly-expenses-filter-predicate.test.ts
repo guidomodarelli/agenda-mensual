@@ -12,7 +12,6 @@ import type { MonthlyExpensesEditableRow } from "./monthly-expenses-table.types"
 
 const CONTEXT: MonthlyExpenseFilterContext = {
   exchangeRateSnapshot: null,
-  vigenciaSortMode: "startMonth",
 };
 
 function createRow(
@@ -124,6 +123,32 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(pendingRow)).toBe(false);
   });
 
+  it("evaluates field presence for tiene:/no: meta filters", () => {
+    const hasLink = predicate([
+      { key: "link", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    expect(hasLink(createRow({ paymentLink: "https://x" }))).toBe(true);
+    expect(hasLink(createRow({ paymentLink: "" }))).toBe(false);
+
+    const noSent = predicate([
+      { key: "enviados", negated: false, value: { kind: "presence", value: "noValue" } },
+    ]);
+    const sentRow = createRow({
+      paymentRecords: [
+        { id: "a", coveredPayments: 1, registeredAt: null, sendStatus: "sent" },
+      ],
+    });
+    expect(noSent(sentRow)).toBe(false);
+    expect(noSent(createRow({ paymentRecords: [] }))).toBe(true);
+
+    // La presencia de carpeta se evalúa por campo (no por el bucket de folders).
+    const hasFolder = predicate([
+      { key: "carpeta", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    expect(hasFolder(createRow({ expenseFolderId: "f1" }))).toBe(true);
+    expect(hasFolder(createRow({ expenseFolderId: "" }))).toBe(false);
+  });
+
   it("matches link text and inverts on negation", () => {
     const startsWith = predicate([
       { key: "link", negated: false, value: { kind: "textMatch", op: "startsWith", text: "https" } },
@@ -136,6 +161,24 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     ]);
     expect(notContains(createRow({ paymentLink: "https://mp.com" }))).toBe(false);
     expect(notContains(createRow({ paymentLink: "https://x.com" }))).toBe(true);
+  });
+
+  it("matches an ends-with link ignoring the normalized trailing slash", () => {
+    // Los links se guardan con barra final (`.../`); `*.com.ar` debe matchear igual.
+    const endsWith = predicate([
+      {
+        key: "link",
+        negated: false,
+        value: { kind: "textMatch", op: "endsWith", text: ".com.ar" },
+      },
+    ]);
+
+    expect(
+      endsWith(createRow({ paymentLink: "https://oficinavirtual.coopelectric.com.ar/" })),
+    ).toBe(true);
+    expect(
+      endsWith(createRow({ paymentLink: "https://example.com/path" })),
+    ).toBe(false);
   });
 
   it("ORs positive folder filters and excludes negated ones", () => {
@@ -162,7 +205,6 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
         officialRate: 1000,
         solidarityRate: 1300,
       },
-      vigenciaSortMode: "startMonth",
     };
     const matches = buildMonthlyExpensesQueryPredicate(
       [{ key: "subtotal", negated: false, value: { kind: "numberRange", min: 10000 } }],
@@ -175,14 +217,168 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(usdRow)).toBe(true);
   });
 
+  it("bases USD presence on the converted value, matching the displayed column", () => {
+    const arsRow = createRow({ currency: "ARS", total: "1000" });
+    const usdRow = createRow({ currency: "USD", total: "50" });
+
+    // Sin snapshot, la columna USD de una fila ARS muestra "-": tiene:usd debe ser
+    // falso (y no:usd verdadero) aunque el total crudo sea no-cero.
+    const hasUsdNoRate = buildMonthlyExpensesQueryPredicate(
+      [{ key: "usd", negated: false, value: { kind: "presence", value: "hasValue" } }],
+      { exchangeRateSnapshot: null },
+    );
+    const lacksUsdNoRate = buildMonthlyExpensesQueryPredicate(
+      [{ key: "usd", negated: false, value: { kind: "presence", value: "noValue" } }],
+      { exchangeRateSnapshot: null },
+    );
+
+    expect(hasUsdNoRate(arsRow)).toBe(false);
+    expect(lacksUsdNoRate(arsRow)).toBe(true);
+    // Una fila USD ya está en USD: tiene valor convertido aun sin snapshot.
+    expect(hasUsdNoRate(usdRow)).toBe(true);
+
+    // Con snapshot válido la fila ARS sí convierte a USD y queda presente.
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: {
+        blueRate: 1500,
+        month: "2026-06",
+        officialRate: 1000,
+        solidarityRate: 1300,
+      },
+    };
+    const hasUsdWithRate = buildMonthlyExpensesQueryPredicate(
+      [{ key: "usd", negated: false, value: { kind: "presence", value: "hasValue" } }],
+      context,
+    );
+
+    expect(hasUsdWithRate(arsRow)).toBe(true);
+  });
+
+  it("matches prestamista by lender id (enum)", () => {
+    const matches = predicate([
+      { key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } },
+    ]);
+
+    expect(matches(createRow({ lenderId: "lender-1" }))).toBe(true);
+    expect(matches(createRow({ lenderId: "lender-2" }))).toBe(false);
+    expect(matches(createRow({ lenderId: "" }))).toBe(false);
+  });
+
+  it("matches legacy prestamista rows by displayed name when lenderId is empty", () => {
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: null,
+      lenderNamesById: new Map([["lender-1", "Juan Pérez"]]),
+    };
+    const matches = buildMonthlyExpensesQueryPredicate(
+      [{ key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } }],
+      context,
+    );
+
+    // Fila legacy: muestra el nombre pero no guarda lenderId (acento-insensible).
+    expect(matches(createRow({ lenderId: "", lenderName: "Juan Perez" }))).toBe(true);
+    // Nombre distinto: no matchea.
+    expect(matches(createRow({ lenderId: "", lenderName: "Otro" }))).toBe(false);
+    // Sin nombre ni id: no matchea.
+    expect(matches(createRow({ lenderId: "", lenderName: "" }))).toBe(false);
+  });
+
+  it("filters prestamista by text when lender catalog is empty (textMatch)", () => {
+    // Cuando el catálogo de prestamistas está vacío, el qualifier se emite como
+    // textMatch. El matcher debe comparar contra row.lenderName en vez de pasar
+    // todas las filas como no-op.
+    const matches = predicate([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "includes", text: "juan" },
+      },
+    ]);
+
+    expect(matches(createRow({ lenderName: "Juan Pérez" }))).toBe(true);
+    expect(matches(createRow({ lenderName: "juan perez" }))).toBe(true);
+    expect(matches(createRow({ lenderName: "María López" }))).toBe(false);
+    expect(matches(createRow({ lenderName: "" }))).toBe(false);
+  });
+
+  it("textMatch prestamista with has/notHas ops", () => {
+    const matchesHas = predicate([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "has" },
+      },
+    ]);
+    const matchesNotHas = predicate([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "notHas" },
+      },
+    ]);
+
+    expect(matchesHas(createRow({ lenderName: "Juan" }))).toBe(true);
+    expect(matchesHas(createRow({ lenderName: "" }))).toBe(false);
+    expect(matchesNotHas(createRow({ lenderName: "" }))).toBe(true);
+    expect(matchesNotHas(createRow({ lenderName: "Juan" }))).toBe(false);
+  });
+
+  it("matches a negated vigencia year-month range without emptying the table", () => {
+    // `-vigencia:2026-01..` se rutea por el predicado de dominio; sin matcher la
+    // negación rechazaría todas las filas. Por defecto la vigencia usa startMonth.
+    const excludesFromJan = predicate([
+      {
+        key: "vigencia",
+        negated: true,
+        value: { kind: "yearMonthRange", mode: "from", min: 202601 },
+      },
+    ]);
+
+    // En vigencia (startMonth) anterior al rango: la negación la conserva.
+    expect(excludesFromJan(createRow({ startMonth: "2025-12" }))).toBe(true);
+    // Dentro del rango negado: se excluye.
+    expect(excludesFromJan(createRow({ startMonth: "2026-03" }))).toBe(false);
+  });
+
+  it("uses loanEndMonth for vigencia when the sort mode is endMonth", () => {
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: null,
+      vigenciaSortMode: "endMonth",
+    };
+    const matches = buildMonthlyExpensesQueryPredicate(
+      [{ key: "vigencia", negated: false, value: { kind: "yearMonthRange", mode: "from", min: 202601 } }],
+      context,
+    );
+
+    // La vigencia se mide por el mes de fin, no por el de inicio.
+    expect(matches(createRow({ startMonth: "2025-01", loanEndMonth: "2026-06" }))).toBe(true);
+    expect(matches(createRow({ startMonth: "2026-06", loanEndMonth: "2025-01" }))).toBe(false);
+  });
+
+  it("evaluates vigencia presence from the active sort-mode month", () => {
+    const hasVigencia = predicate([
+      { key: "vigencia", negated: false, value: { kind: "presence", value: "hasValue" } },
+    ]);
+    // startMonth válido => presente; vacío => ausente.
+    expect(hasVigencia(createRow({ startMonth: "2026-01" }))).toBe(true);
+    expect(hasVigencia(createRow({ startMonth: "" }))).toBe(false);
+
+    const lacksVigenciaByEnd = buildMonthlyExpensesQueryPredicate(
+      [{ key: "vigencia", negated: false, value: { kind: "presence", value: "noValue" } }],
+      { exchangeRateSnapshot: null, vigenciaSortMode: "endMonth" },
+    );
+    // Con modo endMonth la presencia depende de loanEndMonth.
+    expect(lacksVigenciaByEnd(createRow({ startMonth: "2026-01", loanEndMonth: "" }))).toBe(true);
+    expect(lacksVigenciaByEnd(createRow({ loanEndMonth: "2026-01" }))).toBe(false);
+  });
+
   it("ANDs multiple filters of different kinds", () => {
     const matches = predicate([
       { key: "subtotal", negated: false, value: { kind: "numberRange", min: 500 } },
-      { key: "prestamista", negated: false, value: { kind: "textMatch", op: "equals", text: "juan" } },
+      { key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } },
     ]);
 
-    expect(matches(createRow({ subtotal: "1000", lenderName: "Juan" }))).toBe(true);
-    expect(matches(createRow({ subtotal: "100", lenderName: "Juan" }))).toBe(false);
-    expect(matches(createRow({ subtotal: "1000", lenderName: "Pedro" }))).toBe(false);
+    expect(matches(createRow({ subtotal: "1000", lenderId: "lender-1" }))).toBe(true);
+    expect(matches(createRow({ subtotal: "100", lenderId: "lender-1" }))).toBe(false);
+    expect(matches(createRow({ subtotal: "1000", lenderId: "lender-2" }))).toBe(false);
   });
 });

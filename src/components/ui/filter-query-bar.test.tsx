@@ -19,6 +19,7 @@ const CONFIGS: FilterQualifierConfig[] = [
     ],
   },
   { columnId: "loanProgress", key: "deuda", kind: "presence", label: "Deuda / cuotas" },
+  { key: "inicio", kind: "yearMonthRange", label: "Inicio de cuota" },
   { key: "link", kind: "textMatch", label: "Link de pago" },
   {
     key: "carpeta",
@@ -149,7 +150,9 @@ describe("FilterQueryBar", () => {
     );
 
     expect(selectedOption?.id).toBe(activeDescendantId);
-    expect(selectedOption).toHaveTextContent("Me deben");
+    // El bloque universal (No tiene / Tiene / Excluir) encabeza la lista, así que
+    // la primera flecha hacia abajo resalta la segunda opción universal.
+    expect(selectedOption).toHaveTextContent("Tiene Dirección");
   });
 
   it("applies an enum value by clicking it", async () => {
@@ -181,21 +184,45 @@ describe("FilterQueryBar", () => {
     expect(combobox).toHaveValue("sub");
   });
 
-  it("suggests qualifier values inside a negated token but not bare keys", async () => {
+  it("suggests fields to exclude inside a negated key token", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);
 
     const combobox = screen.getByRole("combobox");
     await user.click(combobox);
 
-    // Modo clave negado (`-dir`): no se sugiere para no pisar la exclusión.
+    // Modo clave negado (`-dir`): se sugieren los campos a excluir (`-direccion:`).
     await user.keyboard("-dir");
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    const keyListbox = await screen.findByRole("listbox");
+    expect(within(keyListbox).getByText("Dirección")).toBeInTheDocument();
 
-    // Modo valor negado (`-direccion:`): sí se sugieren los valores del enum.
+    // Modo valor negado (`-direccion:`): se sugieren los valores del enum.
     await user.keyboard("eccion:");
+    const valueListbox = await screen.findByRole("listbox");
+    expect(within(valueListbox).getAllByRole("option").length).toBeGreaterThan(0);
+  });
+
+  it("offers Exclude last on the empty bar and starts a field exclusion", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+
     const listbox = await screen.findByRole("listbox");
-    expect(within(listbox).getAllByRole("option").length).toBeGreaterThan(0);
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+    // "Excluir" es la última opción del estado vacío.
+    expect(labels[labels.length - 1]).toContain("Excluir");
+
+    await user.click(within(listbox).getByText("Excluir"));
+    expect(combobox).toHaveValue("-");
+
+    // Tras elegir "Excluir", la lista de campos reaparece para elegir cuál excluir.
+    const fieldListbox = await screen.findByRole("listbox");
+    await user.click(within(fieldListbox).getByText("Dirección"));
+    expect(combobox).toHaveValue("-direccion:");
   });
 
   it("lets Tab move focus when no suggestion was navigated", async () => {
@@ -248,7 +275,7 @@ describe("FilterQueryBar", () => {
     expect(combobox).toHaveValue("");
   });
 
-  it("suggests textMatch operators for a text qualifier", async () => {
+  it("suggests starts/contains/ends operators for a text qualifier", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);
 
@@ -257,11 +284,45 @@ describe("FilterQueryBar", () => {
     await user.keyboard("link:");
 
     const listbox = await screen.findByRole("listbox");
-    const options = within(listbox).getAllByRole("option");
-    const labels = options.map((option) => option.textContent);
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
 
-    expect(labels.some((label) => label?.includes("Tiene"))).toBe(true);
-    expect(labels.some((label) => label?.includes("Empieza por"))).toBe(true);
+    expect(labels.some((label) => label.includes("Empieza por"))).toBe(true);
+    expect(labels.some((label) => label.includes("Contiene"))).toBe(true);
+    expect(labels.some((label) => label.includes("Termina con"))).toBe(true);
+  });
+
+  it("builds an ends-with glob token (*texto) via the operator", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("link:");
+
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByText("Termina con…"));
+
+    // Inserta `*` y el caret queda después; al escribir forma `*texto`.
+    await user.keyboard("pdf");
+    expect(combobox).toHaveValue("link:*pdf");
+  });
+
+  it("builds a contains glob token (*texto*) with the caret between the stars", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("link:");
+
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByText("Contiene…"));
+
+    // Inserta `**` con el caret en medio; al escribir forma `*texto*`.
+    await user.keyboard("mp");
+    expect(combobox).toHaveValue("link:*mp*");
   });
 
   it("suggests folder values, including unassigned", async () => {
@@ -295,5 +356,94 @@ describe("FilterQueryBar", () => {
       .map((option) => option.textContent);
 
     expect(labels.some((label) => label?.includes("Hogar"))).toBe(true);
+    // Dentro de un token negado no aparece el bloque universal No/Tiene/Excluir.
+    expect(labels.some((label) => label?.includes("No tiene"))).toBe(false);
+  });
+
+  it("heads every filter with the universal No/Tiene/Excluir block", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("link:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+
+    expect(labels[0]).toContain("No tiene Link de pago");
+    expect(labels[1]).toContain("Tiene Link de pago");
+    expect(labels[2]).toContain("Excluir Link de pago");
+  });
+
+  it("inserts the presence meta-key when picking Tiene", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("link:");
+
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByText("Tiene Link de pago"));
+
+    expect(combobox).toHaveValue("tiene:link ");
+  });
+
+  it("switches to an exclusion token when picking Excluir", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("carpeta:");
+
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByText(/Excluir Carpeta/));
+
+    expect(combobox).toHaveValue("-carpeta:");
+    // El popover sigue abierto ofreciendo los valores a excluir.
+    const reopened = await screen.findByRole("listbox");
+    const labels = within(reopened)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+    expect(labels.some((label) => label.includes("Hogar"))).toBe(true);
+  });
+
+  it("suggests date comparators (>=, <=, ..) for a year-month qualifier", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("inicio:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+
+    expect(labels.some((label) => label.includes("Desde"))).toBe(true);
+    expect(labels.some((label) => label.includes("Hasta"))).toBe(true);
+    expect(labels.some((label) => label.includes("Rango"))).toBe(true);
+  });
+
+  it("suggests target fields after typing a tiene: meta-key", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("tiene:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+
+    expect(labels.some((label) => label.includes("Subtotal"))).toBe(true);
+    expect(labels.some((label) => label.includes("Carpeta"))).toBe(true);
   });
 });

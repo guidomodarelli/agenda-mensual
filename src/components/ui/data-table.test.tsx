@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { DataTable, matchesAdvancedYearMonthRangeFilter } from "./data-table";
+import { DataTable } from "./data-table";
 
 type TableRow = {
   label: string;
@@ -334,342 +334,7 @@ describe("DataTable", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("applies numeric range advanced filters from the modal", async () => {
-    const user = userEvent.setup();
-    const rows = [
-      { amount: 10, label: "Item 10", link: "", status: "none" },
-      { amount: 25, label: "Item 25", link: "https://example.com", status: "pending" },
-      { amount: 40, label: "Item 40", link: "https://example.com", status: "sent" },
-    ];
-    const columns: ColumnDef<(typeof rows)[number]>[] = [
-      {
-        accessorKey: "label",
-        header: "Descripción",
-      },
-      {
-        accessorKey: "amount",
-        cell: ({ row }) => String(row.original.amount),
-        filterFn: (row, _columnId, filterValue) => {
-          if (
-            !filterValue ||
-            typeof filterValue !== "object" ||
-            (filterValue as { kind?: string }).kind !== "numberRange"
-          ) {
-            return true;
-          }
-
-          const parsedFilterValue = filterValue as {
-            kind: "numberRange";
-            max?: number;
-            min?: number;
-          };
-          const rowAmount = row.original.amount;
-
-          if (parsedFilterValue.min != null && rowAmount < parsedFilterValue.min) {
-            return false;
-          }
-
-          if (parsedFilterValue.max != null && rowAmount > parsedFilterValue.max) {
-            return false;
-          }
-
-          return true;
-        },
-        header: "Monto",
-      },
-      {
-        accessorKey: "status",
-        header: "Estado",
-      },
-      {
-        accessorKey: "link",
-        header: "Link",
-      },
-    ];
-
-    render(
-      <DataTable
-        advancedFiltersConfig={[
-          {
-            columnId: "amount",
-            label: "Monto",
-            type: "numberRange",
-          },
-        ]}
-        columns={columns}
-        data={rows}
-        emptyMessage="Sin datos"
-        filterColumnId="label"
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.type(screen.getByRole("spinbutton", { name: "Monto Mínimo" }), "20");
-    await user.type(screen.getByRole("spinbutton", { name: "Monto Máximo" }), "30");
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-
-    expect(screen.queryByText("Item 10")).not.toBeInTheDocument();
-    expect(screen.getByText("Item 25")).toBeInTheDocument();
-    expect(screen.queryByText("Item 40")).not.toBeInTheDocument();
-    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
-  });
-
-  it("renders advanced filters toggle when only advanced filters are configured", () => {
-    const rows = [{ amount: 10, label: "Item 10" }];
-    const columns: ColumnDef<(typeof rows)[number]>[] = [
-      {
-        accessorKey: "label",
-        header: "Descripción",
-      },
-      {
-        accessorKey: "amount",
-        header: "Monto",
-      },
-    ];
-
-    render(
-      <DataTable
-        advancedFiltersConfig={[
-          {
-            columnId: "amount",
-            label: "Monto",
-            type: "numberRange",
-          },
-        ]}
-        columns={columns}
-        data={rows}
-        emptyMessage="Sin datos"
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Filtros avanzados" }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps advanced filters applied after clearing draft values until reapplying", async () => {
-    const user = userEvent.setup();
-    const rows = [
-      { label: "Sin envio", link: "", status: "none" },
-      { label: "Pendiente con link", link: "https://example.com/pending", status: "pending" },
-      { label: "Enviado con link", link: "https://example.com/sent", status: "sent" },
-    ];
-    const columns: ColumnDef<(typeof rows)[number]>[] = [
-      {
-        accessorKey: "label",
-        header: "Descripción",
-      },
-      {
-        accessorKey: "status",
-        filterFn: (row, _columnId, filterValue) => {
-          if (
-            !filterValue ||
-            typeof filterValue !== "object" ||
-            (filterValue as { kind?: string }).kind !== "enum"
-          ) {
-            return true;
-          }
-
-          return row.original.status === (filterValue as { value: string }).value;
-        },
-        header: "Estado",
-      },
-      {
-        accessorKey: "link",
-        filterFn: (row, _columnId, filterValue) => {
-          if (
-            !filterValue ||
-            typeof filterValue !== "object" ||
-            (filterValue as { kind?: string }).kind !== "presence"
-          ) {
-            return true;
-          }
-
-          const hasValue = row.original.link.trim().length > 0;
-
-          return (filterValue as { value: "hasValue" | "noValue" }).value ===
-            "hasValue"
-            ? hasValue
-            : !hasValue;
-        },
-        header: "Link",
-      },
-    ];
-
-    render(
-      <DataTable
-        advancedFiltersConfig={[
-          {
-            columnId: "status",
-            enumOptions: [
-              { label: "Pendiente", value: "pending" },
-              { label: "Enviado", value: "sent" },
-              { label: "Sin estado", value: "none" },
-            ],
-            label: "Estado",
-            type: "enum",
-          },
-          {
-            columnId: "link",
-            label: "Link",
-            type: "presence",
-          },
-        ]}
-        columns={columns}
-        data={rows}
-        emptyMessage="Sin datos"
-        filterColumnId="label"
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Estado" }));
-    await user.click(screen.getByRole("option", { name: "Pendiente" }));
-    await user.click(screen.getByRole("combobox", { name: "Link" }));
-    await user.click(screen.getByRole("option", { name: "Tiene valor" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-
-    expect(screen.queryByText("Sin envio")).not.toBeInTheDocument();
-    expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
-    expect(screen.queryByText("Enviado con link")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("button", { name: "Limpiar filtros" }));
-
-    expect(screen.queryByText("Sin envio")).not.toBeInTheDocument();
-    expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
-    expect(screen.queryByText("Enviado con link")).not.toBeInTheDocument();
-    expect(screen.getByText("Filtros avanzados")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-
-    expect(screen.getByText("Sin envio")).toBeInTheDocument();
-    expect(screen.getByText("Pendiente con link")).toBeInTheDocument();
-    expect(screen.getByText("Enviado con link")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Filtros avanzados activos"),
-    ).not.toBeInTheDocument();
-  });
-
-  function renderYearMonthRangeTable() {
-    const rows = [
-      { label: "Sin fechas", monthValue: null as number | null },
-      { label: "Marzo", monthValue: 202603 },
-      { label: "Mayo", monthValue: 202605 },
-      { label: "Agosto", monthValue: 202608 },
-    ];
-    const columns: ColumnDef<(typeof rows)[number]>[] = [
-      {
-        accessorKey: "label",
-        header: "Descripción",
-      },
-      {
-        accessorKey: "monthValue",
-        filterFn: (row, _columnId, filterValue) =>
-          matchesAdvancedYearMonthRangeFilter(filterValue, row.original.monthValue),
-        header: "Vigencia",
-      },
-    ];
-
-    render(
-      <DataTable
-        advancedFiltersConfig={[
-          {
-            columnId: "monthValue",
-            label: "Vigencia",
-            type: "yearMonthRange",
-          },
-        ]}
-        columns={columns}
-        data={rows}
-        emptyMessage="Sin datos"
-        filterColumnId="label"
-      />,
-    );
-  }
-
-  it("filters rows by a year-month range", async () => {
-    const user = userEvent.setup();
-    renderYearMonthRangeTable();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Rango" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
-      "03/2026",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
-      "05/2026",
-    );
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-
-    expect(screen.queryByText("Sin fechas")).not.toBeInTheDocument();
-    expect(screen.getByText("Marzo")).toBeInTheDocument();
-    expect(screen.getByText("Mayo")).toBeInTheDocument();
-    expect(screen.queryByText("Agosto")).not.toBeInTheDocument();
-    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
-  });
-
-  it("filters rows with a lower bound only", async () => {
-    const user = userEvent.setup();
-    renderYearMonthRangeTable();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Desde" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
-      "05/2026",
-    );
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-
-    expect(screen.queryByText("Sin fechas")).not.toBeInTheDocument();
-    expect(screen.queryByText("Marzo")).not.toBeInTheDocument();
-    expect(screen.getByText("Mayo")).toBeInTheDocument();
-    expect(screen.getByText("Agosto")).toBeInTheDocument();
-  });
-
-  it("filters rows by presence of year-month dates", async () => {
-    const user = userEvent.setup();
-    renderYearMonthRangeTable();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Con fechas" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-
-    expect(screen.queryByText("Sin fechas")).not.toBeInTheDocument();
-    expect(screen.getByText("Marzo")).toBeInTheDocument();
-    expect(screen.getByText("Mayo")).toBeInTheDocument();
-    expect(screen.getByText("Agosto")).toBeInTheDocument();
-  });
-
-  it("blocks applying an invalid year-month range", async () => {
-    const user = userEvent.setup();
-    renderYearMonthRangeTable();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Rango" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
-      "08/2026",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
-      "03/2026",
-    );
-
-    expect(
-      screen.getByText("El desde no puede ser mayor que el hasta."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Aplicar filtros" }),
-    ).toBeDisabled();
-  });
-
-  it("filters rows from the unified query bar and reflects the modal back into it", async () => {
+  it("filters rows by a column-backed qualifier from the unified query bar", async () => {
     const user = userEvent.setup();
     type QueryRow = { amount: number; label: string };
     const allRows: QueryRow[] = [
@@ -725,9 +390,6 @@ describe("DataTable", () => {
 
       return (
         <DataTable
-          advancedFiltersConfig={[
-            { columnId: "amount", label: "Monto", type: "numberRange" },
-          ]}
           columns={columns}
           data={data}
           emptyMessage="Sin datos"
@@ -756,17 +418,12 @@ describe("DataTable", () => {
     expect(screen.getByText("Item 25")).toBeInTheDocument();
     expect(screen.getByText("Item 40")).toBeInTheDocument();
 
-    // Editar desde el modal clásico debe reflejarse en la barra unificada.
+    // Un rango cerrado desde la barra acota por ambos extremos.
     await user.clear(queryBar);
-    await user.tab();
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.type(screen.getByRole("spinbutton", { name: "Monto Mínimo" }), "20");
-    await user.type(screen.getByRole("spinbutton", { name: "Monto Máximo" }), "30");
-    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    await user.type(queryBar, "monto:20..30");
 
-    expect(
-      screen.getByRole("combobox", { name: "Filtro unificado" }),
-    ).toHaveValue("monto:20..30");
+    expect(screen.queryByText("Item 10")).not.toBeInTheDocument();
+    expect(screen.getByText("Item 25")).toBeInTheDocument();
     expect(screen.queryByText("Item 40")).not.toBeInTheDocument();
   });
 
@@ -802,14 +459,14 @@ describe("DataTable", () => {
 
     const queryBar = screen.getByRole("combobox", { name: "Filtro unificado" });
     await user.click(queryBar);
-    await user.type(queryBar, "link:^https");
+    await user.type(queryBar, "link:https*");
     // Al perder el foco la barra se re-sincroniza con la forma canónica; el
     // filtro sin columna debe sobrevivir y no quedar como filtro invisible.
     await user.tab();
 
     expect(
       screen.getByRole("combobox", { name: "Filtro unificado" }),
-    ).toHaveValue("link:^https");
+    ).toHaveValue("link:https*");
   });
 
   it("clears an applied filter when its backing option disappears", async () => {
@@ -859,5 +516,66 @@ describe("DataTable", () => {
     await user.click(screen.getByRole("button", { name: "Borrar carpeta" }));
 
     expect(onAppliedFiltersChange).toHaveBeenLastCalledWith([]);
+  });
+
+  it("keeps a folder filter selected when its folder is renamed", async () => {
+    const user = userEvent.setup();
+    const onAppliedFiltersChange = jest.fn();
+
+    function QueryHarness() {
+      // El renombrado cambia el slug visible de la opción pero conserva el mismo
+      // `folderId`, replicando una edición de catálogo de carpetas.
+      const [folderSlug, setFolderSlug] = useState("hogar");
+
+      return (
+        <>
+          <button onClick={() => setFolderSlug("casa")} type="button">
+            Renombrar carpeta
+          </button>
+          <DataTable
+            columns={[{ accessorKey: "label", filterFn: () => true, header: "L" }]}
+            data={[{ label: "Item" }]}
+            emptyMessage="Sin datos"
+            onAppliedFiltersChange={onAppliedFiltersChange}
+            queryFilterConfig={[
+              { key: "", kind: "text", label: "Descripción" },
+              {
+                key: "carpeta",
+                kind: "folder" as const,
+                label: "Carpeta",
+                options: [
+                  { label: "Hogar", slug: folderSlug, value: "folder-1" },
+                ],
+              },
+            ]}
+            queryFilterLabel="Filtro unificado"
+          />
+        </>
+      );
+    }
+
+    render(<QueryHarness />);
+
+    await user.click(screen.getByRole("combobox", { name: "Filtro unificado" }));
+    await user.type(
+      screen.getByRole("combobox", { name: "Filtro unificado" }),
+      "carpeta:hogar",
+    );
+
+    expect(onAppliedFiltersChange).toHaveBeenLastCalledWith([
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-1" } },
+    ]);
+
+    // Al renombrar la carpeta, el slug serializado cambia, pero el filtro
+    // id-backed (mismo `folderId`) debe sobrevivir y no quedar huérfano.
+    onAppliedFiltersChange.mockClear();
+    await user.click(screen.getByRole("button", { name: "Renombrar carpeta" }));
+
+    expect(onAppliedFiltersChange).toHaveBeenLastCalledWith([
+      { key: "carpeta", negated: false, value: { kind: "folder", folderId: "folder-1" } },
+    ]);
+    expect(
+      screen.getByRole("combobox", { name: "Filtro unificado" }),
+    ).toHaveValue("carpeta:casa");
   });
 });

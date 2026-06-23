@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   DataTable,
-  type DataTableAdvancedFilterConfig,
+  type DataTableQueryFilterControls,
   matchesAdvancedYearMonthRangeFilter,
 } from "@/components/ui/data-table";
 import {
@@ -97,11 +97,11 @@ import {
 import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
 import type { ExpenseFolderOption } from "./expense-folder-picker";
-import { UNASSIGNED_EXPENSE_FOLDER_FILTER_ID } from "./expense-folder-visuals";
 import {
   ExpenseFolderFilterBar,
   ExpenseFolderRowBadge,
 } from "./expense-folder-organizer";
+import { UNASSIGNED_EXPENSE_FOLDER_FILTER_ID } from "./expense-folder-visuals";
 import {
   formatReceiptSharePhoneDisplay,
   normalizeReceiptSharePhoneDigits,
@@ -234,21 +234,6 @@ const VIGENCIA_SORT_OPTIONS: Array<{ label: string; value: VigenciaSortMode }> =
     value: "endMonth",
   },
 ];
-const LOAN_DIRECTION_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
-  {
-    label: "Yo debo",
-    value: "payable",
-  },
-  {
-    label: "Me deben",
-    value: "receivable",
-  },
-  {
-    label: "Sin deuda/préstamo",
-    value: "none",
-  },
-];
-
 function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): boolean {
   if (leftSet.size !== rightSet.size) {
     return false;
@@ -262,49 +247,6 @@ function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): bool
 
   return true;
 }
-const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] = [
-  {
-    columnId: "subtotal",
-    label: "Subtotal",
-    type: "numberRange",
-  },
-  {
-    columnId: "total",
-    label: "Total",
-    type: "numberRange",
-  },
-  {
-    columnId: "usd",
-    label: "USD",
-    type: "numberRange",
-  },
-  {
-    columnId: "paymentsProgress",
-    label: "Pagos",
-    type: "numberRange",
-  },
-  {
-    columnId: "paymentHistory",
-    label: "Registros",
-    type: "numberRange",
-  },
-  {
-    columnId: LOAN_SORT_COLUMN_ID,
-    label: "Deuda / cuotas",
-    type: "presence",
-  },
-  {
-    columnId: "lenderName",
-    enumOptions: LOAN_DIRECTION_FILTER_OPTIONS,
-    label: "Dirección",
-    type: "enum",
-  },
-  {
-    columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-    label: "Vigencia",
-    type: "yearMonthRange",
-  },
-];
 
 const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
 const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
@@ -491,7 +433,6 @@ interface MonthlyExpensesTableProps {
   exchangeRateLoadError: string | null;
   exchangeRateSnapshot: ExchangeRateSnapshot | null;
   expenseFolders: ExpenseFolderOption[];
-  folderFilterId: string;
   feedbackMessage: string;
   feedbackErrorCode?: TechnicalErrorCode | null;
   feedbackTone: "default" | "error" | "success";
@@ -525,7 +466,6 @@ interface MonthlyExpensesTableProps {
     value: string,
   ) => void;
   onExpenseFolderSelect: (folderId: string | null) => void;
-  onFolderFilterChange: (folderId: string) => void;
   onManageFolders: () => void;
   onMoveExpenseToFolder: (args: {
     expenseId: string;
@@ -913,7 +853,6 @@ export function MonthlyExpensesTable({
   exchangeRateLoadError,
   exchangeRateSnapshot,
   expenseFolders,
-  folderFilterId,
   feedbackMessage,
   feedbackErrorCode = null,
   feedbackTone,
@@ -929,7 +868,6 @@ export function MonthlyExpensesTable({
   onAddExpense,
   onAddLender,
   onExpenseFolderSelect,
-  onFolderFilterChange,
   onManageFolders,
   onMoveExpenseToFolder,
   onReorderFolders,
@@ -1000,9 +938,53 @@ export function MonthlyExpensesTable({
     [],
   );
   const monthlyExpensesFilterQualifiers = useMemo(
-    () => buildMonthlyExpensesFilterQualifiers({ expenseFolders }),
-    [expenseFolders],
+    () => buildMonthlyExpensesFilterQualifiers({ expenseFolders, lenders }),
+    [expenseFolders, lenders],
   );
+  // Carpetas incluidas (`carpeta:`) y excluidas (`-carpeta:`) desde la barra,
+  // para reflejar visualmente esa selección en los chips de carpeta.
+  const folderBarSelection = useMemo(() => {
+    const included = new Set<string>();
+    const excluded = new Set<string>();
+
+    for (const appliedFilter of queryAppliedFilters) {
+      if (appliedFilter.value.kind === "folder") {
+        (appliedFilter.negated ? excluded : included).add(
+          appliedFilter.value.folderId,
+        );
+        continue;
+      }
+
+      // `no:carpeta` / `tiene:carpeta` → reflect on the "Sin carpeta" chip.
+      if (
+        appliedFilter.key === "carpeta" &&
+        appliedFilter.value.kind === "presence"
+      ) {
+        if (appliedFilter.value.value === "noValue") {
+          // no:carpeta — only rows without a folder are shown → select "Sin carpeta".
+          included.add(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID);
+        } else {
+          // tiene:carpeta — rows with a folder are shown → exclude "Sin carpeta".
+          excluded.add(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID);
+        }
+      }
+    }
+
+    return { excluded, included };
+  }, [queryAppliedFilters]);
+  const queryFilterControlsRef = useRef<DataTableQueryFilterControls | null>(
+    null,
+  );
+  // Clickear un chip de carpeta escribe en la barra (única fuente de verdad):
+  // reemplaza todos los `carpeta:`/`-carpeta:` por el elegido (o ninguno para
+  // "Todas") y limpia el filtro de carpeta heredado, para no duplicar filtrado.
+  const handleFolderChipSelect = useCallback((folderId: string) => {
+    // Los chips escriben en la barra (única fuente de verdad de carpetas):
+    // reemplazan los `carpeta:`/`-carpeta:` por el elegido (o ninguno para "Todas").
+    queryFilterControlsRef.current?.setSingleFolderFilter(
+      folderId === "" ? null : folderId,
+    );
+  }, []);
   const [paymentLinkDialogState, setPaymentLinkDialogState] =
     useState<PaymentLinkDialogState | null>(null);
   const [paymentLinkDraftValue, setPaymentLinkDraftValue] = useState("");
@@ -1210,13 +1192,11 @@ export function MonthlyExpensesTable({
   const hasActiveDescriptionFiltering =
     primaryDescriptionFilter.trim().length > 0 ||
     nonEmptyExcludedDescriptionFilters.length > 0;
-  // Cualquier filtro activo (descripción, qualifiers de la barra —incluidos los
-  // sin columna y negados— o carpeta) hace que un resultado vacío sea "sin
+  // Cualquier filtro activo (descripción o qualifiers de la barra —incluidos los
+  // de carpeta, sin columna y negados—) hace que un resultado vacío sea "sin
   // resultados para el filtro", no "no hay gastos cargados".
   const hasActiveFiltering =
-    hasActiveDescriptionFiltering ||
-    queryAppliedFilters.length > 0 ||
-    folderFilterId.length > 0;
+    hasActiveDescriptionFiltering || queryAppliedFilters.length > 0;
   const rowsExcludingDescriptions = useMemo(
     () =>
       rows.filter(
@@ -1236,9 +1216,14 @@ export function MonthlyExpensesTable({
       queryAppliedFilters.filter(
         (appliedFilter) =>
           appliedFilter.negated ||
+          appliedFilter.value.kind === "presence" ||
           !COLUMN_BACKED_QUALIFIER_KEYS.has(appliedFilter.key),
       ),
     [queryAppliedFilters],
+  );
+  const lenderNamesById = useMemo(
+    () => new Map(lenders.map((lender) => [lender.id, lender.name])),
+    [lenders],
   );
   const rowsMatchingQueryPredicate = useMemo(() => {
     if (queryPredicateFilters.length === 0) {
@@ -1247,37 +1232,25 @@ export function MonthlyExpensesTable({
 
     const matchesQuery = buildMonthlyExpensesQueryPredicate(
       queryPredicateFilters,
-      { exchangeRateSnapshot, vigenciaSortMode },
+      { exchangeRateSnapshot, lenderNamesById, vigenciaSortMode },
     );
 
     return rowsExcludingDescriptions.filter(matchesQuery);
   }, [
     exchangeRateSnapshot,
+    lenderNamesById,
     queryPredicateFilters,
     rowsExcludingDescriptions,
     vigenciaSortMode,
   ]);
   const hasManualSorting = sorting.length > 0;
-  const rowsMatchingFolderFilter = useMemo(() => {
-    if (!folderFilterId) {
+  const rowsForTable = useMemo(() => {
+    if (!moveCompletedToEnd || hasManualSorting) {
       return rowsMatchingQueryPredicate;
     }
 
-    if (folderFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID) {
-      return rowsMatchingQueryPredicate.filter((row) => !row.expenseFolderId);
-    }
-
-    return rowsMatchingQueryPredicate.filter(
-      (row) => row.expenseFolderId === folderFilterId,
-    );
-  }, [folderFilterId, rowsMatchingQueryPredicate]);
-  const rowsForTable = useMemo(() => {
-    if (!moveCompletedToEnd || hasManualSorting) {
-      return rowsMatchingFolderFilter;
-    }
-
-    return getRowsWithCompletedAtEnd(rowsMatchingFolderFilter);
-  }, [hasManualSorting, moveCompletedToEnd, rowsMatchingFolderFilter]);
+    return getRowsWithCompletedAtEnd(rowsMatchingQueryPredicate);
+  }, [hasManualSorting, moveCompletedToEnd, rowsMatchingQueryPredicate]);
   const selectedExpenseIdsInCurrentRows = useMemo(() => {
     const availableExpenseIds = new Set(rows.map((row) => row.id));
 
@@ -2795,21 +2768,16 @@ export function MonthlyExpensesTable({
             ) : null}
             <ExpenseFolderFilterBar
               countsByFolderId={folderCounts.countsByFolderId}
+              excludedFilterIds={folderBarSelection.excluded}
               folders={expenseFolders}
+              includedFilterIds={folderBarSelection.included}
               onMoveExpenseToFolder={onMoveExpenseToFolder}
               onReorderFolders={onReorderFolders}
-              onSelectFilter={onFolderFilterChange}
-              selectedFilterId={folderFilterId}
+              onSelectFilter={handleFolderChipSelect}
               totalCount={folderCounts.totalCount}
               unassignedCount={folderCounts.unassignedCount}
             />
             <DataTable
-              advancedFiltersButtonLabel="Filtros avanzados"
-              advancedFiltersConfig={MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG}
-              advancedFiltersDescription="Aplicá filtros por columna para acotar los resultados."
-              advancedFiltersDialogTitle="Filtros avanzados"
-              applyAdvancedFiltersLabel="Aplicar"
-              clearAdvancedFiltersLabel="Limpiar"
               columnVisibility={columnVisibility}
               columnVisibilityButtonLabel="Columnas"
               columnVisibilityMenuLabel="Mostrar columnas"
@@ -2861,6 +2829,7 @@ export function MonthlyExpensesTable({
               getRowClassName={getMonthlyExpenseRowClassName}
               onCellClick={handleTableCellClick}
               onAppliedFiltersChange={setQueryAppliedFilters}
+              queryFilterControlsRef={queryFilterControlsRef}
               onFilterValueChange={setDescriptionFilter}
               onVisibleRowsChange={handleVisibleRowsChange}
               onColumnVisibilityChange={setColumnVisibility}

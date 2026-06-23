@@ -69,7 +69,6 @@ function renderMonthlyExpensesTable(
         exchangeRateLoadError={null}
         exchangeRateSnapshot={null}
         expenseFolders={[]}
-        folderFilterId=""
         feedbackMessage=""
         feedbackTone="default"
         isCopyFromDisabled={false}
@@ -99,7 +98,6 @@ function renderMonthlyExpensesTable(
         onEditReceiptCoverage={jest.fn()}
         onExpenseFieldChange={jest.fn()}
         onExpenseFolderSelect={jest.fn()}
-        onFolderFilterChange={jest.fn()}
         onManageFolders={jest.fn()}
         onMoveExpenseToFolder={jest.fn()}
         onReorderFolders={jest.fn()}
@@ -262,66 +260,14 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
       }),
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Dirección" }));
-    await user.click(screen.getByRole("option", { name: "Me deben" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    const queryBar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await user.click(queryBar);
+    await user.type(queryBar, "direccion:me-deben");
 
     expect(screen.queryByText("Deuda propia")).not.toBeInTheDocument();
     expect(screen.getByText("Prestamo a tercero")).toBeInTheDocument();
-  });
-
-  it("filters loans by their vigencia range", async () => {
-    const user = userEvent.setup();
-
-    renderMonthlyExpensesTable([
-      createRow({
-        description: "Cuota marzo",
-        id: "loan-march",
-        installmentCount: "3",
-        isLoan: true,
-        lenderId: "lender-1",
-        lenderName: "Banco",
-        loanDirection: "payable",
-        loanEndMonth: "2026-05",
-        loanPaidInstallments: 1,
-        loanProgress: "1 de 3 cuotas abonadas",
-        loanRemainingInstallments: 2,
-        loanTotalInstallments: 3,
-        startMonth: "2026-03",
-      }),
-      createRow({
-        description: "Cuota agosto",
-        id: "loan-august",
-        installmentCount: "3",
-        isLoan: true,
-        lenderId: "lender-1",
-        lenderName: "Banco",
-        loanDirection: "payable",
-        loanEndMonth: "2026-10",
-        loanPaidInstallments: 1,
-        loanProgress: "1 de 3 cuotas abonadas",
-        loanRemainingInstallments: 2,
-        loanTotalInstallments: 3,
-        startMonth: "2026-08",
-      }),
-    ]);
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Rango" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
-      "02/2026",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Hasta (MM/AAAA)" }),
-      "06/2026",
-    );
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-
-    expect(screen.getByText("Cuota marzo")).toBeInTheDocument();
-    expect(screen.queryByText("Cuota agosto")).not.toBeInTheDocument();
   });
 
   it("associates receipt label with the file input in register payment dialog", async () => {
@@ -705,12 +651,39 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
       createRow({ description: "SinLink", id: "expense-2", paymentLink: "" }),
     ]);
 
-    await typeQuery("link:^https");
+    await typeQuery("link:https*");
 
     await waitFor(() => {
       expect(screen.queryByText("SinLink")).not.toBeInTheDocument();
     });
     expect(screen.getByText("ConLink")).toBeInTheDocument();
+  });
+
+  it("filters loan rows by the combined vigencia year-month range from the bar", async () => {
+    // La columna Vigencia usa el modo de orden por defecto (startMonth).
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "VigenciaVieja",
+        id: "expense-1",
+        isLoan: true,
+        loanEndMonth: "2025-12",
+        startMonth: "2025-01",
+      }),
+      createRow({
+        description: "VigenciaNueva",
+        id: "expense-2",
+        isLoan: true,
+        loanEndMonth: "2027-02",
+        startMonth: "2026-08",
+      }),
+    ]);
+
+    await typeQuery("vigencia:2026-06..2026-12");
+
+    await waitFor(() => {
+      expect(screen.queryByText("VigenciaVieja")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("VigenciaNueva")).toBeInTheDocument();
   });
 
   it("includes and excludes folders from the bar", async () => {
@@ -737,6 +710,75 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
       expect(screen.queryByText("EnHogar")).not.toBeInTheDocument();
     });
     expect(screen.getByText("EnTarjeta")).toBeInTheDocument();
+  });
+
+  it("replaces bar folder filters when a folder chip is clicked", async () => {
+    const expenseFolders = [
+      { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },
+      { color: "violet" as const, icon: "card" as const, id: "folder-2", name: "Tarjeta" },
+    ];
+    const rows = [
+      createRow({ description: "EnHogar", expenseFolderId: "folder-1", id: "expense-1" }),
+      createRow({ description: "EnTarjeta", expenseFolderId: "folder-2", id: "expense-2" }),
+    ];
+
+    renderMonthlyExpensesTable(rows, { expenseFolders });
+
+    // Filtro de carpeta previo en la barra.
+    const user = await typeQuery("-carpeta:tarjeta");
+
+    // Click en el chip "Hogar": reemplaza los tokens de carpeta por `carpeta:hogar`.
+    await user.click(screen.getByRole("button", { name: /^Hogar/ }));
+
+    const bar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await waitFor(() => {
+      expect(bar).toHaveValue("carpeta:hogar");
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    expect(screen.queryByText("EnTarjeta")).not.toBeInTheDocument();
+  });
+
+  it("drops a carpeta presence filter when a folder chip or Todas is clicked", async () => {
+    const expenseFolders = [
+      { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },
+      { color: "violet" as const, icon: "card" as const, id: "folder-2", name: "Tarjeta" },
+    ];
+    const rows = [
+      createRow({ description: "EnHogar", expenseFolderId: "folder-1", id: "expense-1" }),
+      createRow({ description: "SinCarpeta", expenseFolderId: "", id: "expense-2" }),
+    ];
+
+    // Presencia de carpeta previa en la barra (`no:carpeta` = sin carpeta asignada).
+    const { unmount } = renderMonthlyExpensesTable(rows, { expenseFolders });
+    let user = await typeQuery("no:carpeta");
+
+    // Click en el chip "Hogar": debe quedar SOLO `carpeta:hogar`, sin el
+    // `no:carpeta` contradictorio (que junto al chip dejaría la tabla vacía).
+    await user.click(screen.getByRole("button", { name: /^Hogar/ }));
+
+    let bar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await waitFor(() => {
+      expect(bar).toHaveValue("carpeta:hogar");
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    expect(screen.queryByText("SinCarpeta")).not.toBeInTheDocument();
+    unmount();
+
+    // "Todas" después de `no:carpeta` limpia todo filtro de carpeta (barra vacía).
+    renderMonthlyExpensesTable(rows, { expenseFolders });
+    user = await typeQuery("no:carpeta");
+    await user.click(screen.getByRole("button", { name: /^Todas/ }));
+
+    bar = screen.getByRole("combobox", { name: "Filtro unificado de gastos" });
+    await waitFor(() => {
+      expect(bar).toHaveValue("");
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    expect(screen.getByText("SinCarpeta")).toBeInTheDocument();
   });
 
   it("shows the filtered-empty message when a column-less filter removes all rows", async () => {

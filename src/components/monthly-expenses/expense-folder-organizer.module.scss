@@ -36,6 +36,12 @@
   background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
+.chipExcluded {
+  border-color: color-mix(in srgb, var(--destructive) 60%, transparent);
+  background: color-mix(in srgb, var(--destructive) 14%, transparent);
+  color: color-mix(in srgb, var(--destructive) 75%, var(--foreground));
+}
+
 .chipDropTarget {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 22%, transparent);

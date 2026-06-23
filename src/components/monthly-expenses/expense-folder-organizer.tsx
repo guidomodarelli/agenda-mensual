@@ -170,6 +170,8 @@ interface ExpenseFolderChipProps {
   count: number;
   folder: ExpenseFolderOption | null;
   isSelected: boolean;
+  /** Resaltado de exclusión (carpeta excluida desde la barra con `-carpeta:`). */
+  isExcluded?: boolean;
   onSelect: () => void;
   onDropExpense: (expenseId: string) => void;
   onReorderPreview?: (args: {
@@ -183,6 +185,7 @@ function ExpenseFolderChip({
   count,
   folder,
   isSelected,
+  isExcluded = false,
   onSelect,
   onDropExpense,
   onReorderPreview,
@@ -265,7 +268,8 @@ function ExpenseFolderChip({
     <button
       className={cn(
         styles.chip,
-        isSelected && styles.chipSelected,
+        isSelected && !isExcluded && styles.chipSelected,
+        isExcluded && styles.chipExcluded,
         isDraggedOver && styles.chipDropTarget,
         Boolean(reorderableFolderId) && styles.chipReorderable,
         isReordering && styles.chipReordering,
@@ -297,11 +301,16 @@ interface ExpenseFolderFilterBarProps {
   }) => void;
   onReorderFolders: (orderedFolderIds: string[]) => void;
   onSelectFilter: (folderId: string) => void;
-  selectedFilterId: string;
+  /** Ids de carpeta incluidas desde la barra (`carpeta:`), resaltadas como activas. */
+  includedFilterIds?: ReadonlySet<string>;
+  /** Ids de carpeta excluidas desde la barra (`-carpeta:`), resaltadas como exclusión. */
+  excludedFilterIds?: ReadonlySet<string>;
   unassignedCount: number;
   countsByFolderId: Record<string, number>;
   totalCount: number;
 }
+
+const EMPTY_FILTER_ID_SET: ReadonlySet<string> = new Set();
 
 /**
  * Folder filter chips that double as drag-and-drop targets to reassign expenses
@@ -317,7 +326,8 @@ export function ExpenseFolderFilterBar({
   onMoveExpenseToFolder,
   onReorderFolders,
   onSelectFilter,
-  selectedFilterId,
+  includedFilterIds = EMPTY_FILTER_ID_SET,
+  excludedFilterIds = EMPTY_FILTER_ID_SET,
   unassignedCount,
   countsByFolderId,
   totalCount,
@@ -405,13 +415,18 @@ export function ExpenseFolderFilterBar({
     return null;
   }
 
+  // Cuando la barra incluye/excluye carpetas, ese estado manda el resaltado; el
+  // chip "Todas" solo queda activo si no hay ningún filtro de carpeta.
+  const hasBarFolderFilters =
+    includedFilterIds.size > 0 || excludedFilterIds.size > 0;
+
   return (
     <div className={styles.filterBar}>
       <div className={styles.chipRow}>
         <button
           className={cn(
             styles.chip,
-            selectedFilterId === "" && styles.chipSelected,
+            !hasBarFolderFilters && styles.chipSelected,
           )}
           onClick={() => onSelectFilter("")}
           type="button"
@@ -423,7 +438,8 @@ export function ExpenseFolderFilterBar({
         <ExpenseFolderChip
           count={unassignedCount}
           folder={null}
-          isSelected={selectedFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID}
+          isExcluded={excludedFilterIds.has(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
+          isSelected={includedFilterIds.has(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
           onDropExpense={(expenseId) =>
             onMoveExpenseToFolder({ expenseId, folderId: null })
           }
@@ -434,7 +450,8 @@ export function ExpenseFolderFilterBar({
           <ExpenseFolderChip
             count={countsByFolderId[folder.id] ?? 0}
             folder={folder}
-            isSelected={selectedFilterId === folder.id}
+            isExcluded={excludedFilterIds.has(folder.id)}
+            isSelected={includedFilterIds.has(folder.id)}
             key={folder.id}
             onDropExpense={(expenseId) =>
               onMoveExpenseToFolder({ expenseId, folderId: folder.id })

@@ -115,7 +115,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-03");
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Guardar gastos" }),
@@ -320,11 +320,10 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  // The "Estado de envío" enum advanced filter was removed in the refactor (send
-  // status no longer lives at the expense level and now lives per payment). This
-  // test now combines two still-available numeric ranges (Subtotal and Total) to
-  // validate advanced filtering, its active badge, and clear/apply.
-  it("filters rows with an advanced bounded numeric range on the total column", async () => {
+  // El diálogo de filtros avanzados fue eliminado: los filtros por columna ahora
+  // viven en la barra unificada. Un rango cerrado `total:min..max` acota por ambos
+  // extremos sobre la columna Total.
+  it("filters rows with a bounded total range from the unified bar", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -362,24 +361,17 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.type(screen.getByRole("spinbutton", { name: "Total Mínimo" }), "150");
-    await user.type(screen.getByRole("spinbutton", { name: "Total Máximo" }), "250");
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-
-    expect(screen.queryByText("Gasto chico")).not.toBeInTheDocument();
-    expect(screen.getByText("Gasto medio")).toBeInTheDocument();
-    expect(screen.queryByText("Gasto grande")).not.toBeInTheDocument();
-    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("button", { name: "Limpiar" }));
+    const queryBar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await user.click(queryBar);
+    await user.type(queryBar, "total:150..250");
 
     expect(screen.queryByText("Gasto chico")).not.toBeInTheDocument();
     expect(screen.getByText("Gasto medio")).toBeInTheDocument();
     expect(screen.queryByText("Gasto grande")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    await user.clear(queryBar);
 
     expect(screen.getByText("Gasto chico")).toBeInTheDocument();
     expect(screen.getByText("Gasto medio")).toBeInTheDocument();
@@ -879,7 +871,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "aa");
+    await user.type(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }), "aa");
     await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Aab", "Aaa"]);
@@ -2474,7 +2466,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.type(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
       "Agua",
     );
     await user.click(
@@ -2494,7 +2486,13 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(within(bulkDeleteDialog).getByRole("button", { name: "Eliminar" }));
 
     await waitFor(() => {
-      expect(screen.queryByText("Agua")).not.toBeInTheDocument();
+      // Se ignora el overlay de resaltado de la barra (aria-hidden), que refleja
+      // el filtro activo ("Agua"); solo interesa que la FILA "Agua" ya no esté.
+      expect(
+        screen.queryByText("Agua", {
+          ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *',
+        }),
+      ).not.toBeInTheDocument();
     });
 
     const payload = getMonthlyExpensesSavePayload(fetchMock);
@@ -2557,9 +2555,9 @@ registerMonthlyExpensesPageDefaultHooks({
       expect(screen.getByRole("button", { name: "Acciones masivas" })).toBeEnabled();
     });
 
-    await user.clear(screen.getByRole("textbox", { name: "Filtrar gastos" }));
+    await user.clear(screen.getByRole("combobox", { name: "Filtro unificado de gastos" }));
     await user.type(
-      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+      screen.getByRole("combobox", { name: "Filtro unificado de gastos" }),
       "No existe",
     );
 
