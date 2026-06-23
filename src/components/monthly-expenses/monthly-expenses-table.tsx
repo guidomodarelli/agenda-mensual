@@ -98,7 +98,6 @@ import {
 import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
 import type { ExpenseFolderOption } from "./expense-folder-picker";
-import { UNASSIGNED_EXPENSE_FOLDER_FILTER_ID } from "./expense-folder-visuals";
 import {
   ExpenseFolderFilterBar,
   ExpenseFolderRowBadge,
@@ -489,7 +488,6 @@ interface MonthlyExpensesTableProps {
   exchangeRateLoadError: string | null;
   exchangeRateSnapshot: ExchangeRateSnapshot | null;
   expenseFolders: ExpenseFolderOption[];
-  folderFilterId: string;
   feedbackMessage: string;
   feedbackErrorCode?: TechnicalErrorCode | null;
   feedbackTone: "default" | "error" | "success";
@@ -523,7 +521,6 @@ interface MonthlyExpensesTableProps {
     value: string,
   ) => void;
   onExpenseFolderSelect: (folderId: string | null) => void;
-  onFolderFilterChange: (folderId: string) => void;
   onManageFolders: () => void;
   onMoveExpenseToFolder: (args: {
     expenseId: string;
@@ -911,7 +908,6 @@ export function MonthlyExpensesTable({
   exchangeRateLoadError,
   exchangeRateSnapshot,
   expenseFolders,
-  folderFilterId,
   feedbackMessage,
   feedbackErrorCode = null,
   feedbackTone,
@@ -927,7 +923,6 @@ export function MonthlyExpensesTable({
   onAddExpense,
   onAddLender,
   onExpenseFolderSelect,
-  onFolderFilterChange,
   onManageFolders,
   onMoveExpenseToFolder,
   onReorderFolders,
@@ -1025,15 +1020,13 @@ export function MonthlyExpensesTable({
   // Clickear un chip de carpeta escribe en la barra (única fuente de verdad):
   // reemplaza todos los `carpeta:`/`-carpeta:` por el elegido (o ninguno para
   // "Todas") y limpia el filtro de carpeta heredado, para no duplicar filtrado.
-  const handleFolderChipSelect = useCallback(
-    (folderId: string) => {
-      onFolderFilterChange("");
-      queryFilterControlsRef.current?.setSingleFolderFilter(
-        folderId === "" ? null : folderId,
-      );
-    },
-    [onFolderFilterChange],
-  );
+  const handleFolderChipSelect = useCallback((folderId: string) => {
+    // Los chips escriben en la barra (única fuente de verdad de carpetas):
+    // reemplazan los `carpeta:`/`-carpeta:` por el elegido (o ninguno para "Todas").
+    queryFilterControlsRef.current?.setSingleFolderFilter(
+      folderId === "" ? null : folderId,
+    );
+  }, []);
   const [paymentLinkDialogState, setPaymentLinkDialogState] =
     useState<PaymentLinkDialogState | null>(null);
   const [paymentLinkDraftValue, setPaymentLinkDraftValue] = useState("");
@@ -1241,13 +1234,11 @@ export function MonthlyExpensesTable({
   const hasActiveDescriptionFiltering =
     primaryDescriptionFilter.trim().length > 0 ||
     nonEmptyExcludedDescriptionFilters.length > 0;
-  // Cualquier filtro activo (descripción, qualifiers de la barra —incluidos los
-  // sin columna y negados— o carpeta) hace que un resultado vacío sea "sin
+  // Cualquier filtro activo (descripción o qualifiers de la barra —incluidos los
+  // de carpeta, sin columna y negados—) hace que un resultado vacío sea "sin
   // resultados para el filtro", no "no hay gastos cargados".
   const hasActiveFiltering =
-    hasActiveDescriptionFiltering ||
-    queryAppliedFilters.length > 0 ||
-    folderFilterId.length > 0;
+    hasActiveDescriptionFiltering || queryAppliedFilters.length > 0;
   const rowsExcludingDescriptions = useMemo(
     () =>
       rows.filter(
@@ -1294,26 +1285,13 @@ export function MonthlyExpensesTable({
     rowsExcludingDescriptions,
   ]);
   const hasManualSorting = sorting.length > 0;
-  const rowsMatchingFolderFilter = useMemo(() => {
-    if (!folderFilterId) {
+  const rowsForTable = useMemo(() => {
+    if (!moveCompletedToEnd || hasManualSorting) {
       return rowsMatchingQueryPredicate;
     }
 
-    if (folderFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID) {
-      return rowsMatchingQueryPredicate.filter((row) => !row.expenseFolderId);
-    }
-
-    return rowsMatchingQueryPredicate.filter(
-      (row) => row.expenseFolderId === folderFilterId,
-    );
-  }, [folderFilterId, rowsMatchingQueryPredicate]);
-  const rowsForTable = useMemo(() => {
-    if (!moveCompletedToEnd || hasManualSorting) {
-      return rowsMatchingFolderFilter;
-    }
-
-    return getRowsWithCompletedAtEnd(rowsMatchingFolderFilter);
-  }, [hasManualSorting, moveCompletedToEnd, rowsMatchingFolderFilter]);
+    return getRowsWithCompletedAtEnd(rowsMatchingQueryPredicate);
+  }, [hasManualSorting, moveCompletedToEnd, rowsMatchingQueryPredicate]);
   const selectedExpenseIdsInCurrentRows = useMemo(() => {
     const availableExpenseIds = new Set(rows.map((row) => row.id));
 
@@ -2837,7 +2815,6 @@ export function MonthlyExpensesTable({
               onMoveExpenseToFolder={onMoveExpenseToFolder}
               onReorderFolders={onReorderFolders}
               onSelectFilter={handleFolderChipSelect}
-              selectedFilterId={folderFilterId}
               totalCount={folderCounts.totalCount}
               unassignedCount={folderCounts.unassignedCount}
             />

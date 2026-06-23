@@ -301,7 +301,6 @@ interface ExpenseFolderFilterBarProps {
   }) => void;
   onReorderFolders: (orderedFolderIds: string[]) => void;
   onSelectFilter: (folderId: string) => void;
-  selectedFilterId: string;
   /** Ids de carpeta incluidas desde la barra (`carpeta:`), resaltadas como activas. */
   includedFilterIds?: ReadonlySet<string>;
   /** Ids de carpeta excluidas desde la barra (`-carpeta:`), resaltadas como exclusión. */
@@ -327,7 +326,6 @@ export function ExpenseFolderFilterBar({
   onMoveExpenseToFolder,
   onReorderFolders,
   onSelectFilter,
-  selectedFilterId,
   includedFilterIds = EMPTY_FILTER_ID_SET,
   excludedFilterIds = EMPTY_FILTER_ID_SET,
   unassignedCount,
@@ -428,9 +426,7 @@ export function ExpenseFolderFilterBar({
         <button
           className={cn(
             styles.chip,
-            selectedFilterId === "" &&
-              !hasBarFolderFilters &&
-              styles.chipSelected,
+            !hasBarFolderFilters && styles.chipSelected,
           )}
           onClick={() => onSelectFilter("")}
           type="button"
@@ -443,10 +439,7 @@ export function ExpenseFolderFilterBar({
           count={unassignedCount}
           folder={null}
           isExcluded={excludedFilterIds.has(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
-          isSelected={
-            selectedFilterId === UNASSIGNED_EXPENSE_FOLDER_FILTER_ID ||
-            includedFilterIds.has(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)
-          }
+          isSelected={includedFilterIds.has(UNASSIGNED_EXPENSE_FOLDER_FILTER_ID)}
           onDropExpense={(expenseId) =>
             onMoveExpenseToFolder({ expenseId, folderId: null })
           }
@@ -458,9 +451,7 @@ export function ExpenseFolderFilterBar({
             count={countsByFolderId[folder.id] ?? 0}
             folder={folder}
             isExcluded={excludedFilterIds.has(folder.id)}
-            isSelected={
-              selectedFilterId === folder.id || includedFilterIds.has(folder.id)
-            }
+            isSelected={includedFilterIds.has(folder.id)}
             key={folder.id}
             onDropExpense={(expenseId) =>
               onMoveExpenseToFolder({ expenseId, folderId: folder.id })

@@ -19,7 +19,6 @@ function renderFilterBar() {
       onMoveExpenseToFolder={jest.fn()}
       onReorderFolders={jest.fn()}
       onSelectFilter={jest.fn()}
-      selectedFilterId=""
       totalCount={8}
       unassignedCount={2}
     />,
@@ -50,7 +49,6 @@ describe("ExpenseFolderFilterBar", () => {
         onMoveExpenseToFolder={jest.fn()}
         onReorderFolders={jest.fn()}
         onSelectFilter={jest.fn()}
-        selectedFilterId=""
         totalCount={8}
         unassignedCount={2}
       />,

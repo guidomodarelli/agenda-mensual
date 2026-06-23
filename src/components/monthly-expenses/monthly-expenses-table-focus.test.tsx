@@ -69,7 +69,6 @@ function renderMonthlyExpensesTable(
         exchangeRateLoadError={null}
         exchangeRateSnapshot={null}
         expenseFolders={[]}
-        folderFilterId=""
         feedbackMessage=""
         feedbackTone="default"
         isCopyFromDisabled={false}
@@ -99,7 +98,6 @@ function renderMonthlyExpensesTable(
         onEditReceiptCoverage={jest.fn()}
         onExpenseFieldChange={jest.fn()}
         onExpenseFolderSelect={jest.fn()}
-        onFolderFilterChange={jest.fn()}
         onManageFolders={jest.fn()}
         onMoveExpenseToFolder={jest.fn()}
         onReorderFolders={jest.fn()}
