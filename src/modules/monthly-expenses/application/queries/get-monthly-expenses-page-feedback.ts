@@ -45,11 +45,11 @@ export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
   }
 
   if (message.includes("A receipt folder with the requested description already exists")) {
-    return "Ya existe una carpeta de comprobantes con esa descripción. Cambiá la descripción del compromiso y volvé a intentar.";
+    return "Ya existe una carpeta de comprobantes con esa descripción. Cambiá la descripción del gasto y volvé a intentar.";
   }
 
   if (message.includes("A receipt folder with the same description already exists")) {
-    return "Ya existe una carpeta de comprobantes con esa descripción. Cambiá la descripción del compromiso y volvé a intentar.";
+    return "Ya existe una carpeta de comprobantes con esa descripción. Cambiá la descripción del gasto y volvé a intentar.";
   }
 
   if (
@@ -57,7 +57,7 @@ export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
       "manual covered payments to be between 0 and total required payments",
     )
   ) {
-    return "La cantidad de pagos sin comprobante debe estar entre 0 y el total de pagos del compromiso.";
+    return "La cantidad de pagos sin comprobante debe estar entre 0 y el total de pagos del gasto.";
   }
 
   if (
@@ -65,7 +65,7 @@ export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
       "receipt coverage to be less than or equal to the remaining payments",
     )
   ) {
-    return "La cobertura de comprobantes no puede superar los pagos pendientes del compromiso.";
+    return "La cobertura de comprobantes no puede superar los pagos pendientes del gasto.";
   }
 
   if (message.includes("Monthly expense receipts support files up to 5MB")) {

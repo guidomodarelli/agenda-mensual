@@ -2319,10 +2319,10 @@ registerMonthlyExpensesPageDefaultHooks({
       name: "Seleccionar todas las filas visibles",
     });
     const aguaCheckbox = screen.getByRole("checkbox", {
-      name: "Seleccionar compromiso Agua",
+      name: "Seleccionar gasto Agua",
     });
     const internetCheckbox = screen.getByRole("checkbox", {
-      name: "Seleccionar compromiso Internet",
+      name: "Seleccionar gasto Internet",
     });
 
     expect(toggleAllCheckbox).not.toBeChecked();
@@ -2341,10 +2341,10 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(
-        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+        screen.getByRole("checkbox", { name: "Seleccionar gasto Agua" }),
       ).toBeChecked();
       expect(
-        screen.getByRole("checkbox", { name: "Seleccionar compromiso Internet" }),
+        screen.getByRole("checkbox", { name: "Seleccionar gasto Internet" }),
       ).toBeChecked();
       expect(
         screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
@@ -2357,10 +2357,10 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(
-        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+        screen.getByRole("checkbox", { name: "Seleccionar gasto Agua" }),
       ).not.toBeChecked();
       expect(
-        screen.getByRole("checkbox", { name: "Seleccionar compromiso Internet" }),
+        screen.getByRole("checkbox", { name: "Seleccionar gasto Internet" }),
       ).not.toBeChecked();
       expect(
         screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
@@ -2389,7 +2389,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     const aguaCheckbox = screen.getByRole("checkbox", {
-      name: "Seleccionar compromiso Agua",
+      name: "Seleccionar gasto Agua",
     });
     const aguaSelectionCell = aguaCheckbox.closest("td");
 
@@ -2401,7 +2401,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(
-        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+        screen.getByRole("checkbox", { name: "Seleccionar gasto Agua" }),
       ).toBeChecked();
     });
 
@@ -2409,7 +2409,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(
-        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+        screen.getByRole("checkbox", { name: "Seleccionar gasto Agua" }),
       ).not.toBeChecked();
     });
   });
@@ -2480,7 +2480,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     const bulkDeleteDialog = screen.getByRole("alertdialog");
     expect(
-      within(bulkDeleteDialog).getByText("Se eliminarán 1 compromiso seleccionado de la tabla visible."),
+      within(bulkDeleteDialog).getByText("Se eliminarán 1 gasto seleccionado de la tabla visible."),
     ).toBeInTheDocument();
 
     await user.click(within(bulkDeleteDialog).getByRole("button", { name: "Eliminar" }));
@@ -2548,7 +2548,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(
-      screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+      screen.getByRole("checkbox", { name: "Seleccionar gasto Agua" }),
     );
 
     await waitFor(() => {

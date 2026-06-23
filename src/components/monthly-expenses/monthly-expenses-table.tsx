@@ -1408,7 +1408,7 @@ export function MonthlyExpensesTable({
       }
 
       pendingExpenses.push({
-        displayDescription: row.description.trim() || "Compromiso sin descripción",
+        displayDescription: row.description.trim() || "Gasto sin descripción",
         expenseId: row.id,
         rawDescription: row.description,
       });
@@ -1743,13 +1743,13 @@ export function MonthlyExpensesTable({
         id: BULK_SELECTION_COLUMN_ID,
         cell: ({ row }) => {
           const expenseDescription =
-            row.original.description.trim() || "compromiso sin descripción";
+            row.original.description.trim() || "gasto sin descripción";
           const checkboxId = `bulk-selection-row-${row.original.id}`;
 
           return (
             <div className={styles.selectionCell}>
               <input
-                aria-label={`Seleccionar compromiso ${expenseDescription}`}
+                aria-label={`Seleccionar gasto ${expenseDescription}`}
                 checked={selectedExpenseIdsInCurrentRows.has(row.original.id)}
                 className={styles.selectionCheckbox}
                 id={checkboxId}
@@ -1838,7 +1838,7 @@ export function MonthlyExpensesTable({
 
           const paymentLinkUrl = getValidPaymentLinkUrl(row.original.paymentLink);
           const expenseDescriptionLabel =
-            row.original.description.trim() || "compromiso";
+            row.original.description.trim() || "gasto";
           const monthlyFolderViewUrl = getValidHttpUrl(
             row.original.monthlyFolderViewUrl,
           );
@@ -1991,7 +1991,7 @@ export function MonthlyExpensesTable({
         accessorKey: "total",
         cell: ({ row }) => {
           const expenseDescription =
-            row.original.description.trim() || "compromiso";
+            row.original.description.trim() || "gasto";
           const occurrencesPerMonth = Number(row.original.occurrencesPerMonth);
           const subtotalUnit = row.original.subtotalUnit ?? "occurrence";
           const hasSubtotalBreakdown =
@@ -2274,7 +2274,7 @@ export function MonthlyExpensesTable({
             requiredPayments - coveredPayments,
             0,
           );
-          const expenseDescription = row.original.description.trim() || "compromiso";
+          const expenseDescription = row.original.description.trim() || "gasto";
 
           return (
             <PaymentHistoryCell
@@ -2675,7 +2675,7 @@ export function MonthlyExpensesTable({
           <div className={styles.tableHeader}>
             <h2 className={styles.tableTitle}>Detalle del mes</h2>
             <p className={styles.tableDescription}>
-              Editá cada compromiso desde su menú de acciones.
+              Editá cada gasto desde su menú de acciones.
             </p>
             <div className={styles.tableAddAction}>
               <Button
@@ -2684,7 +2684,7 @@ export function MonthlyExpensesTable({
                 type="button"
                 variant="outline"
               >
-                Agregar compromiso
+                Agregar gasto
               </Button>
               <Button
                 onClick={onManageFolders}
@@ -2727,7 +2727,7 @@ export function MonthlyExpensesTable({
                           {expense.displayDescription}
                         </span>
                         <Button
-                          aria-label={`Filtrar compromiso ${expense.displayDescription}`}
+                          aria-label={`Filtrar gasto ${expense.displayDescription}`}
                           className={styles.receiptShareSummaryFilterButton}
                           onClick={() => setDescriptionFilter(expense.rawDescription)}
                           type="button"
@@ -2906,7 +2906,7 @@ export function MonthlyExpensesTable({
             <AlertDialogHeader>
               <AlertDialogTitle>¿Querés eliminar los gastos seleccionados?</AlertDialogTitle>
               <AlertDialogDescription>
-                {`Se eliminarán ${selectedVisibleCount} compromiso${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} de la tabla visible.`}
+                {`Se eliminarán ${selectedVisibleCount} gasto${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} de la tabla visible.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -3023,8 +3023,8 @@ export function MonthlyExpensesTable({
               <AlertDialogTitle>Editar subtotal y cantidad</AlertDialogTitle>
               <AlertDialogDescription>
                 {subtotalUnitDraftValue === "hour"
-                  ? `Actualizá el subtotal por hora y la duración mensual de ${detailsDialogState?.expenseDescription ?? "este compromiso"}.`
-                  : `Actualizá el subtotal, su unidad y la cantidad mensual de ${detailsDialogState?.expenseDescription ?? "este compromiso"}.`}
+                  ? `Actualizá el subtotal por hora y la duración mensual de ${detailsDialogState?.expenseDescription ?? "este gasto"}.`
+                  : `Actualizá el subtotal, su unidad y la cantidad mensual de ${detailsDialogState?.expenseDescription ?? "este gasto"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -3036,7 +3036,7 @@ export function MonthlyExpensesTable({
                 </InputGroupAddon>
                 <InputGroupInput
                   aria-invalid={subtotalDraftError ? "true" : "false"}
-                  aria-label={`Subtotal de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  aria-label={`Subtotal de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
                   autoFocus
                   id="subtotal-dialog-input"
                   inputMode="decimal"
@@ -3087,7 +3087,7 @@ export function MonthlyExpensesTable({
                 value={subtotalUnitDraftValue}
               >
                 <SelectTrigger
-                  aria-label={`Unidad del subtotal de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  aria-label={`Unidad del subtotal de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
                   id="subtotal-unit-dialog-select"
                 >
                   <SelectValue />
@@ -3102,8 +3102,8 @@ export function MonthlyExpensesTable({
             {subtotalUnitDraftValue === "hour" ? (
               <div className={styles.paymentLinkDialogField}>
                 <OccurrenceDurationInput
-                  durationHoursAriaLabel={`Duración mensual en horas de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
-                  durationMinutesAriaLabel={`Duración mensual en minutos de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  durationHoursAriaLabel={`Duración mensual en horas de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
+                  durationMinutesAriaLabel={`Duración mensual en minutos de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
                   label="Duración mensual"
                   onChange={(nextUnit) => {
                     setOccurrencesUnitDraftValue(nextUnit);
@@ -3125,7 +3125,7 @@ export function MonthlyExpensesTable({
                 <Label htmlFor="occurrences-dialog-input">Cantidad por mes</Label>
                 <Input
                   aria-invalid={occurrencesDraftError ? "true" : "false"}
-                  aria-label={`Cantidad por mes de ${detailsDialogState?.expenseDescription ?? "compromiso"}`}
+                  aria-label={`Cantidad por mes de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
                   id="occurrences-dialog-input"
                   inputMode="numeric"
                   min="1"
@@ -3197,7 +3197,7 @@ export function MonthlyExpensesTable({
                   : "Editar datos de envío"}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {`Completá WhatsApp y mensaje opcional para ${receiptShareDialogState?.expenseDescription ?? "este compromiso"}.`}
+                {`Completá WhatsApp y mensaje opcional para ${receiptShareDialogState?.expenseDescription ?? "este gasto"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -3207,7 +3207,7 @@ export function MonthlyExpensesTable({
               </Label>
               <Input
                 aria-invalid={receiptShareDraftError ? "true" : "false"}
-                aria-label={`Número de WhatsApp de ${receiptShareDialogState?.expenseDescription ?? "compromiso"}`}
+                aria-label={`Número de WhatsApp de ${receiptShareDialogState?.expenseDescription ?? "gasto"}`}
                 autoFocus
                 id="receipt-share-phone-dialog-input"
                 inputMode="numeric"
@@ -3228,7 +3228,7 @@ export function MonthlyExpensesTable({
                 Mensaje opcional
               </Label>
               <Textarea
-                aria-label={`Mensaje opcional de ${receiptShareDialogState?.expenseDescription ?? "compromiso"}`}
+                aria-label={`Mensaje opcional de ${receiptShareDialogState?.expenseDescription ?? "gasto"}`}
                 id="receipt-share-message-dialog-input"
                 onChange={(event) => {
                   setReceiptShareMessageDraftValue(event.target.value);
@@ -3286,7 +3286,7 @@ export function MonthlyExpensesTable({
                   : "Agregar link de pago"}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {`Completá el link para ${paymentLinkDialogState?.expenseDescription ?? "este compromiso"}.`}
+                {`Completá el link para ${paymentLinkDialogState?.expenseDescription ?? "este gasto"}.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -3294,7 +3294,7 @@ export function MonthlyExpensesTable({
               <Label htmlFor="payment-link-dialog-input">Link de pago</Label>
               <Textarea
                 aria-invalid={paymentLinkDraftError ? "true" : "false"}
-                aria-label={`Link de pago de ${paymentLinkDialogState?.expenseDescription ?? "compromiso"}`}
+                aria-label={`Link de pago de ${paymentLinkDialogState?.expenseDescription ?? "gasto"}`}
                 autoFocus
                 id="payment-link-dialog-input"
                 onChange={(event) => {

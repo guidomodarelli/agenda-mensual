@@ -162,10 +162,10 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     );
 
     expect(
-      screen.getByRole("checkbox", { name: "Seleccionar compromiso Internet" }),
+      screen.getByRole("checkbox", { name: "Seleccionar gasto Internet" }),
     ).toBeChecked();
     expect(
-      screen.getByRole("checkbox", { name: "Seleccionar compromiso Luz" }),
+      screen.getByRole("checkbox", { name: "Seleccionar gasto Luz" }),
     ).toBeChecked();
   });
 

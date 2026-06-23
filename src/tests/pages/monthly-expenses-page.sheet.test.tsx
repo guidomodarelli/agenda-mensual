@@ -148,12 +148,12 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     const overlay = document.querySelector("[data-slot='dialog-overlay']");
     expect(overlay).not.toBeNull();
     expect(
-      screen.getByRole("heading", { name: "Nuevo compromiso" }),
+      screen.getByRole("heading", { name: "Nuevo gasto" }),
     ).toBeInTheDocument();
     expect(mockedToast).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(
-      screen.queryByRole("heading", { name: "Nuevo compromiso" }),
+      screen.queryByRole("heading", { name: "Nuevo gasto" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Internet")).toBeInTheDocument();
     expect(
@@ -235,7 +235,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.type(screen.getByLabelText("Descripción"), "Internet");
     await user.type(screen.getByLabelText("Subtotal"), "15000");
     await user.keyboard("{Enter}");
@@ -257,7 +257,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(
-      screen.queryByRole("heading", { name: "Nuevo compromiso" }),
+      screen.queryByRole("heading", { name: "Nuevo gasto" }),
     ).not.toBeInTheDocument();
   });
 
@@ -311,14 +311,14 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.type(screen.getByLabelText("Descripción"), "Fibra");
     await user.type(screen.getByLabelText("Subtotal"), "15000");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
       expect(mockedToast.warning).toHaveBeenCalledWith(
-        "El compromiso se guardó, pero 1 comprobante(s) no se pudieron renombrar.",
+        "El gasto se guardó, pero 1 comprobante(s) no se pudieron renombrar.",
       );
     });
   }, 10000);
@@ -368,7 +368,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.type(screen.getByLabelText("Descripción"), "Fibra");
     await user.type(screen.getByLabelText("Subtotal"), "15000");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
@@ -405,7 +405,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
 
@@ -447,7 +447,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     fireEvent.change(screen.getByLabelText("Descripción"), {
       target: { value: "Empleada doméstica" },
     });
@@ -1104,7 +1104,7 @@ registerMonthlyExpensesPageDefaultHooks({
       within(pendingCompletedSummaryElement).getByText("Servicio pendiente"),
     ).toBeInTheDocument();
     const summaryFilterButton = within(pendingCompletedSummaryElement).getByRole("button", {
-      name: "Filtrar compromiso Servicio pendiente",
+      name: "Filtrar gasto Servicio pendiente",
     });
     await user.click(summaryFilterButton);
     expect(
@@ -1211,7 +1211,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Filtrar compromiso Compromiso sin descripción" }),
+      screen.getByRole("button", { name: "Filtrar gasto Gasto sin descripción" }),
     );
 
     expect(
@@ -1257,10 +1257,10 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.getByRole("button", { name: "Filtrar compromiso Servicio pendiente" }),
+      screen.getByRole("button", { name: "Filtrar gasto Servicio pendiente" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Filtrar compromiso Otro pendiente" }),
+      screen.getByRole("button", { name: "Filtrar gasto Otro pendiente" }),
     ).toBeInTheDocument();
   });
 
@@ -1415,7 +1415,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
 
     expect(
-      screen.getByRole("heading", { name: "Editar compromiso" }),
+      screen.getByRole("heading", { name: "Editar gasto" }),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Agua")).toBeInTheDocument();
     expect(screen.queryByLabelText("Moneda")).not.toBeInTheDocument();
@@ -1457,7 +1457,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(
-      screen.queryByRole("heading", { name: "Editar compromiso" }),
+      screen.queryByRole("heading", { name: "Editar gasto" }),
     ).not.toBeInTheDocument();
   });
 
@@ -1494,7 +1494,7 @@ registerMonthlyExpensesPageDefaultHooks({
       screen.getByRole("heading", { name: "Editar subtotal y cantidad" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Editar compromiso" }),
+      screen.queryByRole("heading", { name: "Editar gasto" }),
     ).not.toBeInTheDocument();
   });
 
@@ -1544,7 +1544,7 @@ registerMonthlyExpensesPageDefaultHooks({
       screen.getByLabelText("Mensaje opcional de Internet").tagName,
     ).toBe("TEXTAREA");
     expect(
-      screen.queryByRole("heading", { name: "Editar compromiso" }),
+      screen.queryByRole("heading", { name: "Editar gasto" }),
     ).not.toBeInTheDocument();
   });
 
@@ -1663,7 +1663,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.type(screen.getByLabelText("Descripción"), "Internet");
     await user.type(screen.getByLabelText("Subtotal"), "1000");
     await user.click(
@@ -1784,7 +1784,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     const subtotalInput = screen.getByLabelText("Subtotal");
 
@@ -1822,7 +1822,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     const subtotalInput = screen.getByLabelText("Subtotal");
 
@@ -1863,7 +1863,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     const subtotalInput = screen.getByLabelText("Subtotal");
 
@@ -1924,7 +1924,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(overlay as HTMLElement);
 
     expect(
-      screen.getByText("Tenés cambios sin guardar en este compromiso."),
+      screen.getByText("Tenés cambios sin guardar en este gasto."),
     ).toBeInTheDocument();
 
     await user.click(
@@ -1948,10 +1948,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     expect(
-      screen.queryByText("Tenés cambios sin guardar en este compromiso."),
+      screen.queryByText("Tenés cambios sin guardar en este gasto."),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Editar compromiso" }),
+      screen.queryByRole("heading", { name: "Editar gasto" }),
     ).not.toBeInTheDocument();
   });
 
@@ -2017,7 +2017,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(overlay as HTMLElement);
 
     expect(
-      screen.getByText("Tenés cambios sin guardar en este compromiso."),
+      screen.getByText("Tenés cambios sin guardar en este gasto."),
     ).toBeInTheDocument();
 
     await user.click(
@@ -2025,7 +2025,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.queryByText("Tenés cambios sin guardar en este compromiso."),
+      screen.queryByText("Tenés cambios sin guardar en este gasto."),
     ).not.toBeInTheDocument();
   });
 
@@ -2079,7 +2079,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("heading", { name: "Editar compromiso" }),
+      screen.queryByRole("heading", { name: "Editar gasto" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(screen.queryByText("Agua descartada")).not.toBeInTheDocument();
@@ -2131,16 +2131,16 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(primaryOverlay as HTMLElement);
 
     expect(
-      screen.getByText("Tenés cambios sin guardar en este compromiso."),
+      screen.getByText("Tenés cambios sin guardar en este gasto."),
     ).toBeInTheDocument();
 
     const overlays = document.querySelectorAll("[data-slot='dialog-overlay']");
     await user.click(overlays.item(overlays.length - 1) as HTMLElement);
 
     expect(
-      screen.queryByText("Tenés cambios sin guardar en este compromiso."),
+      screen.queryByText("Tenés cambios sin guardar en este gasto."),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Editar compromiso" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar gasto" })).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toHaveValue("Agua pendiente");
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -2191,7 +2191,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(primaryOverlay as HTMLElement);
 
     expect(
-      screen.getByText("Tenés cambios sin guardar en este compromiso."),
+      screen.getByText("Tenés cambios sin guardar en este gasto."),
     ).toBeInTheDocument();
 
     await user.click(
@@ -2201,9 +2201,9 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.queryByText("Tenés cambios sin guardar en este compromiso."),
+      screen.queryByText("Tenés cambios sin guardar en este gasto."),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Editar compromiso" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar gasto" })).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toHaveValue("Agua en progreso");
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -2233,7 +2233,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     expect(screen.queryByText("Completá la descripción.")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Ingresá un subtotal mayor a 0."),
@@ -2279,7 +2279,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     expect(screen.queryByText("Seleccioná un prestamista")).not.toBeInTheDocument();
 
@@ -2368,11 +2368,11 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     expect(
       screen.queryByText(
-        "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.",
+        "Marcá esta opción si el gasto corresponde a una deuda o a dinero que te deben.",
       ),
     ).not.toBeInTheDocument();
 
@@ -2390,7 +2390,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(loanInfoTooltip).toBeInTheDocument();
     expect(positionedLoanInfoTooltip).not.toBeNull();
     expect(positionedLoanInfoTooltip).toHaveTextContent(
-      "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.",
+      "Marcá esta opción si el gasto corresponde a una deuda o a dinero que te deben.",
     );
 
     const positionedTooltipCloseButton = (
@@ -2405,7 +2405,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(
       screen.queryByText(
-        "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.",
+        "Marcá esta opción si el gasto corresponde a una deuda o a dinero que te deben.",
       ),
     ).not.toBeInTheDocument();
 
@@ -2413,7 +2413,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("heading", { name: "Nuevo compromiso" }));
+    await user.click(screen.getByRole("heading", { name: "Nuevo gasto" }));
 
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
 
@@ -2802,7 +2802,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     expect(screen.queryByText("Completá la fecha de inicio.")).not.toBeInTheDocument();
@@ -2851,7 +2851,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     const installmentInput = screen.getByLabelText("Cantidad total de cuotas");
@@ -2918,7 +2918,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     const installmentInput = screen.getByLabelText("Cantidad total de cuotas");
@@ -2967,7 +2967,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "7");
     await user.type(screen.getByLabelText("Descripción"), "Prestamo tarjeta");
@@ -3047,7 +3047,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Descripción"), "Prestamo a proveedor");
     await user.type(screen.getByLabelText("Subtotal"), "10000");
@@ -3111,7 +3111,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "0");
     fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
@@ -3167,7 +3167,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     const startMonthInput = screen.getByLabelText("Inicio de la deuda");
@@ -3301,7 +3301,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestamista" }));
 
@@ -3368,7 +3368,7 @@ registerMonthlyExpensesPageDefaultHooks({
       screen.queryByRole("menuitem", { name: "Eliminar" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("¿Querés eliminar este compromiso?"),
+      screen.getByText("¿Querés eliminar este gasto?"),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -3647,7 +3647,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     fireEvent.change(screen.getByLabelText("Descripción"), {
       target: { value: "Prestamo tarjeta" },
     });

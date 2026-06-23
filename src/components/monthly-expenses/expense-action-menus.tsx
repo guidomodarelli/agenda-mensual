@@ -66,7 +66,7 @@ export function QuickEditActionsMenu({
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const normalizedExpenseDescription =
-    expenseDescription.trim() || "compromiso";
+    expenseDescription.trim() || "gasto";
   const shouldConfirmDelete =
     Boolean(confirmDeleteActionTitle) && Boolean(confirmDeleteActionDescription);
 

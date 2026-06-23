@@ -79,7 +79,7 @@ export function ExpenseReceiptCoverageEditDialog({
     parsedCoveredPayments <= normalizedMaxCoveredPayments;
   const hasReceipt = Boolean(receiptFileName && receiptFileViewUrl);
   const shouldShowReplacementInput = canManageReceipt && !hasReceipt;
-  const normalizedExpenseDescription = expenseDescription.trim() || "compromiso";
+  const normalizedExpenseDescription = expenseDescription.trim() || "gasto";
   const normalizedReceiptFileName = receiptFileName?.trim() || "comprobante";
 
   const receiptFileLink = useMemo(() => {
@@ -138,7 +138,7 @@ export function ExpenseReceiptCoverageEditDialog({
           <DialogHeader>
             <DialogTitle>Editar registro de pago</DialogTitle>
             <DialogDescription>
-              Ajusta cuántos pagos desea cubrir para {expenseDescription || "el compromiso seleccionado"}.
+              Ajusta cuántos pagos desea cubrir para {expenseDescription || "el gasto seleccionado"}.
             </DialogDescription>
           </DialogHeader>
 

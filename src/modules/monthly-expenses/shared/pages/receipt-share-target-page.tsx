@@ -375,7 +375,7 @@ export default function ReceiptShareTargetPage() {
 
     if (isCreatingExpense) {
       if (!newExpenseDescription.trim()) {
-        setSaveError("Completá el nombre del nuevo compromiso.");
+        setSaveError("Completá el nombre del nuevo gasto.");
         return;
       }
 
@@ -392,12 +392,12 @@ export default function ReceiptShareTargetPage() {
       targetExpenseId = createExpenseId();
       targetExpenseDescription = newExpenseDescription.trim();
     } else if (!selectedExpense) {
-      setSaveError("Seleccioná un compromiso para asociar el comprobante.");
+      setSaveError("Seleccioná un gasto para asociar el comprobante.");
       return;
     }
 
     if (remainingReceiptPayments <= 0) {
-      setSaveError("No quedan pagos pendientes para asociar en este compromiso.");
+      setSaveError("No quedan pagos pendientes para asociar en este gasto.");
       return;
     }
 
@@ -590,7 +590,7 @@ export default function ReceiptShareTargetPage() {
                   onChange={(event) => handleCreateExpenseToggle(event.target.checked)}
                   type="checkbox"
                 />
-                Crear compromiso nuevo
+                Crear gasto nuevo
               </label>
             </div>
 
@@ -604,7 +604,7 @@ export default function ReceiptShareTargetPage() {
 
             {!isCreatingExpense ? (
               <div className={styles.fieldGroup}>
-                <Label htmlFor="receipt-target-expense">Compromiso existente</Label>
+                <Label htmlFor="receipt-target-expense">Gasto existente</Label>
                 <select
                   className={styles.selectField}
                   id="receipt-target-expense"
@@ -614,7 +614,7 @@ export default function ReceiptShareTargetPage() {
                   }}
                   value={selectedExpenseId}
                 >
-                  <option value="">Seleccionar compromiso</option>
+                  <option value="">Seleccionar gasto</option>
                   {(monthDocument?.items ?? []).map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.description}
@@ -625,7 +625,7 @@ export default function ReceiptShareTargetPage() {
             ) : (
               <div className={styles.newExpenseGrid}>
                 <div className={styles.fieldGroup}>
-                  <Label htmlFor="new-expense-description">Nombre del compromiso</Label>
+                  <Label htmlFor="new-expense-description">Nombre del gasto</Label>
                   <Input
                     id="new-expense-description"
                     onChange={(event) => setNewExpenseDescription(event.target.value)}
@@ -678,7 +678,7 @@ export default function ReceiptShareTargetPage() {
             <div className={styles.coverageCard}>
               <h3 className={styles.coverageTitle}>Cobertura del comprobante</h3>
               <p className={styles.coverageHint}>
-                Pagos pendientes para este compromiso en {selectedMonth}: {remainingReceiptPayments}
+                Pagos pendientes para este gasto en {selectedMonth}: {remainingReceiptPayments}
               </p>
 
               <RadioGroup

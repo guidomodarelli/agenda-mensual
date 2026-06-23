@@ -310,7 +310,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar compromiso" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     fireEvent.change(screen.getByLabelText("Descripción"), {
       target: { value: "Expensas" },
     });

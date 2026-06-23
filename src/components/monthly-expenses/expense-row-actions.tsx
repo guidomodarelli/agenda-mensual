@@ -73,7 +73,7 @@ export function ExpenseRowActions({
   onManagePaymentLink,
   onReactivateRecurrence,
 }: ExpenseRowActionsProps) {
-  const normalizedDescription = description.trim() || "este compromiso";
+  const normalizedDescription = description.trim() || "este gasto";
   const [confirmActionType, setConfirmActionType] = useState<
     | "deleteExpense"
     | "deleteMonthlyFolderReference"
@@ -98,7 +98,7 @@ export function ExpenseRowActions({
           description:
             "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
           onConfirm: onDelete,
-          title: "¿Querés eliminar este compromiso?",
+          title: "¿Querés eliminar este gasto?",
         }
       : confirmActionType === "deleteMonthlyFolderReference"
         ? {

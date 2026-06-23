@@ -2514,7 +2514,7 @@ export default function MonthlyExpensesPage({
 
       if (saveResult.receiptRenameWarnings.length > 0) {
         toast.warning(
-          `El compromiso se guardó, pero ${saveResult.receiptRenameWarnings.length} comprobante(s) no se pudieron renombrar.`,
+          `El gasto se guardó, pero ${saveResult.receiptRenameWarnings.length} comprobante(s) no se pudieron renombrar.`,
         );
       }
 
@@ -2641,8 +2641,8 @@ export default function MonthlyExpensesPage({
     );
 
     await persistMonthlyExpensesRows(nextRows, {
-      loading: "Moviendo compromiso de carpeta...",
-      success: "Compromiso movido de carpeta correctamente.",
+      loading: "Moviendo gasto de carpeta...",
+      success: "Gasto movido de carpeta correctamente.",
     });
   };
 
@@ -2801,7 +2801,7 @@ export default function MonthlyExpensesPage({
     const row = formState.rows.find((currentRow) => currentRow.id === expenseId);
 
     if (!row) {
-      toast.warning("No pudimos encontrar el compromiso que querés editar.");
+      toast.warning("No pudimos encontrar el gasto que querés editar.");
       return;
     }
 
@@ -2835,7 +2835,7 @@ export default function MonthlyExpensesPage({
     if (!activeExpenseId) {
       updateExpenseReceiptUploadState((currentState) => ({
         ...currentState,
-        error: "No pudimos identificar el compromiso para asociar el comprobante.",
+        error: "No pudimos identificar el gasto para asociar el comprobante.",
       }));
       return;
     }
@@ -2845,7 +2845,7 @@ export default function MonthlyExpensesPage({
     if (!expenseRow) {
       updateExpenseReceiptUploadState((currentState) => ({
         ...currentState,
-        error: "No pudimos encontrar el compromiso seleccionado.",
+        error: "No pudimos encontrar el gasto seleccionado.",
       }));
       return;
     }
@@ -3002,7 +3002,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso del comprobante.");
+      toast.warning("No pudimos encontrar el gasto del comprobante.");
       return;
     }
 
@@ -3053,7 +3053,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso del comprobante.");
+      toast.warning("No pudimos encontrar el gasto del comprobante.");
       return;
     }
 
@@ -3102,7 +3102,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -3162,7 +3162,7 @@ export default function MonthlyExpensesPage({
     if (!expenseRow) {
       updateExpenseReceiptCoverageEditState((currentState) => ({
         ...currentState,
-        error: "No pudimos encontrar el compromiso seleccionado.",
+        error: "No pudimos encontrar el gasto seleccionado.",
       }));
       return;
     }
@@ -3286,7 +3286,7 @@ export default function MonthlyExpensesPage({
     if (!expenseRow) {
       updateExpenseReceiptCoverageEditState((currentState) => ({
         ...currentState,
-        error: "No pudimos encontrar el compromiso seleccionado.",
+        error: "No pudimos encontrar el gasto seleccionado.",
         isSubmitting: false,
       }));
       return;
@@ -3525,7 +3525,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return false;
     }
 
@@ -3590,7 +3590,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return false;
     }
 
@@ -3713,7 +3713,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -3759,7 +3759,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -3807,14 +3807,14 @@ export default function MonthlyExpensesPage({
     subtotalUnit: MonthlyExpenseSubtotalUnit;
   }) => {
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para actualizar el compromiso.");
+      toast.warning("Conectate con Google para actualizar el gasto.");
       return;
     }
 
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -3879,12 +3879,12 @@ export default function MonthlyExpensesPage({
     );
 
     const wasSaved = await persistMonthlyExpensesRows(nextRows, {
-      loading: "Actualizando compromiso...",
-      success: "Compromiso actualizado.",
+      loading: "Actualizando gasto...",
+      success: "Gasto actualizado.",
     });
 
     if (!wasSaved) {
-      toast.error("No pudimos actualizar el compromiso.");
+      toast.error("No pudimos actualizar el gasto.");
     }
   };
 
@@ -3905,7 +3905,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -3967,7 +3967,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -4024,7 +4024,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -4068,7 +4068,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso seleccionado.");
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
       return;
     }
 
@@ -4119,7 +4119,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso de la carpeta seleccionada.");
+      toast.warning("No pudimos encontrar el gasto de la carpeta seleccionada.");
       return;
     }
 
@@ -4153,7 +4153,7 @@ export default function MonthlyExpensesPage({
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
-      toast.warning("No pudimos encontrar el compromiso de la carpeta seleccionada.");
+      toast.warning("No pudimos encontrar el gasto de la carpeta seleccionada.");
       return;
     }
 
@@ -4218,7 +4218,7 @@ export default function MonthlyExpensesPage({
 
   const handleSaveExpense = async () => {
     if (!expenseSheetState.draft) {
-      toast.warning("No hay un compromiso abierto para guardar.");
+      toast.warning("No hay un gasto abierto para guardar.");
       return;
     }
 
@@ -4244,12 +4244,12 @@ export default function MonthlyExpensesPage({
     const wasSaved = await persistMonthlyExpensesRows(nextRows, {
       loading:
         expenseSheetState.mode === "create"
-          ? "Guardando nuevo compromiso..."
-          : "Actualizando compromiso...",
+          ? "Guardando nuevo gasto..."
+          : "Actualizando gasto...",
       success:
         expenseSheetState.mode === "create"
-          ? "Compromiso creado correctamente."
-          : "Compromiso actualizado correctamente.",
+          ? "Gasto creado correctamente."
+          : "Gasto actualizado correctamente.",
     });
 
     if (wasSaved) {
@@ -4267,8 +4267,8 @@ export default function MonthlyExpensesPage({
       formState.rows.filter((row) => row.id !== expenseId),
     );
     const wasSaved = await persistMonthlyExpensesRows(nextRows, {
-      loading: "Eliminando compromiso...",
-      success: "Compromiso eliminado correctamente.",
+      loading: "Eliminando gasto...",
+      success: "Gasto eliminado correctamente.",
     });
 
     if (wasSaved && expenseSheetState.draft?.id === expenseId) {
@@ -4684,8 +4684,8 @@ export default function MonthlyExpensesPage({
     );
 
     await persistMonthlyExpensesRows(nextRows, {
-      loading: "Quitando los compromisos de la carpeta eliminada...",
-      success: "Compromisos actualizados sin carpeta.",
+      loading: "Quitando los gastos de la carpeta eliminada...",
+      success: "Gastos actualizados sin carpeta.",
     });
   };
 
