@@ -223,8 +223,10 @@ export const MONTHLY_EXPENSES_FILTER_MATCHERS: Record<
       ? matchesTextMatch(value, stripTrailingSlashes(row.paymentLink))
       : true,
   prestamista: (row, value, context) =>
-    matchesAdvancedEnumFilter(value, row.lenderId) ||
-    matchesLegacyLenderByName(value, row, context),
+    value.kind === "textMatch"
+      ? matchesTextMatch(value, row.lenderName)
+      : matchesAdvancedEnumFilter(value, row.lenderId) ||
+        matchesLegacyLenderByName(value, row, context),
   direccion: (row, value) =>
     matchesAdvancedEnumFilter(value, getLoanDirectionFilterValue(row)),
   deuda: (row, value) =>

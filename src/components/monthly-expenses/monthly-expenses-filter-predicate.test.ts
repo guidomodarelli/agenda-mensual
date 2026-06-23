@@ -282,6 +282,46 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(createRow({ lenderId: "", lenderName: "" }))).toBe(false);
   });
 
+  it("filters prestamista by text when lender catalog is empty (textMatch)", () => {
+    // Cuando el catálogo de prestamistas está vacío, el qualifier se emite como
+    // textMatch. El matcher debe comparar contra row.lenderName en vez de pasar
+    // todas las filas como no-op.
+    const matches = predicate([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "includes", text: "juan" },
+      },
+    ]);
+
+    expect(matches(createRow({ lenderName: "Juan Pérez" }))).toBe(true);
+    expect(matches(createRow({ lenderName: "juan perez" }))).toBe(true);
+    expect(matches(createRow({ lenderName: "María López" }))).toBe(false);
+    expect(matches(createRow({ lenderName: "" }))).toBe(false);
+  });
+
+  it("textMatch prestamista with has/notHas ops", () => {
+    const matchesHas = predicate([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "has" },
+      },
+    ]);
+    const matchesNotHas = predicate([
+      {
+        key: "prestamista",
+        negated: false,
+        value: { kind: "textMatch", op: "notHas" },
+      },
+    ]);
+
+    expect(matchesHas(createRow({ lenderName: "Juan" }))).toBe(true);
+    expect(matchesHas(createRow({ lenderName: "" }))).toBe(false);
+    expect(matchesNotHas(createRow({ lenderName: "" }))).toBe(true);
+    expect(matchesNotHas(createRow({ lenderName: "Juan" }))).toBe(false);
+  });
+
   it("matches a negated vigencia year-month range without emptying the table", () => {
     // `-vigencia:2026-01..` se rutea por el predicado de dominio; sin matcher la
     // negación rechazaría todas las filas. Por defecto la vigencia usa startMonth.
