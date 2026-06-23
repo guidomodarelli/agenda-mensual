@@ -1267,6 +1267,10 @@ export function MonthlyExpensesTable({
       ),
     [queryAppliedFilters],
   );
+  const lenderNamesById = useMemo(
+    () => new Map(lenders.map((lender) => [lender.id, lender.name])),
+    [lenders],
+  );
   const rowsMatchingQueryPredicate = useMemo(() => {
     if (queryPredicateFilters.length === 0) {
       return rowsExcludingDescriptions;
@@ -1274,12 +1278,13 @@ export function MonthlyExpensesTable({
 
     const matchesQuery = buildMonthlyExpensesQueryPredicate(
       queryPredicateFilters,
-      { exchangeRateSnapshot },
+      { exchangeRateSnapshot, lenderNamesById },
     );
 
     return rowsExcludingDescriptions.filter(matchesQuery);
   }, [
     exchangeRateSnapshot,
+    lenderNamesById,
     queryPredicateFilters,
     rowsExcludingDescriptions,
   ]);

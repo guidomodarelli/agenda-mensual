@@ -227,6 +227,24 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(createRow({ lenderId: "" }))).toBe(false);
   });
 
+  it("matches legacy prestamista rows by displayed name when lenderId is empty", () => {
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: null,
+      lenderNamesById: new Map([["lender-1", "Juan Pérez"]]),
+    };
+    const matches = buildMonthlyExpensesQueryPredicate(
+      [{ key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } }],
+      context,
+    );
+
+    // Fila legacy: muestra el nombre pero no guarda lenderId (acento-insensible).
+    expect(matches(createRow({ lenderId: "", lenderName: "Juan Perez" }))).toBe(true);
+    // Nombre distinto: no matchea.
+    expect(matches(createRow({ lenderId: "", lenderName: "Otro" }))).toBe(false);
+    // Sin nombre ni id: no matchea.
+    expect(matches(createRow({ lenderId: "", lenderName: "" }))).toBe(false);
+  });
+
   it("ANDs multiple filters of different kinds", () => {
     const matches = predicate([
       { key: "subtotal", negated: false, value: { kind: "numberRange", min: 500 } },

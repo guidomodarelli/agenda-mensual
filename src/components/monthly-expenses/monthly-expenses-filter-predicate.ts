@@ -30,6 +30,12 @@ import type {
  */
 export interface MonthlyExpenseFilterContext {
   exchangeRateSnapshot: ExchangeRateSnapshot | null;
+  /**
+   * Nombre mostrado de cada prestamista por id. Permite que el enum
+   * `prestamista:<slug>` siga matcheando filas legacy que solo guardan
+   * `lenderName` (sin `lenderId`), resolviendo el id seleccionado a su nombre.
+   */
+  lenderNamesById?: ReadonlyMap<string, string>;
 }
 
 type MonthlyExpenseFilterMatcher = (
@@ -122,6 +128,36 @@ function numberRangeMatcher(
 }
 
 /**
+ * Fallback de prestamista para filas legacy: documentos previos al id estable
+ * guardan solo `lenderName` (con `lenderId` vacío) pero la tabla igual muestra
+ * el nombre. Como el enum filtra por id, sin esto `prestamista:<slug>` excluiría
+ * la fila visible aunque el nombre coincida. Resuelve el id seleccionado a su
+ * nombre vía el contexto y lo compara, normalizado, contra el nombre mostrado.
+ */
+function matchesLegacyLenderByName(
+  value: AppliedFilterValue,
+  row: MonthlyExpensesEditableRow,
+  context: MonthlyExpenseFilterContext,
+): boolean {
+  if (value.kind !== "enum" || row.lenderId.trim().length > 0) {
+    return false;
+  }
+
+  const selectedLenderName = context.lenderNamesById?.get(value.value);
+
+  if (!selectedLenderName) {
+    return false;
+  }
+
+  const normalizedSelected = normalizeFilterSlug(selectedLenderName);
+
+  return (
+    normalizedSelected.length > 0 &&
+    normalizedSelected === normalizeFilterSlug(row.lenderName)
+  );
+}
+
+/**
  * Registro de matchers por clave de qualifier. Reutiliza los matchers de
  * filtros avanzados y desacopla el filtrado de las columnas de TanStack.
  */
@@ -161,8 +197,9 @@ export const MONTHLY_EXPENSES_FILTER_MATCHERS: Record<
     value.kind === "textMatch"
       ? matchesTextMatch(value, stripTrailingSlashes(row.paymentLink))
       : true,
-  prestamista: (row, value) =>
-    matchesAdvancedEnumFilter(value, row.lenderId),
+  prestamista: (row, value, context) =>
+    matchesAdvancedEnumFilter(value, row.lenderId) ||
+    matchesLegacyLenderByName(value, row, context),
   direccion: (row, value) =>
     matchesAdvancedEnumFilter(value, getLoanDirectionFilterValue(row)),
   deuda: (row, value) =>
