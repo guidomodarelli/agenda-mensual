@@ -9,6 +9,10 @@
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --radius: 0.625rem;
+  /* Altura de la barra superior sticky del shell. Se comparte para que los
+     headers sticky dentro del contenido (p. ej. las cards de gastos en mobile)
+     se anclen justo debajo y no queden tapados por la barra. */
+  --app-top-bar-height: 4rem;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);

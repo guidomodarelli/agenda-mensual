@@ -934,6 +934,7 @@ export function DataTable<TData, TValue>({
             return (
               <TableCell
                 className={columnMeta?.cellClassName}
+                data-label={columnMeta?.label}
                 key={cell.id}
                 onClick={handleCellClick}
               >
@@ -1342,7 +1343,16 @@ export function DataTable<TData, TValue>({
               {footerGroups.map((footerGroup) => (
                 <TableRow className="hover:bg-transparent" key={footerGroup.id}>
                   {footerGroup.headers.map((footer) => (
-                    <TableCell key={footer.id}>
+                    <TableCell
+                      data-label={
+                        (
+                          footer.column.columnDef.meta as
+                            | DataTableColumnMeta
+                            | undefined
+                        )?.label
+                      }
+                      key={footer.id}
+                    >
                       {footer.isPlaceholder
                         ? null
                         : flexRender(

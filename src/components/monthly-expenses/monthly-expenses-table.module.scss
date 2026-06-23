@@ -1231,26 +1231,8 @@
   }
 }
 
-@media (max-width: 1024px) {
-  .selectionTableCell {
-    position: -webkit-sticky;
-    position: sticky;
-    left: 0;
-    z-index: 3;
-    background: var(--background);
-  }
-
-  .tableWrapper :global([data-slot="table-head"]:first-child) {
-    position: -webkit-sticky;
-    position: sticky;
-    left: 0;
-    z-index: 4;
-  }
-
-  .tableWrapperScrolled :global([data-slot="table-head"]:first-child) {
-    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
-  }
-
+@media (max-width: 1023.98px) {
+  /* --- Toolbar apilado --- */
   .headerTopRow {
     flex-direction: column;
   }
@@ -1282,5 +1264,146 @@
 
   .tableAddAction {
     width: 100%;
+  }
+
+  /* --- Tabla -> cards --- */
+  /* La tabla deja de scrollear horizontalmente: para que el header de cada
+     card quede sticky respecto al scroll de la página, los contenedores de la
+     tabla (con overflow-x) no deben interceptar el scroll vertical. */
+  .tableWrapper :global([data-slot="table-container"]),
+  .tableWrapper :global(div:has(> [data-slot="table-container"])) {
+    overflow: visible;
+  }
+
+  .tableWrapper :global([data-slot="table"]) {
+    display: block;
+    width: 100%;
+  }
+
+  /* La cabecera de columnas es redundante: cada celda lleva su propia etiqueta. */
+  .tableWrapper :global([data-slot="table-header"]) {
+    display: none;
+  }
+
+  .tableWrapper :global([data-slot="table-body"]),
+  .tableWrapper :global([data-slot="table-footer"]) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  /* El footer es la card de totales: se separa del cuerpo y pierde el fondo
+     y borde muted del <tfoot>, que asomaban en gris detrás de las esquinas
+     redondeadas de la card. */
+  .tableWrapper :global([data-slot="table-footer"]) {
+    margin-top: 0.75rem;
+    border: 0;
+    background: transparent;
+  }
+
+  /* Cada fila se vuelve una card. El header (checkbox + descripción) comparte
+     la primera línea; el resto de las celdas usan flex-basis 100% para apilarse
+     una por línea debajo. */
+  .tableWrapper :global([data-slot="table-row"]) {
+    display: flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    /* `clip` recorta las esquinas de la última celda contra el borde
+       redondeado SIN crear un scroll container, por lo que (a diferencia de
+       `hidden`) no rompe el sticky del header. */
+    overflow: clip;
+    background: var(--background);
+  }
+
+  /* Cada celda se apila como una fila «etiqueta / valor» dentro de la card. */
+  .tableWrapper :global([data-slot="table-cell"]) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex: 0 0 100%;
+    width: 100%;
+    padding: 0.5rem 0.875rem;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .tableWrapper :global([data-slot="table-cell"])::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    text-align: left;
+  }
+
+  /* Oculta columnas sin valor (placeholder «—» o footers vacíos) para no
+     ensuciar la card de cada gasto. */
+  .tableWrapper :global([data-slot="table-cell"]:empty),
+  .tableWrapper :global([data-slot="table-cell"]):has(.emptyCellPlaceholder) {
+    display: none;
+  }
+
+  /* En la vista de tabla, la última fila pierde su borde inferior; en cards eso
+     borraría TODOS los divisores entre celdas de la última card. Se re-asserta
+     el separador (y se mantiene también al hacer hover). */
+  .tableWrapper
+    :global([data-slot="table-body"] [data-slot="table-row"]:last-child [data-slot="table-cell"]),
+  .tableWrapper
+    :global([data-slot="table-body"] [data-slot="table-row"]:hover [data-slot="table-cell"]) {
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  }
+
+  /* Header de la card = checkbox + descripción en la misma línea, sticky en el
+     tope (debajo de la barra del shell) mientras se scrollea la card. */
+  .tableWrapper .selectionTableCell,
+  .tableWrapper .stickyDescriptionCell {
+    position: -webkit-sticky;
+    position: sticky;
+    top: var(--app-top-bar-height);
+    z-index: 2;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--muted) 45%, var(--background));
+  }
+
+  /* Checkbox: a la izquierda de la descripción, alineado arriba con el título. */
+  .tableWrapper .selectionTableCell {
+    order: -2;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0.75rem 0 0.625rem 0.875rem;
+    border-top-left-radius: calc(var(--radius) - 1px);
+  }
+
+  .tableWrapper .selectionTableCell .selectionCell {
+    align-items: flex-start;
+  }
+
+  .tableWrapper .selectionTableCell::before {
+    content: none;
+  }
+
+  /* Descripción: ocupa el resto de la línea del header. */
+  .tableWrapper .stickyDescriptionCell {
+    order: -1;
+    flex: 1 1 0;
+    max-width: none;
+    padding: 0.625rem 2.75rem 0.625rem 0.625rem;
+    text-align: left;
+    border-top-right-radius: calc(var(--radius) - 1px);
+  }
+
+  .tableWrapper .stickyDescriptionCell::before {
+    content: none;
+  }
+
+  .selectionCell {
+    justify-content: center;
+    width: auto;
   }
 }

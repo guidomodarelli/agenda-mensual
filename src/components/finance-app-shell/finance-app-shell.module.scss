@@ -26,6 +26,8 @@
   position: sticky;
   top: 0;
   z-index: 20;
+  min-height: var(--app-top-bar-height);
+  box-sizing: border-box;
   margin-block: 0;
   margin-inline: -1.25rem;
   padding: 1rem 1.25rem;
