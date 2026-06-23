@@ -217,6 +217,43 @@ describe("buildMonthlyExpensesQueryPredicate", () => {
     expect(matches(usdRow)).toBe(true);
   });
 
+  it("bases USD presence on the converted value, matching the displayed column", () => {
+    const arsRow = createRow({ currency: "ARS", total: "1000" });
+    const usdRow = createRow({ currency: "USD", total: "50" });
+
+    // Sin snapshot, la columna USD de una fila ARS muestra "-": tiene:usd debe ser
+    // falso (y no:usd verdadero) aunque el total crudo sea no-cero.
+    const hasUsdNoRate = buildMonthlyExpensesQueryPredicate(
+      [{ key: "usd", negated: false, value: { kind: "presence", value: "hasValue" } }],
+      { exchangeRateSnapshot: null },
+    );
+    const lacksUsdNoRate = buildMonthlyExpensesQueryPredicate(
+      [{ key: "usd", negated: false, value: { kind: "presence", value: "noValue" } }],
+      { exchangeRateSnapshot: null },
+    );
+
+    expect(hasUsdNoRate(arsRow)).toBe(false);
+    expect(lacksUsdNoRate(arsRow)).toBe(true);
+    // Una fila USD ya está en USD: tiene valor convertido aun sin snapshot.
+    expect(hasUsdNoRate(usdRow)).toBe(true);
+
+    // Con snapshot válido la fila ARS sí convierte a USD y queda presente.
+    const context: MonthlyExpenseFilterContext = {
+      exchangeRateSnapshot: {
+        blueRate: 1500,
+        month: "2026-06",
+        officialRate: 1000,
+        solidarityRate: 1300,
+      },
+    };
+    const hasUsdWithRate = buildMonthlyExpensesQueryPredicate(
+      [{ key: "usd", negated: false, value: { kind: "presence", value: "hasValue" } }],
+      context,
+    );
+
+    expect(hasUsdWithRate(arsRow)).toBe(true);
+  });
+
   it("matches prestamista by lender id (enum)", () => {
     const matches = predicate([
       { key: "prestamista", negated: false, value: { kind: "enum", value: "lender-1" } },

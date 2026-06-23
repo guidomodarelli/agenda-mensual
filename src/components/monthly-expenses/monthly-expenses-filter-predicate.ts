@@ -254,7 +254,16 @@ export const MONTHLY_EXPENSES_PRESENCE_PREDICATES: Record<
 > = {
   subtotal: (row) => hasNonZeroAmount(row.subtotal),
   total: (row) => hasNonZeroAmount(row.total),
-  usd: (row) => hasNonZeroAmount(row.total),
+  usd: (row, context) => {
+    const convertedUsd = getConvertedAmountForCurrency({
+      currency: "USD",
+      exchangeRateSnapshot: context.exchangeRateSnapshot,
+      rowCurrency: row.currency,
+      total: Number(row.total),
+    });
+
+    return convertedUsd != null && convertedUsd !== 0;
+  },
   pagos: (row) => getPaymentProgress(row).coveredPayments > 0,
   registros: (row) => (row.paymentRecords ?? []).length > 0,
   enviados: (row) => getSentReceiptsCount(row) > 0,
