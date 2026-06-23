@@ -802,14 +802,14 @@ describe("DataTable", () => {
 
     const queryBar = screen.getByRole("combobox", { name: "Filtro unificado" });
     await user.click(queryBar);
-    await user.type(queryBar, "link:^https");
+    await user.type(queryBar, "link:https*");
     // Al perder el foco la barra se re-sincroniza con la forma canónica; el
     // filtro sin columna debe sobrevivir y no quedar como filtro invisible.
     await user.tab();
 
     expect(
       screen.getByRole("combobox", { name: "Filtro unificado" }),
-    ).toHaveValue("link:^https");
+    ).toHaveValue("link:https*");
   });
 
   it("clears an applied filter when its backing option disappears", async () => {
