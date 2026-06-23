@@ -22,15 +22,7 @@ import { getPaymentProgress } from "./monthly-expenses-payment-progress";
 import type {
   ExchangeRateSnapshot,
   MonthlyExpensesEditableRow,
-  VigenciaSortMode,
 } from "./monthly-expenses-table.types";
-
-/**
- * Modo de vigencia por defecto cuando el contexto no lo provee. Coincide con
- * `DEFAULT_VIGENCIA_SORT_MODE` de las preferencias de la tabla: la vigencia se
- * mide por el mes de inicio salvo que el usuario elija el mes de fin.
- */
-const DEFAULT_VIGENCIA_SORT_MODE: VigenciaSortMode = "startMonth";
 
 /**
  * Contexto necesario para evaluar los qualifiers que dependen de la cotización
@@ -44,23 +36,6 @@ export interface MonthlyExpenseFilterContext {
    * `lenderName` (sin `lenderId`), resolviendo el id seleccionado a su nombre.
    */
   lenderNamesById?: ReadonlyMap<string, string>;
-  /**
-   * Criterio para resolver la vigencia de la fila (`startMonth` vs
-   * `loanEndMonth`), igual que la columna Vigencia. Determina qué año-mes usan
-   * el matcher `vigencia:` y su predicado de presencia. Por defecto
-   * `startMonth`.
-   */
-  vigenciaSortMode?: VigenciaSortMode;
-}
-
-/** Año-mes (`YYYY-MM`) que define la vigencia de la fila según el modo activo. */
-function getVigenciaMonthValue(
-  row: MonthlyExpensesEditableRow,
-  context: MonthlyExpenseFilterContext,
-): string {
-  const vigenciaSortMode = context.vigenciaSortMode ?? DEFAULT_VIGENCIA_SORT_MODE;
-
-  return vigenciaSortMode === "endMonth" ? row.loanEndMonth : row.startMonth;
 }
 
 type MonthlyExpenseFilterMatcher = (
@@ -241,11 +216,6 @@ export const MONTHLY_EXPENSES_FILTER_MATCHERS: Record<
       value,
       getYearMonthValue(row.loanEndMonth),
     ),
-  vigencia: (row, value, context) =>
-    matchesAdvancedYearMonthRangeFilter(
-      value,
-      getYearMonthValue(getVigenciaMonthValue(row, context)),
-    ),
 };
 
 /** `true` si un texto crudo tiene contenido (tras normalizar acentos/espacios). */
@@ -308,8 +278,6 @@ export const MONTHLY_EXPENSES_PRESENCE_PREDICATES: Record<
   deuda: (row) => row.isLoan && row.loanProgress.trim().length > 0,
   inicio: (row) => getYearMonthValue(row.startMonth) != null,
   fin: (row) => getYearMonthValue(row.loanEndMonth) != null,
-  vigencia: (row, context) =>
-    getYearMonthValue(getVigenciaMonthValue(row, context)) != null,
   carpeta: (row) => hasText(row.expenseFolderId),
 };
 

@@ -26,12 +26,6 @@ const CONFIGS: FilterQualifierConfig[] = [
     ],
   },
   { columnId: "loanProgress", key: "deuda", kind: "presence", label: "Deuda / cuotas" },
-  {
-    columnId: "loanInstallmentRange",
-    key: "vigencia",
-    kind: "yearMonthRange",
-    label: "Vigencia",
-  },
   { key: "link", kind: "textMatch", label: "Link de pago" },
   { key: "prestamista", kind: "textMatch", label: "Prestamista" },
   {
@@ -202,15 +196,15 @@ describe("parseFilterQuery", () => {
   });
 
   it("parses year-month ranges and presence slugs", () => {
-    expect(parseFilterQuery("vigencia:2026-06..2026-12", CONFIGS).advancedFiltersByColumn).toEqual({
-      loanInstallmentRange: { kind: "yearMonthRange", max: 202612, min: 202606, mode: "range" },
-    });
-    expect(parseFilterQuery("vigencia:sin-fechas", CONFIGS).advancedFiltersByColumn).toEqual({
-      loanInstallmentRange: { kind: "yearMonthRange", mode: "noValue" },
-    });
-    expect(parseFilterQuery("vigencia:2026-06", CONFIGS).advancedFiltersByColumn).toEqual({
-      loanInstallmentRange: { kind: "yearMonthRange", max: 202606, min: 202606, mode: "range" },
-    });
+    expect(parseFilterQuery("inicio:2026-06..2026-12", CONFIGS).appliedFilters).toEqual([
+      { key: "inicio", negated: false, value: { kind: "yearMonthRange", max: 202612, min: 202606, mode: "range" } },
+    ]);
+    expect(parseFilterQuery("inicio:sin-fechas", CONFIGS).appliedFilters).toEqual([
+      { key: "inicio", negated: false, value: { kind: "yearMonthRange", mode: "noValue" } },
+    ]);
+    expect(parseFilterQuery("inicio:2026-06", CONFIGS).appliedFilters).toEqual([
+      { key: "inicio", negated: false, value: { kind: "yearMonthRange", max: 202606, min: 202606, mode: "range" } },
+    ]);
   });
 
   it("treats unknown keys as free text and reports them", () => {
@@ -221,12 +215,12 @@ describe("parseFilterQuery", () => {
   });
 
   it("ignores invalid values but reports them", () => {
-    const parsed = parseFilterQuery("subtotal:abc vigencia:2026-13", CONFIGS);
+    const parsed = parseFilterQuery("subtotal:abc inicio:2026-13", CONFIGS);
 
     expect(parsed.advancedFiltersByColumn).toEqual({});
     expect(parsed.invalidTokens).toEqual([
       { raw: "subtotal:abc", reason: "invalidValue" },
-      { raw: "vigencia:2026-13", reason: "invalidValue" },
+      { raw: "inicio:2026-13", reason: "invalidValue" },
     ]);
   });
 
@@ -251,11 +245,11 @@ describe("parseFilterQuery", () => {
   });
 
   it("rejects an inverted year-month range", () => {
-    const parsed = parseFilterQuery("vigencia:2026-12..2026-06", CONFIGS);
+    const parsed = parseFilterQuery("inicio:2026-12..2026-06", CONFIGS);
 
-    expect(parsed.advancedFiltersByColumn).toEqual({});
+    expect(parsed.appliedFilters).toEqual([]);
     expect(parsed.invalidTokens).toEqual([
-      { raw: "vigencia:2026-12..2026-06", reason: "invalidValue" },
+      { raw: "inicio:2026-12..2026-06", reason: "invalidValue" },
     ]);
   });
 
@@ -399,12 +393,12 @@ describe("parseFilterQuery", () => {
 
 describe("serializeFilterQuery", () => {
   it("round-trips a mixed query into a canonical form", () => {
-    const query = "luz subtotal:100..500 direccion:me-deben deuda:si vigencia:sin-fechas -agua";
+    const query = "luz subtotal:100..500 direccion:me-deben deuda:si inicio:sin-fechas -agua";
     const parsed = parseFilterQuery(query, CONFIGS);
 
     // La presencia se canoniza a meta-clave (`deuda:si` -> `tiene:deuda`).
     expect(serializeFilterQuery(parsed, CONFIGS)).toBe(
-      "luz subtotal:100..500 direccion:me-deben vigencia:sin-fechas tiene:deuda -agua",
+      "luz subtotal:100..500 direccion:me-deben tiene:deuda inicio:sin-fechas -agua",
     );
   });
 
@@ -564,9 +558,9 @@ describe("getActiveFilterToken", () => {
   });
 
   it("tracks negation for the active token", () => {
-    const active = getActiveFilterToken("-vigencia:", 10);
+    const active = getActiveFilterToken("-inicio:", 8);
 
     expect(active.negated).toBe(true);
-    expect(active.resolvedKey).toBe("vigencia");
+    expect(active.resolvedKey).toBe("inicio");
   });
 });

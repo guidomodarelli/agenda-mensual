@@ -659,18 +659,17 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
     expect(screen.getByText("ConLink")).toBeInTheDocument();
   });
 
-  it("filters loan rows by the combined vigencia year-month range from the bar", async () => {
-    // La columna Vigencia usa el modo de orden por defecto (startMonth).
+  it("filters loan rows by inicio year-month range from the bar", async () => {
     renderMonthlyExpensesTable([
       createRow({
-        description: "VigenciaVieja",
+        description: "InicioViejo",
         id: "expense-1",
         isLoan: true,
         loanEndMonth: "2025-12",
         startMonth: "2025-01",
       }),
       createRow({
-        description: "VigenciaNueva",
+        description: "InicioNuevo",
         id: "expense-2",
         isLoan: true,
         loanEndMonth: "2027-02",
@@ -678,12 +677,12 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
       }),
     ]);
 
-    await typeQuery("vigencia:2026-06..2026-12");
+    await typeQuery("inicio:2026-06..2026-12");
 
     await waitFor(() => {
-      expect(screen.queryByText("VigenciaVieja")).not.toBeInTheDocument();
+      expect(screen.queryByText("InicioViejo")).not.toBeInTheDocument();
     });
-    expect(screen.getByText("VigenciaNueva")).toBeInTheDocument();
+    expect(screen.getByText("InicioNuevo")).toBeInTheDocument();
   });
 
   it("includes and excludes folders from the bar", async () => {

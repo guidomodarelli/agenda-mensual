@@ -1232,7 +1232,7 @@ export function MonthlyExpensesTable({
 
     const matchesQuery = buildMonthlyExpensesQueryPredicate(
       queryPredicateFilters,
-      { exchangeRateSnapshot, lenderNamesById, vigenciaSortMode },
+      { exchangeRateSnapshot, lenderNamesById },
     );
 
     return rowsExcludingDescriptions.filter(matchesQuery);
@@ -1241,7 +1241,6 @@ export function MonthlyExpensesTable({
     lenderNamesById,
     queryPredicateFilters,
     rowsExcludingDescriptions,
-    vigenciaSortMode,
   ]);
   const hasManualSorting = sorting.length > 0;
   const rowsForTable = useMemo(() => {
