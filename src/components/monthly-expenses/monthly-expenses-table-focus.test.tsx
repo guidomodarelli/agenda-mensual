@@ -686,6 +686,34 @@ describe("MonthlyExpensesTable unified query bar (column-less qualifiers)", () =
     expect(screen.getByText("EnTarjeta")).toBeInTheDocument();
   });
 
+  it("replaces bar folder filters when a folder chip is clicked", async () => {
+    const expenseFolders = [
+      { color: "blue" as const, icon: "home" as const, id: "folder-1", name: "Hogar" },
+      { color: "violet" as const, icon: "card" as const, id: "folder-2", name: "Tarjeta" },
+    ];
+    const rows = [
+      createRow({ description: "EnHogar", expenseFolderId: "folder-1", id: "expense-1" }),
+      createRow({ description: "EnTarjeta", expenseFolderId: "folder-2", id: "expense-2" }),
+    ];
+
+    renderMonthlyExpensesTable(rows, { expenseFolders });
+
+    // Filtro de carpeta previo en la barra.
+    const user = await typeQuery("-carpeta:tarjeta");
+
+    // Click en el chip "Hogar": reemplaza los tokens de carpeta por `carpeta:hogar`.
+    await user.click(screen.getByRole("button", { name: /^Hogar/ }));
+
+    const bar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await waitFor(() => {
+      expect(bar).toHaveValue("carpeta:hogar");
+    });
+    expect(screen.getByText("EnHogar")).toBeInTheDocument();
+    expect(screen.queryByText("EnTarjeta")).not.toBeInTheDocument();
+  });
+
   it("shows the filtered-empty message when a column-less filter removes all rows", async () => {
     renderMonthlyExpensesTable([
       createRow({ description: "SinLink", id: "expense-1", paymentLink: "" }),

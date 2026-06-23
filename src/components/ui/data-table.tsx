@@ -132,6 +132,19 @@ type DataTableAdvancedFilterDraftValue =
       min: string;
     };
 
+/**
+ * Controles imperativos de la barra unificada que la tabla expone vía
+ * `queryFilterControlsRef`, para que el consumidor sincronice la barra desde
+ * fuera (p. ej. al clickear un chip de carpeta).
+ */
+export interface DataTableQueryFilterControls {
+  /**
+   * Reemplaza los filtros de carpeta de la barra: deja un único `carpeta:<id>`
+   * (o ninguno si `folderId` es `null`), preservando el resto de los filtros.
+   */
+  setSingleFolderFilter: (folderId: string | null) => void;
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -170,6 +183,8 @@ interface DataTableProps<TData, TValue> {
    * consumidor los aplique con su propio predicado de dominio.
    */
   onAppliedFiltersChange?: (appliedFilters: AppliedFilter[]) => void;
+  /** Ref para acceder a los controles imperativos de la barra unificada. */
+  queryFilterControlsRef?: React.MutableRefObject<DataTableQueryFilterControls | null>;
   showExcludeFilterToggle?: boolean;
   excludeFilterValues?: string[];
   onExcludeFilterValuesChange?: (values: string[]) => void;
@@ -499,6 +514,7 @@ export function DataTable<TData, TValue>({
   queryFilterPlaceholder,
   queryFilterLabel,
   onAppliedFiltersChange,
+  queryFilterControlsRef,
   showExcludeFilterToggle = false,
   excludeFilterValues: controlledExcludeFilterValues,
   onExcludeFilterValuesChange,
@@ -676,6 +692,62 @@ export function DataTable<TData, TValue>({
     // valor actual y no como disparador para no re-parsear en cada tecla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryFilterConfig]);
+
+  // Reemplaza los filtros de carpeta de la barra por un único `carpeta:<id>` (o
+  // ninguno si `folderId` es `null`), preservando el resto. Lo usa el consumidor
+  // al clickear un chip de carpeta, para que la barra sea la única fuente de
+  // verdad y no queden filtros de carpeta inconsistentes.
+  const setSingleFolderFilter = React.useCallback(
+    (folderId: string | null) => {
+      if (!queryFilterConfig) {
+        return;
+      }
+
+      const folderQualifierKey = queryFilterConfig.find(
+        (config) => config.kind === "folder",
+      )?.key;
+
+      if (!folderQualifierKey) {
+        return;
+      }
+
+      const parsedQuery = parseFilterQuery(filterQueryDraft, queryFilterConfig);
+      const nonFolderFilters = parsedQuery.appliedFilters.filter(
+        (appliedFilter) => appliedFilter.value.kind !== "folder",
+      );
+      const nextAppliedFilters =
+        folderId == null
+          ? nonFolderFilters
+          : [
+              ...nonFolderFilters,
+              {
+                key: folderQualifierKey,
+                negated: false,
+                value: { folderId, kind: "folder" as const },
+              },
+            ];
+
+      handleQueryFilterChange(
+        serializeFilterQuery(
+          { ...parsedQuery, appliedFilters: nextAppliedFilters },
+          queryFilterConfig,
+        ),
+      );
+    },
+    [filterQueryDraft, handleQueryFilterChange, queryFilterConfig],
+  );
+
+  React.useEffect(() => {
+    if (!queryFilterControlsRef) {
+      return;
+    }
+
+    queryFilterControlsRef.current = { setSingleFolderFilter };
+
+    return () => {
+      queryFilterControlsRef.current = null;
+    };
+  }, [queryFilterControlsRef, setSingleFolderFilter]);
 
   const addExcludeFilterValue = React.useCallback(
     (

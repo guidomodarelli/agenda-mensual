@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   DataTable,
   type DataTableAdvancedFilterConfig,
+  type DataTableQueryFilterControls,
   matchesAdvancedYearMonthRangeFilter,
 } from "@/components/ui/data-table";
 import {
@@ -994,6 +995,39 @@ export function MonthlyExpensesTable({
   const monthlyExpensesFilterQualifiers = useMemo(
     () => buildMonthlyExpensesFilterQualifiers({ expenseFolders, lenders }),
     [expenseFolders, lenders],
+  );
+  // Carpetas incluidas (`carpeta:`) y excluidas (`-carpeta:`) desde la barra,
+  // para reflejar visualmente esa selección en los chips de carpeta.
+  const folderBarSelection = useMemo(() => {
+    const included = new Set<string>();
+    const excluded = new Set<string>();
+
+    for (const appliedFilter of queryAppliedFilters) {
+      if (appliedFilter.value.kind !== "folder") {
+        continue;
+      }
+
+      (appliedFilter.negated ? excluded : included).add(
+        appliedFilter.value.folderId,
+      );
+    }
+
+    return { excluded, included };
+  }, [queryAppliedFilters]);
+  const queryFilterControlsRef = useRef<DataTableQueryFilterControls | null>(
+    null,
+  );
+  // Clickear un chip de carpeta escribe en la barra (única fuente de verdad):
+  // reemplaza todos los `carpeta:`/`-carpeta:` por el elegido (o ninguno para
+  // "Todas") y limpia el filtro de carpeta heredado, para no duplicar filtrado.
+  const handleFolderChipSelect = useCallback(
+    (folderId: string) => {
+      onFolderFilterChange("");
+      queryFilterControlsRef.current?.setSingleFolderFilter(
+        folderId === "" ? null : folderId,
+      );
+    },
+    [onFolderFilterChange],
   );
   const [paymentLinkDialogState, setPaymentLinkDialogState] =
     useState<PaymentLinkDialogState | null>(null);
@@ -2787,10 +2821,12 @@ export function MonthlyExpensesTable({
             ) : null}
             <ExpenseFolderFilterBar
               countsByFolderId={folderCounts.countsByFolderId}
+              excludedFilterIds={folderBarSelection.excluded}
               folders={expenseFolders}
+              includedFilterIds={folderBarSelection.included}
               onMoveExpenseToFolder={onMoveExpenseToFolder}
               onReorderFolders={onReorderFolders}
-              onSelectFilter={onFolderFilterChange}
+              onSelectFilter={handleFolderChipSelect}
               selectedFilterId={folderFilterId}
               totalCount={folderCounts.totalCount}
               unassignedCount={folderCounts.unassignedCount}
@@ -2853,6 +2889,7 @@ export function MonthlyExpensesTable({
               getRowClassName={getMonthlyExpenseRowClassName}
               onCellClick={handleTableCellClick}
               onAppliedFiltersChange={setQueryAppliedFilters}
+              queryFilterControlsRef={queryFilterControlsRef}
               onFilterValueChange={setDescriptionFilter}
               onVisibleRowsChange={handleVisibleRowsChange}
               onColumnVisibilityChange={setColumnVisibility}

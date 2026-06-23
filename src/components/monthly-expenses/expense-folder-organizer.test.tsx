@@ -40,6 +40,34 @@ describe("ExpenseFolderFilterBar", () => {
     expect(chipLabels[3]).toContain("Compras");
   });
 
+  it("highlights folders included from the bar and marks excluded ones", () => {
+    render(
+      <ExpenseFolderFilterBar
+        countsByFolderId={{ "folder-1": 3, "folder-2": 5 }}
+        excludedFilterIds={new Set(["folder-2"])}
+        folders={SAMPLE_FOLDERS}
+        includedFilterIds={new Set(["folder-1"])}
+        onMoveExpenseToFolder={jest.fn()}
+        onReorderFolders={jest.fn()}
+        onSelectFilter={jest.fn()}
+        selectedFilterId=""
+        totalCount={8}
+        unassignedCount={2}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Hogar/ })).toHaveClass(
+      "chipSelected",
+    );
+    expect(screen.getByRole("button", { name: /Compras/ })).toHaveClass(
+      "chipExcluded",
+    );
+    // Con filtros de carpeta en la barra, "Todas" deja de estar activo.
+    expect(screen.getByRole("button", { name: /Todas/ })).not.toHaveClass(
+      "chipSelected",
+    );
+  });
+
   it("shows the drag-and-drop hint below the chips", () => {
     renderFilterBar();
 
