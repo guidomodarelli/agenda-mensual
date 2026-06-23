@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   DataTable,
-  type DataTableAdvancedFilterConfig,
   type DataTableQueryFilterControls,
   matchesAdvancedYearMonthRangeFilter,
 } from "@/components/ui/data-table";
@@ -234,18 +233,6 @@ const VIGENCIA_SORT_OPTIONS: Array<{ label: string; value: VigenciaSortMode }> =
     value: "endMonth",
   },
 ];
-// "Sin deuda/préstamo" se omite: equivale a `no:direccion` (ausencia de préstamo).
-const LOAN_DIRECTION_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
-  {
-    label: "Yo debo",
-    value: "payable",
-  },
-  {
-    label: "Me deben",
-    value: "receivable",
-  },
-];
-
 function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): boolean {
   if (leftSet.size !== rightSet.size) {
     return false;
@@ -259,49 +246,6 @@ function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): bool
 
   return true;
 }
-const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] = [
-  {
-    columnId: "subtotal",
-    label: "Subtotal",
-    type: "numberRange",
-  },
-  {
-    columnId: "total",
-    label: "Total",
-    type: "numberRange",
-  },
-  {
-    columnId: "usd",
-    label: "USD",
-    type: "numberRange",
-  },
-  {
-    columnId: "paymentsProgress",
-    label: "Pagos",
-    type: "numberRange",
-  },
-  {
-    columnId: "paymentHistory",
-    label: "Registros",
-    type: "numberRange",
-  },
-  {
-    columnId: LOAN_SORT_COLUMN_ID,
-    label: "Deuda / cuotas",
-    type: "presence",
-  },
-  {
-    columnId: "lenderName",
-    enumOptions: LOAN_DIRECTION_FILTER_OPTIONS,
-    label: "Dirección",
-    type: "enum",
-  },
-  {
-    columnId: LOAN_INSTALLMENT_RANGE_COLUMN_ID,
-    label: "Vigencia",
-    type: "yearMonthRange",
-  },
-];
 
 const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
 const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
@@ -2819,12 +2763,6 @@ export function MonthlyExpensesTable({
               unassignedCount={folderCounts.unassignedCount}
             />
             <DataTable
-              advancedFiltersButtonLabel="Filtros avanzados"
-              advancedFiltersConfig={MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG}
-              advancedFiltersDescription="Aplicá filtros por columna para acotar los resultados."
-              advancedFiltersDialogTitle="Filtros avanzados"
-              applyAdvancedFiltersLabel="Aplicar"
-              clearAdvancedFiltersLabel="Limpiar"
               columnVisibility={columnVisibility}
               columnVisibilityButtonLabel="Columnas"
               columnVisibilityMenuLabel="Mostrar columnas"

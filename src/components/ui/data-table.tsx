@@ -15,7 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { CircleAlert, ChevronDown, Ellipsis, Eraser, Filter, X } from "lucide-react";
+import { CircleAlert, ChevronDown, Ellipsis, Eraser, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,14 +27,6 @@ import {
   type FilterQualifierConfig,
 } from "@/components/ui/filter-query-grammar";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -44,13 +36,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -72,24 +57,6 @@ type PresenceFilterValue = "hasValue" | "noValue";
  */
 type YearMonthRangeFilterMode = "hasValue" | "noValue" | "range" | "from" | "to";
 
-export type DataTableAdvancedFilterType =
-  | "numberRange"
-  | "enum"
-  | "presence"
-  | "yearMonthRange";
-
-export interface DataTableAdvancedEnumOption {
-  label: string;
-  value: string;
-}
-
-export interface DataTableAdvancedFilterConfig {
-  columnId: string;
-  label: string;
-  type: DataTableAdvancedFilterType;
-  enumOptions?: DataTableAdvancedEnumOption[];
-}
-
 export type DataTableColumnFilterValue =
   | {
       kind: "numberRange";
@@ -109,27 +76,6 @@ export type DataTableColumnFilterValue =
       mode: YearMonthRangeFilterMode;
       max?: number;
       min?: number;
-    };
-
-type DataTableAdvancedFilterDraftValue =
-  | {
-      kind: "numberRange";
-      max: string;
-      min: string;
-    }
-  | {
-      kind: "enum";
-      value: string;
-    }
-  | {
-      kind: "presence";
-      value: PresenceFilterValue | "";
-    }
-  | {
-      kind: "yearMonthRange";
-      mode: YearMonthRangeFilterMode | "";
-      max: string;
-      min: string;
     };
 
 /**
@@ -200,12 +146,6 @@ interface DataTableProps<TData, TValue> {
   selectAllColumnsLabel?: string;
   deselectAllColumnsLabel?: string;
   hideableColumnsDefaultVisibility?: VisibilityState;
-  advancedFiltersConfig?: DataTableAdvancedFilterConfig[];
-  advancedFiltersButtonLabel?: string;
-  advancedFiltersDescription?: string;
-  advancedFiltersDialogTitle?: string;
-  clearAdvancedFiltersLabel?: string;
-  applyAdvancedFiltersLabel?: string;
 }
 
 interface DataTableColumnMeta {
@@ -227,37 +167,7 @@ const CLEAR_ALL_EXCLUSIONS_ARIA_LABEL = "Quitar todas las exclusiones";
 const CLEAR_ALL_EXCLUSIONS_FROM_INPUT_ARIA_LABEL = "Limpiar filtros excluidos";
 const REVERSE_FILTER_PENDING_MESSAGE =
   "Estás escribiendo una exclusión. Presioná Enter para aplicarla.";
-const ADVANCED_FILTERS_ICON_LABEL = "Filtros avanzados";
-const ADVANCED_FILTERS_ACTIVE_SR_LABEL = "Filtros avanzados activos";
-const ADVANCED_FILTERS_DIALOG_CANCEL_LABEL = "Cancelar";
-const ADVANCED_FILTERS_NUMBER_MIN_LABEL = "Mínimo";
-const ADVANCED_FILTERS_NUMBER_MAX_LABEL = "Máximo";
-const ADVANCED_FILTERS_ENUM_ALL_OPTION = "Todos";
-const ADVANCED_FILTERS_PRESENCE_ALL_OPTION = "Todos";
-const ADVANCED_FILTERS_PRESENCE_HAS_OPTION = "Tiene valor";
-const ADVANCED_FILTERS_PRESENCE_HAS_NOT_OPTION = "Sin valor";
-const ADVANCED_FILTERS_ALL_VALUE = "__all__";
-const ADVANCED_FILTERS_INVALID_MIN_MESSAGE = "Ingresá un mínimo válido.";
-const ADVANCED_FILTERS_INVALID_MAX_MESSAGE = "Ingresá un máximo válido.";
-const ADVANCED_FILTERS_INVALID_RANGE_MESSAGE =
-  "El mínimo no puede ser mayor que el máximo.";
-const ADVANCED_FILTERS_YEAR_MONTH_ALL_OPTION = "Todos";
-const ADVANCED_FILTERS_YEAR_MONTH_HAS_OPTION = "Con fechas";
-const ADVANCED_FILTERS_YEAR_MONTH_HAS_NOT_OPTION = "Sin fechas";
-const ADVANCED_FILTERS_YEAR_MONTH_RANGE_OPTION = "Rango";
-const ADVANCED_FILTERS_YEAR_MONTH_FROM_OPTION = "Desde";
-const ADVANCED_FILTERS_YEAR_MONTH_TO_OPTION = "Hasta";
-const ADVANCED_FILTERS_YEAR_MONTH_FROM_LABEL = "Desde (MM/AAAA)";
-const ADVANCED_FILTERS_YEAR_MONTH_TO_LABEL = "Hasta (MM/AAAA)";
-const ADVANCED_FILTERS_YEAR_MONTH_PLACEHOLDER = "MM/AAAA";
-const ADVANCED_FILTERS_INVALID_YEAR_MONTH_FROM_MESSAGE =
-  "Ingresá un desde válido (MM/AAAA).";
-const ADVANCED_FILTERS_INVALID_YEAR_MONTH_TO_MESSAGE =
-  "Ingresá un hasta válido (MM/AAAA).";
-const ADVANCED_FILTERS_INVALID_YEAR_MONTH_RANGE_MESSAGE =
-  "El desde no puede ser mayor que el hasta.";
 const YEAR_MONTH_INPUT_PATTERN = /^(0[1-9]|1[0-2])\/(\d{4})$/;
-const EMPTY_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] = [];
 
 /**
  * Parsea un texto `MM/AAAA` a su valor numérico comparable `AAAAMM`
@@ -280,13 +190,6 @@ export function parseYearMonthFilterInput(value: string): number | null {
  * Formatea un valor numérico `AAAAMM` de vuelta a `MM/AAAA` para rehidratar
  * los inputs del filtro al reabrir el diálogo.
  */
-function formatYearMonthFilterInput(value: number): string {
-  const year = Math.floor(value / 100);
-  const month = value % 100;
-
-  return `${String(month).padStart(2, "0")}/${year}`;
-}
-
 /**
  * Evalúa un filtro de rango de año-mes contra el valor numérico `AAAAMM` de una
  * fila (`null` cuando la fila no tiene fecha). Devuelve `true` cuando el filtro
@@ -352,67 +255,6 @@ function getTableFilterValue(
   }
 
   return filterValue;
-}
-
-function getDefaultAdvancedFilterDraftValue(
-  filterType: DataTableAdvancedFilterType,
-): DataTableAdvancedFilterDraftValue {
-  if (filterType === "numberRange") {
-    return {
-      kind: "numberRange",
-      max: "",
-      min: "",
-    };
-  }
-
-  if (filterType === "enum") {
-    return {
-      kind: "enum",
-      value: "",
-    };
-  }
-
-  if (filterType === "yearMonthRange") {
-    return {
-      kind: "yearMonthRange",
-      max: "",
-      min: "",
-      mode: "",
-    };
-  }
-
-  return {
-    kind: "presence",
-    value: "",
-  };
-}
-
-function parseNullableNumber(value: string): number | null {
-  const normalizedValue = value.trim();
-
-  if (!normalizedValue) {
-    return null;
-  }
-
-  const parsedValue = Number(normalizedValue);
-
-  return Number.isFinite(parsedValue) ? parsedValue : null;
-}
-
-function isAdvancedFilterDraftValueActive(
-  filterValue: DataTableAdvancedFilterDraftValue,
-): boolean {
-  if (filterValue.kind === "numberRange") {
-    return (
-      filterValue.min.trim().length > 0 || filterValue.max.trim().length > 0
-    );
-  }
-
-  if (filterValue.kind === "yearMonthRange") {
-    return filterValue.mode !== "";
-  }
-
-  return filterValue.value !== "";
 }
 
 function areColumnFiltersEqual(
@@ -530,12 +372,6 @@ export function DataTable<TData, TValue>({
   selectAllColumnsLabel = "Mostrar todas",
   deselectAllColumnsLabel = "Ocultar todas",
   hideableColumnsDefaultVisibility,
-  advancedFiltersConfig = EMPTY_ADVANCED_FILTERS_CONFIG,
-  advancedFiltersButtonLabel = ADVANCED_FILTERS_ICON_LABEL,
-  advancedFiltersDescription = "Aplicá filtros por columna.",
-  advancedFiltersDialogTitle = "Filtros avanzados",
-  clearAdvancedFiltersLabel = "Limpiar filtros",
-  applyAdvancedFiltersLabel = "Aplicar filtros",
 }: DataTableProps<TData, TValue>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -559,10 +395,6 @@ export function DataTable<TData, TValue>({
     React.useState(false);
   const [uncontrolledColumnVisibility, setUncontrolledColumnVisibility] =
     React.useState<VisibilityState>({});
-  const [isAdvancedFiltersDialogOpen, setIsAdvancedFiltersDialogOpen] =
-    React.useState(false);
-  const [advancedFiltersDraftByColumn, setAdvancedFiltersDraftByColumn] =
-    React.useState<Record<string, DataTableAdvancedFilterDraftValue>>({});
   const [advancedFiltersAppliedByColumn, setAdvancedFiltersAppliedByColumn] =
     React.useState<Record<string, DataTableColumnFilterValue>>({});
   const sorting = controlledSorting ?? uncontrolledSorting;
@@ -586,10 +418,6 @@ export function DataTable<TData, TValue>({
   const advancedFilterColumnIds = React.useMemo(() => {
     const columnIds = new Set<string>();
 
-    for (const advancedFilterConfig of advancedFiltersConfig) {
-      columnIds.add(advancedFilterConfig.columnId);
-    }
-
     for (const queryQualifier of queryFilterConfig ?? []) {
       if (queryQualifier.columnId) {
         columnIds.add(queryQualifier.columnId);
@@ -597,9 +425,7 @@ export function DataTable<TData, TValue>({
     }
 
     return columnIds;
-  }, [advancedFiltersConfig, queryFilterConfig]);
-  const hasActiveAdvancedFilters =
-    Object.keys(advancedFiltersAppliedByColumn).length > 0;
+  }, [queryFilterConfig]);
 
   const handleExcludeFilterValuesChange = React.useCallback(
     (nextExcludeFilterValues: string[]) => {
@@ -881,18 +707,12 @@ export function DataTable<TData, TValue>({
   const hasModifiedColumnVisibility =
     shouldShowColumnVisibilityToggle && !areHideableColumnsAtDefaultVisibility;
   const hasToolbarChanges = hasModifiedColumnVisibility;
-  const shouldShowAdvancedFiltersToggle = advancedFiltersConfig.length > 0;
-  const shouldShowStandaloneAdvancedFiltersToggle =
-    shouldShowAdvancedFiltersToggle && !filterColumnId && !shouldShowQueryFilter;
   const shouldShowToolbarActions =
-    shouldShowColumnVisibilityToggle ||
-    shouldShowStandaloneAdvancedFiltersToggle ||
-    toolbarActions != null;
+    shouldShowColumnVisibilityToggle || toolbarActions != null;
   const shouldShowToolbar =
     shouldShowQueryFilter ||
     Boolean(filterColumnId) ||
-    shouldShowToolbarActions ||
-    shouldShowAdvancedFiltersToggle;
+    shouldShowToolbarActions;
   const filterColumn = filterColumnId ? table.getColumn(filterColumnId) : undefined;
   const activeSortingEntry = sorting[0];
   const activeSortingColumn = activeSortingEntry
@@ -1018,267 +838,6 @@ export function DataTable<TData, TValue>({
     });
   }, [advancedFilterColumnIds, advancedFiltersAppliedByColumn]);
 
-  const advancedFilterValidationMessagesByColumn = React.useMemo(() => {
-    const nextValidationMessagesByColumn: Record<string, string> = {};
-
-    for (const advancedFilterConfig of advancedFiltersConfig) {
-      const draftValue =
-        advancedFiltersDraftByColumn[advancedFilterConfig.columnId] ??
-        getDefaultAdvancedFilterDraftValue(advancedFilterConfig.type);
-
-      if (
-        advancedFilterConfig.type === "yearMonthRange" &&
-        draftValue.kind === "yearMonthRange"
-      ) {
-        const requiresMin =
-          draftValue.mode === "range" || draftValue.mode === "from";
-        const requiresMax =
-          draftValue.mode === "range" || draftValue.mode === "to";
-        const parsedFromValue = parseYearMonthFilterInput(draftValue.min);
-        const parsedToValue = parseYearMonthFilterInput(draftValue.max);
-
-        if (requiresMin && parsedFromValue == null) {
-          nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
-            ADVANCED_FILTERS_INVALID_YEAR_MONTH_FROM_MESSAGE;
-          continue;
-        }
-
-        if (requiresMax && parsedToValue == null) {
-          nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
-            ADVANCED_FILTERS_INVALID_YEAR_MONTH_TO_MESSAGE;
-          continue;
-        }
-
-        if (
-          draftValue.mode === "range" &&
-          parsedFromValue != null &&
-          parsedToValue != null &&
-          parsedFromValue > parsedToValue
-        ) {
-          nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
-            ADVANCED_FILTERS_INVALID_YEAR_MONTH_RANGE_MESSAGE;
-        }
-
-        continue;
-      }
-
-      if (advancedFilterConfig.type !== "numberRange" || draftValue.kind !== "numberRange") {
-        continue;
-      }
-
-      const hasMinValue = draftValue.min.trim().length > 0;
-      const hasMaxValue = draftValue.max.trim().length > 0;
-      const parsedMin = parseNullableNumber(draftValue.min);
-      const parsedMax = parseNullableNumber(draftValue.max);
-
-      if (hasMinValue && parsedMin == null) {
-        nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
-          ADVANCED_FILTERS_INVALID_MIN_MESSAGE;
-        continue;
-      }
-
-      if (hasMaxValue && parsedMax == null) {
-        nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
-          ADVANCED_FILTERS_INVALID_MAX_MESSAGE;
-        continue;
-      }
-
-      if (parsedMin != null && parsedMax != null && parsedMin > parsedMax) {
-        nextValidationMessagesByColumn[advancedFilterConfig.columnId] =
-          ADVANCED_FILTERS_INVALID_RANGE_MESSAGE;
-      }
-    }
-
-    return nextValidationMessagesByColumn;
-  }, [advancedFiltersConfig, advancedFiltersDraftByColumn]);
-  const hasAdvancedFilterValidationErrors =
-    Object.keys(advancedFilterValidationMessagesByColumn).length > 0;
-
-  const handleOpenAdvancedFiltersDialog = React.useCallback(() => {
-    const nextDraftByColumn: Record<string, DataTableAdvancedFilterDraftValue> = {};
-
-    for (const advancedFilterConfig of advancedFiltersConfig) {
-      const appliedFilterValue = advancedFiltersAppliedByColumn[advancedFilterConfig.columnId];
-
-      if (advancedFilterConfig.type === "numberRange") {
-        nextDraftByColumn[advancedFilterConfig.columnId] = {
-          kind: "numberRange",
-          max:
-            appliedFilterValue?.kind === "numberRange" &&
-            appliedFilterValue.max != null
-              ? String(appliedFilterValue.max)
-              : "",
-          min:
-            appliedFilterValue?.kind === "numberRange" &&
-            appliedFilterValue.min != null
-              ? String(appliedFilterValue.min)
-              : "",
-        };
-        continue;
-      }
-
-      if (advancedFilterConfig.type === "enum") {
-        nextDraftByColumn[advancedFilterConfig.columnId] = {
-          kind: "enum",
-          value:
-            appliedFilterValue?.kind === "enum"
-              ? appliedFilterValue.value
-              : "",
-        };
-        continue;
-      }
-
-      if (advancedFilterConfig.type === "yearMonthRange") {
-        const appliedYearMonthRange =
-          appliedFilterValue?.kind === "yearMonthRange"
-            ? appliedFilterValue
-            : null;
-
-        nextDraftByColumn[advancedFilterConfig.columnId] = {
-          kind: "yearMonthRange",
-          max:
-            appliedYearMonthRange?.max != null
-              ? formatYearMonthFilterInput(appliedYearMonthRange.max)
-              : "",
-          min:
-            appliedYearMonthRange?.min != null
-              ? formatYearMonthFilterInput(appliedYearMonthRange.min)
-              : "",
-          mode: appliedYearMonthRange?.mode ?? "",
-        };
-        continue;
-      }
-
-      nextDraftByColumn[advancedFilterConfig.columnId] = {
-        kind: "presence",
-        value:
-          appliedFilterValue?.kind === "presence"
-            ? appliedFilterValue.value
-            : "",
-      };
-    }
-
-    setAdvancedFiltersDraftByColumn(nextDraftByColumn);
-    setIsAdvancedFiltersDialogOpen(true);
-  }, [advancedFiltersAppliedByColumn, advancedFiltersConfig]);
-
-  const handleApplyAdvancedFilters = React.useCallback(() => {
-    if (hasAdvancedFilterValidationErrors) {
-      return;
-    }
-
-    const nextAppliedFiltersByColumn: Record<string, DataTableColumnFilterValue> = {};
-
-    for (const advancedFilterConfig of advancedFiltersConfig) {
-      const draftFilterValue =
-        advancedFiltersDraftByColumn[advancedFilterConfig.columnId] ??
-        getDefaultAdvancedFilterDraftValue(advancedFilterConfig.type);
-
-      if (!isAdvancedFilterDraftValueActive(draftFilterValue)) {
-        continue;
-      }
-
-      if (draftFilterValue.kind === "numberRange") {
-        const parsedMin = parseNullableNumber(draftFilterValue.min);
-        const parsedMax = parseNullableNumber(draftFilterValue.max);
-
-        if (parsedMin == null && parsedMax == null) {
-          continue;
-        }
-
-        nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-          kind: "numberRange",
-          ...(parsedMax != null ? { max: parsedMax } : {}),
-          ...(parsedMin != null ? { min: parsedMin } : {}),
-        };
-        continue;
-      }
-
-      if (draftFilterValue.kind === "enum" && draftFilterValue.value) {
-        nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-          kind: "enum",
-          value: draftFilterValue.value,
-        };
-        continue;
-      }
-
-      if (draftFilterValue.kind === "yearMonthRange") {
-        const { mode } = draftFilterValue;
-
-        if (mode === "") {
-          continue;
-        }
-
-        if (mode === "hasValue" || mode === "noValue") {
-          nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-            kind: "yearMonthRange",
-            mode,
-          };
-          continue;
-        }
-
-        const parsedFromValue = parseYearMonthFilterInput(draftFilterValue.min);
-        const parsedToValue = parseYearMonthFilterInput(draftFilterValue.max);
-
-        if (mode === "range") {
-          if (parsedFromValue == null || parsedToValue == null) {
-            continue;
-          }
-
-          nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-            kind: "yearMonthRange",
-            max: parsedToValue,
-            min: parsedFromValue,
-            mode,
-          };
-          continue;
-        }
-
-        if (mode === "from") {
-          if (parsedFromValue == null) {
-            continue;
-          }
-
-          nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-            kind: "yearMonthRange",
-            min: parsedFromValue,
-            mode,
-          };
-          continue;
-        }
-
-        if (parsedToValue == null) {
-          continue;
-        }
-
-        nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-          kind: "yearMonthRange",
-          max: parsedToValue,
-          mode,
-        };
-        continue;
-      }
-
-      if (draftFilterValue.kind === "presence" && draftFilterValue.value) {
-        nextAppliedFiltersByColumn[advancedFilterConfig.columnId] = {
-          kind: "presence",
-          value: draftFilterValue.value,
-        };
-      }
-    }
-
-    setAdvancedFiltersAppliedByColumn(nextAppliedFiltersByColumn);
-    setIsAdvancedFiltersDialogOpen(false);
-  }, [
-    advancedFiltersConfig,
-    advancedFiltersDraftByColumn,
-    hasAdvancedFilterValidationErrors,
-  ]);
-
-  const handleClearAdvancedFilters = React.useCallback(() => {
-    setAdvancedFiltersDraftByColumn({});
-  }, []);
-
   React.useEffect(() => {
     onVisibleRowsChange?.(table.getRowModel().rows.map((row) => row.original));
   }, [
@@ -1377,28 +936,6 @@ export function DataTable<TData, TValue>({
     </TableRow>
   );
 
-  const advancedFiltersToggleButton = shouldShowAdvancedFiltersToggle ? (
-    <Button
-      aria-label={advancedFiltersButtonLabel}
-      className="relative active:-translate-y-0"
-      onClick={handleOpenAdvancedFiltersDialog}
-      size="icon-xs"
-      type="button"
-      variant="ghost"
-    >
-      <Filter aria-hidden="true" />
-      {hasActiveAdvancedFilters ? (
-        <>
-          <span
-            aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
-          />
-          <span className="sr-only">{ADVANCED_FILTERS_ACTIVE_SR_LABEL}</span>
-        </>
-      ) : null}
-    </Button>
-  ) : null;
-
   return (
     <div className="grid gap-4">
       {shouldShowToolbar ? (
@@ -1410,7 +947,6 @@ export function DataTable<TData, TValue>({
               onFocusChange={setIsQueryFilterFocused}
               onValueChange={handleQueryFilterChange}
               placeholder={queryFilterPlaceholder}
-              trailingAction={advancedFiltersToggleButton}
               value={filterQueryDraft}
             />
           ) : null}
@@ -1518,27 +1054,6 @@ export function DataTable<TData, TValue>({
                               className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
                             />
                             <span className="sr-only">{ACTIVE_EXCLUSIONS_SR_LABEL}</span>
-                          </>
-                        ) : null}
-                      </Button>
-                    ) : null}
-                    {shouldShowAdvancedFiltersToggle ? (
-                      <Button
-                        aria-label={advancedFiltersButtonLabel}
-                        className="relative"
-                        onClick={handleOpenAdvancedFiltersDialog}
-                        size="icon-xs"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <Filter aria-hidden="true" />
-                        {hasActiveAdvancedFilters ? (
-                          <>
-                            <span
-                              aria-hidden="true"
-                              className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
-                            />
-                            <span className="sr-only">{ADVANCED_FILTERS_ACTIVE_SR_LABEL}</span>
                           </>
                         ) : null}
                       </Button>
@@ -1667,27 +1182,6 @@ export function DataTable<TData, TValue>({
 
             {shouldShowToolbarActions ? (
               <div className="ml-auto flex flex-wrap items-center gap-2">
-                {shouldShowStandaloneAdvancedFiltersToggle ? (
-                  <Button
-                    aria-label={advancedFiltersButtonLabel}
-                    className="relative"
-                    onClick={handleOpenAdvancedFiltersDialog}
-                    size="icon-xs"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Filter aria-hidden="true" />
-                    {hasActiveAdvancedFilters ? (
-                      <>
-                        <span
-                          aria-hidden="true"
-                          className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
-                        />
-                        <span className="sr-only">{ADVANCED_FILTERS_ACTIVE_SR_LABEL}</span>
-                      </>
-                    ) : null}
-                  </Button>
-                ) : null}
                 {toolbarActions}
                 {shouldShowColumnVisibilityToggle ? (
                   <DropdownMenu>
@@ -1833,317 +1327,6 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-      {shouldShowAdvancedFiltersToggle ? (
-        <Dialog onOpenChange={setIsAdvancedFiltersDialogOpen} open={isAdvancedFiltersDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{advancedFiltersDialogTitle}</DialogTitle>
-              <DialogDescription>{advancedFiltersDescription}</DialogDescription>
-            </DialogHeader>
-            <div className="grid max-h-[60vh] gap-4 overflow-y-auto pr-1">
-              {advancedFiltersConfig.map((advancedFilterConfig) => {
-                const draftFilterValue =
-                  advancedFiltersDraftByColumn[advancedFilterConfig.columnId] ??
-                  getDefaultAdvancedFilterDraftValue(advancedFilterConfig.type);
-                const columnValidationMessage =
-                  advancedFilterValidationMessagesByColumn[advancedFilterConfig.columnId];
-
-                return (
-                  <div className="grid gap-2" key={advancedFilterConfig.columnId}>
-                    <p className="text-sm font-medium">{advancedFilterConfig.label}</p>
-
-                    {advancedFilterConfig.type === "numberRange" &&
-                    draftFilterValue.kind === "numberRange" ? (
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Input
-                          aria-label={`${advancedFilterConfig.label} ${ADVANCED_FILTERS_NUMBER_MIN_LABEL}`}
-                          onChange={(event) => {
-                            const nextValue = event.target.value;
-
-                            setAdvancedFiltersDraftByColumn((previousState) => {
-                              const previousDraftValue =
-                                previousState[advancedFilterConfig.columnId];
-
-                              return {
-                                ...previousState,
-                                [advancedFilterConfig.columnId]: {
-                                  kind: "numberRange",
-                                  max:
-                                    previousDraftValue?.kind === "numberRange"
-                                      ? previousDraftValue.max
-                                      : "",
-                                  min: nextValue,
-                                },
-                              };
-                            });
-                          }}
-                          placeholder={ADVANCED_FILTERS_NUMBER_MIN_LABEL}
-                          type="number"
-                          value={draftFilterValue.min}
-                        />
-                        <Input
-                          aria-label={`${advancedFilterConfig.label} ${ADVANCED_FILTERS_NUMBER_MAX_LABEL}`}
-                          onChange={(event) => {
-                            const nextValue = event.target.value;
-
-                            setAdvancedFiltersDraftByColumn((previousState) => {
-                              const previousDraftValue =
-                                previousState[advancedFilterConfig.columnId];
-
-                              return {
-                                ...previousState,
-                                [advancedFilterConfig.columnId]: {
-                                  kind: "numberRange",
-                                  max: nextValue,
-                                  min:
-                                    previousDraftValue?.kind === "numberRange"
-                                      ? previousDraftValue.min
-                                      : "",
-                                },
-                              };
-                            });
-                          }}
-                          placeholder={ADVANCED_FILTERS_NUMBER_MAX_LABEL}
-                          type="number"
-                          value={draftFilterValue.max}
-                        />
-                      </div>
-                    ) : null}
-
-                    {advancedFilterConfig.type === "enum" && draftFilterValue.kind === "enum" ? (
-                      <Select
-                        onValueChange={(nextValue) => {
-                          setAdvancedFiltersDraftByColumn((previousState) => ({
-                            ...previousState,
-                            [advancedFilterConfig.columnId]: {
-                              kind: "enum",
-                              value:
-                                nextValue === ADVANCED_FILTERS_ALL_VALUE
-                                  ? ""
-                                  : nextValue,
-                            },
-                          }));
-                        }}
-                        value={
-                          draftFilterValue.value === ""
-                            ? ADVANCED_FILTERS_ALL_VALUE
-                            : draftFilterValue.value
-                        }
-                      >
-                        <SelectTrigger aria-label={advancedFilterConfig.label} className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ADVANCED_FILTERS_ALL_VALUE}>
-                            {ADVANCED_FILTERS_ENUM_ALL_OPTION}
-                          </SelectItem>
-                          {(advancedFilterConfig.enumOptions ?? []).map((enumOption) => (
-                            <SelectItem key={enumOption.value} value={enumOption.value}>
-                              {enumOption.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : null}
-
-                    {advancedFilterConfig.type === "presence" &&
-                    draftFilterValue.kind === "presence" ? (
-                      <Select
-                        onValueChange={(nextValue) => {
-                          setAdvancedFiltersDraftByColumn((previousState) => ({
-                            ...previousState,
-                            [advancedFilterConfig.columnId]: {
-                              kind: "presence",
-                              value:
-                                nextValue === ADVANCED_FILTERS_ALL_VALUE
-                                  ? ""
-                                  : (nextValue as PresenceFilterValue),
-                            },
-                          }));
-                        }}
-                        value={
-                          draftFilterValue.value === ""
-                            ? ADVANCED_FILTERS_ALL_VALUE
-                            : draftFilterValue.value
-                        }
-                      >
-                        <SelectTrigger aria-label={advancedFilterConfig.label} className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ADVANCED_FILTERS_ALL_VALUE}>
-                            {ADVANCED_FILTERS_PRESENCE_ALL_OPTION}
-                          </SelectItem>
-                          <SelectItem value="hasValue">
-                            {ADVANCED_FILTERS_PRESENCE_HAS_OPTION}
-                          </SelectItem>
-                          <SelectItem value="noValue">
-                            {ADVANCED_FILTERS_PRESENCE_HAS_NOT_OPTION}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : null}
-
-                    {advancedFilterConfig.type === "yearMonthRange" &&
-                    draftFilterValue.kind === "yearMonthRange" ? (
-                      <div className="grid gap-2">
-                        <Select
-                          onValueChange={(nextValue) => {
-                            setAdvancedFiltersDraftByColumn((previousState) => {
-                              const previousDraftValue =
-                                previousState[advancedFilterConfig.columnId];
-
-                              return {
-                                ...previousState,
-                                [advancedFilterConfig.columnId]: {
-                                  kind: "yearMonthRange",
-                                  max:
-                                    previousDraftValue?.kind === "yearMonthRange"
-                                      ? previousDraftValue.max
-                                      : "",
-                                  min:
-                                    previousDraftValue?.kind === "yearMonthRange"
-                                      ? previousDraftValue.min
-                                      : "",
-                                  mode:
-                                    nextValue === ADVANCED_FILTERS_ALL_VALUE
-                                      ? ""
-                                      : (nextValue as YearMonthRangeFilterMode),
-                                },
-                              };
-                            });
-                          }}
-                          value={
-                            draftFilterValue.mode === ""
-                              ? ADVANCED_FILTERS_ALL_VALUE
-                              : draftFilterValue.mode
-                          }
-                        >
-                          <SelectTrigger
-                            aria-label={advancedFilterConfig.label}
-                            className="w-full"
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={ADVANCED_FILTERS_ALL_VALUE}>
-                              {ADVANCED_FILTERS_YEAR_MONTH_ALL_OPTION}
-                            </SelectItem>
-                            <SelectItem value="hasValue">
-                              {ADVANCED_FILTERS_YEAR_MONTH_HAS_OPTION}
-                            </SelectItem>
-                            <SelectItem value="noValue">
-                              {ADVANCED_FILTERS_YEAR_MONTH_HAS_NOT_OPTION}
-                            </SelectItem>
-                            <SelectItem value="range">
-                              {ADVANCED_FILTERS_YEAR_MONTH_RANGE_OPTION}
-                            </SelectItem>
-                            <SelectItem value="from">
-                              {ADVANCED_FILTERS_YEAR_MONTH_FROM_OPTION}
-                            </SelectItem>
-                            <SelectItem value="to">
-                              {ADVANCED_FILTERS_YEAR_MONTH_TO_OPTION}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        {draftFilterValue.mode === "range" ||
-                        draftFilterValue.mode === "from" ? (
-                          <Input
-                            aria-label={`${advancedFilterConfig.label} ${ADVANCED_FILTERS_YEAR_MONTH_FROM_LABEL}`}
-                            onChange={(event) => {
-                              const nextValue = event.target.value;
-
-                              setAdvancedFiltersDraftByColumn((previousState) => {
-                                const previousDraftValue =
-                                  previousState[advancedFilterConfig.columnId];
-
-                                return {
-                                  ...previousState,
-                                  [advancedFilterConfig.columnId]: {
-                                    kind: "yearMonthRange",
-                                    max:
-                                      previousDraftValue?.kind === "yearMonthRange"
-                                        ? previousDraftValue.max
-                                        : "",
-                                    min: nextValue,
-                                    mode:
-                                      previousDraftValue?.kind === "yearMonthRange"
-                                        ? previousDraftValue.mode
-                                        : "",
-                                  },
-                                };
-                              });
-                            }}
-                            placeholder={ADVANCED_FILTERS_YEAR_MONTH_PLACEHOLDER}
-                            value={draftFilterValue.min}
-                          />
-                        ) : null}
-
-                        {draftFilterValue.mode === "range" ||
-                        draftFilterValue.mode === "to" ? (
-                          <Input
-                            aria-label={`${advancedFilterConfig.label} ${ADVANCED_FILTERS_YEAR_MONTH_TO_LABEL}`}
-                            onChange={(event) => {
-                              const nextValue = event.target.value;
-
-                              setAdvancedFiltersDraftByColumn((previousState) => {
-                                const previousDraftValue =
-                                  previousState[advancedFilterConfig.columnId];
-
-                                return {
-                                  ...previousState,
-                                  [advancedFilterConfig.columnId]: {
-                                    kind: "yearMonthRange",
-                                    max: nextValue,
-                                    min:
-                                      previousDraftValue?.kind === "yearMonthRange"
-                                        ? previousDraftValue.min
-                                        : "",
-                                    mode:
-                                      previousDraftValue?.kind === "yearMonthRange"
-                                        ? previousDraftValue.mode
-                                        : "",
-                                  },
-                                };
-                              });
-                            }}
-                            placeholder={ADVANCED_FILTERS_YEAR_MONTH_PLACEHOLDER}
-                            value={draftFilterValue.max}
-                          />
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {columnValidationMessage ? (
-                      <p className="text-sm text-destructive">{columnValidationMessage}</p>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => setIsAdvancedFiltersDialogOpen(false)}
-                type="button"
-                variant="outline"
-              >
-                {ADVANCED_FILTERS_DIALOG_CANCEL_LABEL}
-              </Button>
-              <Button onClick={handleClearAdvancedFilters} type="button" variant="outline">
-                {clearAdvancedFiltersLabel}
-              </Button>
-              <Button
-                disabled={hasAdvancedFilterValidationErrors}
-                onClick={handleApplyAdvancedFilters}
-                type="button"
-              >
-                {applyAdvancedFiltersLabel}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
     </div>
   );
 }

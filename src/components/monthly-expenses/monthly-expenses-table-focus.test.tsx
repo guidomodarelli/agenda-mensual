@@ -260,10 +260,11 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
       }),
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Dirección" }));
-    await user.click(screen.getByRole("option", { name: "Me deben" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    const queryBar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await user.click(queryBar);
+    await user.type(queryBar, "direccion:me-deben");
 
     expect(screen.queryByText("Deuda propia")).not.toBeInTheDocument();
     expect(screen.getByText("Prestamo a tercero")).toBeInTheDocument();

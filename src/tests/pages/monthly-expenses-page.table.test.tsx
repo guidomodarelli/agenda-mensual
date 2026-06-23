@@ -320,11 +320,10 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  // The "Estado de envío" enum advanced filter was removed in the refactor (send
-  // status no longer lives at the expense level and now lives per payment). This
-  // test now combines two still-available numeric ranges (Subtotal and Total) to
-  // validate advanced filtering, its active badge, and clear/apply.
-  it("filters rows with an advanced bounded numeric range on the total column", async () => {
+  // El diálogo de filtros avanzados fue eliminado: los filtros por columna ahora
+  // viven en la barra unificada. Un rango cerrado `total:min..max` acota por ambos
+  // extremos sobre la columna Total.
+  it("filters rows with a bounded total range from the unified bar", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -362,87 +361,21 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.type(screen.getByRole("spinbutton", { name: "Total Mínimo" }), "150");
-    await user.type(screen.getByRole("spinbutton", { name: "Total Máximo" }), "250");
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-
-    expect(screen.queryByText("Gasto chico")).not.toBeInTheDocument();
-    expect(screen.getByText("Gasto medio")).toBeInTheDocument();
-    expect(screen.queryByText("Gasto grande")).not.toBeInTheDocument();
-    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("button", { name: "Limpiar" }));
+    const queryBar = screen.getByRole("combobox", {
+      name: "Filtro unificado de gastos",
+    });
+    await user.click(queryBar);
+    await user.type(queryBar, "total:150..250");
 
     expect(screen.queryByText("Gasto chico")).not.toBeInTheDocument();
     expect(screen.getByText("Gasto medio")).toBeInTheDocument();
     expect(screen.queryByText("Gasto grande")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    await user.clear(queryBar);
 
     expect(screen.getByText("Gasto chico")).toBeInTheDocument();
     expect(screen.getByText("Gasto medio")).toBeInTheDocument();
     expect(screen.getByText("Gasto grande")).toBeInTheDocument();
-  }, ADVANCED_FILTERS_TEST_TIMEOUT_MS);
-
-  // Regresión: la entrada de Vigencia (LOAN_INSTALLMENT_RANGE_COLUMN_ID) se había
-  // caído del config de filtros avanzados, dejando el filtro de rango de meses de
-  // Vigencia inalcanzable desde el diálogo aunque la columna lo siga soportando.
-  it("exposes the Vigencia year-month range in the advanced filters dialog", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Prestamo viejo",
-              id: "expense-1",
-              loan: {
-                endMonth: "2026-12",
-                installmentCount: 12,
-                paidInstallments: 3,
-                startMonth: "2025-01",
-              },
-              occurrencesPerMonth: 1,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Prestamo nuevo",
-              id: "expense-2",
-              loan: {
-                endMonth: "2027-12",
-                installmentCount: 12,
-                paidInstallments: 1,
-                startMonth: "2026-08",
-              },
-              occurrencesPerMonth: 1,
-              subtotal: 200,
-              total: 200,
-            },
-          ],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Filtros avanzados" }));
-    await user.click(screen.getByRole("combobox", { name: "Vigencia" }));
-    await user.click(screen.getByRole("option", { name: "Desde" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Vigencia Desde (MM/AAAA)" }),
-      "06/2026",
-    );
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-
-    expect(screen.queryByText("Prestamo viejo")).not.toBeInTheDocument();
-    expect(screen.getByText("Prestamo nuevo")).toBeInTheDocument();
-    expect(screen.getByText("Filtros avanzados activos")).toBeInTheDocument();
   }, ADVANCED_FILTERS_TEST_TIMEOUT_MS);
 
   it("allows selecting and deselecting all hideable columns from the selector", async () => {
