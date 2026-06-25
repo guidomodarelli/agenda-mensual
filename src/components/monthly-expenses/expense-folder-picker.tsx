@@ -92,7 +92,11 @@ export function ExpenseFolderPicker({
   };
 
   return (
-    <Popover onOpenChange={handleOpenChange} open={isOpen}>
+    // `modal` habilita el scroll-lock propio del popover. Sin esto, cuando el
+    // picker se abre dentro de un Dialog modal (p. ej. el sheet de edición),
+    // el `react-remove-scroll` del Dialog bloquea el scroll por touch dentro de
+    // la lista de carpetas, que se portalea fuera del contenido del Dialog.
+    <Popover modal onOpenChange={handleOpenChange} open={isOpen}>
       <PopoverTrigger asChild>
         <Button
           className={cn(styles.trigger, className)}
