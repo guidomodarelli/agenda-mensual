@@ -201,6 +201,32 @@ describe("FilterQueryBar", () => {
     expect(within(valueListbox).getAllByRole("option").length).toBeGreaterThan(0);
   });
 
+  it("does not suggest a field exclusion when its absence is already required", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("no:carpeta -carpeta");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not suggest a field key when its absence is already required", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("no:carpeta ca");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
   it("offers Exclude last on the empty bar and starts a field exclusion", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);

@@ -190,18 +190,24 @@ interface KeySuggestionOptions {
   negated: boolean;
   /** Incluir la opción "Excluir" al final (solo con la barra vacía). */
   includeExclude: boolean;
+  /** Filtros ya aplicados para ocultar campos incompatibles con el modo actual. */
+  appliedFilters: AppliedFilter[];
 }
 
 function buildKeySuggestions(
   configs: FilterQualifierConfig[],
   keyPart: string,
-  { negated, includeExclude }: KeySuggestionOptions,
+  { negated, includeExclude, appliedFilters }: KeySuggestionOptions,
 ): FilterSuggestion[] {
   // En modo exclusión el campo elegido conserva el `-` para formar `-campo:`.
   const prefix = negated ? "-" : "";
 
   const fieldSuggestions = configs
     .filter((config) => config.kind !== "text" && config.key)
+    .filter(
+      (config) =>
+        getAppliedPresenceValue(config, appliedFilters) !== "noValue",
+    )
     .filter(
       (config) =>
         startsWithNormalized(config.key, keyPart) ||
@@ -603,6 +609,7 @@ export function FilterQueryBar({
       // palabra que no matchea ninguna clave no produce sugerencias. "Excluir"
       // solo aparece con la barra vacía (sin clave a medio tipear ni negación).
       return buildKeySuggestions(configs, activeToken.keyPart, {
+        appliedFilters,
         includeExclude: !activeToken.negated && activeToken.keyPart === "",
         negated: activeToken.negated,
       });
