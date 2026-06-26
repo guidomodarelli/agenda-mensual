@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { FilterQueryBar } from "./filter-query-bar";
@@ -358,6 +358,71 @@ describe("FilterQueryBar", () => {
     expect(labels.some((label) => label?.includes("Hogar"))).toBe(true);
     // Dentro de un token negado no aparece el bloque universal No/Tiene/Excluir.
     expect(labels.some((label) => label?.includes("No tiene"))).toBe(false);
+  });
+
+  it("does not suggest a folder value that is already applied with the same polarity", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("-carpeta:hogar -carpeta:h");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not suggest a folder value that is already applied with the opposite polarity", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("-carpeta:hogar carpeta:h");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not suggest an enum value that is already applied with the same polarity", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("direccion:yo-debo direccion:y");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not suggest an enum value that is already applied with the opposite polarity", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("-direccion:yo-debo direccion:y");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not suggest a presence meta value that is already applied", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("tiene:link tiene:l");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
   });
 
   it("heads every filter with the universal No/Tiene/Excluir block", async () => {

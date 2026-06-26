@@ -32,6 +32,7 @@ import {
   parseFilterQuery,
   PRESENCE_HAS_META_KEY,
   PRESENCE_NO_META_KEY,
+  type AppliedFilter,
   type FilterQualifierConfig,
   type FilterQualifierKind,
   type ValueHighlightRange,
@@ -49,6 +50,8 @@ const OPTION_ID_PREFIX = "filter-query-bar-option";
 interface ValueSuggestionOption {
   slug: string;
   label: string;
+  /** Valor interno que queda aplicado al parsear opciones enum/folder. */
+  value?: string;
   keepOpen?: boolean;
   /** Id estable cuando varias opciones comparten el texto a insertar (p. ej. `*`). */
   name?: string;
@@ -255,9 +258,14 @@ function buildMetaValueSuggestions(
   configs: FilterQualifierConfig[],
   metaKey: string,
   valuePart: string,
+  appliedFilters: AppliedFilter[],
 ): FilterSuggestion[] {
   return configs
     .filter((config) => config.kind !== "text" && config.key)
+    .filter(
+      (config) =>
+        !hasPresenceMetaFilterAlreadyApplied(config, metaKey, appliedFilters),
+    )
     .filter(
       (config) =>
         startsWithNormalized(config.key, valuePart) ||
@@ -326,6 +334,7 @@ function getValueSuggestionSource(
     return (config.options ?? []).map((option) => ({
       label: option.label,
       slug: option.slug,
+      value: option.value,
     }));
   }
 
@@ -349,10 +358,54 @@ function getValueSuggestionSource(
   return [];
 }
 
+function hasPresenceMetaFilterAlreadyApplied(
+  config: FilterQualifierConfig,
+  metaKey: string,
+  appliedFilters: AppliedFilter[],
+): boolean {
+  const expectedPresenceValue =
+    metaKey === PRESENCE_HAS_META_KEY ? "hasValue" : "noValue";
+
+  return appliedFilters.some(
+    (appliedFilter) =>
+      appliedFilter.key === config.key &&
+      !appliedFilter.negated &&
+      appliedFilter.value.kind === "presence" &&
+      appliedFilter.value.value === expectedPresenceValue,
+  );
+}
+
+function hasSelectableValueAlreadyApplied(
+  config: FilterQualifierConfig,
+  option: ValueSuggestionOption,
+  appliedFilters: AppliedFilter[],
+): boolean {
+  if (config.kind === "enum") {
+    return appliedFilters.some(
+      (appliedFilter) =>
+        appliedFilter.key === config.key &&
+        appliedFilter.value.kind === "enum" &&
+        appliedFilter.value.value === option.value,
+    );
+  }
+
+  if (config.kind === "folder") {
+    return appliedFilters.some(
+      (appliedFilter) =>
+        appliedFilter.key === config.key &&
+        appliedFilter.value.kind === "folder" &&
+        appliedFilter.value.folderId === option.value,
+    );
+  }
+
+  return false;
+}
+
 function buildValueSuggestions(
   config: FilterQualifierConfig,
   valuePart: string,
   negated: boolean,
+  appliedFilters: AppliedFilter[],
 ): FilterSuggestion[] {
   // Los operadores numéricos no cierran el popover: el usuario completa el número.
   const defaultKeepOpen = config.kind === "numberRange";
@@ -373,6 +426,14 @@ function buildValueSuggestions(
       : valuePart;
 
   const valueSuggestions = sourceOptions
+    .filter(
+      (option) =>
+        !hasSelectableValueAlreadyApplied(
+          config,
+          option,
+          appliedFilters,
+        ),
+    )
     .filter((option) => startsWithNormalized(option.slug, filterValuePart))
     .map((option) => {
       const keepOpen = option.keepOpen ?? defaultKeepOpen;
@@ -486,6 +547,7 @@ export function FilterQueryBar({
 
   const suggestions = React.useMemo<FilterSuggestion[]>(() => {
     const activeToken = getActiveFilterToken(value, caretIndex);
+    const appliedFilters = parseFilterQuery(value, configs).appliedFilters;
 
     if (activeToken.mode === "key") {
       // En modo clave negado (`-` / `-cam`) se sugieren los campos a excluir, que
@@ -511,6 +573,7 @@ export function FilterQueryBar({
         configs,
         normalizedResolvedKey,
         activeToken.valuePart,
+        appliedFilters,
       );
     }
 
@@ -524,6 +587,7 @@ export function FilterQueryBar({
       config,
       activeToken.valuePart,
       activeToken.negated,
+      appliedFilters,
     );
   }, [caretIndex, configs, value]);
 
