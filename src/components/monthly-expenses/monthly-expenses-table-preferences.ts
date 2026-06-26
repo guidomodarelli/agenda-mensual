@@ -16,6 +16,8 @@ export const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
 
 export const DEFAULT_VIGENCIA_SORT_MODE: VigenciaSortMode = "startMonth";
 
+export const DEFAULT_MOVE_COMPLETED_TO_END = true;
+
 export const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
@@ -79,7 +81,11 @@ function parsePersistedVigenciaSortMode(
 }
 
 function parsePersistedMoveCompletedToEnd(value: unknown): boolean {
-  return value === true;
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  return DEFAULT_MOVE_COMPLETED_TO_END;
 }
 
 function parsePersistedSorting(value: unknown): SortingState | null {

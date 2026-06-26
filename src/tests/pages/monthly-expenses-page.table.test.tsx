@@ -556,7 +556,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  it("moves completed expenses to the end when enabled and disables the checkbox while manual sorting is active", async () => {
+  it("moves completed expenses to the end by default and disables the checkbox while manual sorting is active", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -608,16 +608,6 @@ registerMonthlyExpensesPageDefaultHooks({
       name: "Mover completados al final",
     });
 
-    expect(moveCompletedToEndCheckbox).not.toBeChecked();
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Luz",
-      "Agua",
-      "Internet",
-      "Gas",
-    ]);
-
-    await user.click(moveCompletedToEndCheckbox);
-
     expect(moveCompletedToEndCheckbox).toBeChecked();
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Agua",
@@ -651,7 +641,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ]);
   });
 
-  it("persists and restores the move-completed preference", async () => {
+  it("persists and restores the disabled move-completed preference", async () => {
     const user = userEvent.setup();
 
     const firstRender = renderWithProviders(
@@ -673,16 +663,18 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(
-      screen.getByRole("checkbox", {
-        name: "Mover completados al final",
-      }),
-    );
+    const moveCompletedToEndCheckbox = screen.getByRole("checkbox", {
+      name: "Mover completados al final",
+    });
+
+    expect(moveCompletedToEndCheckbox).toBeChecked();
+
+    await user.click(moveCompletedToEndCheckbox);
 
     await waitFor(() => {
       const persistedTablePreferences = getPersistedTablePreferences();
 
-      expect(persistedTablePreferences?.moveCompletedToEnd).toBe(true);
+      expect(persistedTablePreferences?.moveCompletedToEnd).toBe(false);
     });
 
     firstRender.unmount();
@@ -711,8 +703,57 @@ registerMonthlyExpensesPageDefaultHooks({
         screen.getByRole("checkbox", {
           name: "Mover completados al final",
         }),
+      ).not.toBeChecked();
+    });
+  });
+
+  it("defaults to moving completed expenses to the end when the stored preference is missing", async () => {
+    window.localStorage.setItem(
+      TABLE_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        columnVisibility: {
+          total: false,
+        },
+      }),
+    );
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-1",
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 1,
+              subtotal: 20,
+              total: 20,
+            },
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Mover completados al final",
+        }),
       ).toBeChecked();
     });
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Agua", "Luz"]);
   });
 
   it("restores persisted table sorting and column visibility from localStorage", async () => {
@@ -826,7 +867,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
       expect(persistedTablePreferences).not.toBeNull();
       expect(persistedTablePreferences?.loanSortMode).toBe("paidInstallments");
-      expect(persistedTablePreferences?.moveCompletedToEnd).toBe(false);
+      expect(persistedTablePreferences?.moveCompletedToEnd).toBe(true);
       expect(persistedTablePreferences?.sorting).toEqual([
         {
           desc: false,

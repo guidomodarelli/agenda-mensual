@@ -151,6 +151,7 @@ import { PaymentHistoryCell } from "./payment-history-cell";
 import { PaymentProgressRing } from "./payment-progress-ring";
 import {
   DEFAULT_LOAN_SORT_MODE,
+  DEFAULT_MOVE_COMPLETED_TO_END,
   DEFAULT_VIGENCIA_SORT_MODE,
   getPersistedMonthlyExpensesTablePreferences,
   MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY,
@@ -927,7 +928,9 @@ export function MonthlyExpensesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY,
   );
-  const [moveCompletedToEnd, setMoveCompletedToEnd] = useState(false);
+  const [moveCompletedToEnd, setMoveCompletedToEnd] = useState(
+    DEFAULT_MOVE_COMPLETED_TO_END,
+  );
   const [isRestoringTablePreferences, setIsRestoringTablePreferences] =
     useState(true);
   const [descriptionFilter, setDescriptionFilter] = useState("");
