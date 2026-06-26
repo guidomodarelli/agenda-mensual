@@ -32,6 +32,7 @@ import {
   parseFilterQuery,
   PRESENCE_HAS_META_KEY,
   PRESENCE_NO_META_KEY,
+  UNASSIGNED_FOLDER_FILTER_VALUE,
   type AppliedFilter,
   type FilterQualifierConfig,
   type FilterQualifierKind,
@@ -396,6 +397,44 @@ function hasSelectableValueAlreadyApplied(
   return false;
 }
 
+function getAppliedPresenceValue(
+  config: FilterQualifierConfig,
+  appliedFilters: AppliedFilter[],
+): "hasValue" | "noValue" | null {
+  const presenceFilter = appliedFilters.find(
+    (appliedFilter) =>
+      appliedFilter.key === config.key &&
+      !appliedFilter.negated &&
+      appliedFilter.value.kind === "presence",
+  );
+
+  return presenceFilter?.value.kind === "presence"
+    ? presenceFilter.value.value
+    : null;
+}
+
+function isSelectableValueCompatibleWithPresence(
+  config: FilterQualifierConfig,
+  option: ValueSuggestionOption,
+  appliedFilters: AppliedFilter[],
+): boolean {
+  if (config.kind !== "folder") {
+    return true;
+  }
+
+  const presenceValue = getAppliedPresenceValue(config, appliedFilters);
+
+  if (presenceValue === "hasValue") {
+    return option.value !== UNASSIGNED_FOLDER_FILTER_VALUE;
+  }
+
+  if (presenceValue === "noValue") {
+    return false;
+  }
+
+  return true;
+}
+
 function buildValueSuggestions(
   config: FilterQualifierConfig,
   valuePart: string,
@@ -424,6 +463,11 @@ function buildValueSuggestions(
     .filter(
       (option) =>
         !hasSelectableValueAlreadyApplied(
+          config,
+          option,
+          appliedFilters,
+        ) &&
+        isSelectableValueCompatibleWithPresence(
           config,
           option,
           appliedFilters,

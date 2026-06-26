@@ -386,6 +386,23 @@ describe("FilterQueryBar", () => {
     });
   });
 
+  it("does not suggest the unassigned folder value when folder presence is required", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("tiene:carpeta -carpeta:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+
+    expect(labels.some((label) => label.includes("Hogar"))).toBe(true);
+    expect(labels.some((label) => label.includes("Sin carpeta"))).toBe(false);
+  });
+
   it("does not suggest an enum value that is already applied with the same polarity", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);
