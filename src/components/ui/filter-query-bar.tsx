@@ -430,18 +430,18 @@ function isSelectableValueCompatibleWithPresence(
   option: ValueSuggestionOption,
   appliedFilters: AppliedFilter[],
 ): boolean {
+  const presenceValue = getAppliedPresenceValue(config, appliedFilters);
+
+  if (presenceValue === "noValue") {
+    return false;
+  }
+
   if (config.kind !== "folder") {
     return true;
   }
 
-  const presenceValue = getAppliedPresenceValue(config, appliedFilters);
-
   if (presenceValue === "hasValue") {
     return option.value !== UNASSIGNED_FOLDER_FILTER_VALUE;
-  }
-
-  if (presenceValue === "noValue") {
-    return false;
   }
 
   return true;

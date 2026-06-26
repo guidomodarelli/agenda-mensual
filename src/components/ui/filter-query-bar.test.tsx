@@ -22,6 +22,16 @@ const CONFIGS: FilterQualifierConfig[] = [
   { key: "inicio", kind: "yearMonthRange", label: "Inicio de cuota" },
   { key: "link", kind: "textMatch", label: "Link de pago" },
   {
+    iconName: "user",
+    key: "prestamista",
+    kind: "enum",
+    label: "Prestamista",
+    options: [
+      { label: "Vero Hadad", slug: "vero-hadad", value: "lender-1" },
+      { label: "Banco Galicia", slug: "banco-galicia", value: "lender-2" },
+    ],
+  },
+  {
     key: "carpeta",
     kind: "folder",
     label: "Carpeta",
@@ -201,30 +211,84 @@ describe("FilterQueryBar", () => {
     expect(within(valueListbox).getAllByRole("option").length).toBeGreaterThan(0);
   });
 
-  it("does not suggest a field exclusion when its absence is already required", async () => {
+  it.each([
+    { fieldKey: "carpeta", keyPrefix: "carpeta" },
+    { fieldKey: "prestamista", keyPrefix: "prestamista" },
+    { fieldKey: "direccion", keyPrefix: "dir" },
+    { fieldKey: "link", keyPrefix: "li" },
+    { fieldKey: "subtotal", keyPrefix: "sub" },
+    { fieldKey: "inicio", keyPrefix: "ini" },
+  ])(
+    "does not suggest a field exclusion when $fieldKey absence is already required",
+    async ({ fieldKey }) => {
+      const user = userEvent.setup();
+      render(<FilterQueryBarHarness />);
+
+      const combobox = screen.getByRole("combobox");
+      await user.click(combobox);
+      await user.keyboard(`no:${fieldKey} -${fieldKey}`);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      });
+    },
+  );
+
+  it.each([
+    { fieldKey: "carpeta", keyPrefix: "ca" },
+    { fieldKey: "prestamista", keyPrefix: "pre" },
+    { fieldKey: "direccion", keyPrefix: "dir" },
+    { fieldKey: "link", keyPrefix: "li" },
+    { fieldKey: "subtotal", keyPrefix: "sub" },
+    { fieldKey: "inicio", keyPrefix: "ini" },
+  ])(
+    "does not suggest a field key when $fieldKey absence is already required",
+    async ({ fieldKey, keyPrefix }) => {
+      const user = userEvent.setup();
+      render(<FilterQueryBarHarness />);
+
+      const combobox = screen.getByRole("combobox");
+      await user.click(combobox);
+      await user.keyboard(`no:${fieldKey} ${keyPrefix}`);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      });
+    },
+  );
+
+  it.each(["carpeta", "prestamista", "direccion", "link", "subtotal", "inicio"])(
+    "does not suggest values or shortcuts when %s absence is already required",
+    async (fieldKey) => {
+      const user = userEvent.setup();
+      render(<FilterQueryBarHarness />);
+
+      const combobox = screen.getByRole("combobox");
+      await user.click(combobox);
+      await user.keyboard(`no:${fieldKey} ${fieldKey}:`);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      });
+    },
+  );
+
+  it("keeps the exclude shortcut when a field presence is already required", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);
 
     const combobox = screen.getByRole("combobox");
     await user.click(combobox);
-    await user.keyboard("no:carpeta -carpeta");
+    await user.keyboard("tiene:prestamista prestamista:");
 
-    await waitFor(() => {
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    });
-  });
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
 
-  it("does not suggest a field key when its absence is already required", async () => {
-    const user = userEvent.setup();
-    render(<FilterQueryBarHarness />);
-
-    const combobox = screen.getByRole("combobox");
-    await user.click(combobox);
-    await user.keyboard("no:carpeta ca");
-
-    await waitFor(() => {
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    });
+    expect(labels.some((label) => label.includes("No tiene Prestamista"))).toBe(false);
+    expect(labels.some((label) => label.includes("Tiene Prestamista"))).toBe(false);
+    expect(labels.some((label) => label.includes("Excluir Prestamista"))).toBe(true);
   });
 
   it("offers Exclude last on the empty bar and starts a field exclusion", async () => {
