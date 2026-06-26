@@ -82,13 +82,12 @@ describe("buildMonthlyExpensesFilterQualifiers", () => {
     ]);
   });
 
-  it("builds folder options from existing folders plus an unassigned slug", () => {
+  it("builds folder options from existing folders only", () => {
     const carpeta = buildQualifiers().find(
       (qualifier) => qualifier.key === "carpeta",
     );
 
     expect(carpeta?.options).toEqual([
-      { label: "Sin carpeta", slug: "sin-carpeta", value: "__unassigned__" },
       { label: "Hogar", slug: "hogar", value: "folder-1" },
       { label: "Tarjeta", slug: "tarjeta", value: "folder-2" },
     ]);

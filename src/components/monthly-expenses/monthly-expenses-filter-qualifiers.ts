@@ -1,6 +1,5 @@
 import {
   normalizeFilterSlug,
-  UNASSIGNED_FOLDER_FILTER_VALUE,
   type FilterQualifierConfig,
   type FilterQualifierOption,
 } from "@/components/ui/filter-query-grammar";
@@ -29,9 +28,6 @@ const LOAN_DIRECTION_QUALIFIER_OPTIONS: FilterQualifierOption[] = [
   { label: "Yo debo", slug: "yo-debo", value: "payable" },
   { label: "Me deben", slug: "me-deben", value: "receivable" },
 ];
-
-/** Slug de la opción "sin carpeta asignada" dentro del qualifier de carpeta. */
-export const UNASSIGNED_FOLDER_QUALIFIER_SLUG = "sin-carpeta";
 
 /**
  * Convierte el nombre de una carpeta en un slug tipeable de un solo token. Más
@@ -151,21 +147,13 @@ function buildUniqueSlugOptions(
   }));
 }
 
-/** Opciones de carpeta: "Sin carpeta" + una por carpeta existente (slug único). */
+/** Opciones de carpeta: una por carpeta existente (slug único). */
 function buildFolderQualifierOptions(
   expenseFolders: ExpenseFolderOption[],
 ): FilterQualifierOption[] {
-  return [
-    {
-      label: "Sin carpeta",
-      slug: UNASSIGNED_FOLDER_QUALIFIER_SLUG,
-      value: UNASSIGNED_FOLDER_FILTER_VALUE,
-    },
-    ...buildUniqueSlugOptions(expenseFolders, {
-      fallbackSlug: "carpeta",
-      reservedSlugs: [UNASSIGNED_FOLDER_QUALIFIER_SLUG],
-    }),
-  ];
+  return buildUniqueSlugOptions(expenseFolders, {
+    fallbackSlug: "carpeta",
+  });
 }
 
 /** Opciones de prestamista: una por prestamista cargado (slug único, valor=id). */
