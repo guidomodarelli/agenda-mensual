@@ -398,6 +398,37 @@ describe("FilterQueryBar", () => {
     });
   });
 
+  it("does not suggest folder presence shortcuts when folder absence is already required", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("no:carpeta carpeta:");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps the exclude shortcut when folder presence is already required", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("tiene:carpeta carpeta:");
+
+    const listbox = await screen.findByRole("listbox");
+    const labels = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent ?? "");
+
+    expect(labels.some((label) => label.includes("No tiene Carpeta"))).toBe(false);
+    expect(labels.some((label) => label.includes("Tiene Carpeta"))).toBe(false);
+    expect(labels.some((label) => label.includes("Excluir Carpeta"))).toBe(true);
+  });
+
   it("does not suggest an enum value that is already applied with the same polarity", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);

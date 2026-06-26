@@ -289,31 +289,37 @@ function buildMetaValueSuggestions(
  */
 function buildPresenceAndExcludeSuggestions(
   config: FilterQualifierConfig,
+  appliedFilters: AppliedFilter[],
 ): FilterSuggestion[] {
-  const suggestions: FilterSuggestion[] = [
-    {
-      group: "meta",
-      icon: CircleSlash,
-      id: `${OPTION_ID_PREFIX}-presence-no-${config.key}`,
-      insertText: `${PRESENCE_NO_META_KEY}:${config.key} `,
-      keepOpen: false,
-      label: `No tiene ${config.label}`,
-      replaceTokenStart: true,
-    },
-    {
-      group: "meta",
-      icon: Check,
-      id: `${OPTION_ID_PREFIX}-presence-has-${config.key}`,
-      insertText: `${PRESENCE_HAS_META_KEY}:${config.key} `,
-      keepOpen: false,
-      label: `Tiene ${config.label}`,
-      replaceTokenStart: true,
-    },
-  ];
+  const appliedPresenceValue = getAppliedPresenceValue(config, appliedFilters);
+  const hasAppliedPresence = appliedPresenceValue != null;
+
+  const suggestions: FilterSuggestion[] = hasAppliedPresence
+    ? []
+    : [
+        {
+          group: "meta",
+          icon: CircleSlash,
+          id: `${OPTION_ID_PREFIX}-presence-no-${config.key}`,
+          insertText: `${PRESENCE_NO_META_KEY}:${config.key} `,
+          keepOpen: false,
+          label: `No tiene ${config.label}`,
+          replaceTokenStart: true,
+        },
+        {
+          group: "meta",
+          icon: Check,
+          id: `${OPTION_ID_PREFIX}-presence-has-${config.key}`,
+          insertText: `${PRESENCE_HAS_META_KEY}:${config.key} `,
+          keepOpen: false,
+          label: `Tiene ${config.label}`,
+          replaceTokenStart: true,
+        },
+      ];
 
   // Excluir un valor concreto solo aplica a kinds con valores; en presencia pura
   // (deuda) el único filtro es tener/no tener, ya cubierto arriba.
-  if (config.kind !== "presence") {
+  if (config.kind !== "presence" && appliedPresenceValue !== "noValue") {
     suggestions.push({
       group: "meta",
       icon: CircleMinus,
@@ -497,7 +503,10 @@ function buildValueSuggestions(
     return valueSuggestions;
   }
 
-  return [...buildPresenceAndExcludeSuggestions(config), ...valueSuggestions];
+  return [
+    ...buildPresenceAndExcludeSuggestions(config, appliedFilters),
+    ...valueSuggestions,
+  ];
 }
 
 function resolveConfigByKey(
