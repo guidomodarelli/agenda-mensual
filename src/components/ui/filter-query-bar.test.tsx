@@ -425,6 +425,26 @@ describe("FilterQueryBar", () => {
     });
   });
 
+  it("does not suggest an opposite presence meta value for an already filtered field", async () => {
+    const user = userEvent.setup();
+    render(<FilterQueryBarHarness />);
+
+    const combobox = screen.getByRole("combobox");
+    await user.click(combobox);
+    await user.keyboard("no:carpeta tiene:c");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    await user.clear(combobox);
+    await user.keyboard("tiene:carpeta no:c");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
   it("heads every filter with the universal No/Tiene/Excluir block", async () => {
     const user = userEvent.setup();
     render(<FilterQueryBarHarness />);

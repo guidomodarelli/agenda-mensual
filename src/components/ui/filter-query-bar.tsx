@@ -264,7 +264,7 @@ function buildMetaValueSuggestions(
     .filter((config) => config.kind !== "text" && config.key)
     .filter(
       (config) =>
-        !hasPresenceMetaFilterAlreadyApplied(config, metaKey, appliedFilters),
+        !hasPresenceMetaFilterAlreadyApplied(config, appliedFilters),
     )
     .filter(
       (config) =>
@@ -360,18 +360,13 @@ function getValueSuggestionSource(
 
 function hasPresenceMetaFilterAlreadyApplied(
   config: FilterQualifierConfig,
-  metaKey: string,
   appliedFilters: AppliedFilter[],
 ): boolean {
-  const expectedPresenceValue =
-    metaKey === PRESENCE_HAS_META_KEY ? "hasValue" : "noValue";
-
   return appliedFilters.some(
     (appliedFilter) =>
       appliedFilter.key === config.key &&
       !appliedFilter.negated &&
-      appliedFilter.value.kind === "presence" &&
-      appliedFilter.value.value === expectedPresenceValue,
+      appliedFilter.value.kind === "presence",
   );
 }
 
