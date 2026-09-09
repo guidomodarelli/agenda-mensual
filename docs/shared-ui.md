@@ -42,3 +42,6 @@ and WebKit at desktop and mobile widths.
 
 Behavioral tests use reduced motion in jsdom. Browser tests verify theme
 persistence, navigation and controls without asserting CSS values or dimensions.
+
+The application uses React and React DOM 19.3 with the matching 19.3 TypeScript
+types. The published beez-ui peer range supports this runtime.
