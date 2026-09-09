@@ -39,3 +39,6 @@ Before updating the package, run `npm run lint`, `npm run typecheck`,
 `npm test -- --runInBand`, `npm run build` and `npm run test:e2e`. Browser coverage
 must exercise theme persistence, navigation and interactive controls in Chromium
 and WebKit at desktop and mobile widths.
+
+Behavioral tests use reduced motion in jsdom. Browser tests verify theme
+persistence, navigation and controls without asserting CSS values or dimensions.

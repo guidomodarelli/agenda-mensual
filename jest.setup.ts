@@ -34,13 +34,14 @@ Object.defineProperty(globalThis, "ResizeObserver", {
 	value: ResizeObserverMock,
 });
 
+// Keep behavioral tests independent of animation timing; Playwright exercises motion.
 Object.defineProperty(globalThis, "matchMedia", {
 	configurable: true,
 	writable: true,
 	value: (query: string) => ({
 		addEventListener: jest.fn(),
 		dispatchEvent: jest.fn(),
-		matches: false,
+		matches: query === "(prefers-reduced-motion: reduce)",
 		media: query,
 		onchange: null,
 		removeEventListener: jest.fn(),
