@@ -1,3 +1,4 @@
+/** Verifies page navigation and persisted theme behavior across redirects. */
 import { expect, test } from "@playwright/test";
 
 test("renders monthly expenses on root route", async ({ page }) => {
@@ -24,11 +25,7 @@ test("keeps light theme after reload when persisted theme is light", async ({ pa
   await expect(page).toHaveURL(/\/gastos/);
   await expect(page.getByRole("heading", { name: "Detalle del mes" })).toBeVisible();
 
-  await expect.poll(async () => {
-    return await page.evaluate(() => {
-      return document.documentElement.classList.contains("dark");
-    });
-  }).toBe(false);
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
 
   await page.reload();
 
@@ -45,11 +42,7 @@ test("uses system theme when no persisted theme exists", async ({ page }) => {
   await expect(page).toHaveURL(/\/gastos/);
   await expect(page.getByRole("heading", { name: "Detalle del mes" })).toBeVisible();
 
-  await expect.poll(async () => {
-    return await page.evaluate(() => {
-      return document.documentElement.classList.contains("dark");
-    });
-  }).toBe(true);
+  await expect(page.locator("html")).toHaveClass(/dark/);
 });
 
 test("toggles to dark correctly after reloading in persisted light mode", async ({ page }) => {
@@ -63,11 +56,7 @@ test("toggles to dark correctly after reloading in persisted light mode", async 
   await expect(page.getByRole("heading", { name: "Detalle del mes" })).toBeVisible();
   await page.reload();
 
-  await expect.poll(async () => {
-    return await page.evaluate(() => {
-      return document.documentElement.classList.contains("dark");
-    });
-  }).toBe(false);
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
 
   await page.getByRole("button", { name: "Alternar tema" }).click();
   await page.getByRole("menuitemradio", { name: "Oscuro", exact: true }).click();

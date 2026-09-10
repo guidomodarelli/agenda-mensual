@@ -1,0 +1,3 @@
+# Keep toolchain pins and pnpm hook checksums stable across Windows and CI.
+/.nvmrc text eol=lf
+/.pnpmfile.cjs text eol=lf

@@ -50,3 +50,10 @@ Unit and integration tests run with Vitest 5. `tsconfig.test.json` owns test glo
 and is checked with `pnpm typecheck:tests`; application types remain separate.
 Use pnpm 12.3.4 and `pnpm install --frozen-lockfile`. The `gaxios` public-hoist
 exception preserves its googleapis-owned dependency without declaring it directly.
+
+Node 24.21.0 is pinned in .nvmrc for development and CI. TypeScript 7 checks
+application and test projects, and Next uses its native CLI during production
+builds. .pnpmfile.cjs supplies the official TypeScript 6 API privately to ESLint
+consumers until they support the new compiler API. The root compiler remains
+TypeScript 7. Keep the hook checksum and dependency resolution in pnpm-lock.yaml.
+CI installs pnpm 12.3.4 explicitly; Vitest 5 and jsdom remain the test baseline.
