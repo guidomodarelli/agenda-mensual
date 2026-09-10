@@ -57,3 +57,16 @@ builds. .pnpmfile.cjs supplies the official TypeScript 6 API privately to ESLint
 consumers until they support the new compiler API. The root compiler remains
 TypeScript 7. Keep the hook checksum and dependency resolution in pnpm-lock.yaml.
 CI installs pnpm 12.3.4 explicitly; Vitest 5 and jsdom remain the test baseline.
+
+React Compiler is enabled for application components in development and production
+through `reactCompiler: true` and `experimental.turbopackRustReactCompiler: true`.
+This native Next.js implementation requires Turbopack, does not support webpack,
+and does not need Babel. Vitest uses `react({ compiler: true })` with
+`oxc-transform-react@^0.145.0`, matching the Vite React plugin peer range, so tests
+exercise compiled code while retaining jsdom. Both integrations are experimental:
+Next uses its native implementation and Vite uses Oxc. The existing CI gate checks
+types, lint, tests and production builds with the compiler enabled. Performance
+improvements must be measured rather than assumed.
+Async layout and sign-in tests use React's server renderer instead of calling
+compiled component functions directly. The shared test helper exposes the rendered
+body for DOM assertions; client interactions continue to use Testing Library.

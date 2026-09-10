@@ -21,11 +21,11 @@ vi.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
   isGoogleOAuthConfigured: vi.fn(),
 }));
 
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { cookies } from "next/headers";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getServerSession } from "next-auth";
-import type { ReactElement, ReactNode } from "react";
+import { renderServerComponent } from "@/tests/render-server-component";
 
 import RootLayout, { getRootServerSession } from "@/app/layout";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
@@ -116,16 +116,7 @@ describe("RootLayout", () => {
   });
 
   it("renders providers, the global finance shell, and route children", async () => {
-    const rootLayoutElement = await RootLayout({
-      children: <h1>Route content</h1>,
-    });
-    const bodyElement = (
-      rootLayoutElement as ReactElement<{
-        children: ReactElement<{ children: ReactNode }>;
-      }>
-    ).props.children;
-
-    render(<>{bodyElement.props.children}</>);
+    await renderServerComponent(<RootLayout><h1>Route content</h1></RootLayout>);
 
     expect(screen.getByText("Control Mensual")).toBeInTheDocument();
     expect(

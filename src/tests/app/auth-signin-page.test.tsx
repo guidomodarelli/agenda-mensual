@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import SignInPage from "@/app/auth/signin/page";
 import { SignInPageClient } from "@/app/auth/signin/signin-page-client";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
+import { renderServerComponent } from "@/tests/render-server-component";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((destination: string) => {
@@ -47,7 +48,7 @@ describe("SignInPage", () => {
       },
     });
 
-    await expect(SignInPage()).rejects.toThrow("NEXT_REDIRECT:/");
+    await expect(renderServerComponent(<SignInPage />)).rejects.toThrow("NEXT_REDIRECT:/");
 
     expect(mockedRedirect).toHaveBeenCalledWith("/");
   });
@@ -56,9 +57,9 @@ describe("SignInPage", () => {
     mockedGetServerSession.mockRejectedValue(new Error("Session lookup failed."));
     mockedIsGoogleOAuthConfigured.mockReturnValue(true);
 
-    const signInPageElement = await SignInPage();
+    await renderServerComponent(<SignInPage />);
 
-    expect(signInPageElement.props).toEqual({
+    expect(mockedSignInPageClient).toHaveBeenCalledWith({
       hasProviderError: false,
       providers: {
         google: {
@@ -69,20 +70,19 @@ describe("SignInPage", () => {
           type: "oauth",
         },
       },
-    });
-    expect(mockedSignInPageClient).not.toHaveBeenCalled();
+    }, undefined);
     expect(mockedRedirect).not.toHaveBeenCalled();
   });
 
   it("renders no provider when Google OAuth is not configured", async () => {
     mockedGetServerSession.mockResolvedValue(null);
 
-    const signInPageElement = await SignInPage();
+    await renderServerComponent(<SignInPage />);
 
-    expect(signInPageElement.props).toEqual({
+    expect(mockedSignInPageClient).toHaveBeenCalledWith({
       hasProviderError: false,
       providers: {},
-    });
+    }, undefined);
     expect(mockedRedirect).not.toHaveBeenCalled();
   });
 });
