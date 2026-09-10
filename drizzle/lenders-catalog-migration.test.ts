@@ -1,7 +1,8 @@
 /**
- * @jest-environment node
+ * @vitest-environment node
  */
 
+import { describe, it, expect } from "vitest";
 import { createClient, type Client } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";

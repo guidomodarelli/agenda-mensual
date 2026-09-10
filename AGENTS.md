@@ -272,7 +272,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 - Run the relevant test suite until it is green.
 - A task is not complete until the relevant tests and lint checks pass.
-- Select tests according to the files changed. Prefer the smallest real command that exercises the affected behavior, such as a specific Jest file, integration test, or E2E spec. Run the full `npm run test` suite only when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
+- Select tests according to the files changed. Prefer the smallest real command that exercises the affected behavior, such as a specific Vitest file, integration test, or E2E spec. Run the full `pnpm run test` suite only when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
 
 ### Testing responsibilities by layer
 
@@ -295,18 +295,18 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Lint gate (mandatory)
 
-- Every work item must run `npm run lint` before completion.
-- A change is blocked from completion if `npm run lint` exits with a non-zero status.
+- Every work item must run `pnpm run lint` before completion.
+- A change is blocked from completion if `pnpm run lint` exits with a non-zero status.
 - If lint fails, fix the reported issues in the same work item and rerun lint until it passes.
 - Do not bypass lint failures with pending TODOs or deferred follow-ups.
 
 ### Quality gates (mandatory)
 
 - Every work item must run the applicable checks before completion:
-  - `npm run lint`
-  - `npm run typecheck`
+  - `pnpm run lint`
+  - `pnpm run typecheck`
   - The relevant targeted test command for the changed files
-- Run `npm run test` instead of a targeted command when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
+- Run `pnpm run test` instead of a targeted command when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
 - Never remove `.next/dev/types/**/*.ts` from `tsconfig.json` includes. If stale generated dev types reference removed routes, regenerate or clean the generated Next.js artifacts instead of changing this include.
 - A task is blocked from completion if any of these commands exits with a non-zero status code.
 - If any check fails, fix the issues in the same work item and rerun the failed command(s) until all applicable checks are green.
@@ -314,7 +314,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### SQL migrations push command (mandatory)
 
-- Use `npm run push-migrations` as the single entrypoint to push SQL migrations.
+- Use `pnpm run push-migrations` as the single entrypoint to push SQL migrations.
 - Do not run provider-specific migration push commands directly when this script exists.
 - Keep provider selection inside `scripts/push-migrations.mjs` so the workflow stays consistent across providers.
 
@@ -335,4 +335,10 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 - Are product styles implemented with `SCSS`?
 - Are Google tokens and secrets kept server-side only?
 - Were tests written first and left green at the end?
-- Does `npm run lint` pass with exit code `0`?
+- Does `pnpm run lint` pass with exit code `0`?
+
+### Test tooling
+
+- Use pnpm 12.3.4 and the committed pnpm-lock.yaml. Install with `pnpm install --frozen-lockfile`.
+- Use Vitest 5 for unit and integration tests; `pnpm test` runs once and `pnpm test:watch` watches.
+- Run `pnpm typecheck:tests` against `tsconfig.test.json`; keep Vitest and Testing Library globals out of the application tsconfig.

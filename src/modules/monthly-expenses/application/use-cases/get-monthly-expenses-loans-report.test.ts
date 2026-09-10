@@ -1,11 +1,12 @@
+import { vi, describe, it, expect } from "vitest";
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import { getMonthlyExpensesLoansReport } from "./get-monthly-expenses-loans-report";
 
 describe("getMonthlyExpensesLoansReport", () => {
   it("aggregates the latest loan snapshot by lender", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -51,7 +52,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-03",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -111,8 +112,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("uses the latest loan direction when an existing loan is corrected", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -158,7 +159,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-03",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -216,8 +217,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("separates payable and receivable remaining amounts", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -258,7 +259,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-01",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -298,8 +299,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("keeps loans with matching details and different directions separated", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -340,7 +341,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-02",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -423,8 +424,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("counts unique lenders in summary even when they have loans in both directions", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -465,7 +466,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-01",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -486,8 +487,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("excludes fully paid loans from a lender's associated expenses while keeping active ones", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -528,7 +529,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-03",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -586,8 +587,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("omits lenders whose loans are all fully paid", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -611,7 +612,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-03",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -643,8 +644,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("treats a loan as settled once the current month is past its end month, even if its last snapshot still shows a pending installment", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -668,7 +669,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-03",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -690,8 +691,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("converts USD loans to ARS using the document solidarity rate", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           exchangeRateSnapshot: {
             blueRate: 1100,
@@ -721,7 +722,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -744,8 +745,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("converts USD loans using the latest available rate when their own document has none", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           exchangeRateSnapshot: {
             blueRate: 900,
@@ -779,7 +780,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -799,8 +800,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("resolves a fallback solidarity rate when no stored document carries a snapshot", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -824,9 +825,9 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
-    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(1000);
+    const resolveFallbackSolidarityRate = vi.fn().mockResolvedValue(1000);
 
     const result = await getMonthlyExpensesLoansReport({
       currentMonth: "2026-06",
@@ -842,8 +843,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("does not invoke the fallback resolver when a stored snapshot rate exists", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           exchangeRateSnapshot: {
             blueRate: 1100,
@@ -873,9 +874,9 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
-    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(5000);
+    const resolveFallbackSolidarityRate = vi.fn().mockResolvedValue(5000);
 
     const result = await getMonthlyExpensesLoansReport({
       currentMonth: "2026-06",
@@ -890,8 +891,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("falls back to the native USD amount when the resolver yields no rate", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -915,9 +916,9 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
-    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(null);
+    const resolveFallbackSolidarityRate = vi.fn().mockResolvedValue(null);
 
     const result = await getMonthlyExpensesLoansReport({
       currentMonth: "2026-06",
@@ -932,8 +933,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("does not invoke the fallback resolver when no USD loan is missing a rate", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -957,9 +958,9 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
-    const resolveFallbackSolidarityRate = jest.fn().mockResolvedValue(1000);
+    const resolveFallbackSolidarityRate = vi.fn().mockResolvedValue(1000);
 
     await getMonthlyExpensesLoansReport({
       currentMonth: "2026-06",
@@ -973,8 +974,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("lists each active loan separately even when they share a description", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -1015,7 +1016,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -1041,8 +1042,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("keeps a loan visible through its final installment month with a zero balance", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -1066,7 +1067,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -1095,8 +1096,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("drops a loan the month after its final installment", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -1120,7 +1121,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -1134,8 +1135,8 @@ describe("getMonthlyExpensesLoansReport", () => {
 
   it("reports the current-month installment and an upcoming-payments projection", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn().mockResolvedValue([
+      getByMonth: vi.fn(),
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -1159,7 +1160,7 @@ describe("getMonthlyExpensesLoansReport", () => {
           month: "2026-06",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesLoansReport({
@@ -1181,8 +1182,8 @@ describe("getMonthlyExpensesLoansReport", () => {
     const result = await getMonthlyExpensesLoansReport({
       lenders: [],
       repository: {
-        getByMonth: jest.fn(),
-        save: jest.fn(),
+        getByMonth: vi.fn(),
+        save: vi.fn(),
       } as unknown as MonthlyExpensesRepository,
     });
 

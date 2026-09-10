@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
@@ -7,12 +8,12 @@ import { ExpenseReceiptUploadDialog } from "./expense-receipt-upload-dialog";
 type DialogProps = ComponentProps<typeof ExpenseReceiptUploadDialog>;
 
 function renderExpenseReceiptUploadDialog(overrides: Partial<DialogProps> = {}) {
-  const onUpload = jest.fn<Promise<void>, [
+  const onUpload = vi.fn<(...args: [
     {
       coveredPayments: number;
       file: File;
     },
-  ]>().mockResolvedValue(undefined);
+  ]) => Promise<void>>().mockResolvedValue(undefined);
 
   const props: DialogProps = {
     coveredPaymentsMax: 4,
@@ -22,7 +23,7 @@ function renderExpenseReceiptUploadDialog(overrides: Partial<DialogProps> = {}) 
     isOpen: true,
     isSubmitting: false,
     uploadProgressPercent: 0,
-    onClose: jest.fn(),
+    onClose: vi.fn(),
     onUpload,
     ...overrides,
   };
@@ -213,12 +214,12 @@ describe("ExpenseReceiptUploadDialog", () => {
 
   it("shows live upload progress percentage while submitting", async () => {
     const user = userEvent.setup();
-    const onUpload = jest.fn<Promise<void>, [
+    const onUpload = vi.fn<(...args: [
       {
         coveredPayments: number;
         file: File;
       },
-    ]>().mockResolvedValue(undefined);
+    ]) => Promise<void>>().mockResolvedValue(undefined);
     const baseProps: DialogProps = {
       coveredPaymentsMax: 4,
       coveredPaymentsRemaining: 3,
@@ -226,7 +227,7 @@ describe("ExpenseReceiptUploadDialog", () => {
       expenseDescription: "Internet",
       isOpen: true,
       isSubmitting: false,
-      onClose: jest.fn(),
+      onClose: vi.fn(),
       onUpload,
       uploadProgressPercent: 0,
     };
@@ -257,8 +258,8 @@ describe("ExpenseReceiptUploadDialog", () => {
       expenseDescription: "Internet",
       isOpen: true,
       isSubmitting: false,
-      onClose: jest.fn(),
-      onUpload: jest.fn().mockResolvedValue(undefined),
+      onClose: vi.fn(),
+      onUpload: vi.fn().mockResolvedValue(undefined),
       uploadProgressPercent: 0,
     };
     const { rerender } = render(<ExpenseReceiptUploadDialog {...baseProps} />);
@@ -303,12 +304,12 @@ describe("ExpenseReceiptUploadDialog", () => {
 
   it("resets selected file when the dialog is reopened", async () => {
     const user = userEvent.setup();
-    const onUpload = jest.fn<Promise<void>, [
+    const onUpload = vi.fn<(...args: [
       {
         coveredPayments: number;
         file: File;
       },
-    ]>().mockResolvedValue(undefined);
+    ]) => Promise<void>>().mockResolvedValue(undefined);
     const baseProps: DialogProps = {
       coveredPaymentsMax: 4,
       coveredPaymentsRemaining: 3,
@@ -316,7 +317,7 @@ describe("ExpenseReceiptUploadDialog", () => {
       expenseDescription: "Internet",
       isOpen: true,
       isSubmitting: false,
-      onClose: jest.fn(),
+      onClose: vi.fn(),
       onUpload,
       uploadProgressPercent: 0,
     };

@@ -1,17 +1,18 @@
+import { vi, describe, it, expect, afterEach } from "vitest";
 import { AnimatedThemeToggler } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useTheme, type UseThemeProps } from "next-themes";
 
-jest.mock("next-themes", () => ({
-  useTheme: jest.fn(),
+vi.mock("next-themes", () => ({
+  useTheme: vi.fn(),
 }));
 
-const mockedUseTheme = jest.mocked(useTheme);
+const mockedUseTheme = vi.mocked(useTheme);
 
 function createThemeMock(
   theme: UseThemeProps["theme"],
-  setTheme = jest.fn(),
+  setTheme = vi.fn(),
   resolvedTheme: UseThemeProps["resolvedTheme"] = theme === "light" ? "light" : "dark",
 ): UseThemeProps {
   return {
@@ -30,7 +31,7 @@ function createThemeMock(
 describe("AnimatedThemeToggler", () => {
   afterEach(() => {
     mockedUseTheme.mockReset();
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("shows system as the selected theme by default", async () => {
@@ -50,7 +51,7 @@ describe("AnimatedThemeToggler", () => {
 
   it("changes the selected theme from the menu", async () => {
     const user = userEvent.setup();
-    const setTheme = jest.fn();
+    const setTheme = vi.fn();
 
     mockedUseTheme.mockReturnValue(createThemeMock("system", setTheme));
 
@@ -63,7 +64,7 @@ describe("AnimatedThemeToggler", () => {
   });
 
   it("shows the resolved system theme icon in the trigger", () => {
-    mockedUseTheme.mockReturnValue(createThemeMock("system", jest.fn(), "dark"));
+    mockedUseTheme.mockReturnValue(createThemeMock("system", vi.fn(), "dark"));
 
     const { container } = render(
       <AnimatedThemeToggler aria-label="Alternar tema" />,

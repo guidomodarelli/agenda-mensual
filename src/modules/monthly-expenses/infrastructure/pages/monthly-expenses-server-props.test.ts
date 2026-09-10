@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { GetServerSidePropsContext } from "next";
 
 import {
@@ -10,36 +11,36 @@ import {
   toSerializableMonthlyExpensesPageProps,
 } from "./monthly-expenses-server-props";
 
-const mockGetStorageBootstrap = jest.fn();
-const mockCreateRequestLogContext = jest.fn();
-const mockGetMonthlyExpensesDocument = jest.fn();
-const mockGetLendersCatalog = jest.fn();
-const mockGetMonthlyExpensesLoansReport = jest.fn();
-const mockGetMonthlyExpensesCopyableMonths = jest.fn();
-const mockGetAuthenticatedUserSubjectFromRequest = jest.fn();
-const mockCreateMigratedTursoDatabase = jest.fn();
-const mockGetGoogleDriveClientFromRequest = jest.fn();
-const mockCreateGetMonthlyExchangeRateSnapshot = jest.fn();
+const mockGetStorageBootstrap = vi.fn();
+const mockCreateRequestLogContext = vi.fn();
+const mockGetMonthlyExpensesDocument = vi.fn();
+const mockGetLendersCatalog = vi.fn();
+const mockGetMonthlyExpensesLoansReport = vi.fn();
+const mockGetMonthlyExpensesCopyableMonths = vi.fn();
+const mockGetAuthenticatedUserSubjectFromRequest = vi.fn();
+const mockCreateMigratedTursoDatabase = vi.fn();
+const mockGetGoogleDriveClientFromRequest = vi.fn();
+const mockCreateGetMonthlyExchangeRateSnapshot = vi.fn();
 
-jest.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
+vi.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
   isGoogleOAuthConfigured: () => true,
 }));
 
-jest.mock("@/modules/storage/application/queries/get-storage-bootstrap", () => ({
+vi.mock("@/modules/storage/application/queries/get-storage-bootstrap", () => ({
   getStorageBootstrap: (...parameters: unknown[]) =>
     mockGetStorageBootstrap(...parameters),
 }));
 
-jest.mock("@/modules/shared/infrastructure/observability/app-logger", () => ({
+vi.mock("@/modules/shared/infrastructure/observability/app-logger", () => ({
   appLogger: {
-    error: jest.fn(),
-    warn: jest.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
   },
   createRequestLogContext: (...parameters: unknown[]) =>
     mockCreateRequestLogContext(...parameters),
 }));
 
-jest.mock(
+vi.mock(
   "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-document",
   () => ({
     getMonthlyExpensesDocument: (...parameters: unknown[]) =>
@@ -47,12 +48,12 @@ jest.mock(
   }),
 );
 
-jest.mock("@/modules/lenders/application/use-cases/get-lenders-catalog", () => ({
+vi.mock("@/modules/lenders/application/use-cases/get-lenders-catalog", () => ({
   getLendersCatalog: (...parameters: unknown[]) =>
     mockGetLendersCatalog(...parameters),
 }));
 
-jest.mock(
+vi.mock(
   "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-loans-report",
   () => ({
     getMonthlyExpensesLoansReport: (...parameters: unknown[]) =>
@@ -60,7 +61,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-copyable-months",
   () => ({
     getMonthlyExpensesCopyableMonths: (...parameters: unknown[]) =>
@@ -68,7 +69,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/auth/infrastructure/next-auth/authenticated-user-subject",
   () => ({
     getAuthenticatedUserSubjectFromRequest: (...parameters: unknown[]) =>
@@ -76,7 +77,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/shared/infrastructure/database/drizzle/turso-database",
   () => ({
     createMigratedTursoDatabase: (...parameters: unknown[]) =>
@@ -84,7 +85,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/auth/infrastructure/google-drive/google-drive-client",
   () => ({
     getGoogleDriveClientFromRequest: (...parameters: unknown[]) =>
@@ -92,7 +93,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/exchange-rates/infrastructure/create-get-monthly-exchange-rate-snapshot",
   () => ({
     createGetMonthlyExchangeRateSnapshot: (...parameters: unknown[]) =>
@@ -100,26 +101,26 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/monthly-expenses/infrastructure/turso/repositories/drizzle-monthly-expenses-repository",
   () => ({
-    DrizzleMonthlyExpensesRepository: jest.fn().mockImplementation(() => ({})),
+    DrizzleMonthlyExpensesRepository: vi.fn().mockImplementation(function () { return ({}); }),
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/lenders/infrastructure/turso/repositories/drizzle-lenders-repository",
   () => ({
-    DrizzleLendersRepository: jest.fn().mockImplementation(() => ({})),
+    DrizzleLendersRepository: vi.fn().mockImplementation(function () { return ({}); }),
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/monthly-expenses/infrastructure/google-drive/repositories/google-drive-monthly-expense-receipts-repository",
   () => ({
-    GoogleDriveMonthlyExpenseReceiptsRepository: jest
+    GoogleDriveMonthlyExpenseReceiptsRepository: vi
       .fn()
-      .mockImplementation(() => ({})),
+      .mockImplementation(function () { return ({}); }),
   }),
 );
 
@@ -233,7 +234,7 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
 
 describe("getMonthlyExpensesServerSidePropsForTab", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGetStorageBootstrap.mockReturnValue({
       architecture: {
         dataStrategy: "ssr-first",
@@ -255,7 +256,7 @@ describe("getMonthlyExpensesServerSidePropsForTab", () => {
     mockGetAuthenticatedUserSubjectFromRequest.mockResolvedValue("subject-1");
     mockCreateMigratedTursoDatabase.mockResolvedValue({});
     mockGetGoogleDriveClientFromRequest.mockResolvedValue({});
-    mockCreateGetMonthlyExchangeRateSnapshot.mockReturnValue(jest.fn());
+    mockCreateGetMonthlyExchangeRateSnapshot.mockReturnValue(vi.fn());
     mockGetMonthlyExpensesDocument.mockResolvedValue({
       items: [],
       month: "2026-04",

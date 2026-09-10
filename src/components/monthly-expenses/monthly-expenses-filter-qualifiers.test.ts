@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import type { ExpenseFolderOption } from "./expense-folder-picker";
 import type { LenderOption } from "./lender-picker";
 import {

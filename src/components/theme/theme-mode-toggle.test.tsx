@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, afterEach } from "vitest";
 import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -5,15 +6,15 @@ import { useTheme, type UseThemeProps } from "next-themes";
 
 import { ThemeModeToggle } from "./theme-mode-toggle";
 
-jest.mock("next-themes", () => ({
-  useTheme: jest.fn(),
+vi.mock("next-themes", () => ({
+  useTheme: vi.fn(),
 }));
 
-const mockedUseTheme = jest.mocked(useTheme);
+const mockedUseTheme = vi.mocked(useTheme);
 
 function createThemeMock(
   resolvedTheme: UseThemeProps["resolvedTheme"],
-  setTheme = jest.fn(),
+  setTheme = vi.fn(),
 ): UseThemeProps {
   return {
     forcedTheme: undefined,
@@ -35,15 +36,15 @@ function renderThemeModeToggle() {
 
 describe("ThemeModeToggle", () => {
   afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     mockedUseTheme.mockReset();
     document.documentElement.removeAttribute("transition-style");
   });
 
   it("switches from light to dark mode", async () => {
     const user = userEvent.setup();
-    const setTheme = jest.fn();
+    const setTheme = vi.fn();
 
     mockedUseTheme.mockReturnValue(createThemeMock("light", setTheme));
 
@@ -60,7 +61,7 @@ describe("ThemeModeToggle", () => {
 
   it("switches from dark to light mode", async () => {
     const user = userEvent.setup();
-    const setTheme = jest.fn();
+    const setTheme = vi.fn();
 
     mockedUseTheme.mockReturnValue(createThemeMock("dark", setTheme));
 
@@ -73,8 +74,8 @@ describe("ThemeModeToggle", () => {
 
   it("stays disabled until the resolved theme is available", async () => {
     const user = userEvent.setup();
-    const setTheme = jest.fn();
-    const containsSpy = jest.spyOn(
+    const setTheme = vi.fn();
+    const containsSpy = vi.spyOn(
       document.documentElement.classList,
       "contains",
     );
@@ -108,9 +109,9 @@ describe("ThemeModeToggle", () => {
   });
 
   it("clears transition attribute after animation duration", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const user = userEvent.setup({
-      advanceTimers: jest.advanceTimersByTime,
+      advanceTimers: vi.advanceTimersByTime,
     });
 
     mockedUseTheme.mockReturnValue(createThemeMock("light"));
@@ -124,7 +125,7 @@ describe("ThemeModeToggle", () => {
       "in:circle:center",
     );
 
-    jest.advanceTimersByTime(1500);
+    vi.advanceTimersByTime(1500);
 
     expect(document.documentElement).not.toHaveAttribute("transition-style");
   });

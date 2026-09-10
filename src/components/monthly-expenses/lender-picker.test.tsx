@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -6,8 +7,8 @@ import { LenderPicker } from "./lender-picker";
 describe("LenderPicker", () => {
   it("closes the panel when clicking outside without selecting a lender", async () => {
     const user = userEvent.setup();
-    const onAddLender = jest.fn();
-    const onSelect = jest.fn();
+    const onAddLender = vi.fn();
+    const onSelect = vi.fn();
 
     render(
       <div>
@@ -44,12 +45,12 @@ describe("LenderPicker", () => {
 
   it("triggers lender creation from the picker panel", async () => {
     const user = userEvent.setup();
-    const onAddLender = jest.fn();
+    const onAddLender = vi.fn();
 
     render(
       <LenderPicker
         onAddLender={onAddLender}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
         options={[]}
         selectedLenderId=""
         selectedLenderName=""
@@ -68,8 +69,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",
@@ -95,8 +96,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",
@@ -142,8 +143,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",
@@ -176,8 +177,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",
@@ -203,8 +204,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",
@@ -253,8 +254,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",
@@ -302,8 +303,8 @@ describe("LenderPicker", () => {
 
     render(
       <LenderPicker
-        onAddLender={jest.fn()}
-        onSelect={jest.fn()}
+        onAddLender={vi.fn()}
+        onSelect={vi.fn()}
         options={[
           {
             id: "lender-1",

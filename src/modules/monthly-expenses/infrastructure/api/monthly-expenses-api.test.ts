@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import {
   getMonthlyExpensesDocumentViaApi,
   MonthlyExpensesAuthenticationError,
@@ -6,7 +7,7 @@ import {
 
 describe("monthly-expenses-api client", () => {
   it("sends x-correlation-id header on GET requests", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           items: [],
@@ -27,7 +28,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("accepts paymentLink without protocol in POST payloads", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       ok: true,
       status: 204,
     });
@@ -73,7 +74,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("accepts a recurrence in POST payloads and sends it to the API", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       ok: true,
       status: 204,
     });
@@ -105,7 +106,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("rejects an item carrying both loan and recurrence before sending POST request", async () => {
-    const fetchImplementation = jest.fn();
+    const fetchImplementation = vi.fn();
 
     await expect(
       saveMonthlyExpensesDocumentViaApi(
@@ -131,7 +132,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("rejects a reversed recurrence range before sending POST request", async () => {
-    const fetchImplementation = jest.fn();
+    const fetchImplementation = vi.fn();
 
     await expect(
       saveMonthlyExpensesDocumentViaApi(
@@ -156,7 +157,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("rejects a recurrence inactive in the document month before sending POST request", async () => {
-    const fetchImplementation = jest.fn();
+    const fetchImplementation = vi.fn();
 
     await expect(
       saveMonthlyExpensesDocumentViaApi(
@@ -181,7 +182,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("rejects invalid paymentLink before sending POST request", async () => {
-    const fetchImplementation = jest.fn();
+    const fetchImplementation = vi.fn();
 
     await expect(
       saveMonthlyExpensesDocumentViaApi(
@@ -206,7 +207,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("accepts receipt share phone with separators and normalizes it", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       ok: true,
       status: 204,
     });
@@ -256,7 +257,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("rejects receipt share payload when requiresReceiptShare is true and phone is missing", async () => {
-    const fetchImplementation = jest.fn();
+    const fetchImplementation = vi.fn();
 
     await expect(
       saveMonthlyExpensesDocumentViaApi(
@@ -281,7 +282,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("returns receipt rename warnings from POST responses", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           receiptRenameWarnings: [
@@ -341,7 +342,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("returns non-blocking exchange rate warning from POST responses", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           exchangeRateLoadError:
@@ -391,7 +392,7 @@ describe("monthly-expenses-api client", () => {
   });
 
   it("throws MonthlyExpensesAuthenticationError when POST responds with 401", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         error: "Google authentication is required before saving monthly expenses.",
       }),

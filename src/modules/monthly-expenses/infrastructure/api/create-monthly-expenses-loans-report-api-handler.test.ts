@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
@@ -38,13 +39,13 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 
 describe("createMonthlyExpensesLoansReportApiHandler", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("rejects methods other than GET", async () => {
     const handler = createMonthlyExpensesLoansReportApiHandler({
-      load: jest.fn(),
+      load: vi.fn(),
     });
 
     const request = {
@@ -64,7 +65,7 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
 
   it("returns 200 with the loaded report", async () => {
     const database = {} as TursoDatabase;
-    const load = jest.fn().mockResolvedValue({
+    const load = vi.fn().mockResolvedValue({
       entries: [],
       summary: {
         activeLoanCount: 0,
@@ -78,8 +79,8 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
     });
 
     const handler = createMonthlyExpensesLoansReportApiHandler({
-      getDatabase: jest.fn().mockResolvedValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      getDatabase: vi.fn().mockResolvedValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       load,
     });
 
@@ -98,14 +99,14 @@ describe("createMonthlyExpensesLoansReportApiHandler", () => {
   });
 
   it("logs the original error but returns a stable generic message when report loading fails with a typed error", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const database = {} as TursoDatabase;
     const internalErrorMessage =
       "SQLITE_ERROR: no such table: loans (libsql://agenda-mensual.turso.io)";
     const handler = createMonthlyExpensesLoansReportApiHandler({
-      getDatabase: jest.fn().mockResolvedValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      load: jest.fn().mockRejectedValue(new Error(internalErrorMessage)),
+      getDatabase: vi.fn().mockResolvedValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn().mockRejectedValue(new Error(internalErrorMessage)),
     });
 
     const request = {

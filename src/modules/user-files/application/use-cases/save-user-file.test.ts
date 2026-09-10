@@ -1,10 +1,11 @@
+import { vi, describe, it, expect } from "vitest";
 import type { UserFilesRepository } from "../../domain/repositories/user-files-repository";
 import { saveUserFile } from "./save-user-file";
 
 describe("saveUserFile", () => {
   it("delegates a validated user file to the repository", async () => {
     const repository: UserFilesRepository = {
-      save: jest.fn().mockResolvedValue({
+      save: vi.fn().mockResolvedValue({
         id: "user-file-id",
         mimeType: "text/csv",
         name: "expenses.csv",

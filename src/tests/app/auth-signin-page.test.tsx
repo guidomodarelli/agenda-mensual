@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
@@ -5,36 +6,36 @@ import SignInPage from "@/app/auth/signin/page";
 import { SignInPageClient } from "@/app/auth/signin/signin-page-client";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
 
-jest.mock("next/navigation", () => ({
-  redirect: jest.fn((destination: string) => {
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((destination: string) => {
     throw new Error(`NEXT_REDIRECT:${destination}`);
   }),
 }));
 
-jest.mock("next-auth", () => ({
-  getServerSession: jest.fn(),
+vi.mock("next-auth", () => ({
+  getServerSession: vi.fn(),
 }));
 
-jest.mock("@/modules/auth/infrastructure/next-auth/auth-options", () => ({
+vi.mock("@/modules/auth/infrastructure/next-auth/auth-options", () => ({
   authOptions: {},
 }));
 
-jest.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
-  isGoogleOAuthConfigured: jest.fn(),
+vi.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
+  isGoogleOAuthConfigured: vi.fn(),
 }));
 
-jest.mock("@/app/auth/signin/signin-page-client", () => ({
-  SignInPageClient: jest.fn(() => null),
+vi.mock("@/app/auth/signin/signin-page-client", () => ({
+  SignInPageClient: vi.fn(function () { return null; }),
 }));
 
-const mockedGetServerSession = jest.mocked(getServerSession);
-const mockedRedirect = jest.mocked(redirect);
-const mockedSignInPageClient = jest.mocked(SignInPageClient);
-const mockedIsGoogleOAuthConfigured = jest.mocked(isGoogleOAuthConfigured);
+const mockedGetServerSession = vi.mocked(getServerSession);
+const mockedRedirect = vi.mocked(redirect);
+const mockedSignInPageClient = vi.mocked(SignInPageClient);
+const mockedIsGoogleOAuthConfigured = vi.mocked(isGoogleOAuthConfigured);
 
 describe("SignInPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedIsGoogleOAuthConfigured.mockReturnValue(false);
   });
 

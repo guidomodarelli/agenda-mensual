@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -9,7 +10,7 @@ import {
 describe("MonthlyExpensesTable month navigation", () => {
   it("navigates to the previous month", async () => {
     const user = userEvent.setup();
-    const onMonthChange = jest.fn();
+    const onMonthChange = vi.fn();
 
     renderMonthlyExpensesTable([createRow()], {
       month: "2026-04",
@@ -23,7 +24,7 @@ describe("MonthlyExpensesTable month navigation", () => {
 
   it("navigates to the next month across a year boundary", async () => {
     const user = userEvent.setup();
-    const onMonthChange = jest.fn();
+    const onMonthChange = vi.fn();
 
     renderMonthlyExpensesTable([createRow()], {
       month: "2026-12",
@@ -37,7 +38,7 @@ describe("MonthlyExpensesTable month navigation", () => {
 
   it("navigates to the current month with the today shortcut", async () => {
     const user = userEvent.setup();
-    const onMonthChange = jest.fn();
+    const onMonthChange = vi.fn();
     const now = new Date();
     const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 

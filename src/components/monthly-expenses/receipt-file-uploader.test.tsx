@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, afterEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -9,7 +10,7 @@ describe("ReceiptFileUploader", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("starts simulated progress at 25 percent when upload starts without real progress", () => {
@@ -17,7 +18,7 @@ describe("ReceiptFileUploader", () => {
       <ReceiptFileUploader
         inputAriaLabel="Seleccionar comprobante"
         isUploading
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
       />,
     );
@@ -29,7 +30,7 @@ describe("ReceiptFileUploader", () => {
     render(
       <ReceiptFileUploader
         inputAriaLabel="Seleccionar comprobante"
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
       />,
     );
@@ -39,19 +40,19 @@ describe("ReceiptFileUploader", () => {
   });
 
   it("advances simulated progress up to 90 percent while uploading", () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     render(
       <ReceiptFileUploader
         inputAriaLabel="Seleccionar comprobante"
         isUploading
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
       />,
     );
 
     act(() => {
-      jest.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(4000);
     });
 
     expect(screen.getByText("90%")).toBeInTheDocument();
@@ -62,7 +63,7 @@ describe("ReceiptFileUploader", () => {
       <ReceiptFileUploader
         inputAriaLabel="Seleccionar comprobante"
         isUploading
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
         uploadProgressPercent={42}
       />,
@@ -74,7 +75,7 @@ describe("ReceiptFileUploader", () => {
       <ReceiptFileUploader
         inputAriaLabel="Seleccionar comprobante"
         isUploading
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
         uploadProgressPercent={73}
       />,
@@ -84,13 +85,13 @@ describe("ReceiptFileUploader", () => {
   });
 
   it("falls back to simulated progress when real upload progress gets stuck", () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     render(
       <ReceiptFileUploader
         inputAriaLabel="Seleccionar comprobante"
         isUploading
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
         uploadProgressPercent={30}
       />,
@@ -99,7 +100,7 @@ describe("ReceiptFileUploader", () => {
     expect(screen.getByText("30%")).toBeInTheDocument();
 
     act(() => {
-      jest.advanceTimersByTime(1500);
+      vi.advanceTimersByTime(1500);
     });
 
     expect(screen.queryByText("30%")).not.toBeInTheDocument();
@@ -111,7 +112,7 @@ describe("ReceiptFileUploader", () => {
       <ReceiptFileUploader
         errorMessage="Upload failed"
         inputAriaLabel="Seleccionar comprobante"
-        onFileChange={jest.fn()}
+        onFileChange={vi.fn()}
         selectedFile={receiptFile}
       />,
     );
@@ -124,7 +125,7 @@ describe("ReceiptFileUploader", () => {
 
   it("disables delete while uploading", async () => {
     const user = userEvent.setup();
-    const onFileChange = jest.fn();
+    const onFileChange = vi.fn();
 
     render(
       <ReceiptFileUploader

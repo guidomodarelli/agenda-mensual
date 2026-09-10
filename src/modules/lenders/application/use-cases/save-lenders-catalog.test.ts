@@ -1,11 +1,12 @@
+import { vi, describe, it, expect } from "vitest";
 import type { LendersRepository } from "../../domain/repositories/lenders-repository";
 import { saveLendersCatalog } from "./save-lenders-catalog";
 
 describe("saveLendersCatalog", () => {
   it("delegates a validated lenders catalog to the repository", async () => {
     const repository: LendersRepository = {
-      get: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      get: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "lenders-file-id",
         name: "lenders-catalog",
       }),

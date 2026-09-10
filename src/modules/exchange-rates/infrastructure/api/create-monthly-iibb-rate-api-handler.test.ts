@@ -1,9 +1,10 @@
+import { vi, describe, it, expect, beforeEach, afterAll } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
-jest.mock("../../../auth/infrastructure/next-auth/authenticated-user-email", () => ({
-  getAuthenticatedUserEmailFromRequest: jest.fn(),
+vi.mock("../../../auth/infrastructure/next-auth/authenticated-user-email", () => ({
+  getAuthenticatedUserEmailFromRequest: vi.fn(),
 }));
 
 import { createMonthlyIibbRateApiHandler } from "./create-monthly-iibb-rate-api-handler";
@@ -45,8 +46,8 @@ describe("createMonthlyIibbRateApiHandler", () => {
 
   beforeEach(() => {
     process.env.GOOGLE_ADMIN_EMAIL_ALLOWLIST = "admin@example.com";
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -55,14 +56,14 @@ describe("createMonthlyIibbRateApiHandler", () => {
 
   it("allows admins to save the monthly IIBB value", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       iibbRateDecimal: 0.04,
       month: "2026-03",
       solidarityRate: 1250,
     });
     const handler = createMonthlyIibbRateApiHandler({
-      getDatabase: jest.fn().mockResolvedValue(database),
-      getUserEmail: jest.fn().mockResolvedValue("admin@example.com"),
+      getDatabase: vi.fn().mockResolvedValue(database),
+      getUserEmail: vi.fn().mockResolvedValue("admin@example.com"),
       save,
     });
     const request = {
@@ -97,9 +98,9 @@ describe("createMonthlyIibbRateApiHandler", () => {
 
   it("returns 403 for authenticated users outside the admin allowlist", async () => {
     const handler = createMonthlyIibbRateApiHandler({
-      getDatabase: jest.fn(),
-      getUserEmail: jest.fn().mockResolvedValue("user@example.com"),
-      save: jest.fn(),
+      getDatabase: vi.fn(),
+      getUserEmail: vi.fn().mockResolvedValue("user@example.com"),
+      save: vi.fn(),
     });
     const request = {
       body: {
@@ -120,9 +121,9 @@ describe("createMonthlyIibbRateApiHandler", () => {
 
   it("returns 400 when the payload is missing the month", async () => {
     const handler = createMonthlyIibbRateApiHandler({
-      getDatabase: jest.fn(),
-      getUserEmail: jest.fn(),
-      save: jest.fn(),
+      getDatabase: vi.fn(),
+      getUserEmail: vi.fn(),
+      save: vi.fn(),
     });
     const request = {
       body: {

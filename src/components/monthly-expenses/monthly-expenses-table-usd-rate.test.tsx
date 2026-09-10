@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -82,7 +83,7 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
   });
 
   it("selects the blue base keeping the current surcharges", async () => {
-    const onUpdateUsdRate = jest.fn();
+    const onUpdateUsdRate = vi.fn();
     const user = userEvent.setup();
 
     renderMonthlyExpensesTable(
@@ -121,7 +122,7 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
   });
 
   it("toggles the IVA surcharge from the submenu", async () => {
-    const onUpdateUsdRate = jest.fn();
+    const onUpdateUsdRate = vi.fn();
     const user = userEvent.setup();
 
     renderMonthlyExpensesTable(
@@ -160,7 +161,7 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
   });
 
   it("opens the custom-rate dialog and saves the manual rate keeping surcharges", async () => {
-    const onUpdateUsdRate = jest.fn();
+    const onUpdateUsdRate = vi.fn();
     const user = userEvent.setup();
 
     renderMonthlyExpensesTable(
@@ -206,7 +207,7 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
   });
 
   it("rejects a non-positive custom rate with an inline error", async () => {
-    const onUpdateUsdRate = jest.fn();
+    const onUpdateUsdRate = vi.fn();
     const user = userEvent.setup();
 
     renderMonthlyExpensesTable(

@@ -1,13 +1,14 @@
+import { vi, describe, it, expect } from "vitest";
 import type { MonthlyExpenseReceiptsRepository } from "../../domain/repositories/monthly-expense-receipts-repository";
 import { uploadMonthlyExpenseReceipt } from "./upload-monthly-expense-receipt";
 
 describe("uploadMonthlyExpenseReceipt", () => {
   it("validates and delegates receipt upload to the repository", async () => {
     const repository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn(),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn().mockResolvedValue({
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn(),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn().mockResolvedValue({
         allReceiptsFolderId: "all-receipts-folder-id",
         allReceiptsFolderViewUrl:
           "https://drive.google.com/drive/folders/all-receipts-folder-id",
@@ -19,8 +20,8 @@ describe("uploadMonthlyExpenseReceipt", () => {
         monthlyFolderViewUrl:
           "https://drive.google.com/drive/folders/receipt-folder-id",
       }),
-        verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+        verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     const result = await uploadMonthlyExpenseReceipt({
@@ -56,12 +57,12 @@ describe("uploadMonthlyExpenseReceipt", () => {
 
   it("rejects files larger than 5MB", async () => {
     const repository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn(),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn(),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
     const oversizedContent = Buffer.alloc(5 * 1024 * 1024 + 1).toString("base64");
 
@@ -82,12 +83,12 @@ describe("uploadMonthlyExpenseReceipt", () => {
 
   it("rejects coveredPayments that are not positive integers", async () => {
     const repository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn(),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn(),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     await expect(
@@ -109,10 +110,10 @@ describe("uploadMonthlyExpenseReceipt", () => {
 
   it("formats receipt file name on upload preserving the original extension", async () => {
     const repository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn(),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn().mockImplementation(async (input) => ({
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn(),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn().mockImplementation(async function (input) { return ({
         allReceiptsFolderId: "all-receipts-folder-id",
         allReceiptsFolderViewUrl:
           "https://drive.google.com/drive/folders/all-receipts-folder-id",
@@ -123,9 +124,9 @@ describe("uploadMonthlyExpenseReceipt", () => {
         monthlyFolderId: "receipt-folder-id",
         monthlyFolderViewUrl:
           "https://drive.google.com/drive/folders/receipt-folder-id",
-      })),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      }); }),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     const result = await uploadMonthlyExpenseReceipt({
@@ -153,10 +154,10 @@ describe("uploadMonthlyExpenseReceipt", () => {
 
   it("formats receipt file name on upload without adding an extension when missing", async () => {
     const repository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn(),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn().mockImplementation(async (input) => ({
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn(),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn().mockImplementation(async function (input) { return ({
         allReceiptsFolderId: "all-receipts-folder-id",
         allReceiptsFolderViewUrl:
           "https://drive.google.com/drive/folders/all-receipts-folder-id",
@@ -167,9 +168,9 @@ describe("uploadMonthlyExpenseReceipt", () => {
         monthlyFolderId: "receipt-folder-id",
         monthlyFolderViewUrl:
           "https://drive.google.com/drive/folders/receipt-folder-id",
-      })),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      }); }),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     const result = await uploadMonthlyExpenseReceipt({

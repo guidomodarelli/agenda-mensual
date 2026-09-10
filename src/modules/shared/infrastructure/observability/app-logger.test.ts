@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest } from "next";
 
 import {
@@ -7,11 +8,11 @@ import {
 
 describe("appLogger", () => {
   beforeEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("redacts sensitive values in structured logs", () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
 
     appLogger.error("storage save failed", {
       context: {

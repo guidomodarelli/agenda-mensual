@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 
 import { FileUploadDropZone } from "./file-upload-base";
@@ -61,8 +62,8 @@ describe("FileUploadDropZone", () => {
   });
 
   it("accepts files by extension when browser omits mime type", () => {
-    const onDropFiles = jest.fn();
-    const onDropUnacceptedFiles = jest.fn();
+    const onDropFiles = vi.fn();
+    const onDropUnacceptedFiles = vi.fn();
 
     render(
       <FileUploadDropZone
@@ -93,8 +94,8 @@ describe("FileUploadDropZone", () => {
   });
 
   it("accepts files by extension when mime type is non-canonical", () => {
-    const onDropFiles = jest.fn();
-    const onDropUnacceptedFiles = jest.fn();
+    const onDropFiles = vi.fn();
+    const onDropUnacceptedFiles = vi.fn();
 
     render(
       <FileUploadDropZone
@@ -125,7 +126,7 @@ describe("FileUploadDropZone", () => {
   });
 
   it("prevents the native drop behavior when uploader is disabled", () => {
-    const onDropFiles = jest.fn();
+    const onDropFiles = vi.fn();
 
     render(
       <FileUploadDropZone
@@ -149,8 +150,8 @@ describe("FileUploadDropZone", () => {
         files: [file],
       },
     });
-    const preventDefault = jest.fn();
-    const stopPropagation = jest.fn();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
 
     Object.defineProperty(dropEvent, "preventDefault", {
       value: preventDefault,
@@ -181,8 +182,8 @@ describe("FileUploadDropZone", () => {
     }
 
     const dragOverEvent = createEvent.dragOver(dropZone);
-    const preventDefault = jest.fn();
-    const stopPropagation = jest.fn();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
 
     Object.defineProperty(dragOverEvent, "preventDefault", {
       value: preventDefault,
@@ -212,8 +213,8 @@ describe("FileUploadDropZone", () => {
     }
 
     const dragLeaveEvent = createEvent.dragLeave(dropZone);
-    const preventDefault = jest.fn();
-    const stopPropagation = jest.fn();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
 
     Object.defineProperty(dragLeaveEvent, "preventDefault", {
       value: preventDefault,

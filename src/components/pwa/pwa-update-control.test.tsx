@@ -1,35 +1,36 @@
+import { vi, describe, it, expect, afterEach, type Mock } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { PwaUpdateControl } from "./pwa-update-control";
 
 type MockServiceWorker = {
-  postMessage: jest.Mock;
+  postMessage: Mock;
 };
 
 type MockServiceWorkerRegistration = {
-  addEventListener: jest.Mock;
+  addEventListener: Mock;
   installing: null;
-  removeEventListener: jest.Mock;
-  update: jest.Mock;
+  removeEventListener: Mock;
+  update: Mock;
   waiting: MockServiceWorker | null;
 };
 
 type MockServiceWorkerContainer = {
-  addEventListener: jest.Mock;
+  addEventListener: Mock;
   controller: object;
-  getRegistration: jest.Mock;
-  removeEventListener: jest.Mock;
+  getRegistration: Mock;
+  removeEventListener: Mock;
 };
 
 function setMockServiceWorkerEnvironment(
   registration: MockServiceWorkerRegistration,
 ) {
   const serviceWorkerContainer: MockServiceWorkerContainer = {
-    addEventListener: jest.fn(),
+    addEventListener: vi.fn(),
     controller: {},
-    getRegistration: jest.fn().mockResolvedValue(registration),
-    removeEventListener: jest.fn(),
+    getRegistration: vi.fn().mockResolvedValue(registration),
+    removeEventListener: vi.fn(),
   };
 
   Object.defineProperty(window.navigator, "serviceWorker", {
@@ -42,15 +43,15 @@ function setMockServiceWorkerEnvironment(
 
 describe("PwaUpdateControl", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("stays hidden when there is no waiting worker", async () => {
     const registration: MockServiceWorkerRegistration = {
-      addEventListener: jest.fn(),
+      addEventListener: vi.fn(),
       installing: null,
-      removeEventListener: jest.fn(),
-      update: jest.fn().mockResolvedValue(undefined),
+      removeEventListener: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
       waiting: null,
     };
 
@@ -72,12 +73,12 @@ describe("PwaUpdateControl", () => {
 
   it("shows update badge when a waiting worker exists", async () => {
     const registration: MockServiceWorkerRegistration = {
-      addEventListener: jest.fn(),
+      addEventListener: vi.fn(),
       installing: null,
-      removeEventListener: jest.fn(),
-      update: jest.fn().mockResolvedValue(undefined),
+      removeEventListener: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
       waiting: {
-        postMessage: jest.fn(),
+        postMessage: vi.fn(),
       },
     };
 
@@ -96,13 +97,13 @@ describe("PwaUpdateControl", () => {
   it("checks for updates and asks waiting worker to skip waiting", async () => {
     const user = userEvent.setup();
     const waitingWorker = {
-      postMessage: jest.fn(),
+      postMessage: vi.fn(),
     };
     const registration: MockServiceWorkerRegistration = {
-      addEventListener: jest.fn(),
+      addEventListener: vi.fn(),
       installing: null,
-      removeEventListener: jest.fn(),
-      update: jest.fn().mockResolvedValue(undefined),
+      removeEventListener: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
       waiting: waitingWorker,
     };
 

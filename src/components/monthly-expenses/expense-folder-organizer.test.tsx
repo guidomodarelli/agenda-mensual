@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,10 +21,10 @@ function renderFilterBar(
       <ExpenseFolderFilterBar
         countsByFolderId={{ "folder-1": 3, "folder-2": 5 }}
         folders={SAMPLE_FOLDERS}
-        onManageFolders={jest.fn()}
-        onMoveExpenseToFolder={jest.fn()}
-        onReorderFolders={jest.fn()}
-        onSelectFilter={jest.fn()}
+        onManageFolders={vi.fn()}
+        onMoveExpenseToFolder={vi.fn()}
+        onReorderFolders={vi.fn()}
+        onSelectFilter={vi.fn()}
         totalCount={8}
         unassignedCount={2}
         {...overrides}
@@ -55,7 +56,7 @@ describe("ExpenseFolderFilterBar", () => {
 
   it("opens the folders manager from the chips row", async () => {
     const user = userEvent.setup();
-    const onManageFolders = jest.fn();
+    const onManageFolders = vi.fn();
 
     renderFilterBar({ onManageFolders });
 
@@ -102,7 +103,7 @@ describe("ExpenseFolderFilterBar", () => {
 describe("ExpenseFolderRowBadge", () => {
   it("reassigns the expense folder by clicking the badge and picking another", async () => {
     const user = userEvent.setup();
-    const onSelectFolder = jest.fn();
+    const onSelectFolder = vi.fn();
 
     render(
       <ExpenseFolderRowBadge
@@ -121,7 +122,7 @@ describe("ExpenseFolderRowBadge", () => {
 
   it("clears the folder by choosing the unassigned option", async () => {
     const user = userEvent.setup();
-    const onSelectFolder = jest.fn();
+    const onSelectFolder = vi.fn();
 
     render(
       <ExpenseFolderRowBadge

@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, type Mock } from "vitest";
 import { toast } from "beez-ui";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -18,25 +19,25 @@ import {
   renderWithProviders,
 } from "./monthly-expenses-page-test-helpers";
 
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(),
-  useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  useSession: jest.fn(),
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  useSession: vi.fn(),
 }));
 
-jest.mock("sonner", () => {
-  const mockToast = Object.assign(jest.fn(), {
-    error: jest.fn(),
-    info: jest.fn(),
-    promise: jest.fn((promise: Promise<unknown>) => promise),
-    success: jest.fn(),
-    warning: jest.fn(),
+vi.mock("sonner", () => {
+  const mockToast = Object.assign(vi.fn(), {
+    error: vi.fn(),
+    info: vi.fn(),
+    promise: vi.fn((promise: Promise<unknown>) => promise),
+    success: vi.fn(),
+    warning: vi.fn(),
   });
 
   return {
@@ -44,25 +45,25 @@ jest.mock("sonner", () => {
   };
 });
 
-type MockedToast = jest.Mock & {
-  error: jest.Mock;
-  info: jest.Mock;
-  promise: jest.Mock;
-  success: jest.Mock;
-  warning: jest.Mock;
+type MockedToast = Mock & {
+  error: Mock;
+  info: Mock;
+  promise: Mock;
+  success: Mock;
+  warning: Mock;
 };
 
-const mockedUsePathname = jest.mocked(usePathname);
-const mockedUseRouter = jest.mocked(useRouter);
-const mockedUseSearchParams = jest.mocked(useSearchParams);
-const mockedUseSession = jest.mocked(useSession);
-const mockedSignIn = jest.mocked(signIn);
-const mockedSignOut = jest.mocked(signOut);
+const mockedUsePathname = vi.mocked(usePathname);
+const mockedUseRouter = vi.mocked(useRouter);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
+const mockedUseSession = vi.mocked(useSession);
+const mockedSignIn = vi.mocked(signIn);
+const mockedSignOut = vi.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
 const MONTHLY_EXPENSES_SHEET_TEST_TIMEOUT_MS = 15000;
 
-jest.setTimeout(MONTHLY_EXPENSES_SHEET_TEST_TIMEOUT_MS);
+vi.setConfig({ testTimeout: MONTHLY_EXPENSES_SHEET_TEST_TIMEOUT_MS });
 
 describe("MonthlyExpensesPage expense sheet", () => {
 registerMonthlyExpensesPageDefaultHooks({
@@ -157,7 +158,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -244,7 +245,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -309,7 +310,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -385,7 +386,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -442,7 +443,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -480,7 +481,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -521,7 +522,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -592,7 +593,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -666,7 +667,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -740,7 +741,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -839,7 +840,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -902,7 +903,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -1454,7 +1455,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -1500,7 +1501,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -1578,7 +1579,7 @@ registerMonthlyExpensesPageDefaultHooks({
     mockedUseSession.mockReturnValue({
       data: { expires: "2099-01-01T00:00:00.000Z", user: { name: "Test user" } },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     });
     const user = userEvent.setup();
 
@@ -1621,7 +1622,7 @@ registerMonthlyExpensesPageDefaultHooks({
     mockedUseSession.mockReturnValue({
       data: { expires: "2099-01-01T00:00:00.000Z", user: { name: "Test user" } },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     });
     const user = userEvent.setup();
     const receiptViewUrl =
@@ -1685,7 +1686,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -1773,7 +1774,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -1829,7 +1830,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -1895,7 +1896,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -1933,7 +1934,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -1974,7 +1975,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -2015,7 +2016,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -2092,7 +2093,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -2166,7 +2167,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -2222,7 +2223,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -2282,7 +2283,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -2344,7 +2345,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -2390,7 +2391,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -2438,7 +2439,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -2479,7 +2480,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -2913,7 +2914,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -2962,7 +2963,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -3029,7 +3030,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -3068,7 +3069,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3148,7 +3149,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3216,7 +3217,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -3272,7 +3273,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -3317,7 +3318,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3406,7 +3407,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     renderWithProviders(
@@ -3455,7 +3456,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3525,7 +3526,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
   it("adds a lender to the catalog from the page", async () => {
     const user = userEvent.setup();
-    const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn().mockImplementation(async function (input: RequestInfo | URL) {
       if (input === "/api/storage/lenders") {
         return {
           json: async () => ({
@@ -3563,7 +3564,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3645,7 +3646,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
   it("requires confirmation before deleting a lender from the catalog", async () => {
     const user = userEvent.setup();
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
         json: async () => ({
@@ -3680,7 +3681,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3722,7 +3723,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
   it("submits a selected lender id and lender name with the loan", async () => {
     const user = userEvent.setup();
-    const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn().mockImplementation(async function (input: RequestInfo | URL) {
       if (input === "/api/storage/monthly-expenses") {
         return {
           ok: true,
@@ -3755,7 +3756,7 @@ registerMonthlyExpensesPageDefaultHooks({
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = fetchMock as typeof fetch;
 
@@ -3787,7 +3788,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestamista" }));
-    await user.click(screen.getByRole("button", { name: "Papa Familiar" }));
+    await user.click(screen.getByRole("button", { name: /Papa\s*Familiar/ }));
     fireEvent.change(screen.getByLabelText("Cantidad total de cuotas"), {
       target: { value: "12" },
     });

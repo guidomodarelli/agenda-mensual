@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { getStorageBootstrap } from "./get-storage-bootstrap";
 
 describe("getStorageBootstrap", () => {

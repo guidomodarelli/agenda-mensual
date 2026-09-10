@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -54,8 +55,8 @@ function renderExpenseSheet({
   changedFields = new Set<string>(),
   draft = createDraftRow(),
   mode = "create",
-  onFieldChange = jest.fn(),
-  onLoanToggle = jest.fn(),
+  onFieldChange = vi.fn(),
+  onLoanToggle = vi.fn(),
   onOpenExpenseDetails,
 }: {
   changedFields?: Set<string>;
@@ -76,20 +77,20 @@ function renderExpenseSheet({
         isSubmitting={false}
         lenders={[]}
         mode={mode}
-        onAddLender={jest.fn()}
+        onAddLender={vi.fn()}
         onFieldChange={onFieldChange}
-        onFolderSelect={jest.fn()}
-        onManageFolders={jest.fn()}
-        onLenderSelect={jest.fn()}
+        onFolderSelect={vi.fn()}
+        onManageFolders={vi.fn()}
+        onLenderSelect={vi.fn()}
         onLoanToggle={onLoanToggle}
         onOpenExpenseDetails={onOpenExpenseDetails}
-        onRecurringToggle={jest.fn()}
-        onReceiptShareToggle={jest.fn()}
-        onRequestClose={jest.fn()}
-        onSave={jest.fn()}
-        onUnsavedChangesClose={jest.fn()}
-        onUnsavedChangesDiscard={jest.fn()}
-        onUnsavedChangesSave={jest.fn()}
+        onRecurringToggle={vi.fn()}
+        onReceiptShareToggle={vi.fn()}
+        onRequestClose={vi.fn()}
+        onSave={vi.fn()}
+        onUnsavedChangesClose={vi.fn()}
+        onUnsavedChangesDiscard={vi.fn()}
+        onUnsavedChangesSave={vi.fn()}
         showUnsavedChangesDialog={false}
         validationMessage={null}
       />
@@ -144,7 +145,7 @@ describe("ExpenseSheet", () => {
 
   it("changes the subtotal unit to hourly pricing", async () => {
     const user = userEvent.setup();
-    const onFieldChange = jest.fn();
+    const onFieldChange = vi.fn();
 
     renderExpenseSheet({ mode: "create", onFieldChange });
 
@@ -156,7 +157,7 @@ describe("ExpenseSheet", () => {
 
   it("selects a payment frequency option by clicking anywhere on its row", async () => {
     const user = userEvent.setup();
-    const onFieldChange = jest.fn();
+    const onFieldChange = vi.fn();
 
     renderExpenseSheet({ mode: "create", onFieldChange });
 
@@ -206,7 +207,7 @@ describe("ExpenseSheet", () => {
 
   it("shows a read-only summary with a details shortcut when editing", async () => {
     const user = userEvent.setup();
-    const onOpenExpenseDetails = jest.fn();
+    const onOpenExpenseDetails = vi.fn();
 
     renderExpenseSheet({
       draft: {
@@ -292,7 +293,7 @@ describe("ExpenseSheet", () => {
 
   it("derives the loan direction from the self-lender toggle", async () => {
     const user = userEvent.setup();
-    const onFieldChange = jest.fn();
+    const onFieldChange = vi.fn();
 
     renderExpenseSheet({
       draft: {
@@ -328,7 +329,7 @@ describe("ExpenseSheet", () => {
 
   it("does not toggle loan state from the loan checkbox while editing a loan expense", async () => {
     const user = userEvent.setup();
-    const onLoanToggle = jest.fn();
+    const onLoanToggle = vi.fn();
 
     renderExpenseSheet({
       draft: {
@@ -402,7 +403,7 @@ describe("ExpenseSheet", () => {
 
   it("toggles the recurring flag from the recurring checkbox while creating", async () => {
     const user = userEvent.setup();
-    const onRecurringToggle = jest.fn();
+    const onRecurringToggle = vi.fn();
 
     render(
       <TooltipProvider>
@@ -415,19 +416,19 @@ describe("ExpenseSheet", () => {
           isSubmitting={false}
           lenders={[]}
           mode="create"
-          onAddLender={jest.fn()}
-          onFieldChange={jest.fn()}
-          onFolderSelect={jest.fn()}
-          onManageFolders={jest.fn()}
-          onLenderSelect={jest.fn()}
-          onLoanToggle={jest.fn()}
+          onAddLender={vi.fn()}
+          onFieldChange={vi.fn()}
+          onFolderSelect={vi.fn()}
+          onManageFolders={vi.fn()}
+          onLenderSelect={vi.fn()}
+          onLoanToggle={vi.fn()}
           onRecurringToggle={onRecurringToggle}
-          onReceiptShareToggle={jest.fn()}
-          onRequestClose={jest.fn()}
-          onSave={jest.fn()}
-          onUnsavedChangesClose={jest.fn()}
-          onUnsavedChangesDiscard={jest.fn()}
-          onUnsavedChangesSave={jest.fn()}
+          onReceiptShareToggle={vi.fn()}
+          onRequestClose={vi.fn()}
+          onSave={vi.fn()}
+          onUnsavedChangesClose={vi.fn()}
+          onUnsavedChangesDiscard={vi.fn()}
+          onUnsavedChangesSave={vi.fn()}
           showUnsavedChangesDialog={false}
           validationMessage={null}
         />
@@ -449,7 +450,7 @@ describe("ExpenseSheet", () => {
 
   it("converts an expense to recurring from the toggle while editing", async () => {
     const user = userEvent.setup();
-    const onRecurringToggle = jest.fn();
+    const onRecurringToggle = vi.fn();
 
     render(
       <TooltipProvider>
@@ -462,19 +463,19 @@ describe("ExpenseSheet", () => {
           isSubmitting={false}
           lenders={[]}
           mode="edit"
-          onAddLender={jest.fn()}
-          onFieldChange={jest.fn()}
-          onFolderSelect={jest.fn()}
-          onManageFolders={jest.fn()}
-          onLenderSelect={jest.fn()}
-          onLoanToggle={jest.fn()}
+          onAddLender={vi.fn()}
+          onFieldChange={vi.fn()}
+          onFolderSelect={vi.fn()}
+          onManageFolders={vi.fn()}
+          onLenderSelect={vi.fn()}
+          onLoanToggle={vi.fn()}
           onRecurringToggle={onRecurringToggle}
-          onReceiptShareToggle={jest.fn()}
-          onRequestClose={jest.fn()}
-          onSave={jest.fn()}
-          onUnsavedChangesClose={jest.fn()}
-          onUnsavedChangesDiscard={jest.fn()}
-          onUnsavedChangesSave={jest.fn()}
+          onReceiptShareToggle={vi.fn()}
+          onRequestClose={vi.fn()}
+          onSave={vi.fn()}
+          onUnsavedChangesClose={vi.fn()}
+          onUnsavedChangesDiscard={vi.fn()}
+          onUnsavedChangesSave={vi.fn()}
           showUnsavedChangesDialog={false}
           validationMessage={null}
         />

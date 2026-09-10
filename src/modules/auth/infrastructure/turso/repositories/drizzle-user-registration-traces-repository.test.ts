@@ -1,16 +1,17 @@
+import { vi, describe, it, expect } from "vitest";
 import { userRegistrationTracesTable } from "@/modules/shared/infrastructure/database/drizzle/schema";
 
 import { DrizzleUserRegistrationTracesRepository } from "./drizzle-user-registration-traces-repository";
 
 describe("DrizzleUserRegistrationTracesRepository", () => {
   it("returns null when traceability record does not exist", async () => {
-    const whereMock = jest.fn().mockReturnValue({
-      limit: jest.fn().mockResolvedValue([]),
+    const whereMock = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([]),
     });
-    const fromMock = jest.fn().mockReturnValue({
+    const fromMock = vi.fn().mockReturnValue({
       where: whereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const repository = new DrizzleUserRegistrationTracesRepository({
@@ -25,8 +26,8 @@ describe("DrizzleUserRegistrationTracesRepository", () => {
   });
 
   it("maps an existing SQL row into traceability payload", async () => {
-    const whereMock = jest.fn().mockReturnValue({
-      limit: jest.fn().mockResolvedValue([
+    const whereMock = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([
         {
           authProvider: "google",
           lastVerifiedAtIso: "2026-04-27T10:00:00.000Z",
@@ -36,10 +37,10 @@ describe("DrizzleUserRegistrationTracesRepository", () => {
         },
       ]),
     });
-    const fromMock = jest.fn().mockReturnValue({
+    const fromMock = vi.fn().mockReturnValue({
       where: whereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const repository = new DrizzleUserRegistrationTracesRepository({
@@ -60,11 +61,11 @@ describe("DrizzleUserRegistrationTracesRepository", () => {
   });
 
   it("upserts and updates verification timestamp while preserving registration timestamp", async () => {
-    const onConflictDoUpdateMock = jest.fn().mockResolvedValue(undefined);
-    const valuesMock = jest.fn().mockReturnValue({
+    const onConflictDoUpdateMock = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({
       onConflictDoUpdate: onConflictDoUpdateMock,
     });
-    const insertMock = jest.fn().mockReturnValue({
+    const insertMock = vi.fn().mockReturnValue({
       values: valuesMock,
     });
     const repository = new DrizzleUserRegistrationTracesRepository({

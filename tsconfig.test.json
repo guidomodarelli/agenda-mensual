@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "node",
+      "vitest/globals",
+      "@testing-library/jest-dom/vitest"
+    ],
+    "target": "ES2022",
+    "incremental": false
+  },
+  "include": [
+    "drizzle/**/*.test.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/tests/**/*.ts",
+    "src/tests/**/*.tsx",
+    "e2e/**/*.ts",
+    "vitest.setup.ts",
+    "vitest.config.mts"
+  ],
+  "exclude": [
+    "node_modules",
+    "node_modules.*",
+    ".claude"
+  ]
+}

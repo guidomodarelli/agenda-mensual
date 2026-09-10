@@ -1,8 +1,9 @@
+import { vi, describe, it, expect } from "vitest";
 import type { NextApiHandler } from "next";
 
 import { createAppRouteHandler } from "./next-api-handler-adapter";
 
-jest.mock("next/server", () => {
+vi.mock("next/server", () => {
   class MockNextResponse {
     readonly body: string | null;
     readonly headers: Headers;
@@ -55,7 +56,7 @@ function createRequest({
 
 describe("createAppRouteHandler", () => {
   it("lets legacy handlers reject malformed JSON as a controlled bad request", async () => {
-    const legacyHandler: NextApiHandler = jest.fn((request, response) => {
+    const legacyHandler: NextApiHandler = vi.fn((request, response) => {
       if (request.body === undefined) {
         response.status(400).json({ error: "Invalid JSON payload." });
         return;
@@ -79,7 +80,7 @@ describe("createAppRouteHandler", () => {
   });
 
   it("passes parsed JSON bodies to legacy handlers", async () => {
-    const legacyHandler: NextApiHandler = jest.fn((request, response) => {
+    const legacyHandler: NextApiHandler = vi.fn((request, response) => {
       response.status(200).json({ data: request.body });
     });
     const handler = createAppRouteHandler(legacyHandler);

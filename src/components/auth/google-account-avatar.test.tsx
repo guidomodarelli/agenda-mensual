@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -18,12 +19,12 @@ function renderGoogleAccountAvatar(
 describe("GoogleAccountAvatar", () => {
   it("opens sign in menu when session is disconnected", async () => {
     const user = userEvent.setup();
-    const onConnect = jest.fn();
+    const onConnect = vi.fn();
 
     renderGoogleAccountAvatar(
       {
         onConnect,
-        onDisconnect: jest.fn(),
+        onDisconnect: vi.fn(),
         status: "unauthenticated",
         userImage: null,
         userName: null,
@@ -42,11 +43,11 @@ describe("GoogleAccountAvatar", () => {
 
   it("renders disconnect menu when session is connected", async () => {
     const user = userEvent.setup();
-    const onDisconnect = jest.fn();
+    const onDisconnect = vi.fn();
 
     renderGoogleAccountAvatar(
       {
-        onConnect: jest.fn(),
+        onConnect: vi.fn(),
         onDisconnect,
         status: "authenticated",
         userEmail: "gus@example.com",
@@ -68,8 +69,8 @@ describe("GoogleAccountAvatar", () => {
   it("uses user initials as fallback when no profile image is available", () => {
     renderGoogleAccountAvatar(
       {
-        onConnect: jest.fn(),
-        onDisconnect: jest.fn(),
+        onConnect: vi.fn(),
+        onDisconnect: vi.fn(),
         status: "authenticated",
         userImage: null,
         userName: "Guido Modarelli",
@@ -83,8 +84,8 @@ describe("GoogleAccountAvatar", () => {
     const user = userEvent.setup();
 
     renderGoogleAccountAvatar({
-      onConnect: jest.fn(),
-      onDisconnect: jest.fn(),
+      onConnect: vi.fn(),
+      onDisconnect: vi.fn(),
       status: "unauthenticated",
       userImage: null,
       userName: null,
@@ -101,8 +102,8 @@ describe("GoogleAccountAvatar", () => {
     const user = userEvent.setup();
 
     renderGoogleAccountAvatar({
-      onConnect: jest.fn(),
-      onDisconnect: jest.fn(),
+      onConnect: vi.fn(),
+      onDisconnect: vi.fn(),
       status: "authenticated",
       userImage: null,
       userName: "Guido Modarelli",

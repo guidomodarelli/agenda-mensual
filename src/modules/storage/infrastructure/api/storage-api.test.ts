@@ -1,8 +1,9 @@
+import { vi, describe, it, expect } from "vitest";
 import { saveApplicationSettingsViaApi } from "./storage-api";
 
 describe("storage-api client", () => {
   it("sends x-correlation-id header on POST requests", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           id: "settings-file-id",

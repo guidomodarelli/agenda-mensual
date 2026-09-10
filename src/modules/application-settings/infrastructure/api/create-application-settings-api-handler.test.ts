@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
@@ -38,20 +39,20 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 
 describe("createApplicationSettingsApiHandler", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("returns 201 when settings are saved", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "google-user-123:application-settings.json",
       mimeType: "application/json",
       name: "application-settings.json",
     });
     const handler = createApplicationSettingsApiHandler({
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -81,12 +82,12 @@ describe("createApplicationSettingsApiHandler", () => {
   });
 
   it("logs and returns 400 when settings save fails with an application error", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const database = {} as TursoDatabase;
     const handler = createApplicationSettingsApiHandler({
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn().mockRejectedValue(new Error("invalid settings")),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn().mockRejectedValue(new Error("invalid settings")),
     });
 
     const request = {

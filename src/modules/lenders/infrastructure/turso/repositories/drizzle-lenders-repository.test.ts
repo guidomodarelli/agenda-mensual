@@ -1,17 +1,18 @@
+import { vi, describe, it, expect } from "vitest";
 import { lendersCatalogTable } from "@/modules/shared/infrastructure/database/drizzle/schema";
 
 import { DrizzleLendersRepository } from "./drizzle-lenders-repository";
 
 describe("DrizzleLendersRepository", () => {
   it("returns null when the user has no lenders", async () => {
-    const orderByMock = jest.fn().mockResolvedValue([]);
-    const whereMock = jest.fn().mockReturnValue({
+    const orderByMock = vi.fn().mockResolvedValue([]);
+    const whereMock = vi.fn().mockReturnValue({
       orderBy: orderByMock,
     });
-    const fromMock = jest.fn().mockReturnValue({
+    const fromMock = vi.fn().mockReturnValue({
       where: whereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const repository = new DrizzleLendersRepository(
@@ -28,7 +29,7 @@ describe("DrizzleLendersRepository", () => {
   });
 
   it("maps SQL rows into a validated lenders catalog", async () => {
-    const orderByMock = jest.fn().mockResolvedValue([
+    const orderByMock = vi.fn().mockResolvedValue([
       {
         id: "lender-2",
         name: "  Papa  ",
@@ -42,13 +43,13 @@ describe("DrizzleLendersRepository", () => {
         type: "bank",
       },
     ]);
-    const whereMock = jest.fn().mockReturnValue({
+    const whereMock = vi.fn().mockReturnValue({
       orderBy: orderByMock,
     });
-    const fromMock = jest.fn().mockReturnValue({
+    const fromMock = vi.fn().mockReturnValue({
       where: whereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const repository = new DrizzleLendersRepository(
@@ -78,22 +79,21 @@ describe("DrizzleLendersRepository", () => {
   });
 
   it("replaces the user catalog in a single transaction", async () => {
-    const insertValuesMock = jest.fn().mockResolvedValue(undefined);
-    const insertMock = jest.fn().mockReturnValue({
+    const insertValuesMock = vi.fn().mockResolvedValue(undefined);
+    const insertMock = vi.fn().mockReturnValue({
       values: insertValuesMock,
     });
-    const deleteWhereMock = jest.fn().mockResolvedValue(undefined);
-    const deleteMock = jest.fn().mockReturnValue({
+    const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
+    const deleteMock = vi.fn().mockReturnValue({
       where: deleteWhereMock,
     });
     const transactionExecutor = {
       delete: deleteMock,
       insert: insertMock,
     };
-    const transactionMock = jest
+    const transactionMock = vi
       .fn()
-      .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
-        callback(transactionExecutor),
+      .mockImplementation(async function (callback: (tx: unknown) => Promise<void>) { return callback(transactionExecutor); },
       );
     const repository = new DrizzleLendersRepository(
       {

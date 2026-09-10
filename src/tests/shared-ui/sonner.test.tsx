@@ -1,14 +1,15 @@
+import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
 import { ThemedToaster as Toaster } from "beez-ui";
 import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
 import { useTheme } from "next-themes";
 
-jest.mock("next-themes", () => ({
-  useTheme: jest.fn(),
+vi.mock("next-themes", () => ({
+  useTheme: vi.fn(),
 }));
 
-const mockedUseTheme = jest.mocked(useTheme);
-const mockedSonner: jest.Mock<ReactElement, [unknown]> = jest.fn(
+const mockedUseTheme = vi.mocked(useTheme);
+const mockedSonner: Mock<(...args: [unknown]) => ReactElement> = vi.fn(
   (...args: [unknown]) => {
     void args;
 
@@ -16,7 +17,7 @@ const mockedSonner: jest.Mock<ReactElement, [unknown]> = jest.fn(
   },
 );
 
-jest.mock("sonner", () => ({
+vi.mock("sonner", () => ({
   Toaster: (props: unknown) => mockedSonner(props),
 }));
 
@@ -29,7 +30,7 @@ describe("Toaster", () => {
     mockedUseTheme.mockReturnValue({
       forcedTheme: undefined,
       resolvedTheme: "dark",
-      setTheme: jest.fn(),
+      setTheme: vi.fn(),
       systemTheme: "dark",
       theme: "system",
       themes: ["light", "dark"],
@@ -47,7 +48,7 @@ describe("Toaster", () => {
     mockedUseTheme.mockReturnValue({
       forcedTheme: undefined,
       resolvedTheme: undefined,
-      setTheme: jest.fn(),
+      setTheme: vi.fn(),
       systemTheme: undefined,
       theme: "system",
       themes: ["light", "dark"],

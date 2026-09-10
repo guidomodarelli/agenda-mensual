@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import {
   uploadMonthlyExpenseReceiptViaApi,
 } from "./monthly-expenses-receipts-api";
@@ -13,7 +14,7 @@ const uploadPayload = {
 
 describe("monthly-expenses-receipts-api client", () => {
   it("sends x-correlation-id header on upload requests", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           allReceiptsFolderId: "all-receipts-folder-id",
@@ -52,9 +53,9 @@ describe("monthly-expenses-receipts-api client", () => {
 
   it("reports upload progress when using XMLHttpRequest", async () => {
     const originalXmlHttpRequest = global.XMLHttpRequest;
-    const progressCallback = jest.fn();
-    const setRequestHeader = jest.fn();
-    const open = jest.fn();
+    const progressCallback = vi.fn();
+    const setRequestHeader = vi.fn();
+    const open = vi.fn();
 
     class MockXMLHttpRequest {
       onabort: ((event: ProgressEvent<EventTarget>) => unknown) | null = null;

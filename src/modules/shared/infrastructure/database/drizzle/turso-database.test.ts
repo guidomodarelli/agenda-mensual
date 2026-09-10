@@ -1,53 +1,54 @@
-jest.mock("@libsql/client", () => ({
-  createClient: jest.fn(),
+import { vi, describe, it, expect, beforeEach } from "vitest";
+vi.mock("@libsql/client", () => ({
+  createClient: vi.fn(),
 }));
 
-jest.mock("drizzle-orm/libsql", () => ({
-  drizzle: jest.fn(),
+vi.mock("drizzle-orm/libsql", () => ({
+  drizzle: vi.fn(),
 }));
 
-jest.mock("drizzle-orm/libsql/migrator", () => ({
-  migrate: jest.fn(),
+vi.mock("drizzle-orm/libsql/migrator", () => ({
+  migrate: vi.fn(),
 }));
 
-jest.mock("../turso-server-config", () => ({
-  requireTursoServerConfig: jest.fn(),
+vi.mock("../turso-server-config", () => ({
+  requireTursoServerConfig: vi.fn(),
 }));
 
 describe("createMigratedTursoDatabase", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("runs migrations only once across repeated calls", async () => {
-    await jest.isolateModulesAsync(async () => {
+    await (vi.resetModules(), (async () => {
       const { createClient } = await import("@libsql/client");
       const { drizzle } = await import("drizzle-orm/libsql");
       const { migrate } = await import("drizzle-orm/libsql/migrator");
       const { requireTursoServerConfig } = await import("../turso-server-config");
       const { createMigratedTursoDatabase } = await import("./turso-database");
 
-      jest.mocked(requireTursoServerConfig).mockReturnValue({
+      vi.mocked(requireTursoServerConfig).mockReturnValue({
         authToken: "test-token",
         url: "libsql://test.local",
       });
-      jest.mocked(createClient).mockReturnValue({} as never);
-      jest
+      vi.mocked(createClient).mockReturnValue({} as never);
+      vi
         .mocked(drizzle)
         .mockReturnValueOnce({ id: "db-1" } as never)
         .mockReturnValueOnce({ id: "db-2" } as never);
-      jest.mocked(migrate).mockResolvedValue(undefined as never);
+      vi.mocked(migrate).mockResolvedValue(undefined as never);
 
       await createMigratedTursoDatabase();
       await createMigratedTursoDatabase();
 
       expect(migrate).toHaveBeenCalledTimes(1);
       expect(drizzle).toHaveBeenCalledTimes(2);
-    });
+    })());
   });
 
   it("shares the same migration run for concurrent calls", async () => {
-    await jest.isolateModulesAsync(async () => {
+    await (vi.resetModules(), (async () => {
       const { createClient } = await import("@libsql/client");
       const { drizzle } = await import("drizzle-orm/libsql");
       const { migrate } = await import("drizzle-orm/libsql/migrator");
@@ -59,16 +60,16 @@ describe("createMigratedTursoDatabase", () => {
         resolveMigration = resolve;
       });
 
-      jest.mocked(requireTursoServerConfig).mockReturnValue({
+      vi.mocked(requireTursoServerConfig).mockReturnValue({
         authToken: "test-token",
         url: "libsql://test.local",
       });
-      jest.mocked(createClient).mockReturnValue({} as never);
-      jest
+      vi.mocked(createClient).mockReturnValue({} as never);
+      vi
         .mocked(drizzle)
         .mockReturnValueOnce({ id: "db-1" } as never)
         .mockReturnValueOnce({ id: "db-2" } as never);
-      jest.mocked(migrate).mockReturnValue(migrationPromise as never);
+      vi.mocked(migrate).mockReturnValue(migrationPromise as never);
 
       const firstCall = createMigratedTursoDatabase();
       const secondCall = createMigratedTursoDatabase();
@@ -79,29 +80,29 @@ describe("createMigratedTursoDatabase", () => {
       await Promise.all([firstCall, secondCall]);
       expect(migrate).toHaveBeenCalledTimes(1);
       expect(drizzle).toHaveBeenCalledTimes(2);
-    });
+    })());
   });
 
   it("retries migrations after a failed first attempt", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
 
-    await jest.isolateModulesAsync(async () => {
+    await (vi.resetModules(), (async () => {
       const { createClient } = await import("@libsql/client");
       const { drizzle } = await import("drizzle-orm/libsql");
       const { migrate } = await import("drizzle-orm/libsql/migrator");
       const { requireTursoServerConfig } = await import("../turso-server-config");
       const { createMigratedTursoDatabase } = await import("./turso-database");
 
-      jest.mocked(requireTursoServerConfig).mockReturnValue({
+      vi.mocked(requireTursoServerConfig).mockReturnValue({
         authToken: "test-token",
         url: "libsql://test.local",
       });
-      jest.mocked(createClient).mockReturnValue({} as never);
-      jest
+      vi.mocked(createClient).mockReturnValue({} as never);
+      vi
         .mocked(drizzle)
         .mockReturnValueOnce({ id: "db-1" } as never)
         .mockReturnValueOnce({ id: "db-2" } as never);
-      jest
+      vi
         .mocked(migrate)
         .mockRejectedValueOnce(new Error("migration failed"))
         .mockResolvedValueOnce(undefined as never);
@@ -114,6 +115,6 @@ describe("createMigratedTursoDatabase", () => {
         id: "db-2",
       });
       expect(migrate).toHaveBeenCalledTimes(2);
-    });
+    })());
   });
 });

@@ -1,8 +1,9 @@
+import { vi, describe, it, expect } from "vitest";
 import { getMonthlyExpensesLoansReportViaApi } from "./monthly-expenses-report-api";
 
 describe("monthly-expenses-report-api client", () => {
   it("sends x-correlation-id header on GET requests", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           entries: [],

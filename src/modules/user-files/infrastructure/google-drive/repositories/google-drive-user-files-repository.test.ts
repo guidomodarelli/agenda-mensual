@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import type { drive_v3 } from "googleapis";
 
 import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
@@ -6,8 +7,8 @@ import { GoogleDriveUserFilesRepository } from "./google-drive-user-files-reposi
 
 function createDriveClientMock() {
   const files = {
-    create: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    list: vi.fn(),
   };
 
   return {

@@ -1,10 +1,11 @@
+import { vi, describe, it, expect } from "vitest";
 import type { ApplicationSettingsRepository } from "../../domain/repositories/application-settings-repository";
 import { saveApplicationSettings } from "./save-application-settings";
 
 describe("saveApplicationSettings", () => {
   it("delegates a validated settings document to the repository", async () => {
     const repository: ApplicationSettingsRepository = {
-      save: jest.fn().mockResolvedValue({
+      save: vi.fn().mockResolvedValue({
         id: "settings-file-id",
         mimeType: "application/json",
         name: "application-settings.json",
@@ -34,7 +35,7 @@ describe("saveApplicationSettings", () => {
 
   it("rejects an empty name before touching the repository", async () => {
     const repository: ApplicationSettingsRepository = {
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     await expect(

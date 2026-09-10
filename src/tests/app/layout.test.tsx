@@ -1,23 +1,24 @@
-jest.mock("next-auth", () => ({
-  getServerSession: jest.fn(),
+import { vi, describe, it, expect, beforeEach } from "vitest";
+vi.mock("next-auth", () => ({
+  getServerSession: vi.fn(),
 }));
 
-jest.mock("next/headers", () => ({
-  cookies: jest.fn(),
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(),
 }));
 
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(),
-  useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }));
 
-jest.mock("@/modules/auth/infrastructure/next-auth/auth-options", () => ({
+vi.mock("@/modules/auth/infrastructure/next-auth/auth-options", () => ({
   authOptions: {},
 }));
 
-jest.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
-  isGoogleOAuthConfigured: jest.fn(),
+vi.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
+  isGoogleOAuthConfigured: vi.fn(),
 }));
 
 import { render, screen } from "@testing-library/react";
@@ -30,20 +31,20 @@ import RootLayout, { getRootServerSession } from "@/app/layout";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
 import { SIDEBAR_STATE_COOKIE_NAME } from "@/modules/shared/infrastructure/pages/sidebar-state";
 
-const mockedCookies = jest.mocked(cookies);
-const mockedGetServerSession = jest.mocked(getServerSession);
-const mockedIsGoogleOAuthConfigured = jest.mocked(isGoogleOAuthConfigured);
-const mockedUsePathname = jest.mocked(usePathname);
-const mockedUseRouter = jest.mocked(useRouter);
-const mockedUseSearchParams = jest.mocked(useSearchParams);
+const mockedCookies = vi.mocked(cookies);
+const mockedGetServerSession = vi.mocked(getServerSession);
+const mockedIsGoogleOAuthConfigured = vi.mocked(isGoogleOAuthConfigured);
+const mockedUsePathname = vi.mocked(usePathname);
+const mockedUseRouter = vi.mocked(useRouter);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
 
 describe("getRootServerSession", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("returns null without loading a session when auth is not configured", async () => {
-    const getConfiguredAuthSession = jest.fn();
+    const getConfiguredAuthSession = vi.fn();
 
     const session = await getRootServerSession({
       getConfiguredAuthSession,
@@ -61,7 +62,7 @@ describe("getRootServerSession", () => {
         email: "user@example.com",
       },
     };
-    const getConfiguredAuthSession = jest.fn().mockResolvedValue(expectedSession);
+    const getConfiguredAuthSession = vi.fn().mockResolvedValue(expectedSession);
 
     const session = await getRootServerSession({
       getConfiguredAuthSession,
@@ -79,14 +80,14 @@ describe("RootLayout", () => {
       configurable: true,
       writable: true,
       value: (query: string) => ({
-        addEventListener: jest.fn(),
-        addListener: jest.fn(),
-        dispatchEvent: jest.fn(),
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
         matches: false,
         media: query,
         onchange: null,
-        removeEventListener: jest.fn(),
-        removeListener: jest.fn(),
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
       }),
     });
     mockedCookies.mockResolvedValue({
@@ -107,7 +108,7 @@ describe("RootLayout", () => {
     mockedIsGoogleOAuthConfigured.mockReturnValue(true);
     mockedUsePathname.mockReturnValue("/gastos");
     mockedUseRouter.mockReturnValue({
-      push: jest.fn(),
+      push: vi.fn(),
     } as unknown as ReturnType<typeof useRouter>);
     mockedUseSearchParams.mockReturnValue({
       toString: () => "",

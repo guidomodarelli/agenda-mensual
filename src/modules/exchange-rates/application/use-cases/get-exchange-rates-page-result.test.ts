@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { getExchangeRatesPageResult } from "./get-exchange-rates-page-result";
 
 describe("getExchangeRatesPageResult", () => {
@@ -5,7 +6,7 @@ describe("getExchangeRatesPageResult", () => {
     const result = await getExchangeRatesPageResult({
       canEditIibb: true,
       exchangeRatesRepository: {
-        getMonthlyRate: jest
+        getMonthlyRate: vi
           .fn()
           .mockResolvedValueOnce({
             month: "2026-03",
@@ -24,8 +25,8 @@ describe("getExchangeRatesPageResult", () => {
       minSelectableMonth: "2026-01",
       month: "2026-03",
       monthlyExchangeRateSnapshotsRepository: {
-        getByMonth: jest.fn().mockResolvedValue(null),
-        save: jest.fn().mockImplementation(async (snapshot) => snapshot),
+        getByMonth: vi.fn().mockResolvedValue(null),
+        save: vi.fn().mockImplementation(async function (snapshot) { return snapshot; }),
       },
     });
 
@@ -44,7 +45,7 @@ describe("getExchangeRatesPageResult", () => {
   });
 
   it("uses the cached monthly snapshot when it already exists", async () => {
-    const getMonthlyRate = jest.fn();
+    const getMonthlyRate = vi.fn();
 
     const result = await getExchangeRatesPageResult({
       canEditIibb: false,
@@ -55,7 +56,7 @@ describe("getExchangeRatesPageResult", () => {
       minSelectableMonth: "2026-03",
       month: "2026-03",
       monthlyExchangeRateSnapshotsRepository: {
-        getByMonth: jest.fn().mockResolvedValue({
+        getByMonth: vi.fn().mockResolvedValue({
           blueRate: 1240,
           iibbRateDecimalUsed: 0.02,
           month: "2026-03",
@@ -65,7 +66,7 @@ describe("getExchangeRatesPageResult", () => {
           sourceDateIso: "2026-03-31",
           updatedAtIso: "2026-03-14T12:00:00.000Z",
         }),
-        save: jest.fn(),
+        save: vi.fn(),
       },
     });
 

@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, type Mock } from "vitest";
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import type { MonthlyExpenseReceiptsRepository } from "../../domain/repositories/monthly-expense-receipts-repository";
 import { saveMonthlyExpensesDocument } from "./save-monthly-expenses-document";
@@ -7,7 +8,7 @@ import {
 
 describe("saveMonthlyExpensesDocument", () => {
   it("records an excluded loan when an in-range installment is removed from the saved items", async () => {
-    const getExchangeRateSnapshot = jest.fn().mockResolvedValue({
+    const getExchangeRateSnapshot = vi.fn().mockResolvedValue({
       blueRate: 1290,
       iibbRateDecimalUsed: 0.02,
       month: "2026-04",
@@ -36,9 +37,9 @@ describe("saveMonthlyExpensesDocument", () => {
       month: "2026-05",
     };
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue(null),
-      listAll: jest.fn().mockResolvedValue([loanCanonicalDocument]),
-      save: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue(null),
+      listAll: vi.fn().mockResolvedValue([loanCanonicalDocument]),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-04",
         name: "control-mensual-2026-abril.json",
@@ -64,12 +65,12 @@ describe("saveMonthlyExpensesDocument", () => {
       repository,
     });
 
-    const savedDocument = (repository.save as jest.Mock).mock.calls[0][0];
+    const savedDocument = (repository.save as Mock).mock.calls[0][0];
     expect(savedDocument.excludedLoanIds).toEqual(["loan-1"]);
   });
 
   it("does not exclude an in-range loan that is kept in the saved items", async () => {
-    const getExchangeRateSnapshot = jest.fn().mockResolvedValue({
+    const getExchangeRateSnapshot = vi.fn().mockResolvedValue({
       blueRate: 1290,
       iibbRateDecimalUsed: 0.02,
       month: "2026-04",
@@ -98,9 +99,9 @@ describe("saveMonthlyExpensesDocument", () => {
       month: "2026-05",
     };
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue(null),
-      listAll: jest.fn().mockResolvedValue([loanCanonicalDocument]),
-      save: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue(null),
+      listAll: vi.fn().mockResolvedValue([loanCanonicalDocument]),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-04",
         name: "control-mensual-2026-abril.json",
@@ -126,15 +127,15 @@ describe("saveMonthlyExpensesDocument", () => {
       repository,
     });
 
-    const savedDocument = (repository.save as jest.Mock).mock.calls[0][0];
+    const savedDocument = (repository.save as Mock).mock.calls[0][0];
     expect(savedDocument.excludedLoanIds).toEqual([]);
   });
 
   it("delegates a validated monthly document with the snapshot to the repository", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn(),
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -155,7 +156,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -208,9 +209,9 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("saves monthly expenses without exchange rate snapshot when the target month has no historical rates", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn(),
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-05",
         name: "control-mensual-2026-mayo.json",
@@ -231,7 +232,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-05",
       },
-      getExchangeRateSnapshot: jest
+      getExchangeRateSnapshot: vi
         .fn()
         .mockRejectedValue(new MissingMonthlyExchangeRateError("2026-05")),
       repository,
@@ -273,7 +274,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("preserves the stored exchange rate snapshot when monthly lookup has no values", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         exchangeRateSnapshot: {
           blueRate: 1190,
           month: "2026-05",
@@ -283,8 +284,8 @@ describe("saveMonthlyExpensesDocument", () => {
         items: [],
         month: "2026-05",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-05",
         name: "control-mensual-2026-mayo.json",
@@ -305,7 +306,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-05",
       },
-      getExchangeRateSnapshot: jest
+      getExchangeRateSnapshot: vi
         .fn()
         .mockRejectedValue(new MissingMonthlyExchangeRateError("2026-05")),
       repository,
@@ -341,9 +342,9 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("keeps throwing when exchange rate lookup fails for reasons other than missing monthly values", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn(),
-      save: jest.fn(),
+      getByMonth: vi.fn(),
+      listAll: vi.fn(),
+      save: vi.fn(),
     };
 
     await expect(
@@ -360,7 +361,7 @@ describe("saveMonthlyExpensesDocument", () => {
           ],
           month: "2026-05",
         },
-        getExchangeRateSnapshot: jest
+        getExchangeRateSnapshot: vi
           .fn()
           .mockRejectedValue(new Error("network timeout")),
         repository,
@@ -371,7 +372,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("renames receipt folder when an existing expense description changes", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -398,8 +399,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -407,12 +408,12 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     await saveMonthlyExpensesDocument({
@@ -442,7 +443,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -464,7 +465,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("does not rename receipt folders when description remains unchanged", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -491,8 +492,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -500,12 +501,12 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     await saveMonthlyExpensesDocument({
@@ -535,7 +536,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -554,7 +555,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("renames receipt folders when an item keeps only the shared folder metadata", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -575,8 +576,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -584,12 +585,12 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     await saveMonthlyExpensesDocument({
@@ -613,7 +614,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -635,7 +636,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("renames the shared receipts folder when a monthly folder is added later", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -656,8 +657,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -665,12 +666,12 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn(),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     await saveMonthlyExpensesDocument({
@@ -708,7 +709,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -730,9 +731,9 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("rejects save when receipt-covered payments exceed remaining payments after manual coverage", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn(),
-      save: jest.fn(),
+      getByMonth: vi.fn(),
+      listAll: vi.fn(),
+      save: vi.fn(),
     };
 
     await expect(
@@ -778,7 +779,7 @@ describe("saveMonthlyExpensesDocument", () => {
           ],
           month: "2026-03",
         },
-        getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+        getExchangeRateSnapshot: vi.fn().mockResolvedValue({
           blueRate: 1290,
           iibbRateDecimalUsed: 0.02,
           month: "2026-03",
@@ -799,9 +800,9 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("allows save when receipt-covered payments match remaining payments after manual coverage", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn(),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn(),
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -852,7 +853,7 @@ describe("saveMonthlyExpensesDocument", () => {
           ],
           month: "2026-03",
         },
-        getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+        getExchangeRateSnapshot: vi.fn().mockResolvedValue({
           blueRate: 1290,
           iibbRateDecimalUsed: 0.02,
           month: "2026-03",
@@ -880,7 +881,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("renames receipt file and persists updated fileName when covered payments change", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -908,8 +909,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -917,12 +918,12 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn().mockResolvedValue(undefined),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn().mockResolvedValue(undefined),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     await saveMonthlyExpensesDocument({
@@ -953,7 +954,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -989,7 +990,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("renames all receipt files when expense description changes", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -1030,8 +1031,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -1039,12 +1040,12 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn().mockResolvedValue(undefined),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn().mockResolvedValue(undefined),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     const result = await saveMonthlyExpensesDocument({
@@ -1088,7 +1089,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",
@@ -1118,7 +1119,7 @@ describe("saveMonthlyExpensesDocument", () => {
 
   it("saves document and returns warnings when receipt file rename partially fails", async () => {
     const repository: MonthlyExpensesRepository = {
-      getByMonth: jest.fn().mockResolvedValue({
+      getByMonth: vi.fn().mockResolvedValue({
         items: [
           {
             currency: "ARS",
@@ -1159,8 +1160,8 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       }),
-      listAll: jest.fn(),
-      save: jest.fn().mockResolvedValue({
+      listAll: vi.fn(),
+      save: vi.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",
         name: "control-mensual-2026-marzo.json",
@@ -1168,9 +1169,9 @@ describe("saveMonthlyExpensesDocument", () => {
       }),
     };
     const receiptsRepository: MonthlyExpenseReceiptsRepository = {
-      deleteReceipt: jest.fn(),
-      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
-      renameReceiptFile: jest.fn().mockImplementation(async (input) => {
+      deleteReceipt: vi.fn(),
+      renameExpenseFolder: vi.fn().mockResolvedValue(undefined),
+      renameReceiptFile: vi.fn().mockImplementation(async function (input) {
         const { fileId } = input;
 
         if (fileId === "receipt-file-id-2") {
@@ -1179,9 +1180,9 @@ describe("saveMonthlyExpensesDocument", () => {
           };
         }
       }),
-      saveReceipt: jest.fn(),
-      verifyFolders: jest.fn(),
-      verifyReceipt: jest.fn(),
+      saveReceipt: vi.fn(),
+      verifyFolders: vi.fn(),
+      verifyReceipt: vi.fn(),
     };
 
     const result = await saveMonthlyExpensesDocument({
@@ -1225,7 +1226,7 @@ describe("saveMonthlyExpensesDocument", () => {
         ],
         month: "2026-03",
       },
-      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+      getExchangeRateSnapshot: vi.fn().mockResolvedValue({
         blueRate: 1290,
         iibbRateDecimalUsed: 0.02,
         month: "2026-03",

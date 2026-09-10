@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -11,11 +12,11 @@ const SAMPLE_FOLDERS = [
 describe("ExpenseFolderPicker", () => {
   it("selects a folder from the panel", async () => {
     const user = userEvent.setup();
-    const onSelect = jest.fn();
+    const onSelect = vi.fn();
 
     render(
       <ExpenseFolderPicker
-        onManageFolders={jest.fn()}
+        onManageFolders={vi.fn()}
         onSelect={onSelect}
         options={SAMPLE_FOLDERS}
         selectedFolderId=""
@@ -30,11 +31,11 @@ describe("ExpenseFolderPicker", () => {
 
   it("clears the folder when choosing the unassigned option", async () => {
     const user = userEvent.setup();
-    const onSelect = jest.fn();
+    const onSelect = vi.fn();
 
     render(
       <ExpenseFolderPicker
-        onManageFolders={jest.fn()}
+        onManageFolders={vi.fn()}
         onSelect={onSelect}
         options={SAMPLE_FOLDERS}
         selectedFolderId="folder-1"
@@ -51,12 +52,12 @@ describe("ExpenseFolderPicker", () => {
 
   it("opens the folders manager from the panel", async () => {
     const user = userEvent.setup();
-    const onManageFolders = jest.fn();
+    const onManageFolders = vi.fn();
 
     render(
       <ExpenseFolderPicker
         onManageFolders={onManageFolders}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
         options={SAMPLE_FOLDERS}
         selectedFolderId=""
       />,

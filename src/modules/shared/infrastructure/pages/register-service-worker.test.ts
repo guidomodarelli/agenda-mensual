@@ -1,8 +1,9 @@
+import { vi, describe, it, expect } from "vitest";
 import { registerServiceWorker } from "@/modules/shared/infrastructure/pages/register-service-worker";
 
 describe("registerServiceWorker", () => {
   it("registers /sw.js in production", () => {
-    const register = jest.fn().mockResolvedValue(undefined);
+    const register = vi.fn().mockResolvedValue(undefined);
 
     registerServiceWorker({
       navigatorRef: {
@@ -17,7 +18,7 @@ describe("registerServiceWorker", () => {
   });
 
   it("does not register outside production", () => {
-    const register = jest.fn().mockResolvedValue(undefined);
+    const register = vi.fn().mockResolvedValue(undefined);
 
     registerServiceWorker({
       navigatorRef: {

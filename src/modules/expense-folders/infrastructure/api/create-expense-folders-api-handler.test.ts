@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
@@ -40,14 +41,14 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 
 describe("createExpenseFoldersApiHandler", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("returns 200 with the folders catalog when the request is GET", async () => {
     const database = {} as TursoDatabase;
     const handler = createExpenseFoldersApiHandler({
-      get: jest.fn().mockResolvedValue({
+      get: vi.fn().mockResolvedValue({
         folders: [
           {
             color: "blue",
@@ -58,9 +59,9 @@ describe("createExpenseFoldersApiHandler", () => {
           },
         ],
       }),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn(),
     });
 
     const request = {
@@ -88,14 +89,14 @@ describe("createExpenseFoldersApiHandler", () => {
 
   it("returns 201 when the catalog is saved", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "google-user-123:expense-folders-catalog",
       name: "expense-folders-catalog",
     });
     const handler = createExpenseFoldersApiHandler({
-      get: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      get: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -138,10 +139,10 @@ describe("createExpenseFoldersApiHandler", () => {
 
   it("returns 400 when the POST payload is invalid", async () => {
     const handler = createExpenseFoldersApiHandler({
-      get: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue({} as TursoDatabase),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn(),
+      get: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue({} as TursoDatabase),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn(),
     });
 
     const request = {
@@ -163,15 +164,15 @@ describe("createExpenseFoldersApiHandler", () => {
   });
 
   it("logs and returns 400 when save fails with a domain validation error", async () => {
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, "error")
-      .mockImplementation(() => undefined);
+      .mockImplementation(function () { return undefined; });
     const database = {} as TursoDatabase;
     const handler = createExpenseFoldersApiHandler({
-      get: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest
+      get: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi
         .fn()
         .mockRejectedValue(
           new ExpenseFoldersCatalogValidationError(
@@ -203,13 +204,13 @@ describe("createExpenseFoldersApiHandler", () => {
   });
 
   it("returns a 500 cataloged envelope when save throws an unexpected technical error", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const database = {} as TursoDatabase;
     const handler = createExpenseFoldersApiHandler({
-      get: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest
+      get: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi
         .fn()
         .mockRejectedValue(new Error("SQLITE_ERROR: no such table: expense_folders")),
     });
@@ -237,14 +238,14 @@ describe("createExpenseFoldersApiHandler", () => {
   });
 
   it("returns a 500 cataloged envelope when GET throws an unexpected technical error", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const handler = createExpenseFoldersApiHandler({
-      get: jest
+      get: vi
         .fn()
         .mockRejectedValue(new Error("SQLITE_ERROR: database is locked")),
-      getDatabase: jest.fn().mockReturnValue({} as TursoDatabase),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn(),
+      getDatabase: vi.fn().mockReturnValue({} as TursoDatabase),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn(),
     });
 
     const request = {

@@ -1,3 +1,4 @@
+import { vi, expect, beforeEach, afterEach, afterAll, type MockedFunction, type Mock } from "vitest";
 import { TooltipProvider } from "beez-ui";
 import { render, screen, within } from "@testing-library/react";
 import type { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -119,21 +120,21 @@ export function createMockRouter(
   overrides?: Partial<{
     isReady: boolean;
     pathname: string;
-    push: jest.Mock;
+    push: Mock;
     query: Record<string, string | string[] | undefined>;
-    replace: jest.Mock;
+    replace: Mock;
   }>,
 ) {
   const router: MockMonthlyExpensesRouter = {
     bfcacheId: "monthly-expenses-test",
-    back: jest.fn(),
-    forward: jest.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
     isReady: true,
     pathname: "/gastos",
-    prefetch: jest.fn(),
+    prefetch: vi.fn(),
     query: {},
-    refresh: jest.fn(),
-    push: jest.fn().mockImplementation(async (nextRoute: unknown) => {
+    refresh: vi.fn(),
+    push: vi.fn().mockImplementation(async function (nextRoute: unknown) {
       if (typeof nextRoute === "string") {
         const url = new URL(nextRoute, "http://localhost");
         router.pathname = url.pathname;
@@ -163,7 +164,7 @@ export function createMockRouter(
 
       return true;
     }),
-    replace: jest.fn().mockImplementation(async (nextRoute: unknown) => {
+    replace: vi.fn().mockImplementation(async function (nextRoute: unknown) {
       if (typeof nextRoute === "string") {
         const url = new URL(nextRoute, "http://localhost");
         router.pathname = url.pathname;
@@ -217,7 +218,7 @@ export function createMonthlyExpensesFetchMock(overrides?: {
     status: number;
   };
 }) {
-  return jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+  return vi.fn().mockImplementation(async function (input: RequestInfo | URL) {
     if (input === "/api/storage/monthly-expenses") {
       if (overrides?.saveError) {
         return {
@@ -295,7 +296,7 @@ export function createMonthlyExpensesFetchMock(overrides?: {
   });
 }
 
-export function getMonthlyExpensesSavePayload(fetchMock: jest.Mock) {
+export function getMonthlyExpensesSavePayload(fetchMock: Mock) {
   const saveCall = fetchMock.mock.calls.find(
     ([url]) => url === "/api/storage/monthly-expenses",
   );
@@ -392,19 +393,19 @@ export function getPersistedTablePreferences():
 
 type RegisterDefaultHooksOptions = {
   createDefaultRouter: () => MockMonthlyExpensesRouter;
-  mockedUsePathname: jest.MockedFunction<typeof usePathname>;
-  mockedSignIn: jest.Mock;
-  mockedSignOut: jest.Mock;
-  mockedToast: jest.Mock & {
-    error: jest.Mock;
-    info: jest.Mock;
-    promise: jest.Mock;
-    success: jest.Mock;
-    warning: jest.Mock;
+  mockedUsePathname: MockedFunction<typeof usePathname>;
+  mockedSignIn: Mock;
+  mockedSignOut: Mock;
+  mockedToast: Mock & {
+    error: Mock;
+    info: Mock;
+    promise: Mock;
+    success: Mock;
+    warning: Mock;
   };
-  mockedUseRouter: jest.MockedFunction<typeof useRouter>;
-  mockedUseSearchParams: jest.MockedFunction<typeof useSearchParams>;
-  mockedUseSession: jest.MockedFunction<typeof useSession>;
+  mockedUseRouter: MockedFunction<typeof useRouter>;
+  mockedUseSearchParams: MockedFunction<typeof useSearchParams>;
+  mockedUseSession: MockedFunction<typeof useSession>;
   originalFetch: typeof fetch;
 };
 
@@ -451,30 +452,29 @@ export function registerMonthlyExpensesPageDefaultHooks(
     options.mockedToast.success.mockReset();
     options.mockedToast.warning.mockReset();
     options.mockedUsePathname.mockImplementation(
-      () => currentMonthlyExpensesRouter?.pathname ?? "/gastos",
+      function () { return currentMonthlyExpensesRouter?.pathname ?? "/gastos"; },
     );
     options.mockedUseRouter.mockReturnValue(options.createDefaultRouter());
-    options.mockedUseSearchParams.mockImplementation(() =>
-      createReadonlySearchParams(currentMonthlyExpensesRouter?.query ?? {}),
+    options.mockedUseSearchParams.mockImplementation(function () { return createReadonlySearchParams(currentMonthlyExpensesRouter?.query ?? {}); },
     );
     options.mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     });
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
     window.localStorage.clear();
     window.history.replaceState(null, "", "/gastos");
-    jest
+    vi
       .spyOn(window.history, "pushState")
-      .mockImplementation((state, unused, url) => {
+      .mockImplementation(function (state, unused, url) {
         History.prototype.pushState.call(window.history, state, unused, url);
         syncCurrentMonthlyExpensesRouterWithUrl(url);
       });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterAll(() => {

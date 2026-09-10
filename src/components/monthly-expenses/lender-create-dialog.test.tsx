@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -28,9 +29,9 @@ describe("LenderCreateDialog", () => {
           formValues={formValues}
           isOpen={true}
           isSubmitting={false}
-          onDiscardUnsavedChanges={jest.fn()}
-          onFieldChange={jest.fn()}
-          onOpenChange={jest.fn()}
+          onDiscardUnsavedChanges={vi.fn()}
+          onFieldChange={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={async () => {
             setFormValues({
               name: "",

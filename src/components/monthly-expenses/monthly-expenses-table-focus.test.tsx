@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -365,7 +366,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
   it("saves subtotal and quantity from the details dialog for an occurrence subtotal", async () => {
     const user = userEvent.setup();
-    const onUpdateExpenseDetails = jest.fn();
+    const onUpdateExpenseDetails = vi.fn();
 
     renderMonthlyExpensesTable(
       [
@@ -398,7 +399,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
   it("fixes the quantity to one and keeps the duration when saving an hourly subtotal", async () => {
     const user = userEvent.setup();
-    const onUpdateExpenseDetails = jest.fn();
+    const onUpdateExpenseDetails = vi.fn();
 
     renderMonthlyExpensesTable(
       [
@@ -431,7 +432,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
   it("blocks saving an hourly subtotal without a monthly duration", async () => {
     const user = userEvent.setup();
-    const onUpdateExpenseDetails = jest.fn();
+    const onUpdateExpenseDetails = vi.fn();
 
     renderMonthlyExpensesTable(
       [
@@ -459,7 +460,7 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
 
   it("invokes onUpdatePaymentRecordSendStatus when changing a payment send status in the popover", async () => {
     const user = userEvent.setup();
-    const onUpdatePaymentRecordSendStatus = jest.fn();
+    const onUpdatePaymentRecordSendStatus = vi.fn();
 
     renderMonthlyExpensesTable(
       [

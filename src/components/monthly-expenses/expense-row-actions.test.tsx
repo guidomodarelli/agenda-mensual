@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -20,17 +21,17 @@ function renderExpenseRowActions(
     isRecurring: false,
     isRecurrenceCancelled: false,
     monthlyFolderViewUrl: null,
-    onCancelRecurrence: jest.fn(),
-    onDeleteAllReceiptsFolderReference: jest.fn(),
-    onDelete: jest.fn(),
-    onDeleteMonthlyFolderReference: jest.fn(),
-    onDeletePaymentLink: jest.fn(),
-    onDuplicate: jest.fn(),
-    onDuplicateToNextMonth: jest.fn(),
-    onDuplicateToPickedMonth: jest.fn(),
-    onEdit: jest.fn(),
-    onManagePaymentLink: jest.fn(),
-    onReactivateRecurrence: jest.fn(),
+    onCancelRecurrence: vi.fn(),
+    onDeleteAllReceiptsFolderReference: vi.fn(),
+    onDelete: vi.fn(),
+    onDeleteMonthlyFolderReference: vi.fn(),
+    onDeletePaymentLink: vi.fn(),
+    onDuplicate: vi.fn(),
+    onDuplicateToNextMonth: vi.fn(),
+    onDuplicateToPickedMonth: vi.fn(),
+    onEdit: vi.fn(),
+    onManagePaymentLink: vi.fn(),
+    onReactivateRecurrence: vi.fn(),
     ...overrides,
   };
 
@@ -61,7 +62,7 @@ describe("ExpenseRowActions", () => {
   });
 
   it("duplicates the expense in the current month from the submenu", async () => {
-    const onDuplicate = jest.fn();
+    const onDuplicate = vi.fn();
     renderExpenseRowActions({ onDuplicate });
 
     const user = await openActionsMenu();
@@ -94,7 +95,7 @@ describe("ExpenseRowActions", () => {
   });
 
   it("groups payment link actions in a submenu", async () => {
-    const onManagePaymentLink = jest.fn();
+    const onManagePaymentLink = vi.fn();
     renderExpenseRowActions({ hasPaymentLink: true, onManagePaymentLink });
 
     const user = await openActionsMenu();
@@ -111,7 +112,7 @@ describe("ExpenseRowActions", () => {
   });
 
   it("offers adding a payment link from the submenu when there is none", async () => {
-    const onManagePaymentLink = jest.fn();
+    const onManagePaymentLink = vi.fn();
     renderExpenseRowActions({ hasPaymentLink: false, onManagePaymentLink });
 
     const user = await openActionsMenu();
@@ -149,7 +150,7 @@ describe("ExpenseRowActions", () => {
   });
 
   it("cancels an active recurrence after confirming", async () => {
-    const onCancelRecurrence = jest.fn();
+    const onCancelRecurrence = vi.fn();
     renderExpenseRowActions({
       isRecurring: true,
       isRecurrenceCancelled: false,
@@ -168,7 +169,7 @@ describe("ExpenseRowActions", () => {
   });
 
   it("reactivates a cancelled recurrence immediately", async () => {
-    const onReactivateRecurrence = jest.fn();
+    const onReactivateRecurrence = vi.fn();
     renderExpenseRowActions({
       isRecurring: true,
       isRecurrenceCancelled: true,

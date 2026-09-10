@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterAll } from "vitest";
 import type { Account } from "next-auth";
 
 import {
@@ -59,7 +60,7 @@ describe("google-oauth-token", () => {
       googleTokenType: "Bearer",
     };
 
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => ({
         access_token: "fresh-access-token",
         expires_in: 3600,

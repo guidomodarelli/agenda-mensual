@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterAll, type Mock } from "vitest";
 import { TooltipProvider, toast } from "beez-ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -10,23 +11,23 @@ import ExchangeRatesPage from "@/modules/exchange-rates/shared/pages/exchange-ra
 
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  useSession: jest.fn(),
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  useSession: vi.fn(),
 }));
 
-jest.mock("sonner", () => {
-  const mockToast = Object.assign(jest.fn(), {
-    error: jest.fn(),
-    info: jest.fn(),
-    promise: jest.fn((promise: Promise<unknown>) => promise),
-    success: jest.fn(),
-    warning: jest.fn(),
+vi.mock("sonner", () => {
+  const mockToast = Object.assign(vi.fn(), {
+    error: vi.fn(),
+    info: vi.fn(),
+    promise: vi.fn((promise: Promise<unknown>) => promise),
+    success: vi.fn(),
+    warning: vi.fn(),
   });
 
   return {
@@ -34,18 +35,18 @@ jest.mock("sonner", () => {
   };
 });
 
-type MockedToast = jest.Mock & {
-  error: jest.Mock;
-  info: jest.Mock;
-  promise: jest.Mock;
-  success: jest.Mock;
-  warning: jest.Mock;
+type MockedToast = Mock & {
+  error: Mock;
+  info: Mock;
+  promise: Mock;
+  success: Mock;
+  warning: Mock;
 };
 
-const mockedUseRouter = jest.mocked(useRouter);
-const mockedUseSession = jest.mocked(useSession);
-const mockedSignIn = jest.mocked(signIn);
-const mockedSignOut = jest.mocked(signOut);
+const mockedUseRouter = vi.mocked(useRouter);
+const mockedUseSession = vi.mocked(useSession);
+const mockedSignIn = vi.mocked(signIn);
+const mockedSignOut = vi.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
 
@@ -102,7 +103,7 @@ describe("ExchangeRatesPage", () => {
     mockedToast.success.mockReset();
     mockedToast.warning.mockReset();
     mockedUseRouter.mockReturnValue({
-      replace: jest.fn().mockResolvedValue(true),
+      replace: vi.fn().mockResolvedValue(true),
     } as unknown as ReturnType<typeof useRouter>);
     mockedUseSession.mockReturnValue({
       data: {
@@ -114,9 +115,9 @@ describe("ExchangeRatesPage", () => {
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
   });
 
   afterAll(() => {
@@ -138,7 +139,7 @@ describe("ExchangeRatesPage", () => {
 
   it("shows the IIBB input only for admins and saves the updated value", async () => {
     const user = userEvent.setup();
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       json: async () => ({
         data: {
           iibbRateDecimal: 0.05,
@@ -169,7 +170,7 @@ describe("ExchangeRatesPage", () => {
   });
 
   it("navigates with the selected month in the query string", async () => {
-    const replace = jest.fn().mockResolvedValue(true);
+    const replace = vi.fn().mockResolvedValue(true);
     mockedUseRouter.mockReturnValue({
       replace,
     } as unknown as ReturnType<typeof useRouter>);

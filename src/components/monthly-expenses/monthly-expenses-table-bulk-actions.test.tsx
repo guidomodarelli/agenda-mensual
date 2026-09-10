@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -24,7 +25,7 @@ async function selectAllVisibleRows(user: ReturnType<typeof userEvent.setup>) {
 describe("MonthlyExpensesTable bulk move to folder", () => {
   it("moves the selected visible expenses to the chosen folder after confirming", async () => {
     const user = userEvent.setup();
-    const onMoveExpensesToFolder = jest.fn().mockResolvedValue(true);
+    const onMoveExpensesToFolder = vi.fn().mockResolvedValue(true);
 
     renderMonthlyExpensesTable(
       [
@@ -65,7 +66,7 @@ describe("MonthlyExpensesTable bulk move to folder", () => {
 
   it("does not move expenses when the dialog is cancelled", async () => {
     const user = userEvent.setup();
-    const onMoveExpensesToFolder = jest.fn().mockResolvedValue(true);
+    const onMoveExpensesToFolder = vi.fn().mockResolvedValue(true);
 
     renderMonthlyExpensesTable(
       [createRow({ description: "Internet", id: "expense-1" })],

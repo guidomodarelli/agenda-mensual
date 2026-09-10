@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
@@ -48,16 +49,16 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 
 describe("createMonthlyExpensesApiHandler", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("rejects methods other than GET and POST", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
-      save: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -78,10 +79,10 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 400 when GET receives an invalid month query", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
-      save: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -103,7 +104,7 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 200 with the loaded monthly document when GET is valid", async () => {
     const database = {} as TursoDatabase;
-    const load = jest.fn().mockResolvedValue({
+    const load = vi.fn().mockResolvedValue({
       items: [
         {
           currency: "ARS",
@@ -118,9 +119,9 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
     const handler = createMonthlyExpensesApiHandler({
       load,
-      getDatabase: jest.fn().mockResolvedValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn(),
+      getDatabase: vi.fn().mockResolvedValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn(),
     });
 
     const request = {
@@ -160,10 +161,10 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 400 when the request body is invalid", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
-      save: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -193,11 +194,11 @@ describe("createMonthlyExpensesApiHandler", () => {
   });
 
   it("returns 400 when an item carries both loan and recurrence", async () => {
-    const save = jest.fn();
+    const save = vi.fn();
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
       save,
     });
 
@@ -227,11 +228,11 @@ describe("createMonthlyExpensesApiHandler", () => {
   });
 
   it("returns 400 when a recurrence end month precedes its start month", async () => {
-    const save = jest.fn();
+    const save = vi.fn();
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
       save,
     });
 
@@ -260,11 +261,11 @@ describe("createMonthlyExpensesApiHandler", () => {
   });
 
   it("returns 400 when a recurrence is inactive in the document month", async () => {
-    const save = jest.fn();
+    const save = vi.fn();
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
       save,
     });
 
@@ -294,16 +295,16 @@ describe("createMonthlyExpensesApiHandler", () => {
   });
 
   it("accepts a recurrence active in the document month at its inclusive end", async () => {
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-05",
       name: "control-mensual-2026-mayo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue({} as TursoDatabase),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue({} as TursoDatabase),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -334,10 +335,10 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 400 when paymentLink is not a valid URL", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
-      save: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -369,16 +370,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 200 with the save result when the request succeeds", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -431,16 +432,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("accepts an hourly subtotal unit in the request body", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-06",
       name: "control-mensual-2026-junio.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -489,16 +490,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes loan metadata to the save use case when a debt is included", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -561,16 +562,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes recurrence metadata to the save use case when included", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -611,16 +612,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes receivable loan direction to the save use case", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -677,16 +678,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes paymentLink to the save use case when provided", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -735,16 +736,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes the usd rate settings to the save use case when provided", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -795,11 +796,11 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 400 when a custom usd rate base comes without its rate", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn();
+    const save = vi.fn();
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -829,16 +830,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes receipt sharing metadata to the save use case when provided", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -891,10 +892,10 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 400 when receipt sharing is enabled without a valid phone", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn(),
-      save: jest.fn(),
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -922,16 +923,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes receipt coveredPayments and manualCoveredPayments to save", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -1006,16 +1007,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("accepts and passes payment record sendStatus to save", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -1070,16 +1071,16 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("passes shared folder metadata to save even when monthly folder metadata is blank", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
       name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -1138,7 +1139,7 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns save warnings payload when receipt renames fail", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       receiptRenameWarnings: [
         {
           fileId: "receipt-file-id",
@@ -1156,9 +1157,9 @@ describe("createMonthlyExpensesApiHandler", () => {
       },
     });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      load: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -1204,16 +1205,16 @@ describe("createMonthlyExpensesApiHandler", () => {
   });
 
   it("returns 401 when Google authentication is missing", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn(),
-      getUserSubject: jest.fn().mockRejectedValue(
+      load: vi.fn(),
+      getDatabase: vi.fn(),
+      getUserSubject: vi.fn().mockRejectedValue(
         new GoogleOAuthAuthenticationError(
           "google-drive-client:getGoogleSessionTokenFromRequest requires an authenticated NextAuth session.",
         ),
       ),
-      save: jest.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -1245,14 +1246,14 @@ describe("createMonthlyExpensesApiHandler", () => {
 
   it("returns 500 when database configuration is missing", async () => {
     const handler = createMonthlyExpensesApiHandler({
-      load: jest.fn(),
-      getDatabase: jest.fn().mockImplementation(() => {
+      load: vi.fn(),
+      getDatabase: vi.fn().mockImplementation(function () {
         throw new TursoConfigurationError(
           "turso-server-config:missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN server configuration.",
         );
       }),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn().mockRejectedValue(
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn().mockRejectedValue(
         new Error("unexpected"),
       ),
     });

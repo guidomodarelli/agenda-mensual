@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import type { drive_v3 } from "googleapis";
 
 import { GoogleDriveStorageError } from "@/modules/storage/infrastructure/google-drive/google-drive-storage-error";
@@ -7,13 +8,13 @@ import { GoogleDriveMonthlyExpenseReceiptsRepository } from "./google-drive-mont
 
 function createDriveClientMock() {
   const files = {
-    create: jest.fn(),
-    get: jest.fn(),
-    list: jest.fn(),
-    update: jest.fn(),
+    create: vi.fn(),
+    get: vi.fn(),
+    list: vi.fn(),
+    update: vi.fn(),
   };
   const permissions = {
-    create: jest.fn(),
+    create: vi.fn(),
   };
 
   return {

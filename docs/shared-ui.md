@@ -9,7 +9,7 @@ exercise the package from `src/tests/shared-ui`.
 `beez-ui/next`. The theme uses the library's default colors, radii and self-hosted
 fonts. The existing `theme` preference key, system default and light/dark choices
 remain intact. `ThemedToaster` shares that theme context. Next.js transpiles the
-published package, including for the real-component Jest integration tests.
+published package, including for the real-component Vitest integration tests.
 Application navigation uses the shared `Link` and its Next adapter, with prefetch
 disabled by default. The month query remains part of the expenses link.
 
@@ -35,8 +35,8 @@ beez-ui also installs them. In particular, the local uploader still imports
 error adapter uses `GaxiosError` from the `gaxios` dependency supplied by
 `googleapis`; `gaxios` is intentionally not declared directly.
 
-Before updating the package, run `npm run lint`, `npm run typecheck`,
-`npm test -- --runInBand`, `npm run build` and `npm run test:e2e`. Browser coverage
+Before updating the package, run `pnpm run lint`, `pnpm run typecheck`,
+`pnpm test`, `pnpm run build` and `pnpm run test:e2e`. Browser coverage
 must exercise theme persistence, navigation and interactive controls in Chromium
 and WebKit at desktop and mobile widths.
 
@@ -45,3 +45,8 @@ persistence, navigation and controls without asserting CSS values or dimensions.
 
 The application uses React and React DOM 19.3 with the matching 19.3 TypeScript
 types. The published beez-ui peer range supports this runtime.
+
+Unit and integration tests run with Vitest 5. `tsconfig.test.json` owns test globals
+and is checked with `pnpm typecheck:tests`; application types remain separate.
+Use pnpm 12.3.4 and `pnpm install --frozen-lockfile`. The `gaxios` public-hoist
+exception preserves its googleapis-owned dependency without declaring it directly.

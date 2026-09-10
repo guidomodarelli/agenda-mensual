@@ -1,6 +1,7 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as monthlyExpensesRoute from "@/app/api/storage/monthly-expenses/route";
 
-jest.mock("next/server", () => {
+vi.mock("next/server", () => {
   class MockNextResponse {
     readonly body: string | null;
     readonly headers: Headers;
@@ -26,8 +27,8 @@ jest.mock("next/server", () => {
   };
 });
 
-jest.mock("@/modules/auth/infrastructure/google-drive/google-drive-client", () => ({
-  getGoogleDriveClientFromRequest: jest.fn(),
+vi.mock("@/modules/auth/infrastructure/google-drive/google-drive-client", () => ({
+  getGoogleDriveClientFromRequest: vi.fn(),
 }));
 
 type AppRouteHandler = (request: never) => Promise<Response>;
@@ -47,11 +48,11 @@ function createUnsupportedMethodRequest(method: string) {
 
 describe("App Router API method contracts", () => {
   beforeEach(() => {
-    jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(function () { return undefined; });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("returns the legacy 405 response when monthly expenses receives an unsupported method", async () => {

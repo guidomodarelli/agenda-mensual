@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, type Mock } from "vitest";
 import { toast } from "beez-ui";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -15,25 +16,25 @@ import {
   renderWithProviders,
 } from "./monthly-expenses-page-test-helpers";
 
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(),
-  useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  useSession: jest.fn(),
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  useSession: vi.fn(),
 }));
 
-jest.mock("sonner", () => {
-  const mockToast = Object.assign(jest.fn(), {
-    error: jest.fn(),
-    info: jest.fn(),
-    promise: jest.fn((promise: Promise<unknown>) => promise),
-    success: jest.fn(),
-    warning: jest.fn(),
+vi.mock("sonner", () => {
+  const mockToast = Object.assign(vi.fn(), {
+    error: vi.fn(),
+    info: vi.fn(),
+    promise: vi.fn((promise: Promise<unknown>) => promise),
+    success: vi.fn(),
+    warning: vi.fn(),
   });
 
   return {
@@ -41,20 +42,20 @@ jest.mock("sonner", () => {
   };
 });
 
-type MockedToast = jest.Mock & {
-  error: jest.Mock;
-  info: jest.Mock;
-  promise: jest.Mock;
-  success: jest.Mock;
-  warning: jest.Mock;
+type MockedToast = Mock & {
+  error: Mock;
+  info: Mock;
+  promise: Mock;
+  success: Mock;
+  warning: Mock;
 };
 
-const mockedUsePathname = jest.mocked(usePathname);
-const mockedUseRouter = jest.mocked(useRouter);
-const mockedUseSearchParams = jest.mocked(useSearchParams);
-const mockedUseSession = jest.mocked(useSession);
-const mockedSignIn = jest.mocked(signIn);
-const mockedSignOut = jest.mocked(signOut);
+const mockedUsePathname = vi.mocked(usePathname);
+const mockedUseRouter = vi.mocked(useRouter);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
+const mockedUseSession = vi.mocked(useSession);
+const mockedSignIn = vi.mocked(signIn);
+const mockedSignOut = vi.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
 
@@ -82,11 +83,11 @@ function authenticateSession() {
       },
     },
     status: "authenticated",
-    update: jest.fn(),
+    update: vi.fn(),
   } as ReturnType<typeof useSession>);
 }
 
-function getSaveCalls(fetchMock: jest.Mock) {
+function getSaveCalls(fetchMock: Mock) {
   return fetchMock.mock.calls.filter(
     ([url]) => url === "/api/storage/monthly-expenses",
   );
@@ -118,11 +119,11 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
     const fetchMock = createMonthlyExpensesFetchMock();
     global.fetch = fetchMock as typeof fetch;
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     try {
       const user = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
+        advanceTimers: vi.advanceTimersByTime,
       });
 
       renderWithProviders(
@@ -149,7 +150,7 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
       ).not.toBeInTheDocument();
 
       await act(async () => {
-        await jest.advanceTimersByTimeAsync(7_000);
+        await vi.advanceTimersByTimeAsync(7_000);
       });
 
       expect(getSaveCalls(fetchMock)).toHaveLength(1);
@@ -164,7 +165,7 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
         expect.objectContaining({ coveredPayments: 2 }),
       ]);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
@@ -173,11 +174,11 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
     const fetchMock = createMonthlyExpensesFetchMock();
     global.fetch = fetchMock as typeof fetch;
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     try {
       const user = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
+        advanceTimers: vi.advanceTimersByTime,
       });
 
       renderWithProviders(
@@ -204,12 +205,12 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
       expect(mockedToast.success).toHaveBeenCalledWith("Pago deshecho.");
 
       await act(async () => {
-        await jest.advanceTimersByTimeAsync(10_000);
+        await vi.advanceTimersByTimeAsync(10_000);
       });
 
       expect(getSaveCalls(fetchMock)).toHaveLength(0);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
@@ -218,11 +219,11 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
     const fetchMock = createMonthlyExpensesFetchMock({ saveError: "boom" });
     global.fetch = fetchMock as typeof fetch;
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     try {
       const user = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
+        advanceTimers: vi.advanceTimersByTime,
       });
 
       renderWithProviders(
@@ -240,7 +241,7 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
       expect(screen.getByText("2 / 2")).toBeInTheDocument();
 
       await act(async () => {
-        await jest.advanceTimersByTimeAsync(7_000);
+        await vi.advanceTimersByTimeAsync(7_000);
       });
 
       await waitFor(() => {
@@ -250,7 +251,7 @@ describe("MonthlyExpensesPage optimistic mark as paid", () => {
         "No pudimos registrar el pago. Restauramos el estado.",
       );
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 });

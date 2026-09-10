@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useSearchParams } from "next/navigation";
@@ -6,17 +7,17 @@ import type { ClientSafeProvider } from "next-auth/react";
 
 import { SignInPageClient } from "@/app/auth/signin/signin-page-client";
 
-jest.mock("next/navigation", () => ({
-  useSearchParams: jest.fn(),
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
 }));
 
 
-const mockedUseSearchParams = jest.mocked(useSearchParams);
-const mockedSignIn = jest.mocked(signIn);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
+const mockedSignIn = vi.mocked(signIn);
 
 const googleProvider = {
   callbackUrl: "/api/auth/callback/google",
@@ -28,7 +29,7 @@ const googleProvider = {
 
 describe("SignInPageClient", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedUseSearchParams.mockReturnValue({
       get: (name: string) => (name === "callbackUrl" ? "/cotizaciones" : null),
     } as ReturnType<typeof useSearchParams>);

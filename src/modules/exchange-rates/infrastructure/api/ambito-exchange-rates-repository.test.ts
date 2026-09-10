@@ -1,8 +1,9 @@
+import { vi, describe, it, expect } from "vitest";
 import { AmbitoExchangeRatesRepository } from "./ambito-exchange-rates-repository";
 
 describe("AmbitoExchangeRatesRepository", () => {
   it("sends browser-like headers for Ambito historical exchange rate requests", async () => {
-    const fetchImplementation = jest.fn().mockResolvedValue({
+    const fetchImplementation = vi.fn().mockResolvedValue({
       json: async () => [
         ["Fecha", "Compra", "Venta"],
         ["31/03/2026", "1.200,00", "1.234,56"],
@@ -32,7 +33,7 @@ describe("AmbitoExchangeRatesRepository", () => {
 
   it("throws when Ambito answers with a non-ok status", async () => {
     const repository = new AmbitoExchangeRatesRepository(
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         ok: false,
         status: 403,
       }),

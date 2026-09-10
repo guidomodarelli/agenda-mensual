@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { GetServerSidePropsContext } from "next";
 
 import {
@@ -8,18 +9,18 @@ import {
   getExchangeRatesServerSideProps,
 } from "./exchange-rates-server-props";
 
-const mockGetAuthenticatedUserEmailFromRequest = jest.fn();
-const mockIsGoogleAdminEmail = jest.fn();
-const mockGetStorageBootstrap = jest.fn();
-const mockCreateMigratedTursoDatabase = jest.fn();
-const mockCreateRequestLogContext = jest.fn();
-const mockGetExchangeRatesPageResult = jest.fn();
-const mockGetAuthenticatedUserSubjectFromRequest = jest.fn();
-const mockDrizzleMonthlyExpensesRepository = jest.fn();
-const mockAmbitoExchangeRatesRepository = jest.fn();
-const mockDrizzleMonthlyExchangeRateSnapshotsRepository = jest.fn();
+const mockGetAuthenticatedUserEmailFromRequest = vi.fn();
+const mockIsGoogleAdminEmail = vi.fn();
+const mockGetStorageBootstrap = vi.fn();
+const mockCreateMigratedTursoDatabase = vi.fn();
+const mockCreateRequestLogContext = vi.fn();
+const mockGetExchangeRatesPageResult = vi.fn();
+const mockGetAuthenticatedUserSubjectFromRequest = vi.fn();
+const mockDrizzleMonthlyExpensesRepository = vi.fn();
+const mockAmbitoExchangeRatesRepository = vi.fn();
+const mockDrizzleMonthlyExchangeRateSnapshotsRepository = vi.fn();
 
-jest.mock(
+vi.mock(
   "@/modules/auth/infrastructure/next-auth/authenticated-user-email",
   () => ({
     getAuthenticatedUserEmailFromRequest: (...parameters: unknown[]) =>
@@ -27,7 +28,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/auth/infrastructure/next-auth/google-admin-allowlist",
   () => ({
     isGoogleAdminEmail: (...parameters: unknown[]) =>
@@ -35,16 +36,16 @@ jest.mock(
   }),
 );
 
-jest.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
+vi.mock("@/modules/auth/infrastructure/oauth/google-oauth-config", () => ({
   isGoogleOAuthConfigured: () => true,
 }));
 
-jest.mock("@/modules/storage/application/queries/get-storage-bootstrap", () => ({
+vi.mock("@/modules/storage/application/queries/get-storage-bootstrap", () => ({
   getStorageBootstrap: (...parameters: unknown[]) =>
     mockGetStorageBootstrap(...parameters),
 }));
 
-jest.mock(
+vi.mock(
   "@/modules/shared/infrastructure/database/drizzle/turso-database",
   () => ({
     createMigratedTursoDatabase: (...parameters: unknown[]) =>
@@ -52,16 +53,16 @@ jest.mock(
   }),
 );
 
-jest.mock("@/modules/shared/infrastructure/observability/app-logger", () => ({
+vi.mock("@/modules/shared/infrastructure/observability/app-logger", () => ({
   appLogger: {
-    error: jest.fn(),
-    warn: jest.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
   },
   createRequestLogContext: (...parameters: unknown[]) =>
     mockCreateRequestLogContext(...parameters),
 }));
 
-jest.mock(
+vi.mock(
   "@/modules/auth/infrastructure/next-auth/authenticated-user-subject",
   () => ({
     getAuthenticatedUserSubjectFromRequest: (...parameters: unknown[]) =>
@@ -69,7 +70,7 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/exchange-rates/application/use-cases/get-exchange-rates-page-result",
   () => ({
     getExchangeRatesPageResult: (...parameters: unknown[]) =>
@@ -77,41 +78,33 @@ jest.mock(
   }),
 );
 
-jest.mock(
+vi.mock(
   "@/modules/monthly-expenses/infrastructure/turso/repositories/drizzle-monthly-expenses-repository",
   () => ({
-    DrizzleMonthlyExpensesRepository: jest
+    DrizzleMonthlyExpensesRepository: vi
       .fn()
-      .mockImplementation((...parameters: unknown[]) =>
-        mockDrizzleMonthlyExpensesRepository(...parameters),
+      .mockImplementation(function (...parameters: unknown[]) { return mockDrizzleMonthlyExpensesRepository(...parameters); },
       ),
   }),
 );
 
-jest.mock("../api/ambito-exchange-rates-repository", () => ({
-  AmbitoExchangeRatesRepository: jest
+vi.mock("../api/ambito-exchange-rates-repository", () => ({
+  AmbitoExchangeRatesRepository: vi
     .fn()
-    .mockImplementation((...parameters: unknown[]) =>
-      mockAmbitoExchangeRatesRepository(...parameters),
+    .mockImplementation(function (...parameters: unknown[]) { return mockAmbitoExchangeRatesRepository(...parameters); },
     ),
 }));
 
-jest.mock("../turso/repositories/drizzle-monthly-exchange-rate-snapshots-repository", () => ({
-  DrizzleMonthlyExchangeRateSnapshotsRepository: jest
+vi.mock("../turso/repositories/drizzle-monthly-exchange-rate-snapshots-repository", () => ({
+  DrizzleMonthlyExchangeRateSnapshotsRepository: vi
     .fn()
-    .mockImplementation((...parameters: unknown[]) =>
-      mockDrizzleMonthlyExchangeRateSnapshotsRepository(...parameters),
+    .mockImplementation(function (...parameters: unknown[]) { return mockDrizzleMonthlyExchangeRateSnapshotsRepository(...parameters); },
     ),
 }));
 
-const { appLogger } = jest.requireMock(
+const { appLogger } = vi.mocked(await import(
   "@/modules/shared/infrastructure/observability/app-logger",
-) as {
-  appLogger: {
-    error: jest.Mock;
-    warn: jest.Mock;
-  };
-};
+), true);
 
 function createContext(): GetServerSidePropsContext {
   return {
@@ -131,8 +124,8 @@ function createContext(): GetServerSidePropsContext {
 
 describe("getExchangeRatesServerSideProps", () => {
   beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(new Date("2026-05-11T12:00:00.000Z"));
-    jest.clearAllMocks();
+    vi.useFakeTimers().setSystemTime(new Date("2026-05-11T12:00:00.000Z"));
+    vi.clearAllMocks();
     mockGetAuthenticatedUserEmailFromRequest.mockResolvedValue("admin@example.com");
     mockIsGoogleAdminEmail.mockReturnValue(true);
     mockGetStorageBootstrap.mockReturnValue({
@@ -152,7 +145,7 @@ describe("getExchangeRatesServerSideProps", () => {
     mockAmbitoExchangeRatesRepository.mockReturnValue({});
     mockDrizzleMonthlyExchangeRateSnapshotsRepository.mockReturnValue({});
     mockDrizzleMonthlyExpensesRepository.mockReturnValue({
-      getOldestStoredMonth: jest.fn().mockResolvedValue("2026-01"),
+      getOldestStoredMonth: vi.fn().mockResolvedValue("2026-01"),
     });
     mockGetExchangeRatesPageResult.mockResolvedValue({
       blueRate: 1290,
@@ -169,7 +162,7 @@ describe("getExchangeRatesServerSideProps", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("loads exchange rates without error logging when the user month range has no Google session", async () => {

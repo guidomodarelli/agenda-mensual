@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import {
   createEmptyMonthlyExpensesDocument,
   createMonthlyExpensesDocument,
@@ -12,30 +13,29 @@ import { DrizzleMonthlyExpensesRepository } from "./drizzle-monthly-expenses-rep
 
 describe("DrizzleMonthlyExpensesRepository", () => {
   it("persists monthly metadata and normalized rows in a single transaction", async () => {
-    const selectWhereMock = jest.fn().mockResolvedValue([]);
-    const selectFromMock = jest.fn().mockReturnValue({
+    const selectWhereMock = vi.fn().mockResolvedValue([]);
+    const selectFromMock = vi.fn().mockReturnValue({
       where: selectWhereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: selectFromMock,
     });
-    const deleteWhereMock = jest.fn().mockResolvedValue(undefined);
-    const deleteMock = jest.fn().mockReturnValue({
+    const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
+    const deleteMock = vi.fn().mockReturnValue({
       where: deleteWhereMock,
     });
     const transactionExecutor = {
       delete: deleteMock,
-      insert: jest.fn().mockReturnValue({
-        values: jest.fn().mockReturnValue({
-          onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         }),
       }),
       select: selectMock,
     };
-    const transactionMock = jest
+    const transactionMock = vi
       .fn()
-      .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
-        callback(transactionExecutor),
+      .mockImplementation(async function (callback: (tx: unknown) => Promise<void>) { return callback(transactionExecutor); },
       );
     const database = {
       transaction: transactionMock,
@@ -59,19 +59,19 @@ describe("DrizzleMonthlyExpensesRepository", () => {
   it("stores incremental createdAt timestamps without overwriting conflicts", async () => {
     const insertedExpenseRows: { createdAtIso: string; expenseId: string }[] = [];
     const updatedExpenseRows: { expenseId: string; updatedFields: string[] }[] = [];
-    const selectWhereMock = jest.fn().mockResolvedValue([]);
-    const selectFromMock = jest.fn().mockReturnValue({
+    const selectWhereMock = vi.fn().mockResolvedValue([]);
+    const selectFromMock = vi.fn().mockReturnValue({
       where: selectWhereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: selectFromMock,
     });
-    const deleteWhereMock = jest.fn().mockResolvedValue(undefined);
-    const deleteMock = jest.fn().mockReturnValue({
+    const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
+    const deleteMock = vi.fn().mockReturnValue({
       where: deleteWhereMock,
     });
-    const insertMock = jest.fn((table: unknown) => ({
-      values: jest.fn((payload: unknown) => {
+    const insertMock = vi.fn((table: unknown) => ({
+      values: vi.fn((payload: unknown) => {
         const isExpenseInsert =
           table === expensesTable &&
           payload &&
@@ -88,7 +88,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
         }
 
         return {
-          onConflictDoUpdate: jest.fn((conflictPayload: unknown) => {
+          onConflictDoUpdate: vi.fn((conflictPayload: unknown) => {
             if (
               isExpenseInsert &&
               conflictPayload &&
@@ -115,10 +115,9 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       insert: insertMock,
       select: selectMock,
     };
-    const transactionMock = jest
+    const transactionMock = vi
       .fn()
-      .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
-        callback(transactionExecutor),
+      .mockImplementation(async function (callback: (tx: unknown) => Promise<void>) { return callback(transactionExecutor); },
       );
     const database = {
       transaction: transactionMock,
@@ -169,13 +168,13 @@ describe("DrizzleMonthlyExpensesRepository", () => {
 
   it("persists recurrence columns on the expense row", async () => {
     const insertedExpenseRows: Record<string, unknown>[] = [];
-    const selectMock = jest.fn().mockReturnValue({
-      from: jest.fn().mockReturnValue({
-        where: jest.fn().mockResolvedValue([]),
+    const selectMock = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
       }),
     });
-    const insertMock = jest.fn((table: unknown) => ({
-      values: jest.fn((payload: unknown) => {
+    const insertMock = vi.fn((table: unknown) => ({
+      values: vi.fn((payload: unknown) => {
         if (
           table === expensesTable &&
           payload &&
@@ -186,22 +185,21 @@ describe("DrizzleMonthlyExpensesRepository", () => {
         }
 
         return {
-          onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         };
       }),
     }));
     const transactionExecutor = {
-      delete: jest.fn().mockReturnValue({
-        where: jest.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
       }),
       insert: insertMock,
       select: selectMock,
     };
     const database = {
-      transaction: jest
+      transaction: vi
         .fn()
-        .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
-          callback(transactionExecutor),
+        .mockImplementation(async function (callback: (tx: unknown) => Promise<void>) { return callback(transactionExecutor); },
         ),
     };
     const repository = new DrizzleMonthlyExpensesRepository(
@@ -248,13 +246,13 @@ describe("DrizzleMonthlyExpensesRepository", () => {
 
   it("persists the usd rate columns on the expense row", async () => {
     const insertedExpenseRows: Record<string, unknown>[] = [];
-    const selectMock = jest.fn().mockReturnValue({
-      from: jest.fn().mockReturnValue({
-        where: jest.fn().mockResolvedValue([]),
+    const selectMock = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
       }),
     });
-    const insertMock = jest.fn((table: unknown) => ({
-      values: jest.fn((payload: unknown) => {
+    const insertMock = vi.fn((table: unknown) => ({
+      values: vi.fn((payload: unknown) => {
         if (
           table === expensesTable &&
           payload &&
@@ -265,22 +263,21 @@ describe("DrizzleMonthlyExpensesRepository", () => {
         }
 
         return {
-          onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         };
       }),
     }));
     const transactionExecutor = {
-      delete: jest.fn().mockReturnValue({
-        where: jest.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
       }),
       insert: insertMock,
       select: selectMock,
     };
     const database = {
-      transaction: jest
+      transaction: vi
         .fn()
-        .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
-          callback(transactionExecutor),
+        .mockImplementation(async function (callback: (tx: unknown) => Promise<void>) { return callback(transactionExecutor); },
         ),
     };
     const repository = new DrizzleMonthlyExpensesRepository(
@@ -345,19 +342,19 @@ describe("DrizzleMonthlyExpensesRepository", () => {
   });
 
   it("orders normalized reads by created timestamp and expense id", async () => {
-    const metadataLimitMock = jest.fn().mockResolvedValue([]);
-    const metadataWhereMock = jest.fn().mockReturnValue({
+    const metadataLimitMock = vi.fn().mockResolvedValue([]);
+    const metadataWhereMock = vi.fn().mockReturnValue({
       limit: metadataLimitMock,
     });
-    const orderByMock = jest.fn().mockResolvedValue([]);
-    const expensesWhereMock = jest.fn().mockReturnValue({
+    const orderByMock = vi.fn().mockResolvedValue([]);
+    const expensesWhereMock = vi.fn().mockReturnValue({
       orderBy: orderByMock,
     });
-    const innerJoinMock = jest.fn().mockReturnValue({
+    const innerJoinMock = vi.fn().mockReturnValue({
       where: expensesWhereMock,
     });
-    const excludedLoansWhereMock = jest.fn().mockResolvedValue([]);
-    const fromMock = jest
+    const excludedLoansWhereMock = vi.fn().mockResolvedValue([]);
+    const fromMock = vi
       .fn()
       .mockReturnValueOnce({
         where: metadataWhereMock,
@@ -368,7 +365,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       .mockReturnValueOnce({
         innerJoin: innerJoinMock,
       });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const database = {
@@ -388,7 +385,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
   });
 
   it("returns an empty document when monthly metadata exists without expense rows", async () => {
-    const metadataLimitMock = jest.fn().mockResolvedValue([
+    const metadataLimitMock = vi.fn().mockResolvedValue([
       {
         exchangeRateBlueRate: 1200,
         exchangeRateMonth: "2026-04",
@@ -397,18 +394,18 @@ describe("DrizzleMonthlyExpensesRepository", () => {
         month: "2026-04",
       },
     ]);
-    const metadataWhereMock = jest.fn().mockReturnValue({
+    const metadataWhereMock = vi.fn().mockReturnValue({
       limit: metadataLimitMock,
     });
-    const expensesOrderByMock = jest.fn().mockResolvedValue([]);
-    const expensesWhereMock = jest.fn().mockReturnValue({
+    const expensesOrderByMock = vi.fn().mockResolvedValue([]);
+    const expensesWhereMock = vi.fn().mockReturnValue({
       orderBy: expensesOrderByMock,
     });
-    const innerJoinMock = jest.fn().mockReturnValue({
+    const innerJoinMock = vi.fn().mockReturnValue({
       where: expensesWhereMock,
     });
-    const excludedLoansWhereMock = jest.fn().mockResolvedValue([]);
-    const fromMock = jest
+    const excludedLoansWhereMock = vi.fn().mockResolvedValue([]);
+    const fromMock = vi
       .fn()
       .mockReturnValueOnce({
         where: metadataWhereMock,
@@ -419,7 +416,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       .mockReturnValueOnce({
         innerJoin: innerJoinMock,
       });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const repository = new DrizzleMonthlyExpensesRepository(
@@ -453,21 +450,21 @@ describe("DrizzleMonthlyExpensesRepository", () => {
   });
 
   it("returns a document carrying the month's excluded loan ids when only exclusions exist", async () => {
-    const metadataLimitMock = jest.fn().mockResolvedValue([]);
-    const metadataWhereMock = jest.fn().mockReturnValue({
+    const metadataLimitMock = vi.fn().mockResolvedValue([]);
+    const metadataWhereMock = vi.fn().mockReturnValue({
       limit: metadataLimitMock,
     });
-    const excludedLoansWhereMock = jest
+    const excludedLoansWhereMock = vi
       .fn()
       .mockResolvedValue([{ expenseId: "loan-1" }]);
-    const expensesOrderByMock = jest.fn().mockResolvedValue([]);
-    const expensesWhereMock = jest.fn().mockReturnValue({
+    const expensesOrderByMock = vi.fn().mockResolvedValue([]);
+    const expensesWhereMock = vi.fn().mockReturnValue({
       orderBy: expensesOrderByMock,
     });
-    const innerJoinMock = jest.fn().mockReturnValue({
+    const innerJoinMock = vi.fn().mockReturnValue({
       where: expensesWhereMock,
     });
-    const fromMock = jest
+    const fromMock = vi
       .fn()
       .mockReturnValueOnce({
         where: metadataWhereMock,
@@ -478,7 +475,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       .mockReturnValueOnce({
         innerJoin: innerJoinMock,
       });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: fromMock,
     });
     const repository = new DrizzleMonthlyExpensesRepository(
@@ -507,7 +504,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
   });
 
   it("rejects duplicated expense ids before starting persistence", async () => {
-    const transactionMock = jest.fn();
+    const transactionMock = vi.fn();
     const repository = new DrizzleMonthlyExpensesRepository(
       {
         transaction: transactionMock,
@@ -564,7 +561,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       },
       "Testing normalized result",
     );
-    jest.spyOn(
+    vi.spyOn(
       repository as unknown as {
         getByMonthFromNormalized: (
           month: string,
@@ -583,19 +580,19 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       expenseId: string;
       occurrencesUnit: string | null;
     }> = [];
-    const selectWhereMock = jest.fn().mockResolvedValue([]);
-    const selectFromMock = jest.fn().mockReturnValue({
+    const selectWhereMock = vi.fn().mockResolvedValue([]);
+    const selectFromMock = vi.fn().mockReturnValue({
       where: selectWhereMock,
     });
-    const selectMock = jest.fn().mockReturnValue({
+    const selectMock = vi.fn().mockReturnValue({
       from: selectFromMock,
     });
-    const deleteWhereMock = jest.fn().mockResolvedValue(undefined);
-    const deleteMock = jest.fn().mockReturnValue({
+    const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
+    const deleteMock = vi.fn().mockReturnValue({
       where: deleteWhereMock,
     });
-    const insertMock = jest.fn((table: unknown) => ({
-      values: jest.fn((payload: unknown) => {
+    const insertMock = vi.fn((table: unknown) => ({
+      values: vi.fn((payload: unknown) => {
         if (
           table === expenseMonthsTable &&
           payload &&
@@ -608,7 +605,7 @@ describe("DrizzleMonthlyExpensesRepository", () => {
         }
 
         return {
-          onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         };
       }),
     }));
@@ -617,10 +614,9 @@ describe("DrizzleMonthlyExpensesRepository", () => {
       insert: insertMock,
       select: selectMock,
     };
-    const transactionMock = jest
+    const transactionMock = vi
       .fn()
-      .mockImplementation(async (callback: (tx: unknown) => Promise<void>) =>
-        callback(transactionExecutor),
+      .mockImplementation(async function (callback: (tx: unknown) => Promise<void>) { return callback(transactionExecutor); },
       );
     const repository = new DrizzleMonthlyExpensesRepository(
       { transaction: transactionMock } as never,

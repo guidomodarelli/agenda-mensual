@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { saveMonthlyIibbRate } from "./save-monthly-iibb-rate";
 
 const CACHED_SNAPSHOT = {
@@ -13,13 +14,13 @@ const CACHED_SNAPSHOT = {
 
 describe("saveMonthlyIibbRate", () => {
   it("updates the month snapshot with the new IIBB and recomputed solidarity", async () => {
-    const save = jest.fn().mockImplementation(async (snapshot) => snapshot);
+    const save = vi.fn().mockImplementation(async function (snapshot) { return snapshot; });
 
     const result = await saveMonthlyIibbRate({
       command: { iibbRateDecimal: 0.05, month: "2026-03" },
-      exchangeRatesRepository: { getMonthlyRate: jest.fn() },
+      exchangeRatesRepository: { getMonthlyRate: vi.fn() },
       monthlyExchangeRateSnapshotsRepository: {
-        getByMonth: jest.fn().mockResolvedValue(CACHED_SNAPSHOT),
+        getByMonth: vi.fn().mockResolvedValue(CACHED_SNAPSHOT),
         save,
       },
       now: () => new Date("2026-03-20T12:00:00.000Z"),
@@ -44,12 +45,12 @@ describe("saveMonthlyIibbRate", () => {
   });
 
   it("seeds the snapshot from Ambito on cache miss before applying the IIBB", async () => {
-    const save = jest.fn().mockImplementation(async (snapshot) => snapshot);
+    const save = vi.fn().mockImplementation(async function (snapshot) { return snapshot; });
 
     const result = await saveMonthlyIibbRate({
       command: { iibbRateDecimal: 0.03, month: "2026-03" },
       exchangeRatesRepository: {
-        getMonthlyRate: jest
+        getMonthlyRate: vi
           .fn()
           .mockResolvedValueOnce({
             month: "2026-03",
@@ -65,7 +66,7 @@ describe("saveMonthlyIibbRate", () => {
           }),
       },
       monthlyExchangeRateSnapshotsRepository: {
-        getByMonth: jest.fn().mockResolvedValue(null),
+        getByMonth: vi.fn().mockResolvedValue(null),
         save,
       },
       now: () => new Date("2026-03-20T12:00:00.000Z"),
@@ -83,10 +84,10 @@ describe("saveMonthlyIibbRate", () => {
     await expect(
       saveMonthlyIibbRate({
         command: { iibbRateDecimal: 1, month: "2026-03" },
-        exchangeRatesRepository: { getMonthlyRate: jest.fn() },
+        exchangeRatesRepository: { getMonthlyRate: vi.fn() },
         monthlyExchangeRateSnapshotsRepository: {
-          getByMonth: jest.fn(),
-          save: jest.fn(),
+          getByMonth: vi.fn(),
+          save: vi.fn(),
         },
       }),
     ).rejects.toThrow("requires an IIBB decimal value lower than 1.");

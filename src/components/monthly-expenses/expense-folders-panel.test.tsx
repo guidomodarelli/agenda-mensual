@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -16,9 +17,9 @@ function renderPanel(
     feedbackTone: "default" as const,
     folders: SAMPLE_FOLDERS,
     isSubmitting: false,
-    onCreate: jest.fn(),
-    onDelete: jest.fn(),
-    onUpdate: jest.fn(),
+    onCreate: vi.fn(),
+    onDelete: vi.fn(),
+    onUpdate: vi.fn(),
     ...overrides,
   };
 
@@ -30,7 +31,7 @@ function renderPanel(
 describe("ExpenseFoldersPanel", () => {
   it("creates a folder with the typed name", async () => {
     const user = userEvent.setup();
-    const onCreate = jest.fn();
+    const onCreate = vi.fn();
     renderPanel({ onCreate });
 
     await user.type(screen.getByLabelText("Nombre"), "Servicios");
@@ -52,7 +53,7 @@ describe("ExpenseFoldersPanel", () => {
 
   it("creates a folder from a frequent preset with a single click", async () => {
     const user = userEvent.setup();
-    const onCreate = jest.fn();
+    const onCreate = vi.fn();
     renderPanel({ onCreate });
 
     const presets = screen.getByRole("group", { name: "Carpetas frecuentes" });
@@ -78,7 +79,7 @@ describe("ExpenseFoldersPanel", () => {
 
   it("reveals the editor and saves folder changes", async () => {
     const user = userEvent.setup();
-    const onUpdate = jest.fn();
+    const onUpdate = vi.fn();
     renderPanel({ onUpdate });
 
     await user.click(screen.getByRole("button", { name: "Editar" }));

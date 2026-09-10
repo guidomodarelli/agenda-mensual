@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import type { MonthlyExpensesDocument } from "../../domain/value-objects/monthly-expenses-document";
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import { getMonthlyExpensesCopyableMonths } from "./get-monthly-expenses-copyable-months";
@@ -5,7 +6,7 @@ import { getMonthlyExpensesCopyableMonths } from "./get-monthly-expenses-copyabl
 function createGetByMonth(
   documentsByMonth: Record<string, { items: Array<Record<string, unknown>> }>,
 ) {
-  return jest.fn(async (month: string) => {
+  return vi.fn(async (month: string) => {
     const document = documentsByMonth[month];
 
     return (document ?? null) as unknown as MonthlyExpensesDocument | null;
@@ -29,13 +30,13 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           ],
         },
       }),
-      listMonthsWithExpenses: jest.fn().mockResolvedValue([
+      listMonthsWithExpenses: vi.fn().mockResolvedValue([
         "2026-01",
         "2026-03",
         "2026-04",
       ]),
-      listAll: jest.fn(),
-      save: jest.fn(),
+      listAll: vi.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesCopyableMonths({
@@ -87,9 +88,9 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           ],
         },
       }),
-      listMonthsWithExpenses: jest.fn().mockResolvedValue(["2026-03"]),
-      listAll: jest.fn(),
-      save: jest.fn(),
+      listMonthsWithExpenses: vi.fn().mockResolvedValue(["2026-03"]),
+      listAll: vi.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesCopyableMonths({
@@ -136,9 +137,9 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           ],
         },
       }),
-      listMonthsWithExpenses: jest.fn().mockResolvedValue(["2026-03"]),
-      listAll: jest.fn(),
-      save: jest.fn(),
+      listMonthsWithExpenses: vi.fn().mockResolvedValue(["2026-03"]),
+      listAll: vi.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesCopyableMonths({
@@ -171,7 +172,7 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           ],
         },
       }),
-      listAll: jest.fn().mockResolvedValue([
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -190,7 +191,7 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           month: "2026-03",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesCopyableMonths({
@@ -210,13 +211,13 @@ describe("getMonthlyExpensesCopyableMonths", () => {
   it("returns no source months when there are no saved months with expenses", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: createGetByMonth({}),
-      listAll: jest.fn().mockResolvedValue([
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [],
           month: "2026-01",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesCopyableMonths({
@@ -249,7 +250,7 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           ],
         },
       }),
-      listAll: jest.fn().mockResolvedValue([
+      listAll: vi.fn().mockResolvedValue([
         {
           items: [
             {
@@ -277,7 +278,7 @@ describe("getMonthlyExpensesCopyableMonths", () => {
           month: "2026-01",
         },
       ]),
-      save: jest.fn(),
+      save: vi.fn(),
     };
 
     const result = await getMonthlyExpensesCopyableMonths({

@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ExpenseReceiptCoverageEditDialog } from "./expense-receipt-coverage-edit-dialog";
@@ -15,9 +16,9 @@ describe("ExpenseReceiptCoverageEditDialog", () => {
         maxCoveredPayments={3}
         receiptFileName={null}
         receiptFileViewUrl={null}
-        onClose={jest.fn()}
-        onDeleteReceipt={jest.fn().mockResolvedValue(undefined)}
-        onSave={jest.fn().mockResolvedValue(undefined)}
+        onClose={vi.fn()}
+        onDeleteReceipt={vi.fn().mockResolvedValue(undefined)}
+        onSave={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 

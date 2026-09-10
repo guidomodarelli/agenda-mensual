@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
 import { createMonthlyExpensesDocument } from "@/modules/monthly-expenses/domain/value-objects/monthly-expenses-document";
 

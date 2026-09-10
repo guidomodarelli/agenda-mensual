@@ -21,7 +21,7 @@ export default defineConfig({
     { name: "webkit-mobile", use: { ...devices["iPhone 13"] } },
   ],
   webServer: {
-    command: "npm run build && npm run start -- --port 3112",
+    command: "pnpm run build && pnpm run start --port 3112",
     url: "http://localhost:3112",
     reuseExistingServer: !isCI,
     timeout: 180000,

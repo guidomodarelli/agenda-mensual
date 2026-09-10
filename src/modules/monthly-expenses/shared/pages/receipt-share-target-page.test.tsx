@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -5,31 +6,31 @@ import { useSession } from "next-auth/react";
 
 import ReceiptShareTargetPage from "./receipt-share-target-page";
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }));
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  useSession: jest.fn(),
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  useSession: vi.fn(),
 }));
 
-jest.mock("sonner", () => ({
+vi.mock("sonner", () => ({
   toast: {
-    error: jest.fn(),
-    info: jest.fn(),
-    success: jest.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
   },
 }));
 
-jest.mock("@/components/finance-app-shell/finance-app-shell", () => ({
-  useFinanceAppShellNavigation: jest.fn(),
+vi.mock("@/components/finance-app-shell/finance-app-shell", () => ({
+  useFinanceAppShellNavigation: vi.fn(),
 }));
 
 
-jest.mock("@/components/monthly-expenses/receipt-file-uploader", () => ({
+vi.mock("@/components/monthly-expenses/receipt-file-uploader", () => ({
   ReceiptFileUploader: ({ onInvalidFileType }: { onInvalidFileType?: () => void }) => (
     <div data-testid="receipt-file-uploader">
       <button onClick={onInvalidFileType} type="button">
@@ -39,29 +40,30 @@ jest.mock("@/components/monthly-expenses/receipt-file-uploader", () => ({
   ),
 }));
 
-jest.mock("@/modules/monthly-expenses/infrastructure/pwa/shared-receipt-payload", () => ({
-  clearSharedReceiptPayload: jest.fn(),
-  consumeSharedReceiptPayload: jest.fn(),
-  readSharedReceiptPayload: jest.fn().mockResolvedValue(null),
+vi.mock("@/modules/monthly-expenses/infrastructure/pwa/shared-receipt-payload", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/modules/monthly-expenses/infrastructure/pwa/shared-receipt-payload")>(),
+  clearSharedReceiptPayload: vi.fn(),
+  consumeSharedReceiptPayload: vi.fn(),
+  readSharedReceiptPayload: vi.fn().mockResolvedValue(null),
 }));
 
-const mockedUseRouter = jest.mocked(useRouter);
-const mockedUseSearchParams = jest.mocked(useSearchParams);
-const mockedUseSession = jest.mocked(useSession);
+const mockedUseRouter = vi.mocked(useRouter);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
+const mockedUseSession = vi.mocked(useSession);
 
 describe("ReceiptShareTargetPage", () => {
   beforeEach(() => {
     mockedUseRouter.mockReturnValue({
-      push: jest.fn().mockResolvedValue(true),
-      replace: jest.fn().mockResolvedValue(true),
+      push: vi.fn().mockResolvedValue(true),
+      replace: vi.fn().mockResolvedValue(true),
     } as unknown as ReturnType<typeof useRouter>);
     mockedUseSearchParams.mockReturnValue({
-      get: jest.fn().mockReturnValue(null),
+      get: vi.fn().mockReturnValue(null),
     } as unknown as ReturnType<typeof useSearchParams>);
     mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
   });
 

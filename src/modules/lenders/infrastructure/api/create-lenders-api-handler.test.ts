@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { TursoDatabase } from "@/modules/shared/infrastructure/database/drizzle/turso-database";
 
@@ -37,14 +38,14 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 
 describe("createLendersApiHandler", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("returns 200 with the lenders catalog when the request is GET", async () => {
     const database = {} as TursoDatabase;
     const handler = createLendersApiHandler({
-      get: jest.fn().mockResolvedValue({
+      get: vi.fn().mockResolvedValue({
         lenders: [
           {
             id: "lender-1",
@@ -53,9 +54,9 @@ describe("createLendersApiHandler", () => {
           },
         ],
       }),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn(),
     });
 
     const request = {
@@ -81,14 +82,14 @@ describe("createLendersApiHandler", () => {
 
   it("returns 201 when the catalog is saved", async () => {
     const database = {} as TursoDatabase;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "lenders-file-id",
       name: "lenders-catalog",
     });
     const handler = createLendersApiHandler({
-      get: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      get: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
       save,
     });
 
@@ -126,13 +127,13 @@ describe("createLendersApiHandler", () => {
   });
 
   it("logs and returns 400 when save fails with a domain error", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const database = {} as TursoDatabase;
     const handler = createLendersApiHandler({
-      get: jest.fn(),
-      getDatabase: jest.fn().mockReturnValue(database),
-      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
-      save: jest.fn().mockRejectedValue(new Error("invalid lenders payload")),
+      get: vi.fn(),
+      getDatabase: vi.fn().mockReturnValue(database),
+      getUserSubject: vi.fn().mockResolvedValue("google-user-123"),
+      save: vi.fn().mockRejectedValue(new Error("invalid lenders payload")),
     });
 
     const request = {

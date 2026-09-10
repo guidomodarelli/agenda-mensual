@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, type Mock } from "vitest";
 import {
   consumeSharedReceiptPayload,
   readSharedReceiptPayload,
@@ -7,9 +8,9 @@ import {
 } from "./shared-receipt-payload";
 
 interface CacheLike {
-  delete: jest.Mock<Promise<boolean>, [RequestInfo | URL]>;
-  match: jest.Mock<Promise<Response | undefined>, [RequestInfo | URL]>;
-  put: jest.Mock<Promise<void>, [RequestInfo | URL, Response]>;
+  delete: Mock<(...args: [RequestInfo | URL]) => Promise<boolean>>;
+  match: Mock<(...args: [RequestInfo | URL]) => Promise<Response | undefined>>;
+  put: Mock<(...args: [RequestInfo | URL, Response]) => Promise<void>>;
 }
 
 interface JsonResponseLike {
@@ -32,9 +33,9 @@ function toCacheKey(input: RequestInfo | URL): string {
 function createCacheStorageMock() {
   const entries = new Map<string, Response>();
   const cache: CacheLike = {
-    delete: jest.fn(async (request) => entries.delete(toCacheKey(request))),
-    match: jest.fn(async (request) => entries.get(toCacheKey(request))),
-    put: jest.fn(async (request, response) => {
+    delete: vi.fn(async (request) => entries.delete(toCacheKey(request))),
+    match: vi.fn(async (request) => entries.get(toCacheKey(request))),
+    put: vi.fn(async (request, response) => {
       entries.set(
         toCacheKey(request),
         (typeof response.clone === "function" ? response.clone() : response) as Response,
@@ -43,7 +44,7 @@ function createCacheStorageMock() {
   };
 
   const cacheStorage = {
-    open: jest.fn(async (cacheName: string) => {
+    open: vi.fn(async (cacheName: string) => {
       void cacheName;
       return cache as unknown as Cache;
     }),

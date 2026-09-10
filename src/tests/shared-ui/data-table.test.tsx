@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { DataTable } from "beez-ui";
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
@@ -518,7 +519,7 @@ describe("DataTable", () => {
 
   it("clears an applied filter when its backing option disappears", async () => {
     const user = userEvent.setup();
-    const onAppliedFiltersChange = jest.fn();
+    const onAppliedFiltersChange = vi.fn();
     const folderQualifier = {
       key: "carpeta",
       kind: "folder" as const,
@@ -567,7 +568,7 @@ describe("DataTable", () => {
 
   it("keeps a folder filter selected when its folder is renamed", async () => {
     const user = userEvent.setup();
-    const onAppliedFiltersChange = jest.fn();
+    const onAppliedFiltersChange = vi.fn();
 
     function QueryHarness() {
       // El renombrado cambia el slug visible de la opción pero conserva el mismo

@@ -67,14 +67,19 @@ jobs:
           git config user.name "codex-autofix[bot]"
           git config user.email "codex-autofix@users.noreply.github.com"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+          cache: pnpm
 
       - name: Instalar dependencias
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Capturar HEAD previo
         id: base
@@ -154,9 +159,10 @@ jobs:
                agrega o actualiza los tests correspondientes.
             4. Valida antes de commitear que tu cambio no introduce fallas
                nuevas:
-               - npm run lint
-               - npm run typecheck
-               - npm test
+               - pnpm run lint
+               - pnpm run typecheck
+               - pnpm run typecheck:tests
+               - pnpm test
                Solo te interesan las fallas causadas por tu cambio. Si hay
                errores preexistentes ajenos al comentario, NO los persigas:
                dejalos como estan y segui.

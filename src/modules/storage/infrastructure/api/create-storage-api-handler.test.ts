@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { drive_v3 } from "googleapis";
 
@@ -41,13 +42,13 @@ function createMockResponse(): NextApiResponse & MockJsonResponse {
 
 describe("createStorageApiHandler", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("rejects methods other than POST", async () => {
-    const getDriveClient = jest.fn();
-    const save = jest.fn();
+    const getDriveClient = vi.fn();
+    const save = vi.fn();
     const handler = createStorageApiHandler({
       getDriveClient,
       operationLabel: "application settings",
@@ -74,9 +75,9 @@ describe("createStorageApiHandler", () => {
 
   it("returns 400 when the request body is invalid", async () => {
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn(),
+      getDriveClient: vi.fn(),
       operationLabel: "application settings",
-      save: jest.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -100,13 +101,13 @@ describe("createStorageApiHandler", () => {
 
   it("returns 401 when Google authentication is missing", async () => {
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn().mockRejectedValue(
+      getDriveClient: vi.fn().mockRejectedValue(
         new GoogleOAuthAuthenticationError(
           "google-drive-client:getGoogleSessionTokenFromRequest requires an authenticated NextAuth session.",
         ),
       ),
       operationLabel: "application settings",
-      save: jest.fn(),
+      save: vi.fn(),
     });
 
     const request = {
@@ -131,13 +132,13 @@ describe("createStorageApiHandler", () => {
 
   it("returns 201 with the saved payload when the request succeeds", async () => {
     const driveClient = {} as drive_v3.Drive;
-    const save = jest.fn().mockResolvedValue({
+    const save = vi.fn().mockResolvedValue({
       id: "settings-file-id",
       mimeType: "application/json",
       name: "application-settings.json",
     });
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue(driveClient),
+      getDriveClient: vi.fn().mockResolvedValue(driveClient),
       operationLabel: "application settings",
       save,
     });
@@ -174,11 +175,11 @@ describe("createStorageApiHandler", () => {
   });
 
   it("returns 500 when Drive storage fails unexpectedly", async () => {
-    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(function () { return undefined; });
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue({} as drive_v3.Drive),
+      getDriveClient: vi.fn().mockResolvedValue({} as drive_v3.Drive),
       operationLabel: "application settings",
-      save: jest.fn().mockRejectedValue(
+      save: vi.fn().mockRejectedValue(
         new Error(
           "storage:application settings could not persist the Google Drive file.",
         ),
@@ -208,9 +209,9 @@ describe("createStorageApiHandler", () => {
 
   it("returns 503 when Google Drive API is disabled", async () => {
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue({} as drive_v3.Drive),
+      getDriveClient: vi.fn().mockResolvedValue({} as drive_v3.Drive),
       operationLabel: "user files",
-      save: jest.fn().mockRejectedValue(
+      save: vi.fn().mockRejectedValue(
         new GoogleDriveStorageError(
           "google-drive-user-files-repository:save failed while calling drive.files.create with httpStatus=403 and apiStatus=SERVICE_DISABLED.",
           {
@@ -245,9 +246,9 @@ describe("createStorageApiHandler", () => {
 
   it("returns 403 when the Google session is missing Drive scopes", async () => {
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue({} as drive_v3.Drive),
+      getDriveClient: vi.fn().mockResolvedValue({} as drive_v3.Drive),
       operationLabel: "user files",
-      save: jest.fn().mockRejectedValue(
+      save: vi.fn().mockRejectedValue(
         new GoogleDriveStorageError(
           "google-drive-user-files-repository:save failed while calling drive.files.create with httpStatus=403 and apiStatus=PERMISSION_DENIED.",
           {
@@ -282,9 +283,9 @@ describe("createStorageApiHandler", () => {
 
   it("returns 400 when Google Drive rejects the payload", async () => {
     const handler = createStorageApiHandler({
-      getDriveClient: jest.fn().mockResolvedValue({} as drive_v3.Drive),
+      getDriveClient: vi.fn().mockResolvedValue({} as drive_v3.Drive),
       operationLabel: "user files",
-      save: jest.fn().mockRejectedValue(
+      save: vi.fn().mockRejectedValue(
         new GoogleDriveStorageError(
           "google-drive-user-files-repository:save failed while calling drive.files.create with httpStatus=400 and apiStatus=INVALID_ARGUMENT.",
           {

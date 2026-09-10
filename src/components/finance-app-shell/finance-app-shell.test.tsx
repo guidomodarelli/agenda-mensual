@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { TooltipProvider } from "beez-ui";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,29 +7,29 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 import { FinanceAppShell } from "./finance-app-shell";
 
-jest.mock("next-auth/react", () => ({
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  useSession: jest.fn(),
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  useSession: vi.fn(),
 }));
 
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(),
-  useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }));
 
-const mockedUsePathname = jest.mocked(usePathname);
-const mockedUseRouter = jest.mocked(useRouter);
-const mockedUseSearchParams = jest.mocked(useSearchParams);
-const mockedUseSession = jest.mocked(useSession);
-const mockedRouterPush = jest.fn();
+const mockedUsePathname = vi.mocked(usePathname);
+const mockedUseRouter = vi.mocked(useRouter);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
+const mockedUseSession = vi.mocked(useSession);
+const mockedRouterPush = vi.fn();
 
 describe("FinanceAppShell", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    jest.mocked(signIn).mockReset();
-    jest.mocked(signOut).mockReset();
+    vi.mocked(signIn).mockReset();
+    vi.mocked(signOut).mockReset();
     mockedUseSession.mockReturnValue({
       data: {
         expires: "2026-03-14T12:00:00.000Z",
@@ -39,7 +40,7 @@ describe("FinanceAppShell", () => {
         },
       },
       status: "authenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
     mockedUsePathname.mockReturnValue("/gastos");
     mockedRouterPush.mockReset();
@@ -136,7 +137,7 @@ describe("FinanceAppShell", () => {
     mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     render(
@@ -157,7 +158,7 @@ describe("FinanceAppShell", () => {
 
     await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
 
-    expect(jest.mocked(signIn)).toHaveBeenCalledWith("google", {
+    expect(vi.mocked(signIn)).toHaveBeenCalledWith("google", {
       callbackUrl: "/gastos",
     });
   });
@@ -168,7 +169,7 @@ describe("FinanceAppShell", () => {
     mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     render(
@@ -184,7 +185,7 @@ describe("FinanceAppShell", () => {
     );
     await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
 
-    expect(jest.mocked(signIn)).toHaveBeenCalledWith("google", {
+    expect(vi.mocked(signIn)).toHaveBeenCalledWith("google", {
       callbackUrl: "/gastos",
     });
   });
@@ -205,7 +206,7 @@ describe("FinanceAppShell", () => {
     );
     await user.click(screen.getByRole("menuitem", { name: "Cerrar sesión" }));
 
-    expect(jest.mocked(signOut)).toHaveBeenCalledWith({
+    expect(vi.mocked(signOut)).toHaveBeenCalledWith({
       callbackUrl: "/gastos",
     });
   });
@@ -240,16 +241,16 @@ describe("FinanceAppShell", () => {
       value: 400,
       writable: true,
     });
-    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-      addEventListener: jest.fn(),
-      addListener: jest.fn(),
-      dispatchEvent: jest.fn(),
+    window.matchMedia = vi.fn().mockImplementation(function (query: string) { return ({
+      addEventListener: vi.fn(),
+      addListener: vi.fn(),
+      dispatchEvent: vi.fn(),
       matches: true,
       media: query,
       onchange: null,
-      removeEventListener: jest.fn(),
-      removeListener: jest.fn(),
-    })) as unknown as typeof window.matchMedia;
+      removeEventListener: vi.fn(),
+      removeListener: vi.fn(),
+    }); }) as unknown as typeof window.matchMedia;
 
     try {
       render(
@@ -291,7 +292,7 @@ describe("FinanceAppShell", () => {
     mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     render(
@@ -305,7 +306,7 @@ describe("FinanceAppShell", () => {
     await user.click(screen.getByRole("button", { name: "Cuenta activa" }));
     await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
 
-    expect(jest.mocked(signIn)).toHaveBeenCalledWith("google", {
+    expect(vi.mocked(signIn)).toHaveBeenCalledWith("google", {
       callbackUrl: "/",
     });
   });
@@ -316,7 +317,7 @@ describe("FinanceAppShell", () => {
     mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
-      update: jest.fn(),
+      update: vi.fn(),
     } as ReturnType<typeof useSession>);
 
     render(
@@ -330,7 +331,7 @@ describe("FinanceAppShell", () => {
     await user.click(screen.getByRole("button", { name: "Cuenta activa" }));
     await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
 
-    expect(jest.mocked(signIn)).not.toHaveBeenCalled();
+    expect(vi.mocked(signIn)).not.toHaveBeenCalled();
     expect(mockedRouterPush).toHaveBeenCalledWith(
       "/auth/signin?callbackUrl=%2Fgastos",
     );

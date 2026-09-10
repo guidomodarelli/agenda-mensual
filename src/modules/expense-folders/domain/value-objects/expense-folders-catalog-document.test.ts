@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { createExpenseFoldersCatalogDocument } from "./expense-folders-catalog-document";
 
 describe("expenseFoldersCatalogDocument", () => {
