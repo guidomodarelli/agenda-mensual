@@ -13,6 +13,6 @@ minimumReleaseAgeExclude:
   - scheduler@0.28.0
   - '@types/react@19.3.0'
   - '@types/react-dom@19.3.0'
-  - beez-ui@0.5.5
+  - beez-ui
   - '@types/node@24.13.4'
   - "@types/node@26.5.1"
