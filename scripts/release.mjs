@@ -12,7 +12,8 @@
  * 3. Execution: updates `main`, applies pending migrations after an explicit
  *    confirmation, asks for the version (or takes `--bump` /
  *    `--set-version`), creates the `X.Y.Z` commit and the annotated
- *    `vX.Y.Z` tag, and pushes both; production deploys from `main`.
+ *    `vX.Y.Z` tag, and pushes both. The version change makes Vercel build
+ *    and deploy (`vercel.json` skips builds whose version did not change).
  *
  * Every step is derived from the current state, so running the command again
  * after a failure resumes from the first missing step.
@@ -24,32 +25,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CODEX_NOT_FOUND_EXIT_CODE, buildChangelogPrompt, runCodex } from "./release/changelog-ai.mjs";
-import { CHANGE_TYPES, UNRELEASED_HEADING, readUnreleased, releaseUnreleased } from "./release/changelog.mjs";
-import { checkPendingMigrations } from "./release/pending-migrations.mjs";
-import {
-  MAIN_BRANCH,
-  MIGRATION_STATUS,
-  RELEASE_STEP,
-  RELEASE_TYPE_DESCRIPTION,
-  RELEASE_USAGE,
-  buildReleasePlan,
-  listNextVersions,
-  parseReleaseArguments,
-  resolveRequestedVersion,
-  suggestReleaseType,
-  toReleaseTag,
-} from "./release/release-plan.mjs";
-import {
-  RELEASE_REMOTE,
-  REMOTE_MAIN_REF,
-  collectReleaseState,
-  createGitReader,
-  listCommits,
-  readMigrationJournalAt,
-  readPackageVersionAt,
-  runInherited,
-} from "./release/release-state.mjs";
+import { readUnreleased, releaseUnreleased } from "beez-rp/changelog";
+import { buildChangelogPrompt, runCodex } from "beez-rp/changelog-ai";
+import { CHANGE_TYPES, CODEX_NOT_FOUND_EXIT_CODE, UNRELEASED_HEADING } from "beez-rp/constants";
 import {
   BOX_TONE,
   ICON,
@@ -63,7 +41,29 @@ import {
   renderStepHeader,
   select,
   startSpinner,
-} from "./release/terminal-ui.mjs";
+} from "beez-rp/terminal-ui";
+import { listNextVersions, resolveRequestedVersion, suggestReleaseType, toReleaseTag } from "beez-rp/versions";
+
+import { checkPendingMigrations } from "./release/pending-migrations.mjs";
+import {
+  MAIN_BRANCH,
+  MIGRATION_STATUS,
+  RELEASE_STEP,
+  RELEASE_TYPE_DESCRIPTION,
+  RELEASE_USAGE,
+  buildReleasePlan,
+  parseReleaseArguments,
+} from "./release/release-plan.mjs";
+import {
+  RELEASE_REMOTE,
+  REMOTE_MAIN_REF,
+  collectReleaseState,
+  createGitReader,
+  listCommits,
+  readMigrationJournalAt,
+  readPackageVersionAt,
+  runInherited,
+} from "./release/release-state.mjs";
 
 /** Repository root, resolved from this file so the command works from any folder. */
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -504,7 +504,7 @@ function renderPublishedSummary(context, startedAt) {
     lines.push(`${ICON.success} ${paint("bold", "Commits")}   ${commitCount}`);
   }
 
-  lines.push(`${ICON.success} ${paint("bold", "Deploy")}    ${MAIN_BRANCH} y el tag llegaron a ${RELEASE_REMOTE}; producción se despliega desde ${MAIN_BRANCH}.`);
+  lines.push(`${ICON.success} ${paint("bold", "Deploy")}    Vercel detecta el cambio de versión y buildea producción.`);
 
   if (githubRepository && previousReleaseSha) {
     const previousShortSha = previousReleaseSha.slice(0, SHORT_SHA_LENGTH);
