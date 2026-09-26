@@ -10,6 +10,9 @@
  * `file:./local.db`), so the check always targets the database that
  * `pnpm run push-migrations` would change. Only the host is ever shown.
  *
+ * `beez-rp.config.mjs` plugs this adapter into `beez-rp create-version`; the
+ * result follows the `MigrationCheck` contract of that command.
+ *
  * @module pending-migrations
  */
 
@@ -17,7 +20,12 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
 
-import { MIGRATION_STATUS } from "./release-plan.mjs";
+/** Result of checking the database, as `beez-rp create-version` expects it. */
+export const MIGRATION_STATUS = Object.freeze({
+  upToDate: "up-to-date",
+  pending: "pending",
+  unknown: "unknown",
+});
 
 /** Drizzle journal that lists every versioned migration. */
 export const MIGRATION_JOURNAL_PATH = "drizzle/meta/_journal.json";
@@ -75,6 +83,29 @@ export function mergeMigrationJournals(journals) {
   }
 
   return [...entriesByTag.values()].sort((left, right) => left.when - right.when);
+}
+
+/**
+ * Reads the migration journal at several revisions and merges them, so
+ * migrations committed on the branch and on `origin/main` are both checked.
+ * A revision without a journal is skipped.
+ *
+ * @param {{ tryGit: (gitArguments: string[]) => Promise<string | null> }} gitReader - Git reader of the repository.
+ * @param {string[]} revisions - Revisions to read, such as `HEAD` and `origin/main`.
+ * @returns {Promise<{ tag: string, when: number }[]>} Merged journal entries.
+ */
+export async function readMigrationJournalAt(gitReader, revisions) {
+  const journals = [];
+
+  for (const revision of revisions) {
+    const journalText = await gitReader.tryGit(["show", `${revision}:${MIGRATION_JOURNAL_PATH}`]);
+
+    if (journalText) {
+      journals.push(parseMigrationJournal(journalText));
+    }
+  }
+
+  return mergeMigrationJournals(journals);
 }
 
 /**
@@ -168,7 +199,8 @@ async function queryLastAppliedMigration(connection) {
  * {@link MIGRATION_STATUS.unknown} so the release can still continue.
  *
  * @param {{ repositoryRoot: string, journalEntries: { tag: string, when: number }[] }} options - Inputs.
- * @returns {Promise<{ status: string, pending: string[], databaseHost: string | null, reason: string | null }>} Result.
+ * @returns {Promise<{ status: string, pending: string[], target: string | null, reason: string | null }>} Result;
+ *   `target` is the database host (or local file), never its credentials.
  */
 export async function checkPendingMigrations({ repositoryRoot, journalEntries }) {
   let connection;
@@ -179,7 +211,7 @@ export async function checkPendingMigrations({ repositoryRoot, journalEntries })
     return {
       status: MIGRATION_STATUS.unknown,
       pending: [],
-      databaseHost: null,
+      target: null,
       reason: `no se pudo leer ${ENVIRONMENT_FILE_NAME} (${error?.message ?? "error desconocido"})`,
     };
   }
@@ -193,14 +225,14 @@ export async function checkPendingMigrations({ repositoryRoot, journalEntries })
     return {
       status: pending.length > 0 ? MIGRATION_STATUS.pending : MIGRATION_STATUS.upToDate,
       pending,
-      databaseHost,
+      target: databaseHost,
       reason: null,
     };
   } catch (error) {
     return {
       status: MIGRATION_STATUS.unknown,
       pending: [],
-      databaseHost,
+      target: databaseHost,
       reason: `falló la consulta a ${databaseHost} (${error?.code ?? error?.message ?? "error desconocido"})`,
     };
   }
