@@ -189,7 +189,7 @@ describe("ExpenseReceiptUploadDialog", () => {
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const dropZone = document.querySelector("[data-dropzone]");
+    const dropZone = document.querySelector('[data-slot="file-upload-drop-zone"]');
 
     if (!(dropZone instanceof HTMLDivElement)) {
       throw new Error("Drop zone not found");
@@ -277,11 +277,11 @@ describe("ExpenseReceiptUploadDialog", () => {
     );
 
     expect(
-      screen.getByText("Upload failed, please try again"),
+      screen.getByText("No se pudo subir, probá de nuevo"),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.getByRole("alert")).toHaveTextContent("No se pudo subir el comprobante");
-    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
     expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
 
@@ -297,7 +297,7 @@ describe("ExpenseReceiptUploadDialog", () => {
 
     expect(screen.getByText("factura.pdf")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Eliminar factura.pdf" }));
 
     expect(screen.queryByText("factura.pdf")).not.toBeInTheDocument();
   });

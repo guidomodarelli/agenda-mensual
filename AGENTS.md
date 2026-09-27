@@ -140,9 +140,9 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 
 ### Receipt upload baseline
 
-- Every new or updated **receipt upload flow** must use the Untitled UI `file-upload-base` component (or the project wrapper built on top of it) as the upload interaction baseline.
+- Every new or updated **receipt upload flow** must use the `FileUpload`, `FileUploadDropZone`, `FileUploadList` and `FileUploadItem` components from `beez-ui` (or the project wrapper `ReceiptFileUploader` built on top of them) as the upload interaction baseline.
 - Receipt uploads must support drag and drop plus click-to-select.
-- When the upload implementation exposes progress, the UI must render it with the file uploader progress UI instead of custom ad-hoc indicators.
+- When the upload implementation exposes progress, the UI must render it with the `FileUploadItem` progress UI instead of custom ad-hoc indicators.
 
 ### Toast notifications baseline
 
@@ -167,7 +167,7 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
   - `*.module.scss` for component-scoped styles
   - `src/styles/*` for global styles, tokens, mixins, and layout primitives
 - Avoid inline styles except for rare runtime-only values.
-- Tailwind remains available for existing product utilities and the Untitled UI uploader. Shared beez-ui styles are precompiled; do not scan its source or node_modules. Product styling should default to `SCSS`.
+- Tailwind remains available for existing product utilities. Shared beez-ui styles are precompiled; do not scan its source or node_modules. Product styling should default to `SCSS`.
 
 ## 4. SSR-First Data Flow
 

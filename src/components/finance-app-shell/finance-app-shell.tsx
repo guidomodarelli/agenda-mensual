@@ -16,6 +16,7 @@ import {
   SidebarTrigger,
   buttonVariants,
   useSidebar,
+  AccountMenu,
 } from "beez-ui";
 
 import Image from "next/image";
@@ -38,7 +39,6 @@ import {
   IconReportMoney,
 } from "@tabler/icons-react";
 
-import { AccountMenu } from "@/components/auth/account-menu";
 import { GoogleAccountAvatar } from "@/components/auth/google-account-avatar";
 import { PwaUpdateControl } from "@/components/pwa/pwa-update-control";
 
@@ -340,9 +340,16 @@ export function FinanceAppShell({
           </SidebarContent>
           <SidebarFooter className={styles.sidebarFooter}>
             <AccountMenu
-              accountEmail={sessionUserEmail}
-              accountName={sessionUserName}
+              name={sessionUserName}
+              email={sessionUserEmail}
+              image={sessionUserImage}
+              status={status === "authenticated" ? "authenticated" : "unauthenticated"}
+              triggerVariant="sidebar"
+              showStatusBadge
               align="end"
+              side="right"
+              sideOffset={8}
+              labels={{ trigger: "Cuenta activa" }}
               classNames={{
                 trigger: `${styles.sidebarAccount} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`,
                 triggerAvatar: styles.sidebarAccountAvatar,
@@ -352,16 +359,13 @@ export function FinanceAppShell({
                 triggerChevron: `${styles.sidebarAccountChevron} group-data-[collapsible=icon]:hidden`,
                 connectedBadge: styles.sidebarAccountConnectedBadge,
                 disconnectedBadge: styles.sidebarAccountDisconnectedBadge,
+                content: styles.sidebarAccountMenu,
+                header: styles.sidebarAccountMenuHeader,
+                headerAvatar: styles.sidebarAccountMenuAvatar,
+                item: styles.sidebarAccountMenuItem,
               }}
-              menuClassName={styles.sidebarAccountMenu}
               onSignIn={handleGoogleAccountConnect}
               onSignOut={handleGoogleAccountDisconnect}
-              side="right"
-              sideOffset={8}
-              status={status === "authenticated" ? "authenticated" : "unauthenticated"}
-              triggerAriaLabel="Cuenta activa"
-              triggerVariant="sidebar"
-              userImage={sessionUserImage}
             />
           </SidebarFooter>
         </Sidebar>

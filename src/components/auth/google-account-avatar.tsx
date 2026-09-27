@@ -1,4 +1,5 @@
 import {
+  AccountMenu,
   Avatar,
   AvatarBadge,
   AvatarFallback,
@@ -8,8 +9,6 @@ import {
   TooltipTrigger,
 } from "beez-ui";
 import { PlusIcon } from "lucide-react";
-
-import { AccountMenu } from "@/components/auth/account-menu";
 
 type GoogleAccountAvatarStatus = "authenticated" | "loading" | "unauthenticated";
 
@@ -22,6 +21,10 @@ interface GoogleAccountAvatarProps {
   userName: string | null;
 }
 
+const GUEST_ACCOUNT_NAME = "Incógnito";
+const GUEST_ACCOUNT_EMAIL = "Sin cuenta";
+const DEFAULT_INITIALS = "CM";
+
 function getUserInitials(name: string): string {
   const initials = name
     .trim()
@@ -31,9 +34,13 @@ function getUserInitials(name: string): string {
     .map((namePart) => namePart.charAt(0).toUpperCase())
     .join("");
 
-  return initials || "CM";
+  return initials || DEFAULT_INITIALS;
 }
 
+/**
+ * Top bar Google account control: a disabled avatar while the session is
+ * resolving, then the shared beez-ui account menu with the Google copy.
+ */
 export function GoogleAccountAvatar({
   onConnect,
   onDisconnect,
@@ -42,8 +49,8 @@ export function GoogleAccountAvatar({
   userImage,
   userName,
 }: GoogleAccountAvatarProps) {
-  const accountName = userName ?? "Incógnito";
-  const accountEmail = userEmail?.trim() || "Sin cuenta";
+  const accountName = userName ?? GUEST_ACCOUNT_NAME;
+  const accountEmail = userEmail?.trim() || GUEST_ACCOUNT_EMAIL;
   const initials = getUserInitials(accountName);
   const tooltipStatusLabel =
     status === "authenticated"
@@ -79,25 +86,21 @@ export function GoogleAccountAvatar({
 
   return (
     <AccountMenu
-      accountEmail={accountEmail}
-      accountName={accountName}
-      align="end"
-      classNames={{
-        triggerAvatar: status === "authenticated" ? undefined : "grayscale",
-        connectedBadge: "bg-green-600 dark:bg-green-800",
+      avatarFallback={initials}
+      email={accountEmail}
+      image={userImage}
+      labels={{
+        trigger:
+          status === "authenticated"
+            ? "Cuenta de Google conectada"
+            : "Conectar cuenta de Google",
       }}
-      menuClassName="w-72 overflow-hidden rounded-2xl p-0"
+      name={accountName}
       onSignIn={onConnect}
       onSignOut={onDisconnect}
+      showStatusBadge
       status={status}
       tooltipLabel={tooltipStatusLabel}
-      triggerAriaLabel={
-        status === "authenticated"
-          ? "Cuenta de Google conectada"
-          : "Conectar cuenta de Google"
-      }
-      triggerVariant="avatar"
-      userImage={userImage}
     />
   );
 }

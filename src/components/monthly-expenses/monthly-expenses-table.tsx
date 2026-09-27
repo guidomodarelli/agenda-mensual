@@ -48,10 +48,20 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  FilterPresetSaveButton,
+  FilterPresetsBar,
+  ProgressRing,
   cn,
+  getExactMatchIndices,
+  getFuzzyMatchIndices,
+  getFuzzyMatchRank,
   matchesAdvancedYearMonthRangeFilter,
+  normalizeSearchValue,
+  renderHighlightedText,
   type AppliedFilter,
   type DataTableQueryFilterControls,
+  type FilterPreset,
+  type FilterPresetLabels,
 } from "beez-ui";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -83,13 +93,6 @@ import {
 } from "@/components/monthly-expenses/expense-sheet";
 
 import {
-  getExactMatchIndices,
-  getFuzzyMatchRank,
-  getFuzzyMatchIndices,
-  normalizeSearchValue,
-  renderHighlightedText,
-} from "./fuzzy-search";
-import {
   formatCurrencyDisplayWithOptions,
   normalizeCurrencyInput,
 } from "./currency-input-format";
@@ -101,12 +104,7 @@ import {
 import {
   getPersistedMonthlyExpensesFilterPresets,
   persistMonthlyExpensesFilterPresets,
-  type MonthlyExpensesFilterPreset,
 } from "./monthly-expenses-filter-presets";
-import {
-  MonthlyExpensesFilterPresetSaveButton,
-  MonthlyExpensesFilterPresetsBar,
-} from "./monthly-expenses-filter-presets-bar";
 import type { LenderOption } from "./lender-picker";
 import {
   ExpenseFolderPicker,
@@ -170,7 +168,6 @@ import {
   LOAN_SORT_COLUMN_ID,
 } from "./monthly-expenses-table-column-ids";
 import { PaymentHistoryCell } from "./payment-history-cell";
-import { PaymentProgressRing } from "./payment-progress-ring";
 import {
   DEFAULT_LOAN_SORT_MODE,
   DEFAULT_MOVE_COMPLETED_TO_END,
@@ -321,6 +318,11 @@ function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): bool
 }
 
 const MONTHLY_EXPENSES_QUERY_FILTER_LABEL = "Filtro unificado de gastos";
+/** Placeholders of the saved-filter editors, with examples from this table. */
+const MONTHLY_EXPENSES_FILTER_PRESET_LABELS: Partial<FilterPresetLabels> = {
+  presetNamePlaceholder: "Deudas grandes",
+  presetQueryPlaceholder: "total:>1000 direccion:me-deben",
+};
 const MONTHLY_EXPENSES_QUERY_FILTER_PLACEHOLDER =
   "Filtrar por campo o palabra (ej. total:>1000 direccion:me-deben)";
 
@@ -1199,7 +1201,7 @@ export function MonthlyExpensesTable({
     null,
   );
   const [filterPresets, setFilterPresets] = useState<
-    MonthlyExpensesFilterPreset[]
+    FilterPreset[]
   >([]);
 
   useEffect(() => {
@@ -1219,7 +1221,7 @@ export function MonthlyExpensesTable({
   // Cada mutación persiste explícitamente: no hace falta un efecto con guard
   // de primer render como el de las preferencias de tabla.
   const updateFilterPresets = useCallback(
-    (nextFilterPresets: MonthlyExpensesFilterPreset[]) => {
+    (nextFilterPresets: FilterPreset[]) => {
       setFilterPresets(nextFilterPresets);
       persistMonthlyExpensesFilterPresets(nextFilterPresets);
     },
@@ -1245,7 +1247,7 @@ export function MonthlyExpensesTable({
     [filterPresets, updateFilterPresets],
   );
   const handleApplyFilterPreset = useCallback(
-    (preset: MonthlyExpensesFilterPreset) => {
+    (preset: FilterPreset) => {
       queryFilterControlsRef.current?.setQueryText(preset.query);
     },
     [],
@@ -3008,7 +3010,7 @@ export function MonthlyExpensesTable({
                     : "text-yellow-700 dark:text-yellow-300",
                 )}
               >
-                <PaymentProgressRing fraction={completionFraction} />
+                <ProgressRing fraction={completionFraction} />
                 {normalizedCoveredPayments} / {requiredPayments}
               </span>
               {!isComplete ? (
@@ -3703,7 +3705,8 @@ export function MonthlyExpensesTable({
               excludeFilterValues={excludedDescriptionFilters}
               filterColumnId="description"
               filterExtraContent={(
-                <MonthlyExpensesFilterPresetsBar
+                <FilterPresetsBar
+                  labels={MONTHLY_EXPENSES_FILTER_PRESET_LABELS}
                   onApplyPreset={handleApplyFilterPreset}
                   onDeletePreset={handleDeleteFilterPreset}
                   onUpdatePreset={handleUpdateFilterPreset}
@@ -3720,7 +3723,9 @@ export function MonthlyExpensesTable({
               onAppliedFiltersChange={setQueryAppliedFilters}
               queryFilterControlsRef={queryFilterControlsRef}
               queryFilterTrailingAction={
-                <MonthlyExpensesFilterPresetSaveButton
+                <FilterPresetSaveButton
+                  className="active:-translate-y-0"
+                  labels={MONTHLY_EXPENSES_FILTER_PRESET_LABELS}
                   canSaveCurrentQuery={hasActiveFiltering}
                   onSaveCurrentQuery={handleSaveFilterPreset}
                 />

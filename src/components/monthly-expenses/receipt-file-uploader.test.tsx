@@ -117,8 +117,8 @@ describe("ReceiptFileUploader", () => {
       />,
     );
 
-    expect(screen.getByText("Upload failed, please try again")).toBeInTheDocument();
-    expect(screen.queryByText("Try again")).not.toBeInTheDocument();
+    expect(screen.getByText("No se pudo subir, probá de nuevo")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Upload failed");
     expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
@@ -136,7 +136,7 @@ describe("ReceiptFileUploader", () => {
       />,
     );
 
-    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    const deleteButton = screen.getByRole("button", { name: "Eliminar comprobante.pdf" });
 
     expect(deleteButton).toBeDisabled();
 

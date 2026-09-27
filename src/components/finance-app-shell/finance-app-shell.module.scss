@@ -166,6 +166,8 @@
 .sidebarAccountAvatar {
   width: 2.5rem;
   height: 2.5rem;
+  // The sidebar keeps the photo in color when signed out; the badge already tells the status.
+  filter: none;
 }
 
 .sidebarAccountConnectedBadge {
@@ -227,6 +229,21 @@
 .sidebarAccountMenuAvatar {
   width: 2.75rem;
   height: 2.75rem;
+  filter: none;
+}
+
+// beez-ui AccountMenu renders the header text as its second child: name first, then email.
+.sidebarAccountMenuHeader > :last-child > :first-child {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--popover-foreground);
+}
+
+.sidebarAccountMenuHeader > :last-child > :last-child {
+  font-size: 0.875rem;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--popover-foreground) 64%, transparent 36%);
 }
 
 .sidebarAccountMenuText {

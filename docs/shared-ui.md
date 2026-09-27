@@ -14,8 +14,7 @@ Application navigation uses the shared `Link` and its Next adapter, with prefetc
 disabled by default. The month query remains part of the expenses link.
 
 `globals.css` imports the library's browser-ready stylesheet once. Tailwind stays
-for existing product utilities and Untitled UI upload components; it does not scan
-beez-ui source. Product SCSS remains local. Do not copy library tokens back into
+for existing product utilities; it does not scan beez-ui source. Product SCSS remains local. Do not copy library tokens back into
 this application: theme updates must come from the package.
 
 `FinanceSidebarProvider` preserves the `control-mensual.sidebar.open` storage and
@@ -24,14 +23,16 @@ The shared provider also maintains its own `sidebar_state` cookie. The applicati
 continues reading its own cookie on the server; initial hydration remains stable.
 Storage restrictions must not prevent toggling the sidebar in memory.
 
-The receipt uploader retains Untitled UI's file selection, drag and drop and
-progress behavior. Its specialized Tailwind class merger and product-specific
-tooltip composition remain local. NextAuth, application use cases, database
-adapters and Google Drive flows are unaffected by this package boundary.
+The receipt uploader (`ReceiptFileUploader`) composes the beez-ui `FileUpload`
+primitives: file selection, drag and drop, type and size validation and the
+progress row come from the package, while the simulated progress, the accepted
+formats and the emerald outline stay in the application. NextAuth, application
+use cases, database adapters and Google Drive flows are unaffected by this
+package boundary.
 
 Declare packages imported by application code as direct dependencies, even when
-beez-ui also installs them. In particular, the local uploader still imports
-`motion/react`, so `motion` remains direct. By project decision, the Google Drive
+beez-ui also installs them. The application no longer imports `motion`
+directly, so it is not declared. By project decision, the Google Drive
 error adapter uses `GaxiosError` from the `gaxios` dependency supplied by
 `googleapis`; `gaxios` is intentionally not declared directly.
 

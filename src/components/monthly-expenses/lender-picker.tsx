@@ -2,16 +2,14 @@ import {
   Button,
   Input,
   cn,
-} from "beez-ui";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import {
   compareFuzzyMatchRank,
   getFuzzyMatchIndices,
   getFuzzyMatchRank,
-  type FuzzyMatchRank,
   renderHighlightedText,
-} from "./fuzzy-search";
+  type FuzzyMatchRank,
+} from "beez-ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import styles from "./lender-picker.module.scss";
 
 export interface LenderOption {

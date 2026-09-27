@@ -1,0 +1,30 @@
+// Receipt uploads keep the emerald outline of the monthly expenses flow on top of the shared
+// beez-ui uploader. The selectors carry the component slot so they win over its utilities.
+$receipt-uploader-accent: color-mix(in oklab, #10b981 90%, transparent);
+$receipt-uploader-ring-width: 2px;
+
+.receiptFileUploader {
+  width: 100%;
+  min-width: 0;
+}
+
+.dropZone[data-slot="file-upload-drop-zone"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 $receipt-uploader-ring-width $receipt-uploader-accent;
+}
+
+// The item outline is a layer above the progress fill; tinting that layer keeps the emerald
+// outline visible over the filled part. Failed uploads keep the destructive outline.
+.fileItem[data-slot="file-upload-item"] {
+  background: transparent;
+
+  &:not([data-failed]) [data-slot="file-upload-item-outline"] {
+    box-shadow: inset 0 0 0 $receipt-uploader-ring-width $receipt-uploader-accent;
+  }
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--destructive);
+}

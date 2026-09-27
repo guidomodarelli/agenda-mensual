@@ -1,13 +1,18 @@
 /**
- * Renders a standardized receipt uploader built on top of Untitled UI file upload primitives.
+ * Renders a standardized receipt uploader built on top of the beez-ui file upload primitives.
  *
  * @module receipt-file-uploader
  */
 
 import { useEffect, useRef, useState } from "react";
+import {
+  FileUpload,
+  FileUploadDropZone,
+  FileUploadItem,
+  FileUploadList,
+} from "beez-ui";
 
-import { FileUpload } from "@/components/application/file-upload/file-upload-base";
-
+import styles from "./receipt-file-uploader.module.scss";
 import {
   RECEIPT_UPLOAD_ACCEPT_ATTRIBUTE,
   RECEIPT_UPLOAD_HINT_TEXT,
@@ -32,6 +37,22 @@ const SIMULATED_UPLOAD_MAX_PROGRESS_PERCENT = 90;
 const SIMULATED_UPLOAD_PROGRESS_STEP_PERCENT = 2;
 const SIMULATED_UPLOAD_PROGRESS_INTERVAL_MILLISECONDS = 120;
 const REAL_UPLOAD_PROGRESS_STALL_TIMEOUT_MILLISECONDS = 800;
+
+/** Spanish copy of the drop zone. */
+const RECEIPT_DROP_ZONE_LABELS = {
+  dragAndDrop: "o arrastrá y soltá",
+  uploadAction: "Hacé click para subir",
+  uploadActionMobileSuffix: "desde tu equipo",
+} as const;
+
+/** Spanish copy of the selected receipt row. */
+const RECEIPT_FILE_ITEM_LABELS = {
+  complete: "Completado",
+  delete: "Eliminar",
+  failed: "No se pudo subir, probá de nuevo",
+  progress: "Progreso de subida del comprobante",
+  uploading: "Subiendo...",
+} as const;
 
 /**
  * Clamps a numeric progress value to an integer in the [0, 100] range.
@@ -152,19 +173,16 @@ export function ReceiptFileUploader({
   const hasUploadError = Boolean(errorMessage);
 
   return (
-    <FileUpload.Root className="w-full min-w-0">
-      <FileUpload.DropZone
+    <FileUpload className={styles.receiptFileUploader}>
+      <FileUploadDropZone
         accept={RECEIPT_UPLOAD_ACCEPT_ATTRIBUTE}
         allowsMultiple={false}
-        className="cursor-pointer bg-transparent ring-2 ring-emerald-500/90 [&_[data-featured-icon=true]]:text-white"
-        dragAndDropLabel="o arrastrá y soltá"
+        className={styles.dropZone}
         hint={RECEIPT_UPLOAD_HINT_TEXT}
         inputId={inputId}
-        inputAriaLabel={inputAriaLabel}
         isDisabled={isDisabled}
+        labels={{ ...RECEIPT_DROP_ZONE_LABELS, input: inputAriaLabel }}
         maxSize={RECEIPT_UPLOAD_MAX_SIZE_BYTES}
-        uploadActionLabel="Hacé click para subir"
-        uploadActionMobileSuffixLabel="desde tu equipo"
         onDropFiles={(files) => {
           onFileChange(files[0] ?? null);
         }}
@@ -177,11 +195,12 @@ export function ReceiptFileUploader({
       />
 
       {selectedFile ? (
-        <FileUpload.List className="w-full min-w-0">
-          <FileUpload.ListItemProgressFill
-            className="w-full min-w-0 bg-transparent ring-2 ring-emerald-500/90 [&>div:nth-child(2)]:ring-emerald-500/90 [&>div:nth-child(2)]:ring-2"
+        <FileUploadList>
+          <FileUploadItem
+            className={styles.fileItem}
             failed={hasUploadError}
             isDeleteDisabled={isUploading}
+            labels={RECEIPT_FILE_ITEM_LABELS}
             name={selectedFile.name}
             onDelete={() => {
               if (isUploading) {
@@ -190,16 +209,17 @@ export function ReceiptFileUploader({
               onFileChange(null);
             }}
             progress={hasUploadError ? 0 : effectiveProgressPercent}
+            progressVariant="fill"
             size={selectedFile.size}
           />
-        </FileUpload.List>
+        </FileUploadList>
       ) : null}
 
       {errorMessage ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className={styles.errorMessage} role="alert">
           {errorMessage}
         </p>
       ) : null}
-    </FileUpload.Root>
+    </FileUpload>
   );
 }
