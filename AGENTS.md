@@ -318,6 +318,13 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 - Do not run provider-specific migration push commands directly when this script exists.
 - Keep provider selection inside `scripts/push-migrations.mjs` so the workflow stays consistent across providers.
 
+### Release command
+
+- Release with `pnpm create-version` (alias `pnpm cv`; `--bump patch|minor|major`, `--set-version X.Y.Z`, `--dry-run`). The command comes from the shared `beez-rp` package (`beez-rp create-version`); do not reintroduce a local release script.
+- Keep what is specific to this project in `beez-rp.config.mjs`: banner name, CHANGELOG audience, release type descriptions, the Vercel deploy summary line and the migrations adapter.
+- The migrations adapter lives in `scripts/release/pending-migrations.mjs`: it compares the Drizzle journal of `HEAD` and `origin/main` with the Turso/libSQL database that `pnpm run push-migrations` would change, and applies them through that same script.
+- The configuration must not import `beez-rp` at runtime; type it with `@type {import("beez-rp/create-version").CreateVersionConfig}`.
+
 ## 7. Automation: Codex auto-fix loop
 
 - **Before creating, relaunching, or modifying any Codex auto-fix loop, invoke the `codex-autofix-loop` skill first**. That skill is the source of truth for the local loop prompt, closeout behavior, runtime state, and CI parity with [`.github/workflows/codex-autofix.yml`](.github/workflows/codex-autofix.yml).
