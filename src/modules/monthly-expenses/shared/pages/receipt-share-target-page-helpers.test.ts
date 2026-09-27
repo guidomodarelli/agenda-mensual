@@ -8,6 +8,7 @@ import {
   getCurrentMonthIdentifier,
   getRemainingReceiptPayments,
   normalizeExpenseItemsForSave,
+  normalizePartialCoveredPayments,
   suggestExpenseIdForSharedReceipt,
   type ReceiptSuggestionExpense,
   type UploadedSharedReceipt,
@@ -58,6 +59,16 @@ describe("receipt share target helpers", () => {
         occurrencesPerMonth: 2,
       }),
     ).toBe(0);
+  });
+
+  it("keeps a partial coverage between one payment and the pending payments", () => {
+    expect(normalizePartialCoveredPayments("2", 3)).toBe("2");
+    expect(normalizePartialCoveredPayments("3", 3)).toBe("3");
+    expect(normalizePartialCoveredPayments("9", 3)).toBe("3");
+    expect(normalizePartialCoveredPayments("", 3)).toBe("3");
+    expect(normalizePartialCoveredPayments("0", 3)).toBe("3");
+    expect(normalizePartialCoveredPayments("1.5", 3)).toBe("3");
+    expect(normalizePartialCoveredPayments("5", 0)).toBe("1");
   });
 
   it("preserves the occurrences unit when normalizing items for save", () => {

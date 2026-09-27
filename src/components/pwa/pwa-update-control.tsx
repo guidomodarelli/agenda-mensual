@@ -1,6 +1,6 @@
 import { Button } from "beez-ui";
 import { RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import styles from "./pwa-update-control.module.scss";
 
@@ -53,15 +53,29 @@ function watchForWaitingWorker(
   };
 }
 
+/** Hydration never un-happens, so there is nothing to subscribe to. */
+function subscribeToHydration(): () => void {
+  return () => {};
+}
+
+function getClientHydrationSnapshot(): boolean {
+  return true;
+}
+
+function getServerHydrationSnapshot(): boolean {
+  return false;
+}
+
 export function PwaUpdateControl() {
-  const [isClient, setIsClient] = useState(false);
+  // False during the server render and hydration, true afterwards, without an extra effect pass.
+  const isClient = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
   const [hasUpdateReady, setHasUpdateReady] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const hasReloadedForControllerChange = useRef(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   useEffect(() => {
     if (!isClient || !canUseServiceWorker()) {

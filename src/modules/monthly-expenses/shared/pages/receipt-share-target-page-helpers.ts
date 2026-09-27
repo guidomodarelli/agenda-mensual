@@ -264,3 +264,28 @@ export function getRemainingReceiptPayments({
 
   return Math.max(remaining, 0);
 }
+
+/**
+ * Keeps a partial coverage between one payment and the pending payments: an empty, invalid or
+ * excessive value becomes the pending count, and nothing pending leaves a single payment.
+ * @param partialCoveredPayments - Value typed in the partial coverage field.
+ * @param remainingReceiptPayments - Payments still pending for the selected expense.
+ * @returns The coverage to show and save.
+ */
+export function normalizePartialCoveredPayments(
+  partialCoveredPayments: string,
+  remainingReceiptPayments: number,
+): string {
+  if (remainingReceiptPayments <= 0) {
+    return "1";
+  }
+
+  const parsedPartialCoveredPayments = Number(partialCoveredPayments);
+  const isWithinPendingPayments =
+    partialCoveredPayments.trim() !== "" &&
+    Number.isInteger(parsedPartialCoveredPayments) &&
+    parsedPartialCoveredPayments > 0 &&
+    parsedPartialCoveredPayments <= remainingReceiptPayments;
+
+  return isWithinPendingPayments ? partialCoveredPayments : String(remainingReceiptPayments);
+}

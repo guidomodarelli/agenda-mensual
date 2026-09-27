@@ -9,7 +9,7 @@ import {
 } from "beez-ui";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -71,14 +71,16 @@ export default function ExchangeRatesPage({
   );
   const [feedbackErrorCode, setFeedbackErrorCode] = useState(result.loadErrorCode);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isRatesAvailable = !currentResult.loadError;
-
-  useEffect(() => {
+  // A newly loaded month replaces local edits during render, so stale values never paint.
+  const [loadedResult, setLoadedResult] = useState(result);
+  if (result !== loadedResult) {
+    setLoadedResult(result);
     setCurrentResult(result);
     setIibbInputValue(String(result.iibbRateDecimal));
     setFeedbackMessage(result.loadError);
     setFeedbackErrorCode(result.loadErrorCode);
-  }, [result]);
+  }
+  const isRatesAvailable = !currentResult.loadError;
 
   const handleMonthChange = (selectedMonth: string) => {
     const normalizedMonth = selectedMonth.trim();

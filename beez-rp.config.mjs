@@ -18,6 +18,9 @@ import { checkPendingMigrations, readMigrationJournalAt } from "./scripts/releas
 /** Revisions whose migration journals are merged: the branch and the one about to be released. */
 const MIGRATION_JOURNAL_REVISIONS = ["HEAD", "origin/main"];
 
+/** Lint, typecheck (source and tests), tests and build shared with CI; a failure stops the release before the bump. */
+const RELEASE_CHECKS_COMMAND = "pnpm run ci";
+
 /**
  * Migration command shared with `pnpm run push-migrations`, run with the same
  * Node.js binary as the release command.
@@ -34,6 +37,7 @@ const createVersionConfig = {
     major: "Cambio grande o incompatible: flujos, datos o comportamiento que cambian para los usuarios.",
   },
   publishedLabel: "en producción",
+  checks: [RELEASE_CHECKS_COMMAND],
   migrations: {
     targetHint: "TURSO_DATABASE_URL del .env",
     async check({ repositoryRoot, git }) {
