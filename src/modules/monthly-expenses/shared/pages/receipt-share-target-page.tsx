@@ -10,7 +10,7 @@ import {
   toast,
 } from "beez-ui";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -50,6 +50,7 @@ import {
   getCurrentMonthIdentifier,
   getRemainingReceiptPayments,
   normalizeExpenseItemsForSave,
+  normalizePartialCoveredPayments,
   suggestExpenseIdForSharedReceipt,
 } from "./receipt-share-target-page-helpers";
 import {
@@ -98,18 +99,50 @@ function normalizeMonth(value: string): string {
     : getCurrentMonthIdentifier();
 }
 
+/** Resolves the message for a known `shareError` code, ignoring inherited object keys. */
+function getShareErrorMessage(shareErrorValue: string | null | undefined): string | null {
+  return typeof shareErrorValue === "string" && Object.hasOwn(SHARE_ERROR_MESSAGES, shareErrorValue)
+    ? SHARE_ERROR_MESSAGES[shareErrorValue]
+    : null;
+}
+
+/** The iOS limitation never changes while the page is open, so there is nothing to subscribe to. */
+function subscribeToStaticDeviceTraits(): () => void {
+  return () => {};
+}
+
+/** Reads the iOS limitation from the browser; the server render assumes a supported device. */
+function getIsIosShareTargetUnsupportedSnapshot(): boolean {
+  return isIosShareTargetUnsupported(window.navigator);
+}
+
+function getServerIsIosShareTargetUnsupportedSnapshot(): boolean {
+  return false;
+}
+
 export default function ReceiptShareTargetPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status } = useSession();
   const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthIdentifier());
+  const shareErrorMessage = getShareErrorMessage(searchParams?.get("shareError"));
   const [loadSharedReceiptState, setLoadSharedReceiptState] =
-    useState<LoadSharedReceiptState>({ status: "empty" });
+    useState<LoadSharedReceiptState>(() =>
+      shareErrorMessage ? { message: shareErrorMessage, status: "error" } : { status: "empty" },
+    );
+  // A new share error in the URL replaces whatever the page showed; later user actions still win.
+  const [reportedShareErrorMessage, setReportedShareErrorMessage] = useState(shareErrorMessage);
+  if (shareErrorMessage !== reportedShareErrorMessage) {
+    setReportedShareErrorMessage(shareErrorMessage);
+    if (shareErrorMessage) {
+      setLoadSharedReceiptState({ message: shareErrorMessage, status: "error" });
+    }
+  }
   const [monthDocument, setMonthDocument] =
     useState<MonthlyExpensesDocumentResult | null>(null);
   const [isLoadingMonthDocument, setIsLoadingMonthDocument] = useState(false);
   const [documentLoadError, setDocumentLoadError] = useState<string | null>(null);
-  const [selectedExpenseId, setSelectedExpenseId] = useState("");
+  const [chosenExpenseId, setChosenExpenseId] = useState("");
   const [isCreatingExpense, setIsCreatingExpense] = useState(false);
   const [newExpenseDescription, setNewExpenseDescription] = useState("");
   const [newExpenseCurrency, setNewExpenseCurrency] =
@@ -120,7 +153,11 @@ export default function ReceiptShareTargetPage() {
   const [partialCoveredPayments, setPartialCoveredPayments] = useState("1");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isIosDevice, setIsIosDevice] = useState(false);
+  const isIosDevice = useSyncExternalStore(
+    subscribeToStaticDeviceTraits,
+    getIsIosShareTargetUnsupportedSnapshot,
+    getServerIsIosShareTargetUnsupportedSnapshot,
+  );
 
   const sharedReceiptPayload =
     loadSharedReceiptState.status === "ready"
@@ -135,6 +172,27 @@ export default function ReceiptShareTargetPage() {
 
     return `data:${sharedReceiptPayload.mimeType};base64,${sharedReceiptPayload.contentBase64}`;
   }, [sharedReceiptPayload]);
+
+  // A choice that is not in the loaded month falls back to the expense the shared file suggests.
+  const selectedExpenseId = useMemo(() => {
+    if (!monthDocument || !sharedReceiptPayload || isCreatingExpense) {
+      return chosenExpenseId;
+    }
+
+    if (monthDocument.items.some((item) => item.id === chosenExpenseId)) {
+      return chosenExpenseId;
+    }
+
+    const suggestedExpenseId = suggestExpenseIdForSharedReceipt({
+      expenses: monthDocument.items.map((item) => ({
+        description: item.description,
+        id: item.id,
+      })),
+      fileName: sharedReceiptPayload.fileName,
+    });
+
+    return suggestedExpenseId ?? monthDocument.items[0]?.id ?? "";
+  }, [chosenExpenseId, isCreatingExpense, monthDocument, sharedReceiptPayload]);
 
   const selectedExpense = useMemo(() => {
     if (!monthDocument || !selectedExpenseId) {
@@ -166,9 +224,14 @@ export default function ReceiptShareTargetPage() {
     });
   }, [isCreatingExpense, newExpenseOccurrences, selectedExpense]);
 
+  const normalizedPartialCoveredPayments = normalizePartialCoveredPayments(
+    partialCoveredPayments,
+    remainingReceiptPayments,
+  );
+
   const effectiveCoveredPayments = useMemo(() => {
     if (coverageMode === "partial") {
-      const parsedPartialCoveredPayments = Number(partialCoveredPayments);
+      const parsedPartialCoveredPayments = Number(normalizedPartialCoveredPayments);
 
       return Number.isInteger(parsedPartialCoveredPayments) && parsedPartialCoveredPayments > 0
         ? parsedPartialCoveredPayments
@@ -176,7 +239,7 @@ export default function ReceiptShareTargetPage() {
     }
 
     return remainingReceiptPayments;
-  }, [coverageMode, partialCoveredPayments, remainingReceiptPayments]);
+  }, [coverageMode, normalizedPartialCoveredPayments, remainingReceiptPayments]);
 
   useFinanceAppShellNavigation({
     activeSection: "expenses",
@@ -184,17 +247,7 @@ export default function ReceiptShareTargetPage() {
   });
 
   useEffect(() => {
-    setIsIosDevice(isIosShareTargetUnsupported(window.navigator));
-  }, []);
-
-  useEffect(() => {
-    const shareErrorValue = searchParams?.get("shareError");
-
-    if (typeof shareErrorValue === "string" && SHARE_ERROR_MESSAGES[shareErrorValue]) {
-      setLoadSharedReceiptState({
-        message: SHARE_ERROR_MESSAGES[shareErrorValue],
-        status: "error",
-      });
+    if (shareErrorMessage) {
       return;
     }
 
@@ -226,7 +279,7 @@ export default function ReceiptShareTargetPage() {
     return () => {
       isDisposed = true;
     };
-  }, [searchParams]);
+  }, [searchParams, shareErrorMessage]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -266,56 +319,6 @@ export default function ReceiptShareTargetPage() {
       isDisposed = true;
     };
   }, [isAuthenticated, selectedMonth]);
-
-  useEffect(() => {
-    if (!monthDocument || !sharedReceiptPayload || isCreatingExpense) {
-      return;
-    }
-
-    const hasCurrentSelection = monthDocument.items.some(
-      (item) => item.id === selectedExpenseId,
-    );
-
-    if (hasCurrentSelection) {
-      return;
-    }
-
-    const suggestedExpenseId = suggestExpenseIdForSharedReceipt({
-      expenses: monthDocument.items.map((item) => ({
-        description: item.description,
-        id: item.id,
-      })),
-      fileName: sharedReceiptPayload.fileName,
-    });
-
-    setSelectedExpenseId(suggestedExpenseId ?? monthDocument.items[0]?.id ?? "");
-  }, [
-    isCreatingExpense,
-    monthDocument,
-    selectedExpenseId,
-    sharedReceiptPayload,
-  ]);
-
-  useEffect(() => {
-    if (coverageMode !== "partial") {
-      return;
-    }
-
-    if (remainingReceiptPayments <= 0) {
-      setPartialCoveredPayments("1");
-      return;
-    }
-
-    const parsedPartialCoveredPayments = Number(partialCoveredPayments);
-
-    if (
-      !Number.isInteger(parsedPartialCoveredPayments) ||
-      parsedPartialCoveredPayments <= 0 ||
-      parsedPartialCoveredPayments > remainingReceiptPayments
-    ) {
-      setPartialCoveredPayments(String(remainingReceiptPayments));
-    }
-  }, [coverageMode, partialCoveredPayments, remainingReceiptPayments]);
 
   const handleConnectGoogle = () => {
     void signIn("google", {
@@ -615,7 +618,7 @@ export default function ReceiptShareTargetPage() {
                   className={styles.selectField}
                   id="receipt-target-expense"
                   onChange={(event) => {
-                    setSelectedExpenseId(event.target.value);
+                    setChosenExpenseId(event.target.value);
                     setSaveError(null);
                   }}
                   value={selectedExpenseId}
@@ -712,7 +715,7 @@ export default function ReceiptShareTargetPage() {
                     onChange={(event) => setPartialCoveredPayments(event.target.value)}
                     step="1"
                     type="number"
-                    value={partialCoveredPayments}
+                    value={normalizedPartialCoveredPayments}
                   />
                 </div>
               ) : null}

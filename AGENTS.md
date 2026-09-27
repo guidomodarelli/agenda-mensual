@@ -289,7 +289,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Testing rules
 
-- Never place test files inside `src/app`, because App Router will treat special files and route folders as routing surface. Tests for App Router pages, layouts, loading states, route handlers, and related helpers must live under `src/tests/app/`.
+- Never place test files inside `src/app`, because App Router will treat special files and route folders as routing surface. Tests for App Router pages, layouts, loading states, route handlers, and related helpers must live under `src/tests/app/`. `src/tests/tooling/app-route-test-placement.test.ts` enforces it.
 - When functionality changes, add or update the corresponding tests in the same work item.
 - Prefer mocks at the port boundary, not at low-level vendor internals, unless the test is explicitly for an adapter.
 
@@ -354,5 +354,6 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 - Use Node.js 24.21.0 from `.nvmrc` locally and in CI; `engines.node` permits only Node 24.
 - TypeScript 7 is the project compiler for application tests and Next builds. Keep the separate `tsconfig.test.json` and run `pnpm typecheck:tests`.
-- `.pnpmfile.cjs` supplies the official TypeScript 6 compatibility API privately to ESLint packages. Keep the root `typescript` dependency on version 7 and do not disable Next build type checking. Review the hook when ESLint supports the new compiler API.
+- `.pnpmfile.cjs` supplies the official TypeScript 6 compatibility API privately to the typescript-eslint packages that `eslint-plugin-boundaries` and `eslint-import-resolver-typescript` still pull in for import resolution. Keep the root `typescript` dependency on version 7 and do not disable Next build type checking. Review the hook when those packages support the new compiler API.
+- Lint runs with oxlint (`.oxlintrc.json`). `eslint-plugin-boundaries` runs as an oxlint JS plugin; its `boundaries/elements` and the TypeScript `import/resolver` must stay in the root `settings`, because oxlint ignores settings inside `overrides` and, without the resolver, boundaries silently allows every import. `src/tests/tooling/oxlint-config.test.ts` runs the real oxlint over fixtures and fails if boundaries stops reporting.
 - CI reads `.nvmrc` and installs pnpm 12.3.4 explicitly. Update runtime pins, Node types and lockfiles together.

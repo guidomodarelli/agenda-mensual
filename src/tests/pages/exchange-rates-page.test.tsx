@@ -214,6 +214,35 @@ describe("ExchangeRatesPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("replaces the edited values with the rates of a newly loaded month", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWithProviders(<ExchangeRatesPage {...basePageProps} />);
+
+    const iibbInput = screen.getByLabelText("IIBB en formato decimal");
+    await user.clear(iibbInput);
+    await user.type(iibbInput, "0.07");
+
+    rerender(
+      <TooltipProvider>
+        <ExchangeRatesPage
+          {...basePageProps}
+          result={{
+            ...basePageProps.result,
+            iibbRateDecimal: 0.03,
+            loadError: "No pudimos cargar las cotizaciones del dólar en este momento.",
+            selectedMonth: "2026-02",
+          }}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByLabelText("IIBB en formato decimal")).toHaveValue(0.03);
+    expect(screen.getByLabelText("Mes y año")).toHaveValue("2026-02");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "No pudimos cargar las cotizaciones del dólar en este momento.",
+    );
+  });
+
   it("renders a controlled error state when the rates could not be loaded", () => {
     renderWithProviders(
       <ExchangeRatesPage
