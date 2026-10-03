@@ -26,7 +26,7 @@
     "@libsql/client": "^0.17.3",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-table": "^8.21.3",
-    "beez-ui": "^0.9.1",
+    "beez-ui": "^0.10.0",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "googleapis": "171.4.0",

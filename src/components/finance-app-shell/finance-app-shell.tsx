@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   buttonVariants,
-  useSidebar,
   AccountMenu,
 } from "beez-ui";
 
@@ -165,22 +164,17 @@ interface FinanceAppShellSidebarNavigationProps {
   expensesHref: ComponentProps<typeof Link>["href"];
 }
 
+/** Collapsed-rail utility: hides product text once the desktop sidebar shrinks to icons. */
+const SIDEBAR_COLLAPSED_HIDDEN_CLASS = "group-data-[state=collapsed]/sidebar:hidden";
+
 /**
- * Section links of the sidebar. Lives inside SidebarProvider so it can close
- * the mobile sheet when a section is selected.
+ * Section links of the sidebar. The shared menu buttons route through the
+ * BeezUIProvider link adapter and close the mobile sheet once selected.
  */
 function FinanceAppShellSidebarNavigation({
   activeSection,
   expensesHref,
 }: FinanceAppShellSidebarNavigationProps) {
-  const { setOpenMobile } = useSidebar();
-
-  // En mobile la sidebar es un sheet superpuesto: al navegar debe cerrarse.
-  // En desktop setOpenMobile no afecta el estado del panel fijo.
-  const handleNavigate = () => {
-    setOpenMobile(false);
-  };
-
   return (
     <SidebarGroup className={styles.sidebarGroup}>
       <SidebarGroupLabel className={styles.sidebarGroupLabel}>
@@ -189,54 +183,42 @@ function FinanceAppShellSidebarNavigation({
       <SidebarMenu className={styles.sidebarMenu}>
         <SidebarMenuItem>
           <SidebarMenuButton
-            asChild
             className={styles.sidebarMenuButton}
+            href={expensesHref}
+            icon={<IconCalendarDollar />}
             isActive={activeSection === "expenses"}
-            tooltip="Control mensual"
           >
-            <Link href={expensesHref} onClick={handleNavigate}>
-              <IconCalendarDollar />
-              <span>Control mensual</span>
-            </Link>
+            Control mensual
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            asChild
             className={styles.sidebarMenuButton}
+            href="/cotizaciones"
+            icon={<IconCashBanknote />}
             isActive={activeSection === "exchange-rates"}
-            tooltip="Cotizaciones del dólar"
           >
-            <Link href="/cotizaciones" onClick={handleNavigate}>
-              <IconCashBanknote />
-              <span>Cotizaciones del dólar</span>
-            </Link>
+            Cotizaciones del dólar
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            asChild
             className={styles.sidebarMenuButton}
+            href="/prestamistas"
+            icon={<IconBuildingBank />}
             isActive={activeSection === "lenders"}
-            tooltip="Prestamistas"
           >
-            <Link href="/prestamistas" onClick={handleNavigate}>
-              <IconBuildingBank />
-              <span>Prestamistas</span>
-            </Link>
+            Prestamistas
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            asChild
             className={styles.sidebarMenuButton}
+            href="/reportes/deudas"
+            icon={<IconReportMoney />}
             isActive={activeSection === "debts"}
-            tooltip="Reporte de deudas"
           >
-            <Link href="/reportes/deudas" onClick={handleNavigate}>
-              <IconReportMoney />
-              <span>Reporte de deudas</span>
-            </Link>
+            Reporte de deudas
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
@@ -308,7 +290,7 @@ export function FinanceAppShell({
   return (
     <FinanceAppShellNavigationContext.Provider value={navigationContextValue}>
       <FinanceSidebarProvider defaultOpen={initialSidebarOpen}>
-        <Sidebar className={styles.sidebarShell} collapsible="icon" variant="sidebar">
+        <Sidebar collapsible="icon" variant="sidebar">
           <SidebarHeader className={styles.sidebarHeader}>
             <div className={styles.sidebarBrand}>
               <span
@@ -325,7 +307,7 @@ export function FinanceAppShell({
                 />
               </span>
               <div
-                className={`${styles.sidebarBrandText} group-data-[collapsible=icon]:hidden`}
+                className={`${styles.sidebarBrandText} ${SIDEBAR_COLLAPSED_HIDDEN_CLASS}`}
               >
                 <p className={styles.sidebarTitle}>Control Mensual</p>
                 <p className={styles.sidebarSubtitle}>Panel de trabajo</p>
@@ -351,12 +333,12 @@ export function FinanceAppShell({
               sideOffset={8}
               labels={{ trigger: "Cuenta activa" }}
               classNames={{
-                trigger: `${styles.sidebarAccount} group-data-[collapsible=icon]:grid-cols-[2rem] group-data-[collapsible=icon]:gap-0`,
+                trigger: `${styles.sidebarAccount} group-data-[state=collapsed]/sidebar:grid-cols-[2rem] group-data-[state=collapsed]/sidebar:gap-0`,
                 triggerAvatar: styles.sidebarAccountAvatar,
-                triggerText: `${styles.sidebarAccountText} group-data-[collapsible=icon]:hidden`,
+                triggerText: `${styles.sidebarAccountText} ${SIDEBAR_COLLAPSED_HIDDEN_CLASS}`,
                 triggerName: styles.sidebarAccountName,
                 triggerEmail: styles.sidebarAccountEmail,
-                triggerChevron: `${styles.sidebarAccountChevron} group-data-[collapsible=icon]:hidden`,
+                triggerChevron: `${styles.sidebarAccountChevron} ${SIDEBAR_COLLAPSED_HIDDEN_CLASS}`,
                 connectedBadge: styles.sidebarAccountConnectedBadge,
                 disconnectedBadge: styles.sidebarAccountDisconnectedBadge,
                 content: styles.sidebarAccountMenu,

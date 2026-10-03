@@ -42,14 +42,6 @@
   margin-right: auto;
 }
 
-.sidebarShell {
-  position: sticky !important;
-  top: 0;
-  bottom: auto !important;
-  align-self: flex-start;
-  z-index: 40;
-}
-
 .sidebarHeader {
   padding: 1rem 0.875rem 0.75rem;
 }
@@ -108,6 +100,11 @@
 
 .sidebarGroup {
   padding-inline: 0.875rem;
+}
+
+// The four-rem icon rail leaves no room for the expanded group gutter.
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarGroup {
+  padding-inline: 0.25rem;
 }
 
 .sidebarGroupLabel {
