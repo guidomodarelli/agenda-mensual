@@ -23,6 +23,12 @@ The shared provider also maintains its own `sidebar_state` cookie. The applicati
 continues reading its own cookie on the server; initial hydration remains stable.
 Storage restrictions must not prevent toggling the sidebar in memory.
 
+Since beez-ui 0.10 the sidebar is the animated sidebar from beui. Section
+entries pass `href`, `icon` and `isActive` to `SidebarMenuButton`; the shared
+button routes through the `BeezUIProvider` Next link adapter, marks
+`aria-current` and closes the mobile sheet on selection. Product text that
+must disappear in the icon rail uses `group-data-[state=collapsed]/sidebar:hidden`.
+
 The receipt uploader (`ReceiptFileUploader`) composes the beez-ui `FileUpload`
 primitives: file selection, drag and drop, type and size validation and the
 progress row come from the package, while the simulated progress, the accepted

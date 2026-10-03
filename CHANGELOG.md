@@ -6,6 +6,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Changed
+
+- El menú lateral se anima al colapsarse y expandirse, resalta la sección actual con un fondo que se desliza entre opciones y en el teléfono se abre como panel que se cierra con Escape o al elegir una sección.
+
 ## [0.1.1] - 2026-09-27
 
 ### Changed
