@@ -98,13 +98,13 @@
   color: color-mix(in srgb, var(--sidebar-foreground) 72%, transparent 28%);
 }
 
-.sidebarGroup {
-  padding-inline: 0.875rem;
+// The group owns the horizontal gutter, so the shared content padding is dropped.
+.sidebarContent {
+  padding-inline: 0;
 }
 
-// The four-rem icon rail leaves no room for the expanded group gutter.
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarGroup {
-  padding-inline: 0.25rem;
+.sidebarGroup {
+  padding-inline: 0.875rem;
 }
 
 .sidebarGroupLabel {
@@ -286,23 +286,23 @@
   height: 1.25rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarBrand {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarBrand {
   display: flex;
   justify-content: flex-start;
 }
 
-:global([data-collapsible="icon"]) .sidebarBrandIcon {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarBrandIcon {
   display: inline-flex;
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 0.75rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarGroup {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarGroup {
   padding-inline: 0.875rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarGroupLabel {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarGroupLabel {
   height: 0;
   margin: 0;
   opacity: 0;
@@ -311,38 +311,34 @@
   transition: none;
 }
 
-:global([data-collapsible="icon"]) .sidebarMenu {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenu {
   align-items: flex-start;
   gap: 0.25rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarMenuButton {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenuButton {
   gap: 0;
-  justify-content: center;
-  padding: 0;
+  // Centers the 1.25rem icon slot in the 2.25rem button; the label fades out on its own.
+  padding-inline: 0.5rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarMenuButton[data-slot="sidebar-menu-button"] {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenuButton[data-slot="sidebar-menu-button"] {
   width: 2.25rem !important;
   height: 2.25rem !important;
   min-height: 2.25rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarMenuButton svg {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenuButton svg {
   width: 1rem;
   height: 1rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarMenuButton span {
-  display: none;
-}
-
-:global([data-collapsible="icon"]) .sidebarFooter {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarFooter {
   align-items: flex-start;
   padding: 0 0.875rem 1rem;
 }
 
-:global([data-collapsible="icon"]) .sidebarAccount {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarAccount {
   min-height: 2.25rem;
   width: 2.25rem !important;
   height: 2.25rem !important;
@@ -353,12 +349,12 @@
   border-radius: 999px;
 }
 
-:global([data-collapsible="icon"]) .sidebarAccountText,
-:global([data-collapsible="icon"]) .sidebarAccountChevron {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarAccountText,
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarAccountChevron {
   display: none;
 }
 
-:global([data-collapsible="icon"]) .sidebarAccountAvatar {
+:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarAccountAvatar {
   width: 2.25rem;
   height: 2.25rem;
 }

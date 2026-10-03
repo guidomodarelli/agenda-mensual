@@ -314,7 +314,7 @@ export function FinanceAppShell({
               </div>
             </div>
           </SidebarHeader>
-          <SidebarContent>
+          <SidebarContent className={styles.sidebarContent}>
             <FinanceAppShellSidebarNavigation
               activeSection={activeSection}
               expensesHref={expensesHref}
