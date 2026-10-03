@@ -6,9 +6,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
-### Changed
+## [0.1.4] - 2026-10-03
 
-- El menú lateral adopta el diseño de la biblioteca de componentes: opciones más compactas, títulos de sección en mayúsculas pequeñas y una columna de íconos un poco más ancha al colapsarlo.
+- 054b7ac agrega reglas para el agente de Next.js
+- 07030d7 agrega diseño del menú lateral según la biblioteca de componentes (#28)
 
 ## [0.1.3] - 2026-10-03
 
