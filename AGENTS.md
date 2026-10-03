@@ -357,3 +357,13 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 - `.pnpmfile.cjs` supplies the official TypeScript 6 compatibility API privately to the typescript-eslint packages that `eslint-plugin-boundaries` and `eslint-import-resolver-typescript` still pull in for import resolution. Keep the root `typescript` dependency on version 7 and do not disable Next build type checking. Review the hook when those packages support the new compiler API.
 - Lint runs with oxlint (`.oxlintrc.json`). `eslint-plugin-boundaries` runs as an oxlint JS plugin; its `boundaries/elements` and the TypeScript `import/resolver` must stay in the root `settings`, because oxlint ignores settings inside `overrides` and, without the resolver, boundaries silently allows every import. `src/tests/tooling/oxlint-config.test.ts` runs the real oxlint over fixtures and fails if boundaries stops reporting.
 - CI reads `.nvmrc` and installs pnpm 12.3.4 explicitly. Update runtime pins, Node types and lockfiles together.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
