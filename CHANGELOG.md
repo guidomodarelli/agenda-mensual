@@ -6,6 +6,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Changed
+
+- El menú lateral adopta el diseño de la biblioteca de componentes: opciones más compactas, títulos de sección en mayúsculas pequeñas y una columna de íconos un poco más ancha al colapsarlo.
+
 ## [0.1.3] - 2026-10-03
 
 - 44e9e96 agrega estilos para el menú lateral y mejora la estructura del componente
