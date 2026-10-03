@@ -6,6 +6,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-03
+
+- 44e9e96 agrega estilos para el menú lateral y mejora la estructura del componente
+
 ## [0.1.2] - 2026-10-03
 
 - 42b272f agrega animación al menú lateral y mejora la integración con «beez-ui»
