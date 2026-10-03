@@ -42,15 +42,13 @@
   margin-right: auto;
 }
 
-.sidebarHeader {
-  padding: 1rem 0.875rem 0.75rem;
-}
-
+// The 0.25rem inset lines the brand icon up with the menu icons, expanded and in the rail.
 .sidebarBrand {
   display: grid;
   grid-template-columns: 2.25rem minmax(0, 1fr);
   align-items: center;
   gap: 0.7rem;
+  padding-inline: 0.25rem;
 }
 
 .sidebarBrandIcon {
@@ -98,46 +96,6 @@
   color: color-mix(in srgb, var(--sidebar-foreground) 72%, transparent 28%);
 }
 
-// The group owns the horizontal gutter, so the shared content padding is dropped.
-.sidebarContent {
-  padding-inline: 0;
-}
-
-.sidebarGroup {
-  padding-inline: 0.875rem;
-}
-
-.sidebarGroupLabel {
-  height: 2rem;
-  padding-inline: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: color-mix(in srgb, var(--sidebar-foreground) 64%, transparent 36%);
-}
-
-.sidebarMenu {
-  gap: 0.25rem;
-}
-
-.sidebarMenuButton {
-  min-height: 2.5rem;
-  border-radius: 0.5rem;
-  font-size: 0.925rem;
-  font-weight: 400;
-}
-
-.sidebarMenuButton[data-active="true"] {
-  font-weight: 400;
-}
-
-.sidebarMenuButton svg {
-  width: 1.125rem;
-  height: 1.125rem;
-}
-
-.sidebarFooter {
-  padding: 0.875rem;
-}
 
 .sidebarAccount {
   display: grid;
@@ -298,47 +256,9 @@
   border-radius: 0.75rem;
 }
 
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarGroup {
-  padding-inline: 0.875rem;
-}
-
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarGroupLabel {
-  height: 0;
-  margin: 0;
-  opacity: 0;
-  padding: 0;
-  visibility: hidden;
-  transition: none;
-}
-
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenu {
-  align-items: flex-start;
-  gap: 0.25rem;
-}
-
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenuButton {
-  gap: 0;
-  // Centers the 1.25rem icon slot in the 2.25rem button; the label fades out on its own.
-  padding-inline: 0.5rem;
-}
-
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenuButton[data-slot="sidebar-menu-button"] {
-  width: 2.25rem !important;
-  height: 2.25rem !important;
-  min-height: 2.25rem;
-}
-
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarMenuButton svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-:global([data-slot="sidebar"][data-state="collapsed"]) .sidebarFooter {
-  align-items: flex-start;
-  padding: 0 0.875rem 1rem;
-}
-
 :global([data-slot="sidebar"][data-state="collapsed"]) .sidebarAccount {
+  // Same inset as the brand, so the avatar stays centered in the rail.
+  margin-inline: 0.25rem;
   min-height: 2.25rem;
   width: 2.25rem !important;
   height: 2.25rem !important;

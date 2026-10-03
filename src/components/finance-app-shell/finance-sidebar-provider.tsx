@@ -2,17 +2,15 @@
 
 /** Adapts shared navigation to the existing application preference contract. */
 import { SidebarProvider } from "beez-ui";
-import { useState, type ReactNode, type CSSProperties } from "react";
+import { useState, type ReactNode } from "react";
 
 import { SIDEBAR_STATE_COOKIE_NAME } from "@/modules/shared/shared/constants/sidebar";
 
 /** Retains the existing thirty-day server preference lifetime, in seconds. */
 const SIDEBAR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
-/** Keeps the account avatar and navigation centered in the collapsed rail. */
-const SIDEBAR_STYLE = { "--sidebar-width-icon": "4rem" } as CSSProperties;
 
 /**
- * Preserves browser storage, the SSR cookie and the product's collapsed width.
+ * Preserves browser storage and the SSR cookie; widths come from the shared sidebar.
  * @param props - Server preference and application content.
  * @returns The shared sidebar context configured for Control Mensual.
  */
@@ -41,7 +39,6 @@ export function FinanceSidebarProvider({ children, defaultOpen }: {
       open={open}
       onOpenChange={handleOpenChange}
       storageKey={SIDEBAR_STATE_COOKIE_NAME}
-      style={SIDEBAR_STYLE}
     >
       {children}
     </SidebarProvider>

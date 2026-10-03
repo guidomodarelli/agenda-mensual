@@ -18,7 +18,7 @@ for existing product utilities; it does not scan beez-ui source. Product SCSS re
 this application: theme updates must come from the package.
 
 `FinanceSidebarProvider` preserves the `control-mensual.sidebar.open` storage and
-SSR cookie contract, its thirty-day lifetime and the four-rem collapsed rail.
+SSR cookie contract and its thirty-day lifetime.
 The shared provider also maintains its own `sidebar_state` cookie. The application
 continues reading its own cookie on the server; initial hydration remains stable.
 Storage restrictions must not prevent toggling the sidebar in memory.
@@ -28,6 +28,9 @@ entries pass `href`, `icon` and `isActive` to `SidebarMenuButton`; the shared
 button routes through the `BeezUIProvider` Next link adapter, marks
 `aria-current` and closes the mobile sheet on selection. Product text that
 must disappear in the icon rail uses `group-data-[state=collapsed]/sidebar:hidden`.
+Navigation spacing, typography and the rail width come from the package unchanged,
+so the menu matches the beui design; only the brand and the account trigger keep
+product styles.
 
 The receipt uploader (`ReceiptFileUploader`) composes the beez-ui `FileUpload`
 primitives: file selection, drag and drop, type and size validation and the

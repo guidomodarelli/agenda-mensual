@@ -176,14 +176,11 @@ function FinanceAppShellSidebarNavigation({
   expensesHref,
 }: FinanceAppShellSidebarNavigationProps) {
   return (
-    <SidebarGroup className={styles.sidebarGroup}>
-      <SidebarGroupLabel className={styles.sidebarGroupLabel}>
-        Secciones
-      </SidebarGroupLabel>
-      <SidebarMenu className={styles.sidebarMenu}>
+    <SidebarGroup>
+      <SidebarGroupLabel>Secciones</SidebarGroupLabel>
+      <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton
-            className={styles.sidebarMenuButton}
             href={expensesHref}
             icon={<IconCalendarDollar />}
             isActive={activeSection === "expenses"}
@@ -193,7 +190,6 @@ function FinanceAppShellSidebarNavigation({
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            className={styles.sidebarMenuButton}
             href="/cotizaciones"
             icon={<IconCashBanknote />}
             isActive={activeSection === "exchange-rates"}
@@ -203,7 +199,6 @@ function FinanceAppShellSidebarNavigation({
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            className={styles.sidebarMenuButton}
             href="/prestamistas"
             icon={<IconBuildingBank />}
             isActive={activeSection === "lenders"}
@@ -213,7 +208,6 @@ function FinanceAppShellSidebarNavigation({
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            className={styles.sidebarMenuButton}
             href="/reportes/deudas"
             icon={<IconReportMoney />}
             isActive={activeSection === "debts"}
@@ -291,7 +285,7 @@ export function FinanceAppShell({
     <FinanceAppShellNavigationContext.Provider value={navigationContextValue}>
       <FinanceSidebarProvider defaultOpen={initialSidebarOpen}>
         <Sidebar collapsible="icon" variant="sidebar">
-          <SidebarHeader className={styles.sidebarHeader}>
+          <SidebarHeader>
             <div className={styles.sidebarBrand}>
               <span
                 className={styles.sidebarBrandIcon}
@@ -314,13 +308,13 @@ export function FinanceAppShell({
               </div>
             </div>
           </SidebarHeader>
-          <SidebarContent className={styles.sidebarContent}>
+          <SidebarContent>
             <FinanceAppShellSidebarNavigation
               activeSection={activeSection}
               expensesHref={expensesHref}
             />
           </SidebarContent>
-          <SidebarFooter className={styles.sidebarFooter}>
+          <SidebarFooter>
             <AccountMenu
               name={sessionUserName}
               email={sessionUserEmail}
