@@ -37,12 +37,21 @@ tree. The cleanup below is a mitigation.
   `Playwright.exe` is closed in the same pass. Processes with a live parent
   belong to a running browser and are never touched; when a creation time is
   unknown, the parent counts as alive.
+- Right before closing, one batch query checks that each orphan is still the
+  same instance as in the snapshot. An instance is the same process id with the
+  same creation time. An orphan that already exited, or whose id now belongs to
+  another process, is skipped and counts as closed; one whose creation time is
+  unknown is not closed and is reported with a warning. If that check fails,
+  nothing is closed. This narrows the window in which Windows could reuse an
+  id, but cannot remove it: Node has no atomic "terminate only if the creation
+  time matches".
 - `TerminateProcess` can return before the process is gone, so after closing
   the orphans it waits up to 5 seconds, querying the pending ids in one batch
-  every 250 ms, until each instance disappears. An instance is the same process
-  id with the same creation time, so a reused id counts as closed. A process
-  still present at the timeout is reported as still running: it may keep the
-  folder locked until Windows restarts.
+  every 250 ms, until each instance disappears; a reused id counts as closed.
+  Each of those queries is bounded by the time left in the wait (at least
+  250 ms), and none starts once the wait has expired. A process still present
+  at the timeout is reported as still running: it may keep the folder locked
+  until Windows restarts.
 - A failed process query, or a process that cannot be closed (for example, one
   stuck while terminating), is logged as an `[e2e:cleanup]` warning and never
   fails the run.

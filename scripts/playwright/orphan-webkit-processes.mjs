@@ -12,11 +12,14 @@
  * counts as a dead parent, and a helper whose parent is an orphan closed in
  * the same pass is an orphan too. A process with a live parent belongs to a
  * running browser and is never touched; when a creation time is unknown the
- * parent counts as alive. On Windows `TerminateProcess` can return before the
+ * parent counts as alive. Right before closing, one batch query checks that
+ * each orphan is still the same instance (same id and creation time) as in
+ * the snapshot; an orphan that exited or whose id was reused is skipped and
+ * counts as closed. On Windows `TerminateProcess` can return before the
  * process is gone, so a process only counts as closed once that same instance
- * (same id and creation time) disappears; one still present after a bounded
- * wait is reported as still running. On other platforms the cleanup is a
- * no-op. Failures are logged as warnings and never break the Playwright run.
+ * disappears; one still present after a bounded wait is reported as still
+ * running. Each liveness query during that wait is bounded by the time left.
+ * On other platforms the cleanup is a no-op. Failures are logged as warnings and never break the Playwright run.
  *
  * The default export plugs into `globalSetup` and `globalTeardown` in
  * `playwright.config.ts`; `pnpm run e2e:cleanup` runs it on demand and
@@ -54,6 +57,12 @@ const PROCESS_QUERY_TIMEOUT_MS = 30_000;
 
 /** Maximum time to wait for terminated processes to disappear. */
 const TERMINATION_WAIT_TIMEOUT_MS = 5_000;
+
+/**
+ * Shortest timeout given to a liveness query during the termination wait, so
+ * a query started just before the deadline still has time to answer.
+ */
+const LIVENESS_QUERY_MIN_TIMEOUT_MS = 250;
 
 /** Pause between two checks for terminated processes that are still present. */
 const TERMINATION_POLL_INTERVAL_MS = 250;
@@ -288,16 +297,22 @@ async function queryWindowsProcessSnapshot() {
 }
 
 /**
+ * @typedef {object} ProcessQueryOptions
+ * @property {number} timeoutMs - Maximum time for the query.
+ */
+
+/**
  * Looks up which of the given processes are still alive on Windows.
  *
  * @param {number[]} processIds - Process ids to look up.
+ * @param {ProcessQueryOptions} options - Query bounds.
  * @returns {Promise<LiveProcess[]>} The ones still alive.
  */
-async function queryWindowsProcessesById(processIds) {
+async function queryWindowsProcessesById(processIds, { timeoutMs }) {
   const { stdout } = await execFileAsync(
     "powershell",
     ["-NoProfile", "-NonInteractive", "-Command", buildProcessesByIdScript(processIds)],
-    { timeout: PROCESS_QUERY_TIMEOUT_MS, windowsHide: true },
+    { timeout: timeoutMs, windowsHide: true },
   );
 
   return parseProcessSnapshot(stdout).liveProcesses;
@@ -339,13 +354,35 @@ function isSameInstanceAlive(terminatedProcess, liveCreationTimesById) {
 }
 
 /**
+ * Tells whether a live process is confirmed to be the same instance as the
+ * snapshot process: same id and the same known creation time. Unlike
+ * {@link isSameInstanceAlive}, an unknown creation time does not confirm it,
+ * because this check decides whether to close the process.
+ *
+ * @param {LiveProcess} snapshotProcess - Process as seen in the snapshot.
+ * @param {Map<number, number | null>} liveCreationTimesById - Live processes by id.
+ * @returns {boolean} `true` only when the identity matches.
+ */
+function isConfirmedSameInstance(snapshotProcess, liveCreationTimesById) {
+  const liveCreationTimeMs = liveCreationTimesById.get(snapshotProcess.processId);
+
+  return (
+    liveCreationTimeMs !== undefined &&
+    liveCreationTimeMs !== null &&
+    liveCreationTimeMs === snapshotProcess.creationTimeMs
+  );
+}
+
+/**
  * Waits, up to a bounded timeout, for terminated processes to disappear,
- * querying the whole pending batch on each check.
+ * querying the whole pending batch on each check. Each query is bounded by
+ * the time left, never below {@link LIVENESS_QUERY_MIN_TIMEOUT_MS}, and no
+ * query starts once the deadline has passed.
  *
  * @param {LiveProcess[]} terminatedProcesses - Processes terminated, with
  *   their creation time from the snapshot.
  * @param {object} dependencies - Process query and clock.
- * @param {(processIds: number[]) => Promise<LiveProcess[]>} dependencies.queryProcessesById - Batch lookup.
+ * @param {(processIds: number[], options: ProcessQueryOptions) => Promise<LiveProcess[]>} dependencies.queryProcessesById - Batch lookup.
  * @param {(durationMs: number) => Promise<void>} dependencies.sleep - Pause between checks.
  * @param {() => number} dependencies.now - Current time in milliseconds.
  * @returns {Promise<number[]>} Ids of the processes still present at the timeout.
@@ -355,8 +392,20 @@ async function waitForTermination(terminatedProcesses, { queryProcessesById, sle
   let pendingProcesses = terminatedProcesses;
 
   while (pendingProcesses.length > 0) {
+    const remainingWaitMs = deadlineMs - now();
+
+    if (remainingWaitMs <= 0) {
+      break;
+    }
+
     const liveProcesses = await queryProcessesById(
       pendingProcesses.map((pendingProcess) => pendingProcess.processId),
+      {
+        timeoutMs: Math.max(
+          Math.min(PROCESS_QUERY_TIMEOUT_MS, remainingWaitMs),
+          LIVENESS_QUERY_MIN_TIMEOUT_MS,
+        ),
+      },
     );
     const liveCreationTimesById = new Map(
       liveProcesses.map((liveProcess) => [liveProcess.processId, liveProcess.creationTimeMs]),
@@ -398,8 +447,9 @@ function describeError(error) {
  * @param {() => Promise<ProcessSnapshot>} [options.queryProcessSnapshot] - Process query.
  * @param {(processId: number) => void} [options.terminateProcess] - Closes one
  *   process; on Windows `process.kill` calls `TerminateProcess`.
- * @param {(processIds: number[]) => Promise<LiveProcess[]>} [options.queryProcessesById] -
- *   Batch lookup of the terminated processes that are still alive.
+ * @param {(processIds: number[], options: ProcessQueryOptions) => Promise<LiveProcess[]>} [options.queryProcessesById] -
+ *   Batch lookup of the processes still alive, used right before closing the
+ *   orphans and while waiting for them to disappear.
  * @param {(durationMs: number) => Promise<void>} [options.sleep] - Pause
  *   between termination checks.
  * @param {() => number} [options.now] - Current time in milliseconds.
@@ -463,12 +513,63 @@ export async function cleanupOrphanWebKitProcesses({
     snapshot.processes.map((webKitProcess) => [webKitProcess.processId, webKitProcess.creationTimeMs]),
   );
   /** @type {LiveProcess[]} */
-  const signaledProcesses = [];
+  const orphanProcesses = outcome.orphanProcessIds.map((processId) => ({
+    processId,
+    creationTimeMs: creationTimesById.get(processId) ?? null,
+  }));
 
-  for (const processId of outcome.orphanProcessIds) {
+  // Windows may reuse the id of an orphan that exited after the snapshot, so
+  // each orphan is checked again right before closing it. This narrows the
+  // race window but cannot remove it: Node has no atomic "terminate only if
+  // the creation time still matches" without opening a process handle.
+  /** @type {Map<number, number | null>} */
+  let liveOrphanCreationTimesById;
+
+  try {
+    const liveOrphans = await queryProcessesById(outcome.orphanProcessIds, {
+      timeoutMs: PROCESS_QUERY_TIMEOUT_MS,
+    });
+    liveOrphanCreationTimesById = new Map(
+      liveOrphans.map((liveOrphan) => [liveOrphan.processId, liveOrphan.creationTimeMs]),
+    );
+  } catch (error) {
+    outcome.failedProcessIds = [...outcome.orphanProcessIds];
+    logger.warn(
+      `${LOG_PREFIX} cleanupOrphanWebKitProcesses: no se pudo revalidar la identidad de los procesos huérfanos de WebKit ${outcome.orphanProcessIds.join(", ")} antes de cerrarlos (${describeError(error)}); no se cierra ninguno.`,
+    );
+    return outcome;
+  }
+
+  /** @type {LiveProcess[]} */
+  const signaledProcesses = [];
+  /** @type {number[]} */
+  const alreadyGoneProcessIds = [];
+
+  for (const orphanProcess of orphanProcesses) {
+    const { processId } = orphanProcess;
+    const liveCreationTimeMs = liveOrphanCreationTimesById.get(processId);
+
+    if (liveCreationTimeMs === undefined) {
+      alreadyGoneProcessIds.push(processId);
+      continue;
+    }
+
+    if (liveCreationTimeMs === null || orphanProcess.creationTimeMs === null) {
+      outcome.failedProcessIds.push(processId);
+      logger.warn(
+        `${LOG_PREFIX} cleanupOrphanWebKitProcesses: no se pudo confirmar la identidad del proceso huérfano de WebKit ${processId} (hora de inicio desconocida); no se cierra.`,
+      );
+      continue;
+    }
+
+    if (!isConfirmedSameInstance(orphanProcess, liveOrphanCreationTimesById)) {
+      alreadyGoneProcessIds.push(processId);
+      continue;
+    }
+
     try {
       terminateProcess(processId);
-      signaledProcesses.push({ processId, creationTimeMs: creationTimesById.get(processId) ?? null });
+      signaledProcesses.push(orphanProcess);
     } catch (error) {
       outcome.failedProcessIds.push(processId);
       logger.warn(
@@ -493,11 +594,16 @@ export async function cleanupOrphanWebKitProcesses({
       );
     }
 
-    const stillRunningProcessIds = new Set(outcome.stillRunningProcessIds);
-    outcome.terminatedProcessIds = signaledProcesses
-      .map((signaledProcess) => signaledProcess.processId)
-      .filter((processId) => !stillRunningProcessIds.has(processId));
   }
+
+  const stillRunningProcessIds = new Set(outcome.stillRunningProcessIds);
+  const closedProcessIds = new Set([
+    ...alreadyGoneProcessIds,
+    ...signaledProcesses.map((signaledProcess) => signaledProcess.processId),
+  ]);
+  outcome.terminatedProcessIds = outcome.orphanProcessIds.filter(
+    (processId) => closedProcessIds.has(processId) && !stillRunningProcessIds.has(processId),
+  );
 
   for (const processId of outcome.stillRunningProcessIds) {
     logger.warn(

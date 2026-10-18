@@ -48,6 +48,20 @@ function createFakeClock() {
   };
 }
 
+/** Process query timeout used outside the termination wait. */
+const PROCESS_QUERY_TIMEOUT_MS = 30_000;
+
+/** Maximum time to wait for terminated processes to disappear. */
+const TERMINATION_WAIT_TIMEOUT_MS = 5_000;
+
+/** Shortest timeout given to a liveness query during the termination wait. */
+const LIVENESS_QUERY_MIN_TIMEOUT_MS = 250;
+
+/** Same instances as in the snapshot, as returned by the pre-termination check. */
+function sameInstances(...processIds: number[]) {
+  return processIds.map((processId) => ({ processId, creationTimeMs: CHILD_CREATION_TIME_MS }));
+}
+
 /** Orphan WebKit helper with a dead parent, as returned by the snapshot query. */
 function orphanSnapshot(processId: number) {
   return async () => ({
@@ -230,7 +244,10 @@ describe("cleanupOrphanWebKitProcesses", () => {
         liveProcesses: liveProcesses(77, 4100, 4500, 4600),
       }),
       terminateProcess,
-      queryProcessesById: async () => [],
+      queryProcessesById: vi
+        .fn()
+        .mockResolvedValueOnce(sameInstances(4100, 4500))
+        .mockResolvedValue([]),
       ...createFakeClock(),
       logger,
     });
@@ -300,7 +317,8 @@ describe("cleanupOrphanWebKitProcesses", () => {
     const logger = createRecordingLogger();
     const queryProcessesById = vi
       .fn()
-      .mockResolvedValueOnce([{ processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS }])
+      .mockResolvedValueOnce(sameInstances(4100))
+      .mockResolvedValueOnce(sameInstances(4100))
       .mockResolvedValueOnce([]);
 
     const result = await cleanupOrphanWebKitProcesses({
@@ -318,7 +336,7 @@ describe("cleanupOrphanWebKitProcesses", () => {
       stillRunningProcessIds: [],
       failedProcessIds: [],
     });
-    expect(queryProcessesById).toHaveBeenCalledWith([4100]);
+    expect(queryProcessesById).toHaveBeenCalledWith([4100], expect.anything());
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
@@ -356,7 +374,10 @@ describe("cleanupOrphanWebKitProcesses", () => {
       platform: "win32",
       queryProcessSnapshot: orphanSnapshot(4100),
       terminateProcess: vi.fn(),
-      queryProcessesById: async () => [{ processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS + 1 }],
+      queryProcessesById: vi
+        .fn()
+        .mockResolvedValueOnce(sameInstances(4100))
+        .mockResolvedValue([{ processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS + 1 }]),
       ...createFakeClock(),
       logger,
     });
@@ -368,5 +389,173 @@ describe("cleanupOrphanWebKitProcesses", () => {
       failedProcessIds: [],
     });
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("does not close a process whose id was reused before termination", async () => {
+    const terminateProcess = vi.fn();
+    const queryProcessesById = vi.fn(async () => [
+      { processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS + 1 },
+    ]);
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess,
+      queryProcessesById,
+      ...createFakeClock(),
+      logger: createRecordingLogger(),
+    });
+
+    expect(terminateProcess).not.toHaveBeenCalled();
+    expect(queryProcessesById).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [4100],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
+  });
+
+  it("does not close a process that exited before termination and counts it as closed", async () => {
+    const terminateProcess = vi.fn();
+    const queryProcessesById = vi
+      .fn()
+      .mockResolvedValueOnce(sameInstances(4500))
+      .mockResolvedValue([]);
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: async () => ({
+        processes: [
+          { processId: 4100, parentProcessId: 900, executablePath: PLAYWRIGHT_NETWORK_PROCESS_PATH, creationTimeMs: CHILD_CREATION_TIME_MS },
+          { processId: 4500, parentProcessId: 901, executablePath: PLAYWRIGHT_NETWORK_PROCESS_PATH, creationTimeMs: CHILD_CREATION_TIME_MS },
+        ],
+        liveProcesses: liveProcesses(4100, 4500),
+      }),
+      terminateProcess,
+      queryProcessesById,
+      ...createFakeClock(),
+      logger: createRecordingLogger(),
+    });
+
+    expect(terminateProcess).toHaveBeenCalledTimes(1);
+    expect(terminateProcess).toHaveBeenCalledWith(4500);
+    expect(queryProcessesById).toHaveBeenNthCalledWith(1, [4100, 4500], {
+      timeoutMs: PROCESS_QUERY_TIMEOUT_MS,
+    });
+    expect(result).toEqual({
+      orphanProcessIds: [4100, 4500],
+      terminatedProcessIds: [4100, 4500],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
+  });
+
+  it("closes nothing and warns when the pre-termination check fails", async () => {
+    const logger = createRecordingLogger();
+    const terminateProcess = vi.fn();
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess,
+      queryProcessesById: async () => {
+        throw Object.assign(new Error("CIM timeout"), { code: "ETIMEDOUT" });
+      },
+      ...createFakeClock(),
+      logger,
+    });
+
+    expect(terminateProcess).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [],
+      failedProcessIds: [4100],
+    });
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("CIM timeout"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("4100"));
+  });
+
+  it("does not close a process whose identity cannot be confirmed before termination", async () => {
+    const logger = createRecordingLogger();
+    const terminateProcess = vi.fn();
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess,
+      queryProcessesById: async () => [{ processId: 4100, creationTimeMs: null }],
+      ...createFakeClock(),
+      logger,
+    });
+
+    expect(terminateProcess).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [],
+      failedProcessIds: [4100],
+    });
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("4100"));
+  });
+
+  it("bounds each liveness query by the remaining termination wait", async () => {
+    const clock = createFakeClock();
+    const queryDurationMs = 4_700;
+    const queryProcessesById = vi.fn(async (_processIds: number[], _options: { timeoutMs: number }) => {
+      await clock.sleep(queryDurationMs);
+      return sameInstances(4100);
+    });
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess: vi.fn(),
+      queryProcessesById,
+      ...clock,
+      logger: createRecordingLogger(),
+    });
+
+    // Pre-termination check, first poll with the whole wait left, and a last
+    // poll whose 50 ms remainder is raised to the minimum timeout.
+    expect(queryProcessesById.mock.calls.map(([, options]) => options)).toEqual([
+      { timeoutMs: PROCESS_QUERY_TIMEOUT_MS },
+      { timeoutMs: TERMINATION_WAIT_TIMEOUT_MS },
+      { timeoutMs: LIVENESS_QUERY_MIN_TIMEOUT_MS },
+    ]);
+    expect(result.stillRunningProcessIds).toEqual([4100]);
+  });
+
+  it("stops querying once the termination wait has expired", async () => {
+    const logger = createRecordingLogger();
+    const clock = createFakeClock();
+    const queryProcessesById = vi
+      .fn()
+      .mockResolvedValueOnce(sameInstances(4100))
+      .mockImplementation(async () => {
+        await clock.sleep(TERMINATION_WAIT_TIMEOUT_MS + 1);
+        return sameInstances(4100);
+      });
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess: vi.fn(),
+      queryProcessesById,
+      ...clock,
+      logger,
+    });
+
+    expect(queryProcessesById).toHaveBeenCalledTimes(2);
+    // The only pause is the simulated duration of the slow poll itself.
+    expect(clock.sleep).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [4100],
+      failedProcessIds: [],
+    });
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("4100"));
   });
 });
