@@ -46,7 +46,7 @@ error adapter uses `GaxiosError` from the `gaxios` dependency supplied by
 `googleapis`; `gaxios` is intentionally not declared directly.
 
 Before updating the package, run `pnpm run lint`, `pnpm run typecheck`,
-`pnpm test`, `pnpm run build` and `pnpm run test:e2e`. Browser coverage
+`pnpm test`, `pnpm run build` and `pnpm run test:e2e` (see `docs/e2e-testing.md`). Browser coverage
 must exercise theme persistence, navigation and interactive controls in Chromium
 and WebKit at desktop and mobile widths.
 
