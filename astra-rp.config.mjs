@@ -1,16 +1,16 @@
 /**
- * Configuration of `pnpm create-version` (`beez-rp create-version`): what is
+ * Configuration of `pnpm create-version` (`astra-rp create-version`): what is
  * specific to Control Mensual on top of the release process shared through
- * `beez-rp`. Releases ship from `main`; the version change makes Vercel build
+ * `astra-rp`. Releases ship from `main`; the version change makes Vercel build
  * and deploy production (`scripts/ignore-build.sh`).
  *
  * Pending migrations are checked against the Turso/libSQL database that
  * `pnpm run push-migrations` would change, reading the Drizzle journal of the
  * current branch and of `origin/main`.
  *
- * Only types come from `beez-rp`; every helper arrives through the hook context.
+ * Only types come from `@astra-kit/rp`; every helper arrives through the hook context.
  *
- * @module beez-rp.config
+ * @module astra-rp.config
  */
 
 import { checkPendingMigrations, readMigrationJournalAt } from "./scripts/release/pending-migrations.mjs";
@@ -27,10 +27,9 @@ const RELEASE_CHECKS_COMMAND = "pnpm run ci";
  */
 const PUSH_MIGRATIONS_COMMAND = `"${process.execPath}" scripts/push-migrations.mjs`;
 
-/** @type {import("beez-rp/create-version").CreateVersionConfig} */
+/** @type {import("@astra-kit/rp/create-version").CreateVersionConfig} */
 const createVersionConfig = {
   projectName: "Control Mensual",
-  changelog: { audience: "quien usa Control Mensual para administrar sus gastos", language: "es" },
   releaseTypeDescriptions: {
     patch: "Solo arreglos o cambios internos; nada nuevo para quien usa la app.",
     minor: "Funcionalidades o mejoras nuevas; lo existente sigue funcionando igual.",
@@ -52,6 +51,8 @@ const createVersionConfig = {
       }
     },
   },
+  releaseTimeZone: "America/Argentina/Buenos_Aires",
+  changelogDraft: true,
   summary: ["Deploy: Vercel detecta el cambio de versión y buildea producción."],
 };
 

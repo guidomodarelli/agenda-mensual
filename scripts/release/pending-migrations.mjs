@@ -10,7 +10,7 @@
  * `file:./local.db`), so the check always targets the database that
  * `pnpm run push-migrations` would change. Only the host is ever shown.
  *
- * `beez-rp.config.mjs` plugs this adapter into `beez-rp create-version`; the
+ * `astra-rp.config.mjs` plugs this adapter into `astra-rp create-version`; the
  * result follows the `MigrationCheck` contract of that command.
  *
  * @module pending-migrations
@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
 
-/** Result of checking the database, as `beez-rp create-version` expects it. */
+/** Result of checking the database, as `astra-rp create-version` expects it. */
 export const MIGRATION_STATUS = Object.freeze({
   upToDate: "up-to-date",
   pending: "pending",
