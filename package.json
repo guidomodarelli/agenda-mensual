@@ -70,7 +70,7 @@
     "vite": "^8.2.2",
     "vitest": "^5.0.0"
   },
-  "packageManager": "pnpm@12.3.4",
+  "packageManager": "pnpm@12.14.0",
   "engines": {
     "pnpm": ">=12 <13",
     "node": ">=24 <25"
