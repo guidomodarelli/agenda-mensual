@@ -37,6 +37,12 @@ tree. The cleanup below is a mitigation.
   `Playwright.exe` is closed in the same pass. Processes with a live parent
   belong to a running browser and are never touched; when a creation time is
   unknown, the parent counts as alive.
+- `TerminateProcess` can return before the process is gone, so after closing
+  the orphans it waits up to 5 seconds, querying the pending ids in one batch
+  every 250 ms, until each instance disappears. An instance is the same process
+  id with the same creation time, so a reused id counts as closed. A process
+  still present at the timeout is reported as still running: it may keep the
+  folder locked until Windows restarts.
 - A failed process query, or a process that cannot be closed (for example, one
   stuck while terminating), is logged as an `[e2e:cleanup]` warning and never
   fails the run.

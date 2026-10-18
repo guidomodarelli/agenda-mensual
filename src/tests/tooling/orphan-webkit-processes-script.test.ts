@@ -36,6 +36,28 @@ function createRecordingLogger() {
   return { info: vi.fn(), warn: vi.fn() };
 }
 
+/** Clock whose `sleep` advances the time instantly instead of waiting. */
+function createFakeClock() {
+  let currentTimeMs = 0;
+
+  return {
+    now: () => currentTimeMs,
+    sleep: vi.fn(async (durationMs: number) => {
+      currentTimeMs += durationMs;
+    }),
+  };
+}
+
+/** Orphan WebKit helper with a dead parent, as returned by the snapshot query. */
+function orphanSnapshot(processId: number) {
+  return async () => ({
+    processes: [
+      { processId, parentProcessId: 900, executablePath: PLAYWRIGHT_NETWORK_PROCESS_PATH, creationTimeMs: CHILD_CREATION_TIME_MS },
+    ],
+    liveProcesses: liveProcesses(processId),
+  });
+}
+
 describe("selectOrphanPlaywrightProcessIds", () => {
   it("selects a Playwright WebKit process whose parent no longer exists", () => {
     const orphanProcessIds = selectOrphanPlaywrightProcessIds({
@@ -179,7 +201,12 @@ describe("cleanupOrphanWebKitProcesses", () => {
       logger: createRecordingLogger(),
     });
 
-    expect(result).toEqual({ orphanProcessIds: [], terminatedProcessIds: [], failedProcessIds: [] });
+    expect(result).toEqual({
+      orphanProcessIds: [],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
     expect(queryProcessSnapshot).not.toHaveBeenCalled();
     expect(terminateProcess).not.toHaveBeenCalled();
   });
@@ -203,12 +230,15 @@ describe("cleanupOrphanWebKitProcesses", () => {
         liveProcesses: liveProcesses(77, 4100, 4500, 4600),
       }),
       terminateProcess,
+      queryProcessesById: async () => [],
+      ...createFakeClock(),
       logger,
     });
 
     expect(result).toEqual({
       orphanProcessIds: [4100, 4500],
       terminatedProcessIds: [4100],
+      stillRunningProcessIds: [],
       failedProcessIds: [4500],
     });
     expect(terminateProcess).not.toHaveBeenCalledWith(4600);
@@ -228,30 +258,115 @@ describe("cleanupOrphanWebKitProcesses", () => {
       logger,
     });
 
-    expect(result).toEqual({ orphanProcessIds: [], terminatedProcessIds: [], failedProcessIds: [] });
+    expect(result).toEqual({
+      orphanProcessIds: [],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
     expect(terminateProcess).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("powershell not found"));
   });
 
-  it("reports the orphans without closing them in a dry run", async () => {
+  it("reports the orphans without closing them or waiting in a dry run", async () => {
     const logger = createRecordingLogger();
     const terminateProcess = vi.fn();
+    const queryProcessesById = vi.fn();
+    const clock = createFakeClock();
 
     const result = await cleanupOrphanWebKitProcesses({
       platform: "win32",
       dryRun: true,
-      queryProcessSnapshot: async () => ({
-        processes: [
-          { processId: 4100, parentProcessId: 900, executablePath: PLAYWRIGHT_NETWORK_PROCESS_PATH, creationTimeMs: CHILD_CREATION_TIME_MS },
-        ],
-        liveProcesses: liveProcesses(4100),
-      }),
+      queryProcessSnapshot: orphanSnapshot(4100),
       terminateProcess,
+      queryProcessesById,
+      ...clock,
       logger,
     });
 
-    expect(result).toEqual({ orphanProcessIds: [4100], terminatedProcessIds: [], failedProcessIds: [] });
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
     expect(terminateProcess).not.toHaveBeenCalled();
+    expect(queryProcessesById).not.toHaveBeenCalled();
+    expect(clock.sleep).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("4100"));
+  });
+
+  it("reports a process as closed once it disappears after being terminated", async () => {
+    const logger = createRecordingLogger();
+    const queryProcessesById = vi
+      .fn()
+      .mockResolvedValueOnce([{ processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS }])
+      .mockResolvedValueOnce([]);
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess: vi.fn(),
+      queryProcessesById,
+      ...createFakeClock(),
+      logger,
+    });
+
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [4100],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
+    expect(queryProcessesById).toHaveBeenCalledWith([4100]);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("warns without failing when a terminated process is still present at the timeout", async () => {
+    const logger = createRecordingLogger();
+    const clock = createFakeClock();
+    const queryProcessesById = vi.fn(async () => [
+      { processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS },
+    ]);
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess: vi.fn(),
+      queryProcessesById,
+      ...clock,
+      logger,
+    });
+
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [],
+      stillRunningProcessIds: [4100],
+      failedProcessIds: [],
+    });
+    expect(clock.now()).toBeGreaterThan(0);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("4100"));
+    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("cerrados"));
+  });
+
+  it("counts a process as closed when its id now belongs to a different instance", async () => {
+    const logger = createRecordingLogger();
+
+    const result = await cleanupOrphanWebKitProcesses({
+      platform: "win32",
+      queryProcessSnapshot: orphanSnapshot(4100),
+      terminateProcess: vi.fn(),
+      queryProcessesById: async () => [{ processId: 4100, creationTimeMs: CHILD_CREATION_TIME_MS + 1 }],
+      ...createFakeClock(),
+      logger,
+    });
+
+    expect(result).toEqual({
+      orphanProcessIds: [4100],
+      terminatedProcessIds: [4100],
+      stillRunningProcessIds: [],
+      failedProcessIds: [],
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 });

@@ -12,8 +12,11 @@
  * counts as a dead parent, and a helper whose parent is an orphan closed in
  * the same pass is an orphan too. A process with a live parent belongs to a
  * running browser and is never touched; when a creation time is unknown the
- * parent counts as alive. On other platforms the cleanup is a no-op. Failures
- * are logged as warnings and never break the Playwright run.
+ * parent counts as alive. On Windows `TerminateProcess` can return before the
+ * process is gone, so a process only counts as closed once that same instance
+ * (same id and creation time) disappears; one still present after a bounded
+ * wait is reported as still running. On other platforms the cleanup is a
+ * no-op. Failures are logged as warnings and never break the Playwright run.
  *
  * The default export plugs into `globalSetup` and `globalTeardown` in
  * `playwright.config.ts`; `pnpm run e2e:cleanup` runs it on demand and
@@ -49,6 +52,12 @@ const WEBKIT_EXECUTABLE_NAMES_LOWERCASE = new Set(
 /** Maximum time for the PowerShell process query. */
 const PROCESS_QUERY_TIMEOUT_MS = 30_000;
 
+/** Maximum time to wait for terminated processes to disappear. */
+const TERMINATION_WAIT_TIMEOUT_MS = 5_000;
+
+/** Pause between two checks for terminated processes that are still present. */
+const TERMINATION_POLL_INTERVAL_MS = 250;
+
 /** Command-line flag that lists the orphans without closing them. */
 const DRY_RUN_FLAG = "--dry-run";
 
@@ -73,6 +82,25 @@ const PROCESS_SNAPSHOT_SCRIPT = [
   "$liveProcesses = if ($parentFilter) { @(Get-CimInstance Win32_Process -Filter $parentFilter -Property ProcessId,CreationDate | Select-Object ProcessId,$creationTimeMs) } else { @() }",
   "ConvertTo-Json -Compress -Depth 3 -InputObject @{ processes = $webKitProcesses; liveProcesses = $liveProcesses }",
 ].join("; ");
+
+/**
+ * Builds the PowerShell script that prints, as JSON in the same shape as
+ * {@link PROCESS_SNAPSHOT_SCRIPT}, the processes still alive among the given
+ * ids with their creation time. One query covers the whole batch.
+ *
+ * @param {number[]} processIds - Integer process ids to look up.
+ * @returns {string} PowerShell script.
+ */
+function buildProcessesByIdScript(processIds) {
+  const processIdFilter = processIds.map((processId) => `ProcessId=${processId}`).join(" OR ");
+
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    "$creationTimeMs = @{ Name = 'CreationTimeMs'; Expression = { if ($_.CreationDate) { ([DateTimeOffset]$_.CreationDate).ToUnixTimeMilliseconds() } else { $null } } }",
+    `$liveProcesses = @(Get-CimInstance Win32_Process -Filter '${processIdFilter}' -Property ProcessId,CreationDate | Select-Object ProcessId,$creationTimeMs)`,
+    "ConvertTo-Json -Compress -Depth 3 -InputObject @{ processes = @(); liveProcesses = $liveProcesses }",
+  ].join("; ");
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -103,7 +131,9 @@ const execFileAsync = promisify(execFile);
 /**
  * @typedef {object} CleanupOutcome
  * @property {number[]} orphanProcessIds - Orphans found.
- * @property {number[]} terminatedProcessIds - Orphans closed.
+ * @property {number[]} terminatedProcessIds - Orphans confirmed closed.
+ * @property {number[]} stillRunningProcessIds - Orphans terminated but still
+ *   present when the wait timed out; they may keep the folder locked.
  * @property {number[]} failedProcessIds - Orphans that could not be closed.
  */
 
@@ -258,6 +288,94 @@ async function queryWindowsProcessSnapshot() {
 }
 
 /**
+ * Looks up which of the given processes are still alive on Windows.
+ *
+ * @param {number[]} processIds - Process ids to look up.
+ * @returns {Promise<LiveProcess[]>} The ones still alive.
+ */
+async function queryWindowsProcessesById(processIds) {
+  const { stdout } = await execFileAsync(
+    "powershell",
+    ["-NoProfile", "-NonInteractive", "-Command", buildProcessesByIdScript(processIds)],
+    { timeout: PROCESS_QUERY_TIMEOUT_MS, windowsHide: true },
+  );
+
+  return parseProcessSnapshot(stdout).liveProcesses;
+}
+
+/**
+ * Waits for the given duration.
+ *
+ * @param {number} durationMs - Time to wait.
+ * @returns {Promise<void>}
+ */
+function sleepFor(durationMs) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
+}
+
+/**
+ * Tells whether a terminated process is still running as the same instance.
+ * A live process with that id but another creation time reused the id; when
+ * either creation time is unknown, the id alone counts.
+ *
+ * @param {LiveProcess} terminatedProcess - Process that was terminated.
+ * @param {Map<number, number | null>} liveCreationTimesById - Live processes by id.
+ * @returns {boolean} `true` while that instance is still present.
+ */
+function isSameInstanceAlive(terminatedProcess, liveCreationTimesById) {
+  const liveCreationTimeMs = liveCreationTimesById.get(terminatedProcess.processId);
+
+  if (liveCreationTimeMs === undefined) {
+    return false;
+  }
+
+  if (liveCreationTimeMs === null || terminatedProcess.creationTimeMs === null) {
+    return true;
+  }
+
+  return liveCreationTimeMs === terminatedProcess.creationTimeMs;
+}
+
+/**
+ * Waits, up to a bounded timeout, for terminated processes to disappear,
+ * querying the whole pending batch on each check.
+ *
+ * @param {LiveProcess[]} terminatedProcesses - Processes terminated, with
+ *   their creation time from the snapshot.
+ * @param {object} dependencies - Process query and clock.
+ * @param {(processIds: number[]) => Promise<LiveProcess[]>} dependencies.queryProcessesById - Batch lookup.
+ * @param {(durationMs: number) => Promise<void>} dependencies.sleep - Pause between checks.
+ * @param {() => number} dependencies.now - Current time in milliseconds.
+ * @returns {Promise<number[]>} Ids of the processes still present at the timeout.
+ */
+async function waitForTermination(terminatedProcesses, { queryProcessesById, sleep, now }) {
+  const deadlineMs = now() + TERMINATION_WAIT_TIMEOUT_MS;
+  let pendingProcesses = terminatedProcesses;
+
+  while (pendingProcesses.length > 0) {
+    const liveProcesses = await queryProcessesById(
+      pendingProcesses.map((pendingProcess) => pendingProcess.processId),
+    );
+    const liveCreationTimesById = new Map(
+      liveProcesses.map((liveProcess) => [liveProcess.processId, liveProcess.creationTimeMs]),
+    );
+    pendingProcesses = pendingProcesses.filter((pendingProcess) =>
+      isSameInstanceAlive(pendingProcess, liveCreationTimesById),
+    );
+
+    if (pendingProcesses.length === 0 || now() >= deadlineMs) {
+      break;
+    }
+
+    await sleep(TERMINATION_POLL_INTERVAL_MS);
+  }
+
+  return pendingProcesses.map((pendingProcess) => pendingProcess.processId);
+}
+
+/**
  * Describes an error for a log line without its stack.
  *
  * @param {unknown} error - Caught error.
@@ -280,6 +398,11 @@ function describeError(error) {
  * @param {() => Promise<ProcessSnapshot>} [options.queryProcessSnapshot] - Process query.
  * @param {(processId: number) => void} [options.terminateProcess] - Closes one
  *   process; on Windows `process.kill` calls `TerminateProcess`.
+ * @param {(processIds: number[]) => Promise<LiveProcess[]>} [options.queryProcessesById] -
+ *   Batch lookup of the terminated processes that are still alive.
+ * @param {(durationMs: number) => Promise<void>} [options.sleep] - Pause
+ *   between termination checks.
+ * @param {() => number} [options.now] - Current time in milliseconds.
  * @param {boolean} [options.dryRun] - Report the orphans without closing them.
  * @param {boolean} [options.reportClean] - Also log when no orphan is found,
  *   for manual runs.
@@ -290,12 +413,20 @@ export async function cleanupOrphanWebKitProcesses({
   platform = process.platform,
   queryProcessSnapshot = queryWindowsProcessSnapshot,
   terminateProcess = (processId) => process.kill(processId),
+  queryProcessesById = queryWindowsProcessesById,
+  sleep = sleepFor,
+  now = () => performance.now(),
   dryRun = false,
   reportClean = false,
   logger = console,
 } = {}) {
   /** @type {CleanupOutcome} */
-  const outcome = { orphanProcessIds: [], terminatedProcessIds: [], failedProcessIds: [] };
+  const outcome = {
+    orphanProcessIds: [],
+    terminatedProcessIds: [],
+    stillRunningProcessIds: [],
+    failedProcessIds: [],
+  };
 
   if (platform !== WINDOWS_PLATFORM) {
     return outcome;
@@ -328,16 +459,50 @@ export async function cleanupOrphanWebKitProcesses({
     return outcome;
   }
 
+  const creationTimesById = new Map(
+    snapshot.processes.map((webKitProcess) => [webKitProcess.processId, webKitProcess.creationTimeMs]),
+  );
+  /** @type {LiveProcess[]} */
+  const signaledProcesses = [];
+
   for (const processId of outcome.orphanProcessIds) {
     try {
       terminateProcess(processId);
-      outcome.terminatedProcessIds.push(processId);
+      signaledProcesses.push({ processId, creationTimeMs: creationTimesById.get(processId) ?? null });
     } catch (error) {
       outcome.failedProcessIds.push(processId);
       logger.warn(
         `${LOG_PREFIX} no se pudo cerrar el proceso huérfano de WebKit ${processId} (${describeError(error)}).`,
       );
     }
+  }
+
+  if (signaledProcesses.length > 0) {
+    try {
+      outcome.stillRunningProcessIds = await waitForTermination(signaledProcesses, {
+        queryProcessesById,
+        sleep,
+        now,
+      });
+    } catch (error) {
+      outcome.stillRunningProcessIds = signaledProcesses.map(
+        (signaledProcess) => signaledProcess.processId,
+      );
+      logger.warn(
+        `${LOG_PREFIX} no se pudo confirmar el cierre de los procesos huérfanos de WebKit (${describeError(error)}).`,
+      );
+    }
+
+    const stillRunningProcessIds = new Set(outcome.stillRunningProcessIds);
+    outcome.terminatedProcessIds = signaledProcesses
+      .map((signaledProcess) => signaledProcess.processId)
+      .filter((processId) => !stillRunningProcessIds.has(processId));
+  }
+
+  for (const processId of outcome.stillRunningProcessIds) {
+    logger.warn(
+      `${LOG_PREFIX} cleanupOrphanWebKitProcesses: el proceso huérfano de WebKit ${processId} sigue presente ${TERMINATION_WAIT_TIMEOUT_MS} ms después de cerrarlo; puede seguir bloqueando la carpeta hasta reiniciar Windows.`,
+    );
   }
 
   if (outcome.terminatedProcessIds.length > 0) {
