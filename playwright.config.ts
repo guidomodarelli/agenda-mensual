@@ -2,17 +2,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 const isCI = Boolean(process.env.CI);
 
-/**
- * Closes WebKit processes orphaned by Playwright runs that died abruptly on
- * Windows; a no-op on other platforms. It runs before the suite (the main
- * case: leftovers from earlier runs) and after it.
- */
-const ORPHAN_WEBKIT_CLEANUP_MODULE = "./scripts/playwright/orphan-webkit-processes.mjs";
-
 export default defineConfig({
   testDir: "./e2e",
-  globalSetup: ORPHAN_WEBKIT_CLEANUP_MODULE,
-  globalTeardown: ORPHAN_WEBKIT_CLEANUP_MODULE,
+  // Closes WebKit processes orphaned by Playwright runs that died abruptly on
+  // Windows (see @astra-kit/cleaner); a no-op on other platforms. It runs
+  // before the suite (the main case: leftovers from earlier runs) and after it.
+  globalSetup: "@astra-kit/cleaner/playwright/global-setup",
+  globalTeardown: "@astra-kit/cleaner/playwright/global-teardown",
   fullyParallel: true,
   retries: isCI ? 2 : 0,
   reporter: isCI ? [["list"], ["html", { open: "never" }]] : [["line"]],

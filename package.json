@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "e2e:cleanup": "node scripts/playwright/orphan-webkit-processes.mjs",
+    "e2e:cleanup": "cleaner playwright",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
@@ -45,6 +45,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@astra-kit/cleaner": "^0.2.0",
     "@playwright/test": "1.59.1",
     "@tailwindcss/postcss": "4.3.0",
     "@testing-library/dom": "10.4.1",

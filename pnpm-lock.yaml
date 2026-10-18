@@ -175,6 +175,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@astra-kit/cleaner':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -271,6 +274,11 @@ packages:
 
   '@asamuzakjp/nwsapi@2.3.9':
     resolution: {integrity: sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==}
+
+  '@astra-kit/cleaner@0.2.0':
+    resolution: {integrity: sha512-5DvspC6K+xegMxARRGyxmkFyp8l/ejKene8xkzAfsgzcTziwu+YBnjqMolAKOgR8RQHvA8x+uTtQ1gOv1vO0Og==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@atlaskit/pragmatic-drag-and-drop@1.8.1':
     resolution: {integrity: sha512-uXWNPpL8n4OmTVbduH7nq8pk8htqGo/prR5cYEE8sVCPJGAUMWn6lzvWTfI+4VCeQvHiDRODVz4YzH06OVAxhw==}
@@ -5230,6 +5238,8 @@ snapshots:
   '@asamuzakjp/generational-cache@1.0.1': {}
 
   '@asamuzakjp/nwsapi@2.3.9': {}
+
+  '@astra-kit/cleaner@0.2.0': {}
 
   '@atlaskit/pragmatic-drag-and-drop@1.8.1':
     dependencies:

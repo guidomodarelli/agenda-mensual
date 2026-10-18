@@ -15,5 +15,6 @@ minimumReleaseAgeExclude:
   - '@types/react-dom@19.3.0'
   - beez-ui
   - beez-rp
+  - "@astra-kit/cleaner"
   - '@types/node@24.13.4'
   - "@types/node@26.5.1"
