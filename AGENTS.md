@@ -28,26 +28,7 @@
 
 ### Mandatory architecture
 
-- Prioritize hexagonal architecture from the first commit and in every change.
 - Use `~/hexagonal-architecture` as the implementation reference when there is any doubt about structure, boundaries, ports, adapters, DTO placement, or testing strategy.
-- Organize the codebase by vertical slice, not by technical layer at the repository root.
-- Do not create or reintroduce a generic `src/server` layer. Server-only code must belong to a feature module or to a dedicated shared module under `src/modules`.
-- Keep all technical identifiers in English: folders, files, modules, symbols, DTOs, ports, adapters, tests, and comments.
-
-### Dependency rule
-
-- Dependencies must always point inward.
-- Allowed directions:
-  - `app` page/layout/loading/route entrypoints -> `application`
-  - `app` page/layout/loading/route entrypoints -> `infrastructure` only for framework wiring, adapter selection, and dependency composition
-  - `application` -> `domain`
-  - `infrastructure` -> `application`
-  - `infrastructure` -> `domain`
-- Forbidden directions:
-  - `domain` -> `application` or `infrastructure`
-  - `application` -> `infrastructure` or generic `lib`
-  - UI or route entrypoints importing external DTOs directly
-  - Any layer importing from a generic `src/server` folder
 
 ### Target structure
 
@@ -86,33 +67,9 @@ src/
 
 ### Layer responsibilities
 
-- `src/app/*`
-  - Route entrypoints and framework composition roots only.
-  - Compose dependencies for server components, route handlers, layouts, loading states, and page-level interactions.
-  - They may import `application` and module-scoped `infrastructure` only to wire framework adapters to use cases.
-  - Keep client-side session lookup, async workflows, and complex form orchestration in client components or module-scoped containers, not inside presentational components.
-  - Never host domain rules.
-- `src/components/*`
-  - Presentational components by default.
-  - Receive state, derived messages, results, and callbacks through props when an interaction depends on auth session state, HTTP requests, or multi-step UI workflows.
-  - Do not call module infrastructure adapters directly from presentational components.
-  - Do not import client adapters from `lib` either. Files named like `*api*`, `*client*`, or `*adapter*` under `src/lib` must be treated as adapter code and kept out of presentational components.
-- `domain`
-  - Pure business rules, entities, value objects, and ports.
-  - No framework, HTTP, Google SDK, or persistence details.
-- `application`
-  - Use cases and internal contracts (`commands`, `queries`, `results`).
-  - Orchestrates domain behavior through ports.
-  - Validate and normalize inputs through domain value objects or application contracts, not through generic helpers in `lib`.
-- `infrastructure`
-  - Adapters for Google APIs, authentication, HTTP clients, storage, and third-party SDKs.
-  - Owns external DTOs and their mappers.
-  - Shared server-only helpers must still live under a module infrastructure folder, never under `src/server`.
-- `lib`
-  - Reserved for framework-safe helpers, UI utilities, and client-only adapters that are not business rules.
-  - `application` and `domain` must never import from `lib`.
-  - If a file under `lib` wraps endpoint calls or transport concerns, name it clearly (`*api*`, `*client*`, `*adapter*`) so lint can classify it as adapter code.
-  - If a helper starts encoding use-case rules, provider details, or DTO mapping, move it into the owning module.
+- `src/app/*`: route entrypoints and framework composition roots.
+- `src/components/*`: presentational components by default.
+- `infrastructure` hosts the Google APIs, authentication, storage, and HTTP adapters.
 
 ## 3. Bootstrap Standards
 
@@ -171,39 +128,10 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 
 ## 4. SSR-First Data Flow
 
-### Default data strategy
-
-- Prioritize SSR for external data retrieval.
-- In App Router, server components are the preferred inbound adapter for page data loading.
-- A page should have a single primary data entrypoint whenever possible.
-- Do not scatter external fetches across presentational components when the page can resolve them server-side.
-
 ### Middleend rule
-
-- Centralize mapping and adaptation of external data in a middleend layer inside the hexagonal flow.
-- External contracts belong to infrastructure:
-  - `src/modules/<feature>/infrastructure/api/dto/*`
-  - `src/modules/<feature>/infrastructure/api/mapper.ts`
-- Internal contracts for the UI belong to application:
-  - `commands/`
-  - `queries/`
-  - `results/`
-- Use this conversion flow:
-
-```text
-External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity/value object -> use case -> application result -> page props/UI model
-```
 
 - Never pass Google API DTOs directly to page components.
 - Never import bootstrap builders, OAuth config, Drive clients, or API error mappers from a generic `src/server` path.
-
-### Client-side fetching
-
-- Client-side fetching is allowed only when SSR is not a fit, such as user-triggered refreshes, incremental interactions, or post-render mutations.
-- If client-side fetching is necessary, keep it behind use cases and adapters instead of calling third-party SDKs from components.
-- When a page needs client-side fetching plus auth/session state, prefer a container/presenter split:
-  - page or container owns session, fetch, mutation state, and validation flow
-  - presentational component renders props and emits callbacks only
 
 ## 5. Google OAuth and Drive Integration
 
@@ -230,68 +158,14 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Technical error traceability (mandatory)
 
-- Every technical error from SSR flows or external API/provider/database integrations must include a stable `errorCode` with format `E####`.
-- Use the shared centralized error-code catalog under `src/modules/shared/infrastructure/errors/*` and do not introduce ad-hoc or duplicated codes.
-- API technical error envelopes must return both `error` and `errorCode`; keep success envelopes unchanged.
-- Request/query/body validation errors (form/business validation) must not expose `errorCode` to the UI.
-- Global UI errors (page-level feedback and toasts) must keep the current generic message and render `errorCode` as secondary text below it.
-- Whenever a new feature can introduce technical errors, or when an existing technical error without traceability is found, add/update `errorCode` coverage in the same work item.
+- Technical error codes use the format `E####` and live in the shared catalog under `src/modules/shared/infrastructure/errors/*`.
+- API technical error envelopes return both `error` and `errorCode`.
 
 ## 6. Development Workflow
 
-### TDD is mandatory
-
-- Work in strict TDD for every feature, bug fix, and architectural change.
-- The development sequence is always:
-  1. `testing`
-  2. `code`
-  3. `refactor`
-  4. `green`
-
-### How to apply the cycle
-
-#### 1. Testing
-
-- Start by writing the smallest failing test at the correct architectural layer.
-- Define the expected behavior before implementing production code.
-- Prefer one clear behavior per test.
-
-#### 2. Code
-
-- Implement the minimum code needed to make the failing test pass.
-- Respect hexagonal boundaries even in the first implementation.
-- Do not skip ports, mappers, or value objects just to move faster.
-
-#### 3. Refactor
-
-- Refactor only after the behavior is covered.
-- Improve naming, remove duplication, extract helpers, simplify adapters, and tighten boundaries.
-- Preserve behavior while clarifying the design.
-
-#### 4. Green
-
-- Run the relevant test suite until it is green.
-- A task is not complete until the relevant tests and lint checks pass.
-- Select tests according to the files changed. Prefer the smallest real command that exercises the affected behavior, such as a specific Vitest file, integration test, or E2E spec. Run the full `pnpm run test` suite only when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
-
-### Testing responsibilities by layer
-
-- `domain`
-  - Unit tests for entities, value objects, and pure business rules.
-- `application`
-  - Unit tests for use cases using doubles for domain ports.
-- `infrastructure`
-  - Integration tests for adapters, DTO mappers, auth wiring, and Google API boundaries.
-- `app` routes and UI
-  - React Testing Library tests for server-loaded props, rendering, and critical user flows.
-- End-to-end
-  - Add smoke coverage for critical authentication and Drive workflows.
-
 ### Testing rules
 
-- Never place test files inside `src/app`, because App Router will treat special files and route folders as routing surface. Tests for App Router pages, layouts, loading states, route handlers, and related helpers must live under `src/tests/app/`. `src/tests/tooling/app-route-test-placement.test.ts` enforces it.
-- When functionality changes, add or update the corresponding tests in the same work item.
-- Prefer mocks at the port boundary, not at low-level vendor internals, unless the test is explicitly for an adapter.
+- Tests for App Router pages, layouts, loading states, route handlers, and related helpers live under `src/tests/app/`. `src/tests/tooling/app-route-test-placement.test.ts` enforces it.
 
 ### Lint gate (mandatory)
 
@@ -331,17 +205,10 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ## 8. Implementation Checklist
 
-- Does the change preserve hexagonal boundaries?
-- Is there any new or restored code under `src/server/`? If yes, move it into a module.
 - Is App Router still the routing mechanism?
-- Is SSR the default data-loading strategy for this use case?
-- Are external DTOs isolated in infrastructure?
-- Are UI-facing models isolated from vendor payloads?
-- Are domain input shapes modeled as value objects and application outputs modeled as `results/` contracts?
 - Are shared primitives imported from `beez-ui`, with no local shadcn/ui copies?
 - Are product styles implemented with `SCSS`?
 - Are Google tokens and secrets kept server-side only?
-- Were tests written first and left green at the end?
 - Does `pnpm run lint` pass with exit code `0`?
 
 ### Test tooling
