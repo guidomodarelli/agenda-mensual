@@ -1,4 +1,4 @@
-import { Button, cn } from "beez-ui";
+import { Button, cn } from "@astra-kit/ui";
 import { useMemo } from "react";
 import { Pencil } from "lucide-react";
 

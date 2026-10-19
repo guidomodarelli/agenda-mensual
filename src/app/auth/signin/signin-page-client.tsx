@@ -5,7 +5,7 @@ import {
   Button,
   Card,
   TypingAnimation,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import { useSearchParams } from "next/navigation";
 import { signIn, type ClientSafeProvider } from "next-auth/react";

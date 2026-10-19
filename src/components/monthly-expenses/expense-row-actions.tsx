@@ -5,7 +5,7 @@ import {
   DialogContent,
   type DropdownItem,
   type DropdownMenuSelection,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useState } from "react";
 import {
   CalendarX2,

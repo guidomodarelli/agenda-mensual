@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useMemo, useState } from "react";
 
 import {

@@ -5,7 +5,7 @@ import {
   Input,
   Label,
   RadioGroup,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import {
   useEffect,
   useId,

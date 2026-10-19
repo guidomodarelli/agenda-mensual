@@ -4,7 +4,7 @@ import {
   RadioGroup,
   cn,
   type RadioGroupOption,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useId, useState, type ChangeEvent } from "react";
 
 import { OccurrenceDurationInput } from "./occurrence-duration-input";

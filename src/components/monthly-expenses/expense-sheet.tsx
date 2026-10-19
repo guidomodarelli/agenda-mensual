@@ -17,7 +17,7 @@ import {
   Select,
   Textarea,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 

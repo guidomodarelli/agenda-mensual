@@ -8,7 +8,7 @@ import {
   Skeleton,
   Tooltip,
   parseFilterQuery,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Flag } from "lucide-react";

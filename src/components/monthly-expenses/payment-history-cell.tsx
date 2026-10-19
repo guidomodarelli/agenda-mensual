@@ -10,7 +10,7 @@ import {
   Select,
   Tooltip,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useCallback, useState } from "react";
 
 import { ExternalLink, Mail, Paperclip, Plus } from "lucide-react";

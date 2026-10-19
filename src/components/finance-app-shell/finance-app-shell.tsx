@@ -15,7 +15,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   AccountMenu,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import Image from "next/image";
 import {
@@ -168,7 +168,7 @@ const SIDEBAR_COLLAPSED_HIDDEN_CLASS = "group-data-[state=collapsed]/sidebar:hid
 
 /**
  * Section links of the sidebar. The shared menu buttons route through the
- * BeezUIProvider link adapter and close the mobile sheet once selected.
+ * AstraUIProvider link adapter and close the mobile sheet once selected.
  */
 function FinanceAppShellSidebarNavigation({
   activeSection,

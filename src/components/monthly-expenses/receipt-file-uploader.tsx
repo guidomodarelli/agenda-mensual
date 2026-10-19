@@ -1,5 +1,5 @@
 /**
- * Renders a standardized receipt uploader built on top of the beez-ui file upload primitives.
+ * Renders a standardized receipt uploader built on top of the @astra-kit/ui file upload primitives.
  *
  * @module receipt-file-uploader
  */
@@ -10,7 +10,7 @@ import {
   FileUploadDropZone,
   FileUploadItem,
   FileUploadList,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import styles from "./receipt-file-uploader.module.scss";
 import {

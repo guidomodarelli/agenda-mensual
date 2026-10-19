@@ -1,4 +1,4 @@
-import { Link, Card, TypingAnimation } from "beez-ui";
+import { Link, Card, TypingAnimation } from "@astra-kit/ui";
 import type { Metadata } from "next";
 
 import styles from "./offline-page.module.scss";

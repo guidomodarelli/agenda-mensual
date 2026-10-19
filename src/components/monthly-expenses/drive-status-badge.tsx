@@ -1,4 +1,4 @@
-import { Tooltip } from "beez-ui";
+import { Tooltip } from "@astra-kit/ui";
 import { AlertTriangle, CircleX } from "lucide-react";
 
 import styles from "./drive-status-badge.module.scss";

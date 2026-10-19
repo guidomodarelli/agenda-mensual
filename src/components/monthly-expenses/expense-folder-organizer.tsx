@@ -4,7 +4,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   draggable,

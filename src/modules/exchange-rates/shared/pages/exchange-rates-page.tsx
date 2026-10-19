@@ -6,7 +6,7 @@ import {
   Label,
   TypingAnimation,
   toast,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import type { FormEvent } from "react";
 import { useState } from "react";

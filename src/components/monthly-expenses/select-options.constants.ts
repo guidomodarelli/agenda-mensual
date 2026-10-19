@@ -1,10 +1,10 @@
 /**
  * Centralizes the choices of the monthly expenses `Select` fields, in the
- * closed `options` shape that the beez-ui `Select` renders.
+ * closed `options` shape that the @astra-kit/ui `Select` renders.
  *
  * @module select-options.constants
  */
-import type { SelectOption } from "beez-ui";
+import type { SelectOption } from "@astra-kit/ui";
 
 /** Currencies of the expense sheet, with their full names. */
 export const EXPENSE_CURRENCY_OPTIONS = [

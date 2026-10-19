@@ -6,7 +6,7 @@ import {
   Label,
   Select,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 

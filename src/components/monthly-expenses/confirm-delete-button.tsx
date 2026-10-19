@@ -1,4 +1,4 @@
-import { Button, DropdownMenu, type DropdownItem } from "beez-ui";
+import { Button, DropdownMenu, type DropdownItem } from "@astra-kit/ui";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical, Trash2 } from "lucide-react";

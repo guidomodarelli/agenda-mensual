@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, afterEach } from "vitest";
-import { AnimatedThemeToggler } from "beez-ui";
+import { AnimatedThemeToggler } from "@astra-kit/ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useTheme, type UseThemeProps } from "next-themes";

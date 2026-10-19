@@ -24,6 +24,6 @@ export default defineConfig({
     // The full expense-sheet tests share substantial CPU/memory demand; run files serially.
     maxWorkers: 1,
     css: { modules: { classNameStrategy: "non-scoped" } },
-    server: { deps: { inline: ["beez-ui", "@next/env"] } },
+    server: { deps: { inline: ["@astra-kit/ui", "@next/env"] } },
   },
 });

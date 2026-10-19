@@ -7,7 +7,7 @@ import {
   RadioGroup,
   TypingAnimation,
   toast,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";

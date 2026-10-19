@@ -1,4 +1,4 @@
-import { Button } from "beez-ui";
+import { Button } from "@astra-kit/ui";
 import { useRef, useState } from "react";
 import { Info, X } from "lucide-react";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
@@ -60,7 +60,7 @@ export function LoanInfoPopover({
     </TooltipPrimitive.Content>
   );
 
-  // beez-ui 3 dropped the app-level `TooltipProvider`: this click-driven
+  // The shared library has no app-level `TooltipProvider`: this click-driven
   // tooltip brings the Radix provider its root requires.
   return (
     <TooltipPrimitive.Provider>

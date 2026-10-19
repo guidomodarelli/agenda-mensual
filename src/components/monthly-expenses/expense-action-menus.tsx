@@ -4,7 +4,7 @@ import {
   DialogClose,
   DialogContent,
   type DropdownItem,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useState } from "react";
 
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";

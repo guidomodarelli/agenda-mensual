@@ -1,4 +1,4 @@
-import { Button } from "beez-ui";
+import { Button } from "@astra-kit/ui";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 

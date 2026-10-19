@@ -4,7 +4,7 @@ import {
   DialogClose,
   DialogContent,
   Input,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useMemo, useState } from "react";
 import { ExternalLink, MoreVertical, Paperclip, Trash2 } from "lucide-react";
 

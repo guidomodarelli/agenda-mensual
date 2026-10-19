@@ -2,7 +2,7 @@ import {
   Input,
   Label,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useId, useState } from "react";
 
 import {

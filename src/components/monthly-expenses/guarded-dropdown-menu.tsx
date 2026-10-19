@@ -1,4 +1,4 @@
-import { DropdownMenu, type DropdownMenuProps } from "beez-ui";
+import { DropdownMenu, type DropdownMenuProps } from "@astra-kit/ui";
 import type { ReactElement } from "react";
 
 export type GuardedDropdownMenuProps = DropdownMenuProps & {
@@ -9,7 +9,7 @@ export type GuardedDropdownMenuProps = DropdownMenuProps & {
 };
 
 /**
- * A beez-ui `DropdownMenu` that cannot open while its trigger is disabled.
+ * A @astra-kit/ui `DropdownMenu` that cannot open while its trigger is disabled.
  *
  * Browsers still dispatch pointer events to a disabled `<button>`, and the
  * Radix trigger behind the Arc menu opens on `pointerdown`, so a disabled

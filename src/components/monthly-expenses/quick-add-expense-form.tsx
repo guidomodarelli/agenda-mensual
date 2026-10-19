@@ -5,7 +5,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Select,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useRef, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 

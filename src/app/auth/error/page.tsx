@@ -1,4 +1,4 @@
-import { Link, Card, TypingAnimation } from "beez-ui";
+import { Link, Card, TypingAnimation } from "@astra-kit/ui";
 import type { Metadata } from "next";
 
 import { getAuthErrorMessage } from "@/modules/auth/application/queries/get-auth-error-message";

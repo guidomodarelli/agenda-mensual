@@ -5,7 +5,7 @@ import {
   DialogContent,
   TypingAnimation,
   toast,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import type {
   GetServerSidePropsContext,

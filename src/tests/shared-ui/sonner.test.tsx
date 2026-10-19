@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
-import { ThemedToaster as Toaster } from "beez-ui";
+import { ThemedToaster as Toaster } from "@astra-kit/ui";
 import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
 import { useTheme } from "next-themes";
