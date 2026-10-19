@@ -14,6 +14,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Las confirmaciones de eliminación y los diálogos de edición rápida de la tabla se anuncian como diálogos de alerta y abren con el foco en «Cancelar».
 - Los enlaces con aspecto de botón (inicio de sesión, error de autenticación y vista sin conexión) se dibujan como enlaces con el estilo de botón de Arc.
 - El selector de estado de envío de un comprobante muestra solo el texto ("Pendiente" o "Enviado"), sin el ícono.
+- Los botones de la biblioteca (por ejemplo «Continuar con Google» y «Alternar tema») usan su tipografía propia: texto de 14 px con peso medio, igual que en el resto de Arc.
 
 ## [0.1.4] - 2026-10-03
 
