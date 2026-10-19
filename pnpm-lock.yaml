@@ -168,6 +168,9 @@ importers:
 
   .:
     dependencies:
+      '@astra-kit/ui':
+        specifier: ^1.0.0
+        version: 1.0.0(@date-fns/tz@1.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(date-fns@4.1.0)(lucide-react@1.16.0(react@19.3.0))(next@16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@atlaskit/pragmatic-drag-and-drop':
         specifier: ^1.8.1
         version: 1.8.1
@@ -183,9 +186,6 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      beez-ui:
-        specifier: ^4.0.1
-        version: 4.0.1(@date-fns/tz@1.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(date-fns@4.1.0)(lucide-react@1.16.0(react@19.3.0))(next@16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -341,6 +341,21 @@ packages:
     resolution: {integrity: sha512-26qDqVM/A36NImOa844Ia2X2kL79pp6D/1dKX/+58T/d6q9iwvpkq8IeovOrxMx8RW3FavFkpoNfmp3RBXeu1g==}
     engines: {node: '>=22'}
     hasBin: true
+
+  '@astra-kit/ui@1.0.0':
+    resolution: {integrity: sha512-ZUA19Es7KMiq+8dUV0FK7Cu4g3Guhs1AUJa9WlCfaswnlAahBZ/U1h02e7UI/31OMdQPGYLe5Rj5VDn4KNJgGg==}
+    engines: {node: '>=22', pnpm: '>=12 <13'}
+    peerDependencies:
+      '@tanstack/react-router': ^1.170.33
+      lucide-react: ^1.16.0
+      next: ^16.3.4
+      react: ^19.2.0
+      react-dom: ^19.2.0
+    peerDependenciesMeta:
+      '@tanstack/react-router':
+        optional: true
+      next:
+        optional: true
 
   '@atlaskit/pragmatic-drag-and-drop@1.8.1':
     resolution: {integrity: sha512-uXWNPpL8n4OmTVbduH7nq8pk8htqGo/prR5cYEE8sVCPJGAUMWn6lzvWTfI+4VCeQvHiDRODVz4YzH06OVAxhw==}
@@ -3119,21 +3134,6 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  beez-ui@4.0.1:
-    resolution: {integrity: sha512-nWvywx5Ms+HV2p8e+k51iTvkk2L8/VOPTtHXnO7JJQxJULkGiPWKE1NsFFI2b/jT4+sOxqHjy4zJ4huEawNpnQ==}
-    engines: {node: '>=22', pnpm: '>=12 <13'}
-    peerDependencies:
-      '@tanstack/react-router': ^1.170.33
-      lucide-react: ^1.16.0
-      next: ^16.3.4
-      react: ^19.2.0
-      react-dom: ^19.2.0
-    peerDependenciesMeta:
-      '@tanstack/react-router':
-        optional: true
-      next:
-        optional: true
-
   bidi-js@1.1.0:
     resolution: {integrity: sha512-fX1Onk0tdVPC7obPWB5EbJ1z7NVhLq4m2xZLq2YXBkxzMXIGRpNMU88n0EPgWseKl12J7zXs7qrDxPK4sRs2fg==}
 
@@ -5295,6 +5295,33 @@ snapshots:
   '@astra-kit/cleaner@0.2.0': {}
 
   '@astra-kit/rp@1.0.0': {}
+
+  '@astra-kit/ui@1.0.0(@date-fns/tz@1.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(date-fns@4.1.0)(lucide-react@1.16.0(react@19.3.0))(next@16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      '@base-ui/react': 1.8.0(@date-fns/tz@1.4.1)(@types/react@19.3.0)(date-fns@4.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-table': 8.21.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@unpic/react': 1.0.2(next@16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      class-variance-authority: 0.7.1
+      cn: 0.2.6
+      embla-carousel-react: 8.6.0(react@19.3.0)
+      lucide-react: 1.16.0(react@19.3.0)
+      motion: 12.38.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      radix-ui: 1.6.7(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-day-picker: 10.0.0(react@19.3.0)
+      react-dom: 19.3.0(react@19.3.0)
+      react-hook-form: 7.75.0(react@19.3.0)
+      rough-notation: 0.5.1
+      sonner: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+    optionalDependencies:
+      next: 16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0)
+    transitivePeerDependencies:
+      - '@date-fns/tz'
+      - '@emotion/is-prop-valid'
+      - '@types/react'
+      - '@types/react-dom'
+      - date-fns
 
   '@atlaskit/pragmatic-drag-and-drop@1.8.1':
     dependencies:
@@ -7574,33 +7601,6 @@ snapshots:
   base64-js@1.5.1: {}
 
   baseline-browser-mapping@2.10.0: {}
-
-  beez-ui@4.0.1(@date-fns/tz@1.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(date-fns@4.1.0)(lucide-react@1.16.0(react@19.3.0))(next@16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
-    dependencies:
-      '@base-ui/react': 1.8.0(@date-fns/tz@1.4.1)(@types/react@19.3.0)(date-fns@4.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-table': 8.21.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@unpic/react': 1.0.2(next@16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      class-variance-authority: 0.7.1
-      cn: 0.2.6
-      embla-carousel-react: 8.6.0(react@19.3.0)
-      lucide-react: 1.16.0(react@19.3.0)
-      motion: 12.38.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      next-themes: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      radix-ui: 1.6.7(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-day-picker: 10.0.0(react@19.3.0)
-      react-dom: 19.3.0(react@19.3.0)
-      react-hook-form: 7.75.0(react@19.3.0)
-      rough-notation: 0.5.1
-      sonner: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-    optionalDependencies:
-      next: 16.3.4(@babel/core@7.29.0(supports-color@7.2.0))(@playwright/test@1.59.1)(@types/node@24.13.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.99.0)
-    transitivePeerDependencies:
-      - '@date-fns/tz'
-      - '@emotion/is-prop-valid'
-      - '@types/react'
-      - '@types/react-dom'
-      - date-fns
 
   bidi-js@1.1.0:
     dependencies:
