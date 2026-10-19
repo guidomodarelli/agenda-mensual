@@ -94,6 +94,7 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 - Preserve the existing `theme` localStorage key and the sidebar preference contract through the application adapter.
 - Add or customize shared shadcn/ui primitives in the sibling `astra-ui` repository (package `@astra-kit/ui`) using the official CLI there. Do not reintroduce local `components/ui` copies or `components.json`.
 - Keep product-specific composition, upload workflows and SCSS in this application. See `docs/shared-ui.md` for integration boundaries.
+- Do not copy what `@astra-kit/ui` already provides: links that look like buttons use `ButtonLink`, other elements take `buttonClassName(...)`, and legends already named by a visible title use the `hideLabel` prop of `RadioGroup` or `Select`.
 
 ### Receipt upload baseline
 

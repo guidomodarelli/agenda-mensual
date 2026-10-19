@@ -29,6 +29,14 @@ function PaymentFrequencyFieldHarness({
 }
 
 describe("PaymentFrequencyField", () => {
+  it("keeps the frequency group named for assistive technology", () => {
+    render(<PaymentFrequencyFieldHarness initialOccurrencesPerMonth="1" />);
+
+    expect(
+      screen.getByRole("radiogroup", { name: "Frecuencia de pago" }),
+    ).toBeInTheDocument();
+  });
+
   it("switches to multiple by clicking the row description and back to single", async () => {
     const user = userEvent.setup();
 

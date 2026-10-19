@@ -689,8 +689,9 @@ export default function ReceiptShareTargetPage() {
                 Pagos pendientes para este gasto en {selectedMonth}: {remainingReceiptPayments}
               </p>
 
+              {/* The card heading already names the choice: the legend stays for assistive technology only. */}
               <RadioGroup
-                className={styles.coverageOptions}
+                hideLabel
                 label="Cobertura del comprobante"
                 onValueChange={(value) => setCoverageMode(value as CoverageMode)}
                 options={[

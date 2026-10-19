@@ -160,7 +160,6 @@ import {
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
 } from "./payment-link";
 import { EXPENSE_SUBTOTAL_UNIT_OPTIONS } from "./select-options.constants";
-import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./monthly-expenses-table.module.scss";
 
 import type {
@@ -453,6 +452,7 @@ function SortModeColumnHeader<TMode extends string>({
 
             <RadioGroup
               className={styles.loanSortOptions}
+              hideLabel
               label={`Criterio de orden para ${label}`}
               onValueChange={(value) => setDraftSortMode(value as TMode)}
               options={[...sortOptions]}
@@ -465,6 +465,7 @@ function SortModeColumnHeader<TMode extends string>({
 
             <RadioGroup
               className={styles.loanSortOptions}
+              hideLabel
               label={`Dirección de orden para ${label}`}
               onValueChange={(value) =>
                 setDraftSortDirection(value as "asc" | "desc")
@@ -2866,8 +2867,7 @@ export function MonthlyExpensesTable({
                 ) : null}
               </div>
               <div className={styles.subtotalTrailing}>
-                <GuardedDropdownMenu
-                  disabled={actionDisabled}
+                <DropdownMenu
                   align="end"
                   items={[
                     {
@@ -3813,8 +3813,7 @@ export function MonthlyExpensesTable({
                     }
                   />
                   {/* Arc's menu holds a single choice: the direction gets its own menu. */}
-                  <GuardedDropdownMenu
-                    disabled={!primaryUserSortingEntry}
+                  <DropdownMenu
                     align="end"
                     items={SORT_DIRECTION_MENU_ITEMS}
                     key="sort-direction-menu"
@@ -3858,8 +3857,7 @@ export function MonthlyExpensesTable({
                       </Button>
                     }
                   />
-                  <GuardedDropdownMenu
-                    disabled={isBulkActionsDisabled}
+                  <DropdownMenu
                     align="end"
                     items={[
                       {

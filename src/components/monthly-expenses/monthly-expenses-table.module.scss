@@ -1,5 +1,3 @@
-@use "../../styles/visually-hidden";
-
 .section {
   width: 100%;
 }
@@ -559,13 +557,6 @@
 
 .loanSortPopoverTitle + .loanSortOptions {
   margin-top: 0.35rem;
-}
-
-.loanSortOptions {
-  // The visual title above names the group: the legend stays for assistive technology only.
-  & > [data-slot="radio-group-label"] {
-    @include visually-hidden.visually-hidden;
-  }
 }
 
 .loanSortHint {

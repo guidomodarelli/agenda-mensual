@@ -53,4 +53,19 @@ describe("SignInPageClient", () => {
       callbackUrl: "/cotizaciones",
     });
   });
+
+  it("links back to the home page", () => {
+    render(
+      <SignInPageClient
+        hasProviderError={false}
+        providers={{
+          google: googleProvider,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Volver al inicio" }),
+    ).toHaveAttribute("href", "/");
+  });
 });

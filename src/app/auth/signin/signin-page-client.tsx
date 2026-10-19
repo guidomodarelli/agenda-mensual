@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  Link,
   Button,
+  ButtonLink,
   Card,
   TypingAnimation,
 } from "@astra-kit/ui";
@@ -60,9 +60,9 @@ export function SignInPageClient({
             >
               Continuar con Google
             </Button>
-            <Link className={styles.secondaryLink} href="/">
+            <ButtonLink href="/" variant="secondary">
               Volver al inicio
-            </Link>
+            </ButtonLink>
           </div>
         }
         title="Conectar Google"

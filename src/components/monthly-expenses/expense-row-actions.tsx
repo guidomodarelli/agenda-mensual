@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DropdownMenu,
   type DropdownItem,
   type DropdownMenuSelection,
 } from "@astra-kit/ui";
@@ -31,7 +32,6 @@ import {
   USD_RATE_IIBB_SURCHARGE_LABEL,
   USD_RATE_IVA_SURCHARGE_LABEL,
 } from "./usd-rate-type-labels";
-import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./expense-row-actions.module.scss";
 
 interface ExpenseRowActionsProps {
@@ -381,8 +381,7 @@ export function ExpenseRowActions({
       }}
       open={confirmActionType !== null}
     >
-      <GuardedDropdownMenu
-        disabled={actionDisabled}
+      <DropdownMenu
         align="end"
         items={menuItems}
         label={menuLabel}

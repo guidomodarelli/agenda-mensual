@@ -15,6 +15,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   AccountMenu,
+  buttonClassName,
 } from "@astra-kit/ui";
 
 import Image from "next/image";
@@ -356,7 +357,11 @@ export function FinanceAppShell({
                 <PwaUpdateControl />
                 <AnimatedThemeToggler
                   aria-label="Alternar tema"
-                  className={styles.themeToggle}
+                  className={buttonClassName({
+                    className: styles.themeToggle,
+                    size: "sm",
+                    variant: "ghost",
+                  })}
                 />
                 <GoogleAccountAvatar
                   onConnect={handleGoogleAccountConnect}

@@ -1,4 +1,4 @@
-import { Link, Card, TypingAnimation } from "@astra-kit/ui";
+import { ButtonLink, Card, TypingAnimation } from "@astra-kit/ui";
 import type { Metadata } from "next";
 
 import { getAuthErrorMessage } from "@/modules/auth/application/queries/get-auth-error-message";
@@ -37,12 +37,10 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
         description="La aplicación protege los detalles internos y muestra una respuesta segura cuando la autenticación falla."
         footer={
           <div className={styles.actions}>
-            <Link className={styles.primaryLink} href="/auth/signin">
-              Intentar de nuevo
-            </Link>
-            <Link className={styles.secondaryLink} href="/">
+            <ButtonLink href="/auth/signin">Intentar de nuevo</ButtonLink>
+            <ButtonLink href="/" variant="secondary">
               Ir al inicio
-            </Link>
+            </ButtonLink>
           </div>
         }
         title="No pudimos conectar tu cuenta"

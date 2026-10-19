@@ -1,5 +1,3 @@
-@use "../../../../styles/visually-hidden";
-
 .section {
   display: grid;
   gap: 1rem;
@@ -100,13 +98,6 @@
   margin: 0;
   font-size: 0.9rem;
   color: var(--muted-foreground);
-}
-
-.coverageOptions {
-  // The card heading already names the choice: the legend stays for assistive technology only.
-  & > [data-slot="radio-group-label"] {
-    @include visually-hidden.visually-hidden;
-  }
 }
 
 .feedbackError {
