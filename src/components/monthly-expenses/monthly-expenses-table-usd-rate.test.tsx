@@ -2,8 +2,6 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import {
   createRow,
   renderMonthlyExpensesTable,
@@ -51,11 +49,10 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Netflix" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Tipo de cambio" }));
 
     for (const baseOptionName of ["Oficial", "Dólar blue", "Personalizada…"]) {
       expect(
-        await screen.findByRole("menuitemradio", { name: baseOptionName }),
+        screen.getByRole("menuitemradio", { name: baseOptionName }),
       ).toBeInTheDocument();
     }
 
@@ -66,7 +63,7 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     }
   });
 
-  it("does not offer the rate submenu for ARS expenses", async () => {
+  it("does not offer the rate options for ARS expenses", async () => {
     const user = userEvent.setup();
 
     renderMonthlyExpensesTable([
@@ -78,7 +75,10 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     );
 
     expect(
-      screen.queryByRole("menuitem", { name: "Tipo de cambio" }),
+      screen.queryByRole("menuitemradio", { name: "Dólar blue" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitemcheckbox", { name: "Sumar IIBB" }),
     ).not.toBeInTheDocument();
   });
 
@@ -101,11 +101,8 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Netflix" }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Tipo de cambio",
-      "Dólar blue",
-      "menuitemradio",
+    await user.click(
+      screen.getByRole("menuitemradio", { name: "Dólar blue" }),
     );
 
     await waitFor(() => {
@@ -140,11 +137,8 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Netflix" }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Tipo de cambio",
-      "Sumar IVA 21%",
-      "menuitemcheckbox",
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sumar IVA 21%" }),
     );
 
     await waitFor(() => {
@@ -179,11 +173,8 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Spotify" }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Tipo de cambio",
-      "Personalizada…",
-      "menuitemradio",
+    await user.click(
+      screen.getByRole("menuitemradio", { name: "Personalizada…" }),
     );
 
     const rateInput = await screen.findByLabelText(
@@ -218,11 +209,8 @@ describe("MonthlyExpensesTable per-expense USD rate", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Spotify" }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Tipo de cambio",
-      "Personalizada…",
-      "menuitemradio",
+    await user.click(
+      screen.getByRole("menuitemradio", { name: "Personalizada…" }),
     );
 
     const rateInput = await screen.findByLabelText(

@@ -4,7 +4,7 @@ import {
   type FilterQualifierConfig,
   type FilterQualifierOption,
   type ParsedFilterQuery,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 
 import { buildLenderQualifierOptions } from "./monthly-expenses-filter-qualifiers";

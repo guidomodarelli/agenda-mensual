@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from "vitest";
-import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -67,34 +66,32 @@ function renderExpenseSheet({
   onOpenExpenseDetails?: () => void;
 }) {
   return render(
-    <TooltipProvider>
-      <ExpenseSheet
-        actionDisabled={false}
-        changedFields={changedFields}
-        draft={draft}
-        expenseFolders={[]}
-        isOpen={true}
-        isSubmitting={false}
-        lenders={[]}
-        mode={mode}
-        onAddLender={vi.fn()}
-        onFieldChange={onFieldChange}
-        onFolderSelect={vi.fn()}
-        onManageFolders={vi.fn()}
-        onLenderSelect={vi.fn()}
-        onLoanToggle={onLoanToggle}
-        onOpenExpenseDetails={onOpenExpenseDetails}
-        onRecurringToggle={vi.fn()}
-        onReceiptShareToggle={vi.fn()}
-        onRequestClose={vi.fn()}
-        onSave={vi.fn()}
-        onUnsavedChangesClose={vi.fn()}
-        onUnsavedChangesDiscard={vi.fn()}
-        onUnsavedChangesSave={vi.fn()}
-        showUnsavedChangesDialog={false}
-        validationMessage={null}
-      />
-    </TooltipProvider>,
+    <ExpenseSheet
+      actionDisabled={false}
+      changedFields={changedFields}
+      draft={draft}
+      expenseFolders={[]}
+      isOpen={true}
+      isSubmitting={false}
+      lenders={[]}
+      mode={mode}
+      onAddLender={vi.fn()}
+      onFieldChange={onFieldChange}
+      onFolderSelect={vi.fn()}
+      onManageFolders={vi.fn()}
+      onLenderSelect={vi.fn()}
+      onLoanToggle={onLoanToggle}
+      onOpenExpenseDetails={onOpenExpenseDetails}
+      onRecurringToggle={vi.fn()}
+      onReceiptShareToggle={vi.fn()}
+      onRequestClose={vi.fn()}
+      onSave={vi.fn()}
+      onUnsavedChangesClose={vi.fn()}
+      onUnsavedChangesDiscard={vi.fn()}
+      onUnsavedChangesSave={vi.fn()}
+      showUnsavedChangesDialog={false}
+      validationMessage={null}
+    />,
   );
 }
 
@@ -102,7 +99,9 @@ describe("ExpenseSheet", () => {
   it("does not render manual covered payments or payment link inputs in the modal", () => {
     renderExpenseSheet({ mode: "create" });
 
-    expect(screen.getByText("Frecuencia de pago")).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", { name: "Frecuencia de pago" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("Pagos manuales (sin comprobante)"),
     ).not.toBeInTheDocument();
@@ -406,33 +405,31 @@ describe("ExpenseSheet", () => {
     const onRecurringToggle = vi.fn();
 
     render(
-      <TooltipProvider>
-        <ExpenseSheet
-          actionDisabled={false}
-          changedFields={new Set()}
-          draft={createDraftRow()}
-          expenseFolders={[]}
-          isOpen={true}
-          isSubmitting={false}
-          lenders={[]}
-          mode="create"
-          onAddLender={vi.fn()}
-          onFieldChange={vi.fn()}
-          onFolderSelect={vi.fn()}
-          onManageFolders={vi.fn()}
-          onLenderSelect={vi.fn()}
-          onLoanToggle={vi.fn()}
-          onRecurringToggle={onRecurringToggle}
-          onReceiptShareToggle={vi.fn()}
-          onRequestClose={vi.fn()}
-          onSave={vi.fn()}
-          onUnsavedChangesClose={vi.fn()}
-          onUnsavedChangesDiscard={vi.fn()}
-          onUnsavedChangesSave={vi.fn()}
-          showUnsavedChangesDialog={false}
-          validationMessage={null}
-        />
-      </TooltipProvider>,
+      <ExpenseSheet
+        actionDisabled={false}
+        changedFields={new Set()}
+        draft={createDraftRow()}
+        expenseFolders={[]}
+        isOpen={true}
+        isSubmitting={false}
+        lenders={[]}
+        mode="create"
+        onAddLender={vi.fn()}
+        onFieldChange={vi.fn()}
+        onFolderSelect={vi.fn()}
+        onManageFolders={vi.fn()}
+        onLenderSelect={vi.fn()}
+        onLoanToggle={vi.fn()}
+        onRecurringToggle={onRecurringToggle}
+        onReceiptShareToggle={vi.fn()}
+        onRequestClose={vi.fn()}
+        onSave={vi.fn()}
+        onUnsavedChangesClose={vi.fn()}
+        onUnsavedChangesDiscard={vi.fn()}
+        onUnsavedChangesSave={vi.fn()}
+        showUnsavedChangesDialog={false}
+        validationMessage={null}
+      />,
     );
 
     await user.click(screen.getByLabelText("Gasto recurrente"));
@@ -453,33 +450,31 @@ describe("ExpenseSheet", () => {
     const onRecurringToggle = vi.fn();
 
     render(
-      <TooltipProvider>
-        <ExpenseSheet
-          actionDisabled={false}
-          changedFields={new Set()}
-          draft={createDraftRow()}
-          expenseFolders={[]}
-          isOpen={true}
-          isSubmitting={false}
-          lenders={[]}
-          mode="edit"
-          onAddLender={vi.fn()}
-          onFieldChange={vi.fn()}
-          onFolderSelect={vi.fn()}
-          onManageFolders={vi.fn()}
-          onLenderSelect={vi.fn()}
-          onLoanToggle={vi.fn()}
-          onRecurringToggle={onRecurringToggle}
-          onReceiptShareToggle={vi.fn()}
-          onRequestClose={vi.fn()}
-          onSave={vi.fn()}
-          onUnsavedChangesClose={vi.fn()}
-          onUnsavedChangesDiscard={vi.fn()}
-          onUnsavedChangesSave={vi.fn()}
-          showUnsavedChangesDialog={false}
-          validationMessage={null}
-        />
-      </TooltipProvider>,
+      <ExpenseSheet
+        actionDisabled={false}
+        changedFields={new Set()}
+        draft={createDraftRow()}
+        expenseFolders={[]}
+        isOpen={true}
+        isSubmitting={false}
+        lenders={[]}
+        mode="edit"
+        onAddLender={vi.fn()}
+        onFieldChange={vi.fn()}
+        onFolderSelect={vi.fn()}
+        onManageFolders={vi.fn()}
+        onLenderSelect={vi.fn()}
+        onLoanToggle={vi.fn()}
+        onRecurringToggle={onRecurringToggle}
+        onReceiptShareToggle={vi.fn()}
+        onRequestClose={vi.fn()}
+        onSave={vi.fn()}
+        onUnsavedChangesClose={vi.fn()}
+        onUnsavedChangesDiscard={vi.fn()}
+        onUnsavedChangesSave={vi.fn()}
+        showUnsavedChangesDialog={false}
+        validationMessage={null}
+      />,
     );
 
     await user.click(screen.getByLabelText("Gasto recurrente"));

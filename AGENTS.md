@@ -88,22 +88,22 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 
 ### UI baseline
 
-- Use the published `beez-ui` package for shared UI components; group named imports from `beez-ui`.
-- Configure the Next.js adapter through `BeezUIProvider` from `beez-ui/next` in the application providers.
-- Import `beez-ui/styles.css` once from the global stylesheet and use the library's default theme, including fonts and color tokens.
+- Use the published `@astra-kit/ui` package for shared UI components; group named imports from `@astra-kit/ui`.
+- Configure the Next.js adapter through `AstraUIProvider` from `@astra-kit/ui/next` in the application providers.
+- Import `@astra-kit/ui/styles.css` once from the global stylesheet and use the library's default theme, including fonts and color tokens.
 - Preserve the existing `theme` localStorage key and the sidebar preference contract through the application adapter.
-- Add or customize shared shadcn/ui primitives in the sibling `beez-ui` repository using the official CLI there. Do not reintroduce local `components/ui` copies or `components.json`.
+- Add or customize shared shadcn/ui primitives in the sibling `astra-ui` repository (package `@astra-kit/ui`) using the official CLI there. Do not reintroduce local `components/ui` copies or `components.json`.
 - Keep product-specific composition, upload workflows and SCSS in this application. See `docs/shared-ui.md` for integration boundaries.
 
 ### Receipt upload baseline
 
-- Every new or updated **receipt upload flow** must use the `FileUpload`, `FileUploadDropZone`, `FileUploadList` and `FileUploadItem` components from `beez-ui` (or the project wrapper `ReceiptFileUploader` built on top of them) as the upload interaction baseline.
+- Every new or updated **receipt upload flow** must use the `FileUpload`, `FileUploadDropZone`, `FileUploadList` and `FileUploadItem` components from `@astra-kit/ui` (or the project wrapper `ReceiptFileUploader` built on top of them) as the upload interaction baseline.
 - Receipt uploads must support drag and drop plus click-to-select.
 - When the upload implementation exposes progress, the UI must render it with the `FileUploadItem` progress UI instead of custom ad-hoc indicators.
 
 ### Toast notifications baseline
 
-- Use `toast` and `ThemedToaster` from `beez-ui` as the standard notification system for user-facing events.
+- Use `toast` and `ThemedToaster` from `@astra-kit/ui` as the standard notification system for user-facing events.
 - Mount a global toaster once through `src/app/layout.tsx` providers and trigger notifications from page/container handlers.
 - Select toast type by event intent:
   - `default`: neutral messages that acknowledge a relevant user action.
@@ -124,7 +124,7 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
   - `*.module.scss` for component-scoped styles
   - `src/styles/*` for global styles, tokens, mixins, and layout primitives
 - Avoid inline styles except for rare runtime-only values.
-- Tailwind remains available for existing product utilities. Shared beez-ui styles are precompiled; do not scan its source or node_modules. Product styling should default to `SCSS`.
+- Tailwind remains available for existing product utilities. Shared @astra-kit/ui styles are precompiled; do not scan its source or node_modules. Product styling should default to `SCSS`.
 
 ## 4. SSR-First Data Flow
 
@@ -207,7 +207,7 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 ## 8. Implementation Checklist
 
 - Is App Router still the routing mechanism?
-- Are shared primitives imported from `beez-ui`, with no local shadcn/ui copies?
+- Are shared primitives imported from `@astra-kit/ui`, with no local shadcn/ui copies?
 - Are product styles implemented with `SCSS`?
 - Are Google tokens and secrets kept server-side only?
 - Does `pnpm run lint` pass with exit code `0`?

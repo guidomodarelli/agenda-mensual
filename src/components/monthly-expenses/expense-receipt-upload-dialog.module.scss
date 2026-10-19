@@ -223,48 +223,6 @@
   gap: 0.5rem;
 }
 
-.coverageTitle {
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--foreground);
-}
-
-.coverageOptions {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.coverageOption {
-  display: grid;
-  gap: 0.25rem;
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: 0.75rem;
-  padding: 0.55rem 0.7rem;
-}
-
-.coverageOptionSelected {
-  border-color: color-mix(in srgb, var(--primary) 58%, transparent);
-  background: color-mix(in srgb, var(--primary) 9%, transparent);
-}
-
-.coverageOptionHeader {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.coverageOptionLabel {
-  font-weight: 600;
-}
-
-.coverageOptionDescription {
-  margin: 0;
-  font-size: 0.84rem;
-  color: var(--muted-foreground);
-  padding-left: 1.5rem;
-}
-
 .partialCoverageField {
   display: grid;
   gap: 0.35rem;

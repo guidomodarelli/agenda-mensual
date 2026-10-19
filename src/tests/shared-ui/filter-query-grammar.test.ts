@@ -7,7 +7,7 @@ import {
   serializeFilterQuery,
   tokenizeFilterQuery,
   type FilterQualifierConfig,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 
 const CONFIGS: FilterQualifierConfig[] = [

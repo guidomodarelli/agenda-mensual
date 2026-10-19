@@ -1,14 +1,4 @@
-import {
-  Link,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  TypingAnimation,
-} from "beez-ui";
+import { Link, Card, TypingAnimation } from "@astra-kit/ui";
 import type { Metadata } from "next";
 
 import styles from "./offline-page.module.scss";
@@ -29,28 +19,25 @@ export default function OfflinePage() {
       >
         Sin conexión
       </TypingAnimation>
-      <Card className={styles.card}>
-        <CardHeader>
-          <CardTitle>No hay internet en este momento</CardTitle>
-          <CardDescription>
-            Guardamos una vista offline para que puedas abrir la aplicación
-            aunque no tengas red temporalmente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className={styles.bodyCopy}>
-            Cuando vuelvas a tener conexión, recargá la página para continuar
-            con datos actualizados.
-          </p>
-        </CardContent>
-        <CardFooter className={styles.actions}>
-          <Button asChild>
-            <Link href="/gastos">Intentar abrir la app</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/">Inicio</Link>
-          </Button>
-        </CardFooter>
+      <Card
+        className={styles.card}
+        description="Guardamos una vista offline para que puedas abrir la aplicación aunque no tengas red temporalmente."
+        footer={
+          <div className={styles.actions}>
+            <Link className={styles.primaryLink} href="/gastos">
+              Intentar abrir la app
+            </Link>
+            <Link className={styles.secondaryLink} href="/">
+              Inicio
+            </Link>
+          </div>
+        }
+        title="No hay internet en este momento"
+      >
+        <p className={styles.bodyCopy}>
+          Cuando vuelvas a tener conexión, recargá la página para continuar con
+          datos actualizados.
+        </p>
       </Card>
     </section>
   );

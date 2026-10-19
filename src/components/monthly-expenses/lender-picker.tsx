@@ -7,7 +7,7 @@ import {
   getFuzzyMatchRank,
   renderHighlightedText,
   type FuzzyMatchRank,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./lender-picker.module.scss";
@@ -204,7 +204,7 @@ export function LenderPicker({
         className={styles.trigger}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         type="button"
-        variant="outline"
+        variant="secondary"
       >
         {selectedOption?.name || selectedLenderName || placeholder}
       </Button>
@@ -292,7 +292,7 @@ export function LenderPicker({
             }}
             size="sm"
             type="button"
-            variant="outline"
+            variant="secondary"
           >
             Agregar prestamista
           </Button>

@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, type Mock } from "vitest";
-import { toast } from "beez-ui";
+import { toast } from "@astra-kit/ui";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -7,8 +7,6 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 
 import MonthlyExpensesPage from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import {
   basePageProps,
   createMockRouter,
@@ -113,12 +111,7 @@ async function selectUsdRateFromRowMenu(
   await user.click(
     screen.getByRole("button", { name: "Abrir acciones para Netflix" }),
   );
-  await selectDropdownSubmenuItem(
-    user,
-    "Tipo de cambio",
-    optionName,
-    "menuitemradio",
-  );
+  await user.click(screen.getByRole("menuitemradio", { name: optionName }));
   await user.keyboard("{Escape}");
 }
 

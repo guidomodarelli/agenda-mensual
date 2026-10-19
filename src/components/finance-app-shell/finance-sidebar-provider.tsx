@@ -1,7 +1,7 @@
 "use client";
 
 /** Adapts shared navigation to the existing application preference contract. */
-import { SidebarProvider } from "beez-ui";
+import { SidebarProvider } from "@astra-kit/ui";
 import { useState, type ReactNode } from "react";
 
 import { SIDEBAR_STATE_COOKIE_NAME } from "@/modules/shared/shared/constants/sidebar";

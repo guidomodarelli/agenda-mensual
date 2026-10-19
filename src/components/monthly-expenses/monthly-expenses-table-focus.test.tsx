@@ -2,8 +2,6 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import {
   createRow,
   renderMonthlyExpensesTable,
@@ -229,10 +227,8 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Internet" }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Agregar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
     );
 
     await waitFor(() => {
@@ -251,10 +247,8 @@ describe("MonthlyExpensesTable dialog autofocus", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Internet" }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Editar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Editar link de pago" }),
     );
 
     await waitFor(() => {

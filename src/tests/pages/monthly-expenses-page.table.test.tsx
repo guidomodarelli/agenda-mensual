@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, type Mock } from "vitest";
-import { TooltipProvider, toast } from "beez-ui";
+import { toast } from "@astra-kit/ui";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -463,9 +463,12 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(screen.getByRole("menuitem", { name: "Restablecer" }));
     await user.keyboard("{Escape}");
 
-    expect(
-      screen.queryByText("Columnas modificadas"),
-    ).not.toBeInTheDocument();
+    // The button label crossfades, so the indicator leaves after its exit animation.
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Columnas modificadas"),
+      ).not.toBeInTheDocument(),
+    );
 
     await user.click(screen.getByRole("button", { name: "Vista" }));
     expect(screen.getAllByText("Columna deseleccionada")).toHaveLength(1);
@@ -1495,12 +1498,10 @@ registerMonthlyExpensesPageDefaultHooks({
     };
 
     view.rerender(
-      <TooltipProvider>
-        <MonthlyExpensesPage
-          {...basePageProps}
-          initialDocument={initialDocument}
-        />
-      </TooltipProvider>,
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={initialDocument}
+      />,
     );
 
     await waitFor(() => {
@@ -1910,17 +1911,15 @@ registerMonthlyExpensesPageDefaultHooks({
     };
 
     view.rerender(
-      <TooltipProvider>
-        <MonthlyExpensesPage
-          {...basePageProps}
-          initialDocument={initialDocument}
-          initialCopyableMonths={{
-            defaultSourceMonth: "2026-01",
-            sourceMonths: ["2026-01"],
-            targetMonth: "2026-02",
-          }}
-        />
-      </TooltipProvider>,
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={initialDocument}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-01",
+          sourceMonths: ["2026-01"],
+          targetMonth: "2026-02",
+        }}
+      />,
     );
 
     await waitFor(() => {
@@ -2309,59 +2308,55 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByRole("button", { name: "Replicar gastos del mes anterior" })).toBeInTheDocument();
 
     rerender(
-      <TooltipProvider>
-        <MonthlyExpensesPage
-          {...basePageProps}
-          initialCopyableMonths={{
-            defaultSourceMonth: "2026-02",
-            sourceMonths: ["2026-02", "2026-01"],
-            targetMonth: "2026-03",
-          }}
-          initialDocument={{
-            items: [
-              {
-                currency: "ARS",
-                description: "Agua",
-                id: "expense-1",
-                occurrencesPerMonth: 1,
-                subtotal: 10000,
-                total: 10000,
-              },
-            ],
-            hasReplicatedFromPreviousMonth: false,
-            month: "2026-03",
-          }}
-        />
-      </TooltipProvider>,
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02", "2026-01"],
+          targetMonth: "2026-03",
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+          ],
+          hasReplicatedFromPreviousMonth: false,
+          month: "2026-03",
+        }}
+      />,
     );
 
     expect(screen.getByRole("button", { name: "Replicar gastos del mes anterior" })).toBeInTheDocument();
 
     rerender(
-      <TooltipProvider>
-        <MonthlyExpensesPage
-          {...basePageProps}
-          initialCopyableMonths={{
-            defaultSourceMonth: "2026-02",
-            sourceMonths: ["2026-02"],
-            targetMonth: "2026-03",
-          }}
-          initialDocument={{
-            items: [
-              {
-                currency: "ARS",
-                description: "Agua",
-                id: "expense-1",
-                occurrencesPerMonth: 1,
-                subtotal: 10000,
-                total: 10000,
-              },
-            ],
-            hasReplicatedFromPreviousMonth: true,
-            month: "2026-03",
-          }}
-        />
-      </TooltipProvider>,
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02"],
+          targetMonth: "2026-03",
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+          ],
+          hasReplicatedFromPreviousMonth: true,
+          month: "2026-03",
+        }}
+      />,
     );
 
     expect(

@@ -7,7 +7,7 @@ import {
   type AppliedFilterValue,
   type FolderFilterValue,
   type TextMatchFilterValue,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import {
   matchesAdvancedEnumFilter,

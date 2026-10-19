@@ -2,21 +2,13 @@
 
 import {
   Avatar,
-  AvatarFallback,
   Button,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   FilterQueryBar,
   Skeleton,
   Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
   parseFilterQuery,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Flag } from "lucide-react";
@@ -52,7 +44,6 @@ const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
   minimumFractionDigits: 0,
 });
 
-const MAX_AVATAR_INITIALS = 2;
 /** Active-loan rows kept visible before the list starts scrolling. */
 const MAX_VISIBLE_ACTIVE_LOANS = 3;
 
@@ -223,18 +214,6 @@ function getNetBalanceTone(
 /**
  * Builds up to two uppercase initials from a lender name for the avatar.
  */
-function getLenderInitials(lenderName: string): string {
-  const initials = lenderName
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0)
-    .slice(0, MAX_AVATAR_INITIALS)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
-
-  return initials.length > 0 ? initials : "?";
-}
-
 function getWidthPercent(part: number, total: number): string {
   if (total <= 0 || !Number.isFinite(part) || !Number.isFinite(total)) {
     return "0%";
@@ -439,16 +418,15 @@ function TruncatedLoanName({ description }: { description: string }) {
   };
 
   return (
-    <TooltipProvider>
-      <Tooltip onOpenChange={handleOpenChange} open={isTooltipOpen}>
-        <TooltipTrigger asChild>
-          <span className={styles.entryLoanName} ref={nameRef}>
-            {description}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{description}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip
+      content={description}
+      onOpenChange={handleOpenChange}
+      open={isTooltipOpen}
+    >
+      <span className={styles.entryLoanName} ref={nameRef}>
+        {description}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -558,11 +536,12 @@ function LoanReportEntryCard({
   return (
     <article className={styles.entry} data-direction={entry.direction}>
       <div className={styles.entryHeader}>
-        <Avatar className={styles.entryAvatar}>
-          <AvatarFallback className={styles.entryAvatarFallback}>
-            {getLenderInitials(entry.lenderName)}
-          </AvatarFallback>
-        </Avatar>
+        {/* Decorative: the heading next to it already names the lender. */}
+        <Avatar
+          aria-hidden="true"
+          className={styles.entryAvatar}
+          name={entry.lenderName}
+        />
         <div className={styles.entryIdentity}>
           <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
           <p className={styles.entrySubtitle}>{getEntrySubtitle(entry)}</p>
@@ -643,32 +622,21 @@ function LoansReportSkeleton() {
       className={styles.content}
       role="status"
     >
-      <div className={styles.hero}>
-        <Skeleton style={{ width: "8rem", height: "0.9rem" }} />
-        <Skeleton style={{ width: "14rem", height: "2.25rem" }} />
-        <Skeleton style={{ width: "12rem", height: "0.9rem" }} />
+      {/* The section announces the loading state once; the Arc placeholders inside only draw it. */}
+      <div aria-hidden="true" className={styles.hero}>
+        <Skeleton lines={3} />
       </div>
-      <div className={styles.metrics}>
+      <div aria-hidden="true" className={styles.metrics}>
         {Array.from({ length: SKELETON_METRIC_COUNT }, (_, index) => (
           <div className={styles.metricCard} key={index}>
-            <Skeleton style={{ width: "70%", height: "0.85rem" }} />
-            <Skeleton style={{ width: "85%", height: "1.4rem" }} />
+            <Skeleton lines={2} />
           </div>
         ))}
       </div>
-      <div className={styles.entries}>
+      <div aria-hidden="true" className={styles.entries}>
         {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
           <div className={styles.entry} key={index}>
-            <div className={styles.entryHeader}>
-              <Skeleton style={{ width: "2.4rem", height: "2.4rem", borderRadius: "50%" }} />
-              <div className={styles.entryIdentity}>
-                <Skeleton style={{ width: "70%", height: "1rem" }} />
-                <Skeleton style={{ width: "50%", height: "0.8rem" }} />
-              </div>
-            </div>
-            <Skeleton style={{ width: "55%", height: "1.35rem", marginLeft: "auto" }} />
-            <Skeleton style={{ width: "100%", height: "0.35rem" }} />
-            <Skeleton style={{ width: "100%", height: "2rem" }} />
+            <Skeleton avatar lines={4} />
           </div>
         ))}
       </div>
@@ -702,6 +670,10 @@ export function MonthlyExpensesLoansReport({
   const [sortKey, setSortKey] = useState<LoansReportSortKey>(
     DEFAULT_LOANS_REPORT_SORT_KEY,
   );
+  const sortMenuLabel = `Ordenar por: ${
+    LOANS_REPORT_SORT_OPTIONS.find((sortOption) => sortOption.value === sortKey)
+      ?.label ?? "Monto"
+  }`;
 
   if (isLoading) {
     return <LoansReportSkeleton />;
@@ -871,35 +843,26 @@ export function MonthlyExpensesLoansReport({
           placeholder="Filtrar por campo o palabra (ej. tipo:banco contraparte:vero)"
           value={filterQuery}
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline">
-              {`Ordenar por: ${
-                LOANS_REPORT_SORT_OPTIONS.find(
-                  (sortOption) => sortOption.value === sortKey,
-                )?.label ?? "Monto"
-              }`}
+        <DropdownMenu
+          align="end"
+          items={LOANS_REPORT_SORT_OPTIONS.map((sortOption) => ({
+            id: sortOption.value,
+            label: sortOption.label,
+            value: sortOption.value,
+          }))}
+          label={sortMenuLabel}
+          selection={{
+            onValueChange: (nextValue) =>
+              setSortKey(nextValue as LoansReportSortKey),
+            value: sortKey,
+          }}
+          trigger={
+            <Button type="button" variant="secondary">
+              {sortMenuLabel}
               <ChevronDown aria-hidden="true" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup
-              onValueChange={(nextValue) =>
-                setSortKey(nextValue as LoansReportSortKey)
-              }
-              value={sortKey}
-            >
-              {LOANS_REPORT_SORT_OPTIONS.map((sortOption) => (
-                <DropdownMenuRadioItem
-                  key={sortOption.value}
-                  value={sortOption.value}
-                >
-                  {sortOption.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          }
+        />
       </div>
 
       {feedbackMessage ? (

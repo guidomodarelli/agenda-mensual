@@ -1,7 +1,7 @@
 "use client";
 
-import { ThemedToaster as Toaster, TooltipProvider } from "beez-ui";
-import { BeezUIProvider } from "beez-ui/next";
+import { ThemedToaster as Toaster } from "@astra-kit/ui";
+import { AstraUIProvider } from "@astra-kit/ui/next";
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { useEffect, type ReactNode } from "react";
@@ -31,12 +31,10 @@ export function AppProviders({ children, session }: AppProvidersProps) {
 
   return (
     <SessionProvider session={session}>
-      <BeezUIProvider themeOptions={APP_THEME_OPTIONS}>
-        <TooltipProvider>
-          {children}
-          <Toaster closeButton position="top-center" richColors />
-        </TooltipProvider>
-      </BeezUIProvider>
+      <AstraUIProvider themeOptions={APP_THEME_OPTIONS}>
+        {children}
+        <Toaster closeButton position="top-center" richColors />
+      </AstraUIProvider>
     </SessionProvider>
   );
 }

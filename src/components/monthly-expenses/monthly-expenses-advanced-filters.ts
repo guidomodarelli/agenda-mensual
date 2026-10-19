@@ -1,4 +1,4 @@
-import { type DataTableColumnFilterValue } from "beez-ui";
+import { type DataTableColumnFilterValue } from "@astra-kit/ui";
 
 
 /**

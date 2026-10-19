@@ -1,5 +1,4 @@
 import { vi, expect, beforeEach, afterEach, afterAll, type MockedFunction, type Mock } from "vitest";
-import { TooltipProvider } from "beez-ui";
 import { render, screen, within } from "@testing-library/react";
 import type { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { useSession } from "next-auth/react";
@@ -113,7 +112,7 @@ function createReadonlySearchParams(
 }
 
 export function renderWithProviders(ui: ReactElement) {
-  return render(<TooltipProvider>{ui}</TooltipProvider>);
+  return render(ui);
 }
 
 export function createMockRouter(

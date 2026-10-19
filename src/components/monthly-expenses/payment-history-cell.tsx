@@ -2,28 +2,18 @@ import {
   Button,
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useCallback, useState } from "react";
 
-import { Clock3, ExternalLink, Mail, Paperclip, Plus } from "lucide-react";
+import { ExternalLink, Mail, Paperclip, Plus } from "lucide-react";
 
 import { DriveStatusBadge } from "./drive-status-badge";
 import {
@@ -40,20 +30,8 @@ import type {
 } from "./monthly-expenses-table.types";
 import { getValidPaymentLink } from "./payment-link";
 import { ReceiptFileUploader } from "./receipt-file-uploader";
-
+import { RECEIPT_SHARE_STATUS_OPTIONS } from "./select-options.constants";
 import styles from "./monthly-expenses-table.module.scss";
-
-function getReceiptShareStatusLabel(
-  status: MonthlyExpenseReceiptShareStatus,
-): string {
-  return status === "sent" ? "Enviado" : "Pendiente";
-}
-
-function getReceiptShareStatusIcon(
-  status: MonthlyExpenseReceiptShareStatus,
-): typeof Clock3 {
-  return status === "sent" ? Mail : Clock3;
-}
 
 function getReceiptShareStatusToneClassName(
   args: {
@@ -319,13 +297,35 @@ export function PaymentHistoryCell({
         onOpenChange={handleRegisterPaymentDialogOpenChange}
         open={isRegisterPaymentDialogOpen}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar nuevo pago</DialogTitle>
-            <DialogDescription>
-              Elegí la cantidad de pagos y, si querés, adjuntá un comprobante.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent
+          title="Registrar nuevo pago"
+          description="Elegí la cantidad de pagos y, si querés, adjuntá un comprobante."
+          footer={
+            <>
+              <Button
+                onClick={() => handleRegisterPaymentDialogOpenChange(false)}
+                type="button"
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={
+                  actionDisabled ||
+                  isRegisterPaymentSubmitting ||
+                  maxPaymentsPerRecord <= 0 ||
+                  !hasValidManualDraft
+                }
+                onClick={() => {
+                  void handleRegisterPaymentRecord();
+                }}
+                type="button"
+              >
+                Confirmar
+              </Button>
+            </>
+          }
+        >
           <div className={styles.manualPaymentsCell}>
             <Label htmlFor={registerPaymentInputId}>¿Cuántos pagos desea cubrir?</Label>
             <Input
@@ -354,52 +354,26 @@ export function PaymentHistoryCell({
               <span className={styles.manualPaymentsHint}>{paymentRegistrationError}</span>
             ) : null}
           </div>
-          <DialogFooter>
-            <Button
-              onClick={() => handleRegisterPaymentDialogOpenChange(false)}
-              type="button"
-              variant="outline"
-            >
-              Cancelar
-            </Button>
-            <Button
-              disabled={
-                actionDisabled ||
-                isRegisterPaymentSubmitting ||
-                maxPaymentsPerRecord <= 0 ||
-                !hasValidManualDraft
-              }
-              onClick={() => {
-                void handleRegisterPaymentRecord();
-              }}
-              type="button"
-            >
-              Confirmar
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       {!hasPaymentRecords ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              aria-label={`Agregar nuevo registro de pago para ${expenseDescription}`}
-              className={styles.paymentLinkActionButton}
-              disabled={actionDisabled || maxPaymentsPerRecord <= 0}
-              onClick={() => setIsRegisterPaymentDialogOpen(true)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Plus aria-hidden="true" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Agregar nuevo registro de pago</TooltipContent>
+        <Tooltip content="Agregar nuevo registro de pago">
+          <Button
+            aria-label={`Agregar nuevo registro de pago para ${expenseDescription}`}
+            className={styles.paymentLinkActionButton}
+            disabled={actionDisabled || maxPaymentsPerRecord <= 0}
+            onClick={() => setIsRegisterPaymentDialogOpen(true)}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            <Plus aria-hidden="true" />
+          </Button>
         </Tooltip>
       ) : (
         <Popover>
           <PopoverTrigger asChild>
-            <Button className={styles.extraReceiptsTrigger} type="button" variant="link">
+            <Button className={styles.extraReceiptsTrigger} type="button" variant="ghost">
               {`${paymentRecords.length} ${recordsCountLabel}`}
               {receiptPaymentRecordsCount > 0 ? (
                 <span className={styles.receiptCountIndicator}>
@@ -456,7 +430,7 @@ export function PaymentHistoryCell({
                       })}
                     size="sm"
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                   >
                     <Plus aria-hidden="true" />
                     Agregar datos de envío
@@ -471,7 +445,7 @@ export function PaymentHistoryCell({
                   onClick={() => setIsRegisterPaymentDialogOpen(true)}
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                 >
                   <Plus aria-hidden="true" />
                   Agregar nuevo registro de pago
@@ -581,6 +555,8 @@ export function PaymentHistoryCell({
                   {paymentRecord.receipt && requiresReceiptShare ? (
                     <div className={styles.paymentRecordSendControls}>
                       <Select
+                        hideLabel
+                        label={`Estado de envío de ${recordLabel} para ${expenseDescription}`}
                         onValueChange={(value) => {
                           void onUpdatePaymentRecordSendStatus({
                             expenseId,
@@ -588,58 +564,16 @@ export function PaymentHistoryCell({
                             sendStatus: value as MonthlyExpenseReceiptShareStatus,
                           });
                         }}
+                        options={RECEIPT_SHARE_STATUS_OPTIONS}
+                        triggerClassName={cn(
+                          styles.receiptShareStatusControl,
+                          getReceiptShareStatusToneClassName({
+                            isPaymentFullyCompleted: true,
+                            status: paymentSendStatus,
+                          }),
+                        )}
                         value={paymentSendStatus}
-                      >
-                        <SelectTrigger
-                          aria-label={`Estado de envío de ${recordLabel} para ${expenseDescription}`}
-                          className={cn(
-                            styles.receiptShareStatusControl,
-                            getReceiptShareStatusToneClassName({
-                              isPaymentFullyCompleted: true,
-                              status: paymentSendStatus,
-                            }),
-                          )}
-                        >
-                          <SelectValue>
-                            <span className={styles.receiptShareStatusValue}>
-                              {(() => {
-                                const StatusIcon =
-                                  getReceiptShareStatusIcon(paymentSendStatus);
-
-                                return (
-                                  <StatusIcon
-                                    aria-hidden="true"
-                                    className={styles.paymentLinkIcon}
-                                  />
-                                );
-                              })()}
-                              <span>
-                                {getReceiptShareStatusLabel(paymentSendStatus)}
-                              </span>
-                            </span>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">
-                            <span className={styles.receiptShareStatusValue}>
-                              <Clock3
-                                aria-hidden="true"
-                                className={styles.paymentLinkIcon}
-                              />
-                              <span>Pendiente</span>
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="sent">
-                            <span className={styles.receiptShareStatusValue}>
-                              <Mail
-                                aria-hidden="true"
-                                className={styles.paymentLinkIcon}
-                              />
-                              <span>Enviado</span>
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      />
                       {paymentWhatsAppLink ? (
                         <a
                           className={styles.paymentLinkAction}

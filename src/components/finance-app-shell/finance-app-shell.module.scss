@@ -1,3 +1,5 @@
+@use "../../styles/action-link";
+
 .page {
   min-height: 100vh;
   padding: 0rem 1.25rem 3rem;
@@ -187,7 +189,7 @@
   filter: none;
 }
 
-// beez-ui AccountMenu renders the header text as its second child: name first, then email.
+// @astra-kit/ui AccountMenu renders the header text as its second child: name first, then email.
 .sidebarAccountMenuHeader > :last-child > :first-child {
   font-size: 1rem;
   font-weight: 700;
@@ -283,4 +285,12 @@
   .mobileSidebarTrigger {
     display: inline-flex;
   }
+}
+
+// The theme toggler renders a bare button: it takes Arc's ghost button look as a square icon control.
+.themeToggle {
+  @include action-link.action-link(ghost, sm);
+
+  width: var(--control-height-sm);
+  padding-inline: 0;
 }

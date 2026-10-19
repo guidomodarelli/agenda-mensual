@@ -3,7 +3,7 @@ import {
   normalizeFilterSlug,
   type FilterQualifierConfig,
   type FilterQualifierOption,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 
 import type { ExpenseFolderOption } from "./expense-folder-picker";

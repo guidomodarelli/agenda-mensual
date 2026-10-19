@@ -1,33 +1,18 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  type AppliedFilter,
   Badge,
   Button,
   DataTable,
+  type DataTableQueryFilterControls,
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  type DropdownItem,
+  type FilterPreset,
+  type FilterPresetLabels,
+  FilterPresetSaveButton,
+  FilterPresetsBar,
   Highlighter,
   Input,
   InputGroup,
@@ -37,20 +22,11 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  ProgressRing,
   RadioGroup,
-  RadioGroupItem,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Textarea,
   Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  FilterPresetSaveButton,
-  FilterPresetsBar,
-  ProgressRing,
   cn,
   getExactMatchIndices,
   getFuzzyMatchIndices,
@@ -58,12 +34,8 @@ import {
   matchesAdvancedYearMonthRangeFilter,
   normalizeSearchValue,
   renderHighlightedText,
-  type AppliedFilter,
-  type DataTableQueryFilterControls,
-  type FilterPreset,
-  type FilterPresetLabels,
-} from "beez-ui";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+} from "@astra-kit/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ColumnDef,
   SortingState,
@@ -187,6 +159,8 @@ import {
   getValidPaymentLink as getValidPaymentLinkUrl,
   PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
 } from "./payment-link";
+import { EXPENSE_SUBTOTAL_UNIT_OPTIONS } from "./select-options.constants";
+import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./monthly-expenses-table.module.scss";
 
 import type {
@@ -293,6 +267,70 @@ const LOAN_SORT_DIRECTION_OPTIONS: Array<{
     value: "desc",
   },
 ];
+/** Keeps a choice menu open after picking a row, so several choices fit in one visit. */
+function keepMenuOpen(event: Event): void {
+  event.preventDefault();
+}
+
+/** Menu value of "no sorting" in the «Ordenar por» menu. */
+const SORT_MENU_NONE_VALUE = "none";
+/**
+ * Prefix of the «Ordenar por» values that sort by a loan criterion: Arc's menu
+ * has no submenus, so each loan criterion is its own row of the single choice.
+ */
+const LOAN_SORT_MENU_VALUE_PREFIX = `${LOAN_SORT_COLUMN_ID}:`;
+
+function getLoanSortMenuValue(loanSortMode: LoanSortMode): string {
+  return `${LOAN_SORT_MENU_VALUE_PREFIX}${loanSortMode}`;
+}
+
+/** Rows of the «Ordenar por» menu: every sortable column, with the loan criteria after «Pagos». */
+const SORT_MENU_ITEMS: DropdownItem[] = [
+  {
+    id: SORT_MENU_NONE_VALUE,
+    label: "Sin ordenar",
+    onSelect: keepMenuOpen,
+    value: SORT_MENU_NONE_VALUE,
+  },
+  ...SORT_MENU_OPTIONS.flatMap((sortMenuOption): DropdownItem[] => [
+    {
+      id: sortMenuOption.id,
+      label: sortMenuOption.label,
+      onSelect: keepMenuOpen,
+      value: sortMenuOption.id,
+    },
+    ...(sortMenuOption.id === "paymentsProgress"
+      ? LOAN_SORT_OPTIONS.map((loanSortOption, loanSortOptionIndex) => ({
+          id: getLoanSortMenuValue(loanSortOption.value),
+          label: loanSortOption.label,
+          onSelect: keepMenuOpen,
+          separatorBefore: loanSortOptionIndex === 0,
+          value: getLoanSortMenuValue(loanSortOption.value),
+        }))
+      : []),
+  ]),
+];
+
+/** Rows of the sort direction menu. */
+const SORT_DIRECTION_MENU_ITEMS: DropdownItem[] = LOAN_SORT_DIRECTION_OPTIONS.map(
+  (directionOption) => ({
+    id: directionOption.value,
+    label: directionOption.label,
+    onSelect: keepMenuOpen,
+    value: directionOption.value,
+  }),
+);
+
+/** Rows of the «Agrupar por» menu. */
+const GROUP_BY_MENU_ITEMS: DropdownItem[] = [
+  { id: "none", label: "Sin agrupar", onSelect: keepMenuOpen, value: "none" },
+  ...GROUP_BY_MODE_MENU_OPTIONS.map((groupByOption) => ({
+    id: groupByOption.value,
+    label: groupByOption.label,
+    onSelect: keepMenuOpen,
+    value: groupByOption.value,
+  })),
+];
 const VIGENCIA_SORT_OPTIONS: Array<{ label: string; value: VigenciaSortMode }> = [
   {
     label: "Inicio cuota",
@@ -353,7 +391,6 @@ interface SortModeColumnHeaderProps<TMode extends string> {
   };
   label: string;
   onApplySort: (args: { direction: "asc" | "desc"; mode: TMode }) => void;
-  optionIdPrefix: string;
   sortMode: TMode;
   sortOptions: ReadonlyArray<{ label: string; value: TMode }>;
 }
@@ -362,7 +399,6 @@ function SortModeColumnHeader<TMode extends string>({
   column,
   label,
   onApplySort,
-  optionIdPrefix,
   sortMode,
   sortOptions,
 }: SortModeColumnHeaderProps<TMode>) {
@@ -410,59 +446,32 @@ function SortModeColumnHeader<TMode extends string>({
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className={styles.loanSortPopover}>
-            <p className={styles.loanSortPopoverTitle}>Criterio</p>
+            {/* Visual titles only: each group is named by its legend for assistive technology. */}
+            <p aria-hidden="true" className={styles.loanSortPopoverTitle}>
+              Criterio
+            </p>
 
             <RadioGroup
-              aria-label={`Criterio de orden para ${label}`}
               className={styles.loanSortOptions}
+              label={`Criterio de orden para ${label}`}
               onValueChange={(value) => setDraftSortMode(value as TMode)}
+              options={[...sortOptions]}
               value={draftSortMode}
-            >
-              {sortOptions.map((option) => {
-                const radioId = `${optionIdPrefix}-mode-${option.value}`;
+            />
 
-                return (
-                  <div className={styles.loanSortOption} key={option.value}>
-                    <RadioGroupItem
-                      aria-label={option.label}
-                      id={radioId}
-                      value={option.value}
-                    />
-                    <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
-                      {option.label}
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-
-            <p className={styles.loanSortPopoverTitle}>Dirección</p>
+            <p aria-hidden="true" className={styles.loanSortPopoverTitle}>
+              Dirección
+            </p>
 
             <RadioGroup
-              aria-label={`Dirección de orden para ${label}`}
               className={styles.loanSortOptions}
+              label={`Dirección de orden para ${label}`}
               onValueChange={(value) =>
                 setDraftSortDirection(value as "asc" | "desc")
               }
+              options={[...LOAN_SORT_DIRECTION_OPTIONS]}
               value={draftSortDirection}
-            >
-              {LOAN_SORT_DIRECTION_OPTIONS.map((option) => {
-                const radioId = `${optionIdPrefix}-direction-${option.value}`;
-
-                return (
-                  <div className={styles.loanSortOption} key={option.value}>
-                    <RadioGroupItem
-                      aria-label={option.label}
-                      id={radioId}
-                      value={option.value}
-                    />
-                    <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
-                      {option.label}
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
+            />
 
             <p className={styles.loanSortHint}>Los cambios se aplican al presionar Aplicar.</p>
 
@@ -474,7 +483,7 @@ function SortModeColumnHeader<TMode extends string>({
                 }}
                 size="sm"
                 type="button"
-                variant="outline"
+                variant="secondary"
               >
                 Descartar
               </Button>
@@ -1634,6 +1643,55 @@ export function MonthlyExpensesTable({
     },
     [applyUserSorting],
   );
+  const sortMenuValue = !primaryUserSortingEntry
+    ? SORT_MENU_NONE_VALUE
+    : primaryUserSortingEntry.id === LOAN_SORT_COLUMN_ID
+      ? getLoanSortMenuValue(loanSortMode)
+      : primaryUserSortingEntry.id;
+  const sortMenuLabel = primaryUserSortingEntry
+    ? `Ordenar por: ${
+        primaryUserSortingEntry.id === LOAN_SORT_COLUMN_ID
+          ? getLoanSortModeLabel(loanSortMode)
+          : SORT_LABELS_BY_COLUMN_ID[primaryUserSortingEntry.id] ??
+            primaryUserSortingEntry.id
+      }`
+    : "Ordenar por";
+  const sortDirectionMenuLabel = `Dirección: ${
+    primaryUserSortingEntry?.desc ? "Descendente" : "Ascendente"
+  }`;
+  const groupByMenuLabel =
+    groupByMode !== "none"
+      ? `Agrupar por: ${GROUP_BY_MODE_LABELS[groupByMode]}`
+      : "Agrupar por";
+  const handleSortMenuValueChange = (nextValue: string) => {
+    const primaryDescending = primaryUserSortingEntry?.desc ?? false;
+
+    if (nextValue.startsWith(LOAN_SORT_MENU_VALUE_PREFIX)) {
+      setLoanSortMode(
+        nextValue.slice(LOAN_SORT_MENU_VALUE_PREFIX.length) as LoanSortMode,
+      );
+      applyUserSorting([{ desc: primaryDescending, id: LOAN_SORT_COLUMN_ID }]);
+      return;
+    }
+
+    if (!(nextValue in SORT_LABELS_BY_COLUMN_ID)) {
+      applyUserSorting([]);
+      return;
+    }
+
+    applyUserSorting([{ desc: primaryDescending, id: nextValue }]);
+  };
+  const handleSortDirectionChange = (nextValue: string) => {
+    if (!primaryUserSortingEntry) {
+      return;
+    }
+
+    applyUserSorting(
+      userSortingEntries.map((sortingEntry, index) =>
+        index === 0 ? { ...sortingEntry, desc: nextValue === "desc" } : sortingEntry,
+      ),
+    );
+  };
   const handleGroupByModeChange = useCallback(
     (nextGroupByMode: MonthlyExpensesGroupByMode) => {
       setGroupByMode(nextGroupByMode);
@@ -2623,38 +2681,31 @@ export function MonthlyExpensesTable({
             />
           );
           const paymentLinkAnchor = paymentLinkUrl ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Tooltip content="Abrir página de pago">
+              <a
+                aria-label={`Abrir link de pago de ${expenseDescriptionLabel}`}
+                className={styles.descriptionPaymentLinkAnchor}
+                href={paymentLinkUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 <Badge
-                  asChild
                   className={styles.descriptionPaymentLinkChip}
-                  variant="outline"
+                  icon={<Link2 aria-hidden="true" />}
                 >
-                  <a
-                    aria-label={`Abrir link de pago de ${expenseDescriptionLabel}`}
-                    href={paymentLinkUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    <Link2 aria-hidden="true" />
-                    Link
-                  </a>
+                  Link
                 </Badge>
-              </TooltipTrigger>
-              <TooltipContent>Abrir página de pago</TooltipContent>
+              </a>
             </Tooltip>
           ) : null;
 
           const isDescriptionTruncated =
             description.length > DESCRIPTION_TRUNCATE_CHAR_LIMIT;
           const descriptionTextNode = isDescriptionTruncated ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={styles.descriptionTruncated}>
-                  {descriptionContent}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{description}</TooltipContent>
+            <Tooltip content={description}>
+              <span className={styles.descriptionTruncated}>
+                {descriptionContent}
+              </span>
             </Tooltip>
           ) : (
             descriptionContent
@@ -2669,21 +2720,18 @@ export function MonthlyExpensesTable({
           // Sin placeholder para gastos no recurrentes: las filas comunes no
           // reservan el espacio del ícono.
           const recurrenceIndicator = row.original.isRecurring ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  aria-label={recurrenceIndicatorLabel}
-                  className={cn(
-                    styles.recurrenceIndicator,
-                    isRecurrenceCancelled &&
-                      styles.recurrenceIndicatorCancelled,
-                  )}
-                  role="img"
-                >
-                  <Repeat aria-hidden="true" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{recurrenceIndicatorLabel}</TooltipContent>
+            <Tooltip content={recurrenceIndicatorLabel}>
+              <span
+                aria-label={recurrenceIndicatorLabel}
+                className={cn(
+                  styles.recurrenceIndicator,
+                  isRecurrenceCancelled &&
+                    styles.recurrenceIndicatorCancelled,
+                )}
+                role="img"
+              >
+                <Repeat aria-hidden="true" />
+              </span>
             </Tooltip>
           ) : null;
 
@@ -2781,17 +2829,14 @@ export function MonthlyExpensesTable({
               : null;
           const usdRateBadge =
             row.original.currency === "USD" ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge className={styles.usdRateChip} variant="outline">
-                    {getUsdRateBadgeLabel(row.original.usdRate)}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {effectiveUsdRate != null
+              <Tooltip
+                content={effectiveUsdRate != null
                     ? `1 USD = ${formatExchangeRateAmount(effectiveUsdRate)}`
                     : "Sin cotización disponible para convertir"}
-                </TooltipContent>
+              >
+                <Badge className={styles.usdRateChip}>
+                  {getUsdRateBadgeLabel(row.original.usdRate)}
+                </Badge>
               </Tooltip>
             ) : null;
 
@@ -2821,25 +2866,15 @@ export function MonthlyExpensesTable({
                 ) : null}
               </div>
               <div className={styles.subtotalTrailing}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      aria-label={`Abrir acciones de subtotal y cantidad para ${expenseDescription}`}
-                      className={styles.paymentLinkActionButton}
-                      disabled={actionDisabled}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <MoreVertical
-                        aria-hidden="true"
-                        className={styles.paymentLinkIcon}
-                      />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => {
+                <GuardedDropdownMenu
+                  disabled={actionDisabled}
+                  align="end"
+                  items={[
+                    {
+                      icon: <Pencil aria-hidden="true" />,
+                      id: "edit-subtotal",
+                      label: "Editar subtotal y cantidad",
+                      onSelect: () => {
                         window.setTimeout(() => {
                           handleOpenDetailsDialog({
                             currency: row.original.currency,
@@ -2852,13 +2887,26 @@ export function MonthlyExpensesTable({
                             subtotalUnit,
                           });
                         }, 0);
-                      }}
+                      },
+                    },
+                  ]}
+                  label={`Abrir acciones de subtotal y cantidad para ${expenseDescription}`}
+                  trigger={
+                    <Button
+                      aria-label={`Abrir acciones de subtotal y cantidad para ${expenseDescription}`}
+                      className={styles.paymentLinkActionButton}
+                      disabled={actionDisabled}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
                     >
-                      <Pencil aria-hidden="true" />
-                      Editar subtotal y cantidad
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <MoreVertical
+                        aria-hidden="true"
+                        className={styles.paymentLinkIcon}
+                      />
+                    </Button>
+                  }
+                />
               </div>
             </div>
           );
@@ -3014,21 +3062,18 @@ export function MonthlyExpensesTable({
                 {normalizedCoveredPayments} / {requiredPayments}
               </span>
               {!isComplete ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      aria-label={`Marcar ${expenseDescription} como pagado`}
-                      className={styles.paymentLinkActionButton}
-                      disabled={actionDisabled}
-                      onClick={() => onMarkExpensePaid(row.original.id)}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <CircleCheck aria-hidden="true" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Marcar como pagado</TooltipContent>
+                <Tooltip content="Marcar como pagado">
+                  <Button
+                    aria-label={`Marcar ${expenseDescription} como pagado`}
+                    className={styles.paymentLinkActionButton}
+                    disabled={actionDisabled}
+                    onClick={() => onMarkExpensePaid(row.original.id)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <CircleCheck aria-hidden="true" />
+                  </Button>
                 </Tooltip>
               ) : null}
               <PaymentHistoryCell
@@ -3162,7 +3207,6 @@ export function MonthlyExpensesTable({
               setLoanSortMode(mode);
               applyUserSorting(buildLoanSortingState(direction));
             }}
-            optionIdPrefix="loan-sort"
             sortMode={loanSortMode}
             sortOptions={LOAN_SORT_OPTIONS}
           />
@@ -3215,7 +3259,7 @@ export function MonthlyExpensesTable({
                 {lenderName.length > 0 ? lenderName : <EmptyCellPlaceholder />}
               </span>
               {row.original.isLoan ? (
-                <Badge className={styles.lenderDirectionBadge} variant="outline">
+                <Badge className={styles.lenderDirectionBadge}>
                   {getLoanDirectionLabel(row.original.loanDirection ?? "payable")}
                 </Badge>
               ) : null}
@@ -3287,7 +3331,6 @@ export function MonthlyExpensesTable({
               setVigenciaSortMode(mode);
               applyUserSorting(buildVigenciaSortingState(direction));
             }}
-            optionIdPrefix="vigencia-sort"
             sortMode={vigenciaSortMode}
             sortOptions={VIGENCIA_SORT_OPTIONS}
           />
@@ -3435,9 +3478,9 @@ export function MonthlyExpensesTable({
                       onMonthChange(previousYearMonth);
                     }
                   }}
-                  size="icon"
+                  size="sm"
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                 >
                   <ChevronLeft aria-hidden="true" />
                 </Button>
@@ -3457,9 +3500,9 @@ export function MonthlyExpensesTable({
                       onMonthChange(nextYearMonth);
                     }
                   }}
-                  size="icon"
+                  size="sm"
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                 >
                   <ChevronRight aria-hidden="true" />
                 </Button>
@@ -3468,7 +3511,7 @@ export function MonthlyExpensesTable({
                   disabled={isMonthTransitionPending || isCurrentMonthVisible}
                   onClick={() => onMonthChange(currentYearMonth)}
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                 >
                   Hoy
                 </Button>
@@ -3507,7 +3550,7 @@ export function MonthlyExpensesTable({
                     onCopyFromMonth();
                   }}
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                 >
                   Replicar gastos del mes anterior
                 </Button>
@@ -3533,7 +3576,7 @@ export function MonthlyExpensesTable({
                   className={styles.tableHeaderActionButton}
                   onClick={onManageFolders}
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                 >
                   Administrar carpetas
                 </Button>
@@ -3663,27 +3706,28 @@ export function MonthlyExpensesTable({
               columnVisibility={columnVisibility}
               columnVisibilityButtonLabel="Vista"
               columnVisibilityMenuLabel="Columnas"
-              columnVisibilityMenuExtraContent={
-                <DropdownMenuCheckboxItem
-                  checked={moveCompletedToEnd}
-                  disabled={hasUserSorting}
-                  onCheckedChange={(nextChecked) => {
-                    setMoveCompletedToEnd(Boolean(nextChecked));
-                  }}
-                  onSelect={(event) => {
+              columnVisibilityMenuExtraItems={[
+                {
+                  checked: moveCompletedToEnd,
+                  disabled: hasUserSorting,
+                  id: "move-completed-to-end",
+                  label: (
+                    <span className={styles.viewMenuOption}>
+                      {MOVE_COMPLETED_TO_END_LABEL}
+                      {hasUserSorting ? (
+                        <span className={styles.viewMenuOptionHint}>
+                          {MANUAL_SORTING_DISABLED_HELPER_TEXT}
+                        </span>
+                      ) : null}
+                    </span>
+                  ),
+                  // Keep the view menu open while toggling the option.
+                  onSelect: (event) => {
                     event.preventDefault();
-                  }}
-                >
-                  <span className={styles.viewMenuOption}>
-                    {MOVE_COMPLETED_TO_END_LABEL}
-                    {hasUserSorting ? (
-                      <span className={styles.viewMenuOptionHint}>
-                        {MANUAL_SORTING_DISABLED_HELPER_TEXT}
-                      </span>
-                    ) : null}
-                  </span>
-                </DropdownMenuCheckboxItem>
-              }
+                    setMoveCompletedToEnd(!moveCompletedToEnd);
+                  },
+                },
+              ]}
               columns={columns}
               hideableColumnsDefaultVisibility={
                 MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY
@@ -3752,227 +3796,111 @@ export function MonthlyExpensesTable({
                   {/* Keys estables: son hermanos del mismo tipo y uno es
                       controlado; sin key, React puede reutilizar la instancia
                       controlada como no controlada al reconciliar. */}
-                  <DropdownMenu key="sort-by-menu">
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline">
-                        {primaryUserSortingEntry
-                          ? `Ordenar por: ${
-                              primaryUserSortingEntry.id === LOAN_SORT_COLUMN_ID
-                                ? getLoanSortModeLabel(loanSortMode)
-                                : SORT_LABELS_BY_COLUMN_ID[
-                                    primaryUserSortingEntry.id
-                                  ] ?? primaryUserSortingEntry.id
-                            }`
-                          : "Ordenar por"}
-                        <ChevronDown aria-hidden="true" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuRadioGroup
-                        onValueChange={(nextValue) => {
-                          if (!(nextValue in SORT_LABELS_BY_COLUMN_ID)) {
-                            applyUserSorting([]);
-                            return;
-                          }
-
-                          applyUserSorting([
-                            {
-                              desc: primaryUserSortingEntry?.desc ?? false,
-                              id: nextValue,
-                            },
-                          ]);
-                        }}
-                        value={primaryUserSortingEntry?.id ?? "none"}
-                      >
-                        <DropdownMenuRadioItem
-                          onSelect={(event) => {
-                            event.preventDefault();
-                          }}
-                          value="none"
-                        >
-                          Sin ordenar
-                        </DropdownMenuRadioItem>
-                        {SORT_MENU_OPTIONS.map((sortMenuOption) => (
-                          <Fragment key={sortMenuOption.id}>
-                            <DropdownMenuRadioItem
-                              onSelect={(event) => {
-                                event.preventDefault();
-                              }}
-                              value={sortMenuOption.id}
-                            >
-                              {sortMenuOption.label}
-                            </DropdownMenuRadioItem>
-                            {sortMenuOption.id === "paymentsProgress" ? (
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                  Deuda / cuotas
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                  <DropdownMenuRadioGroup
-                                    onValueChange={(nextLoanSortMode) => {
-                                      setLoanSortMode(
-                                        nextLoanSortMode as LoanSortMode,
-                                      );
-                                      applyUserSorting([
-                                        {
-                                          desc:
-                                            primaryUserSortingEntry?.desc ??
-                                            false,
-                                          id: LOAN_SORT_COLUMN_ID,
-                                        },
-                                      ]);
-                                    }}
-                                    value={
-                                      primaryUserSortingEntry?.id ===
-                                      LOAN_SORT_COLUMN_ID
-                                        ? loanSortMode
-                                        : ""
-                                    }
-                                  >
-                                    {LOAN_SORT_OPTIONS.map((loanSortOption) => (
-                                      <DropdownMenuRadioItem
-                                        key={loanSortOption.value}
-                                        onSelect={(event) => {
-                                          event.preventDefault();
-                                        }}
-                                        value={loanSortOption.value}
-                                      >
-                                        {loanSortOption.label}
-                                      </DropdownMenuRadioItem>
-                                    ))}
-                                  </DropdownMenuRadioGroup>
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                            ) : null}
-                          </Fragment>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Dirección</DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        onValueChange={(nextValue) => {
-                          if (!primaryUserSortingEntry) {
-                            return;
-                          }
-
-                          applyUserSorting(
-                            userSortingEntries.map((sortingEntry, index) =>
-                              index === 0
-                                ? {
-                                    ...sortingEntry,
-                                    desc: nextValue === "desc",
-                                  }
-                                : sortingEntry,
-                            ),
-                          );
-                        }}
-                        value={primaryUserSortingEntry?.desc ? "desc" : "asc"}
-                      >
-                        <DropdownMenuRadioItem
-                          onSelect={(event) => {
-                            event.preventDefault();
-                          }}
-                          value="asc"
-                        >
-                          Ascendente
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem
-                          onSelect={(event) => {
-                            event.preventDefault();
-                          }}
-                          value="desc"
-                        >
-                          Descendente
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu key="group-by-menu">
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline">
-                        {groupByMode !== "none"
-                          ? `Agrupar por: ${GROUP_BY_MODE_LABELS[groupByMode]}`
-                          : "Agrupar por"}
-                        <ChevronDown aria-hidden="true" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuRadioGroup
-                        onValueChange={(nextValue) => {
-                          handleGroupByModeChange(
-                            GROUP_BY_MODE_MENU_OPTIONS.some(
-                              (groupByOption) =>
-                                groupByOption.value === nextValue,
-                            )
-                              ? (nextValue as MonthlyExpensesGroupByMode)
-                              : "none",
-                          );
-                        }}
-                        value={groupByMode}
-                      >
-                        <DropdownMenuRadioItem
-                          onSelect={(event) => {
-                            event.preventDefault();
-                          }}
-                          value="none"
-                        >
-                          Sin agrupar
-                        </DropdownMenuRadioItem>
-                        {GROUP_BY_MODE_MENU_OPTIONS.map((groupByOption) => (
-                          <DropdownMenuRadioItem
-                            key={groupByOption.value}
-                            onSelect={(event) => {
-                              event.preventDefault();
-                            }}
-                            value={groupByOption.value}
-                          >
-                            {groupByOption.label}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                   <DropdownMenu
+                    align="end"
+                    items={SORT_MENU_ITEMS}
+                    key="sort-by-menu"
+                    label={sortMenuLabel}
+                    selection={{
+                      onValueChange: handleSortMenuValueChange,
+                      value: sortMenuValue,
+                    }}
+                    trigger={
+                      <Button type="button" variant="secondary">
+                        {sortMenuLabel}
+                        <ChevronDown aria-hidden="true" />
+                      </Button>
+                    }
+                  />
+                  {/* Arc's menu holds a single choice: the direction gets its own menu. */}
+                  <GuardedDropdownMenu
+                    disabled={!primaryUserSortingEntry}
+                    align="end"
+                    items={SORT_DIRECTION_MENU_ITEMS}
+                    key="sort-direction-menu"
+                    label={sortDirectionMenuLabel}
+                    selection={{
+                      onValueChange: handleSortDirectionChange,
+                      value: primaryUserSortingEntry?.desc ? "desc" : "asc",
+                    }}
+                    trigger={
+                      <Button
+                        disabled={!primaryUserSortingEntry}
+                        type="button"
+                        variant="secondary"
+                      >
+                        {sortDirectionMenuLabel}
+                        <ChevronDown aria-hidden="true" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenu
+                    align="end"
+                    items={GROUP_BY_MENU_ITEMS}
+                    key="group-by-menu"
+                    label={groupByMenuLabel}
+                    selection={{
+                      onValueChange: (nextValue) => {
+                        handleGroupByModeChange(
+                          GROUP_BY_MODE_MENU_OPTIONS.some(
+                            (groupByOption) => groupByOption.value === nextValue,
+                          )
+                            ? (nextValue as MonthlyExpensesGroupByMode)
+                            : "none",
+                        );
+                      },
+                      value: groupByMode,
+                    }}
+                    trigger={
+                      <Button type="button" variant="secondary">
+                        {groupByMenuLabel}
+                        <ChevronDown aria-hidden="true" />
+                      </Button>
+                    }
+                  />
+                  <GuardedDropdownMenu
+                    disabled={isBulkActionsDisabled}
+                    align="end"
+                    items={[
+                      {
+                        disabled: isBulkActionsDisabled,
+                        id: "bulk-move-to-folder",
+                        label: "Mover a carpeta",
+                        onSelect: (event) => {
+                          event.preventDefault();
+                          setIsBulkMoveToFolderDialogOpen(true);
+                        },
+                      },
+                      {
+                        disabled: isBulkActionsDisabled,
+                        id: "bulk-delete",
+                        label: "Eliminar",
+                        onSelect: (event) => {
+                          event.preventDefault();
+                          setIsBulkDeleteDialogOpen(true);
+                        },
+                      },
+                    ]}
                     key="bulk-actions-menu"
+                    label="Acciones masivas"
                     onOpenChange={setIsBulkActionsMenuOpen}
                     open={isBulkActionsMenuOpen}
-                  >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      aria-label="Acciones masivas"
-                      disabled={isBulkActionsDisabled}
-                      type="button"
-                      variant="outline"
-                    >
-                      Acciones masivas
-                      {isBulkActionsMenuOpen ? (
-                        <ChevronUp aria-hidden="true" />
-                      ) : (
-                        <ChevronDown aria-hidden="true" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      disabled={isBulkActionsDisabled}
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        setIsBulkMoveToFolderDialogOpen(true);
-                      }}
-                    >
-                      Mover a carpeta
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={isBulkActionsDisabled}
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        setIsBulkDeleteDialogOpen(true);
-                      }}
-                    >
-                      Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                  </DropdownMenu>
+                    trigger={
+                      <Button
+                        aria-label="Acciones masivas"
+                        disabled={isBulkActionsDisabled}
+                        type="button"
+                        variant="secondary"
+                      >
+                        Acciones masivas
+                        {isBulkActionsMenuOpen ? (
+                          <ChevronUp aria-hidden="true" />
+                        ) : (
+                          <ChevronDown aria-hidden="true" />
+                        )}
+                      </Button>
+                    }
+                  />
                 </>
               }
             />
@@ -3996,67 +3924,69 @@ export function MonthlyExpensesTable({
           ) : null}
         </div>
 
-        <AlertDialog
+        <Dialog
+          alert
           onOpenChange={setIsBulkDeleteDialogOpen}
           open={isBulkDeleteDialogOpen}
         >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Querés eliminar los gastos seleccionados?</AlertDialogTitle>
-              <AlertDialogDescription>
-                {`Se eliminarán ${selectedVisibleCount} gasto${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} de la tabla visible.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(event) => {
-                  event.preventDefault();
-                  void handleConfirmBulkDelete();
-                }}
-                type="button"
-              >
-                Eliminar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          <DialogContent
+            title="¿Querés eliminar los gastos seleccionados?"
+            description={`Se eliminarán ${selectedVisibleCount} gasto${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} de la tabla visible.`}
+            footer={
+              <>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">Cancelar</Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void handleConfirmBulkDelete();
+                    }}
+                    type="button"
+                  >
+                    Eliminar
+                  </Button>
+                </DialogClose>
+              </>
+            }
+          />
+        </Dialog>
 
         <Dialog
           onOpenChange={handleBulkMoveToFolderDialogOpenChange}
           open={isBulkMoveToFolderDialogOpen}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Mover gastos a una carpeta</DialogTitle>
-              <DialogDescription>
-                {`Se moverán ${selectedVisibleCount} gasto${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} a la carpeta elegida.`}
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent
+            title="Mover gastos a una carpeta"
+            description={`Se moverán ${selectedVisibleCount} gasto${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} a la carpeta elegida.`}
+            footer={
+              <>
+                <Button
+                  onClick={() => handleBulkMoveToFolderDialogOpenChange(false)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={actionDisabled || isSubmitting}
+                  onClick={() => {
+                    void handleConfirmBulkMoveToFolder();
+                  }}
+                  type="button"
+                >
+                  Mover
+                </Button>
+              </>
+            }
+          >
             <ExpenseFolderPicker
               onManageFolders={onManageFolders}
               onSelect={setBulkMoveTargetFolderId}
               options={expenseFolders}
               selectedFolderId={bulkMoveTargetFolderId ?? ""}
             />
-            <DialogFooter>
-              <Button
-                onClick={() => handleBulkMoveToFolderDialogOpenChange(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled || isSubmitting}
-                onClick={() => {
-                  void handleConfirmBulkMoveToFolder();
-                }}
-                type="button"
-              >
-                Mover
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -4064,14 +3994,31 @@ export function MonthlyExpensesTable({
           onOpenChange={onCopyFromMonthDialogOpenChange}
           open={replicateFromPreviousMonthDialogOpen}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Seleccioná los gastos a replicar</DialogTitle>
-              <DialogDescription>
-                Mostramos los gastos faltantes y vigentes del mes anterior.
-                Todos empiezan seleccionados.
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent
+            title="Seleccioná los gastos a replicar"
+            description="Mostramos los gastos faltantes y vigentes del mes anterior. Todos empiezan seleccionados."
+            footer={
+              <>
+                <Button
+                  onClick={() => onCopyFromMonthDialogOpenChange(false)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  aria-label="Confirmar replicación de gastos del mes anterior"
+                  disabled={isCopyFromDisabled || !isAnyReplicableOptionSelected}
+                  onClick={() => {
+                    onConfirmCopyFromMonth(selectedReplicableOptionIds);
+                  }}
+                  type="button"
+                >
+                  Confirmar
+                </Button>
+              </>
+            }
+          >
             <div className={styles.copySelectionList}>
               <label className={styles.copySelectionToggleAll}>
                 <input
@@ -4092,25 +4039,6 @@ export function MonthlyExpensesTable({
                 </label>
               ))}
             </div>
-            <DialogFooter>
-              <Button
-                onClick={() => onCopyFromMonthDialogOpenChange(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                aria-label="Confirmar replicación de gastos del mes anterior"
-                disabled={isCopyFromDisabled || !isAnyReplicableOptionSelected}
-                onClick={() => {
-                  onConfirmCopyFromMonth(selectedReplicableOptionIds);
-                }}
-                type="button"
-              >
-                Confirmar
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -4155,7 +4083,8 @@ export function MonthlyExpensesTable({
           validationMessage={validationMessage}
         />
 
-        <AlertDialog
+        <Dialog
+          alert
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               handleCloseDetailsDialog();
@@ -4163,21 +4092,36 @@ export function MonthlyExpensesTable({
           }}
           open={detailsDialogState != null}
         >
-          <AlertDialogContent
+          <DialogContent
+            title="Editar subtotal y cantidad"
+            description={subtotalUnitDraftValue === "hour"
+                  ? `Actualizá el subtotal por hora y la duración mensual de ${detailsDialogState?.expenseDescription ?? "este gasto"}.`
+                  : `Actualizá el subtotal, su unidad y la cantidad mensual de ${detailsDialogState?.expenseDescription ?? "este gasto"}.`}
             className={styles.paymentLinkDialogContent}
             onOpenAutoFocus={(event) => {
               handleDialogInputAutoFocus(event, "subtotal-dialog-input");
             }}
-            size="sm"
+            footer={
+              <>
+                <Button
+                  onClick={handleCloseDetailsDialog}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={actionDisabled}
+                  onClick={() => {
+                    void handleSaveDetails();
+                  }}
+                  type="button"
+                >
+                  Guardar
+                </Button>
+              </>
+            }
           >
-            <AlertDialogHeader>
-              <AlertDialogTitle>Editar subtotal y cantidad</AlertDialogTitle>
-              <AlertDialogDescription>
-                {subtotalUnitDraftValue === "hour"
-                  ? `Actualizá el subtotal por hora y la duración mensual de ${detailsDialogState?.expenseDescription ?? "este gasto"}.`
-                  : `Actualizá el subtotal, su unidad y la cantidad mensual de ${detailsDialogState?.expenseDescription ?? "este gasto"}.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="subtotal-dialog-input">Subtotal</Label>
@@ -4226,28 +4170,20 @@ export function MonthlyExpensesTable({
             </div>
 
             <div className={styles.paymentLinkDialogField}>
-              <Label htmlFor="subtotal-unit-dialog-select">
-                Unidad del subtotal
-              </Label>
+              {/* Visual label only: the select keeps the full name, with the expense. */}
+              <Label>Unidad del subtotal</Label>
               <Select
+                hideLabel
+                id="subtotal-unit-dialog-select"
+                label={`Unidad del subtotal de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
                 onValueChange={(nextValue) => {
                   setSubtotalUnitDraftValue(
                     nextValue === "hour" ? "hour" : "occurrence",
                   );
                 }}
+                options={EXPENSE_SUBTOTAL_UNIT_OPTIONS}
                 value={subtotalUnitDraftValue}
-              >
-                <SelectTrigger
-                  aria-label={`Unidad del subtotal de ${detailsDialogState?.expenseDescription ?? "gasto"}`}
-                  id="subtotal-unit-dialog-select"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="occurrence">Por ocurrencia</SelectItem>
-                  <SelectItem value="hour">Por hora</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             {subtotalUnitDraftValue === "hour" ? (
@@ -4305,28 +4241,11 @@ export function MonthlyExpensesTable({
               </div>
             )}
 
-            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
-              <Button
-                onClick={handleCloseDetailsDialog}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled}
-                onClick={() => {
-                  void handleSaveDetails();
-                }}
-                type="button"
-              >
-                Guardar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          </DialogContent>
+        </Dialog>
 
-        <AlertDialog
+        <Dialog
+          alert
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               handleCloseReceiptShareDialog();
@@ -4334,23 +4253,36 @@ export function MonthlyExpensesTable({
           }}
           open={receiptShareDialogState != null}
         >
-          <AlertDialogContent
+          <DialogContent
+            title={receiptShareDialogState?.mode === "create"
+                  ? "Agregar datos de envío"
+                  : "Editar datos de envío"}
+            description={`Completá WhatsApp y mensaje opcional para ${receiptShareDialogState?.expenseDescription ?? "este gasto"}.`}
             className={styles.paymentLinkDialogContent}
             onOpenAutoFocus={(event) => {
               handleDialogInputAutoFocus(event, "receipt-share-phone-dialog-input");
             }}
-            size="sm"
+            footer={
+              <>
+                <Button
+                  onClick={handleCloseReceiptShareDialog}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={actionDisabled}
+                  onClick={() => {
+                    void handleSaveReceiptShare();
+                  }}
+                  type="button"
+                >
+                  Guardar
+                </Button>
+              </>
+            }
           >
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {receiptShareDialogState?.mode === "create"
-                  ? "Agregar datos de envío"
-                  : "Editar datos de envío"}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {`Completá WhatsApp y mensaje opcional para ${receiptShareDialogState?.expenseDescription ?? "este gasto"}.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="receipt-share-phone-dialog-input">
@@ -4394,28 +4326,11 @@ export function MonthlyExpensesTable({
               ) : null}
             </div>
 
-            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
-              <Button
-                onClick={handleCloseReceiptShareDialog}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled}
-                onClick={() => {
-                  void handleSaveReceiptShare();
-                }}
-                type="button"
-              >
-                Guardar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          </DialogContent>
+        </Dialog>
 
-        <AlertDialog
+        <Dialog
+          alert
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               handleClosePaymentLinkDialog();
@@ -4423,23 +4338,36 @@ export function MonthlyExpensesTable({
           }}
           open={paymentLinkDialogState != null}
         >
-          <AlertDialogContent
+          <DialogContent
+            title={paymentLinkDialogState?.mode === "edit"
+                  ? "Editar link de pago"
+                  : "Agregar link de pago"}
+            description={`Completá el link para ${paymentLinkDialogState?.expenseDescription ?? "este gasto"}.`}
             className={styles.paymentLinkDialogContent}
             onOpenAutoFocus={(event) => {
               handleDialogInputAutoFocus(event, "payment-link-dialog-input");
             }}
-            size="sm"
+            footer={
+              <>
+                <Button
+                  onClick={handleClosePaymentLinkDialog}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={actionDisabled}
+                  onClick={() => {
+                    void handleSavePaymentLink();
+                  }}
+                  type="button"
+                >
+                  Guardar
+                </Button>
+              </>
+            }
           >
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {paymentLinkDialogState?.mode === "edit"
-                  ? "Editar link de pago"
-                  : "Agregar link de pago"}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {`Completá el link para ${paymentLinkDialogState?.expenseDescription ?? "este gasto"}.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="payment-link-dialog-input">Link de pago</Label>
@@ -4465,28 +4393,11 @@ export function MonthlyExpensesTable({
               ) : null}
             </div>
 
-            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
-              <Button
-                onClick={handleClosePaymentLinkDialog}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled}
-                onClick={() => {
-                  void handleSavePaymentLink();
-                }}
-                type="button"
-              >
-                Guardar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          </DialogContent>
+        </Dialog>
 
-        <AlertDialog
+        <Dialog
+          alert
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               setDuplicateToMonthDialogState(null);
@@ -4494,13 +4405,41 @@ export function MonthlyExpensesTable({
           }}
           open={duplicateToMonthDialogState != null}
         >
-          <AlertDialogContent size="sm">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Duplicar en otro mes</AlertDialogTitle>
-              <AlertDialogDescription>
-                {`Elegí el mes donde duplicar ${duplicateToMonthDialogState?.expenseDescription ?? "este gasto"}.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+          <DialogContent
+            title="Duplicar en otro mes"
+            description={`Elegí el mes donde duplicar ${duplicateToMonthDialogState?.expenseDescription ?? "este gasto"}.`}
+            footer={
+              <>
+                <Button
+                  onClick={() => setDuplicateToMonthDialogState(null)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={
+                    actionDisabled ||
+                    !YEAR_MONTH_PATTERN.test(duplicateToMonthDraftValue)
+                  }
+                  onClick={() => {
+                    if (!duplicateToMonthDialogState) {
+                      return;
+                    }
+
+                    void onDuplicateExpenseToMonth({
+                      expenseId: duplicateToMonthDialogState.expenseId,
+                      targetMonth: duplicateToMonthDraftValue,
+                    });
+                    setDuplicateToMonthDialogState(null);
+                  }}
+                  type="button"
+                >
+                  Duplicar
+                </Button>
+              </>
+            }
+          >
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="duplicate-to-month-dialog-input">Mes destino</Label>
@@ -4515,39 +4454,11 @@ export function MonthlyExpensesTable({
               />
             </div>
 
-            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
-              <Button
-                onClick={() => setDuplicateToMonthDialogState(null)}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={
-                  actionDisabled ||
-                  !YEAR_MONTH_PATTERN.test(duplicateToMonthDraftValue)
-                }
-                onClick={() => {
-                  if (!duplicateToMonthDialogState) {
-                    return;
-                  }
+          </DialogContent>
+        </Dialog>
 
-                  void onDuplicateExpenseToMonth({
-                    expenseId: duplicateToMonthDialogState.expenseId,
-                    targetMonth: duplicateToMonthDraftValue,
-                  });
-                  setDuplicateToMonthDialogState(null);
-                }}
-                type="button"
-              >
-                Duplicar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog
+        <Dialog
+          alert
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               handleCloseCustomUsdRateDialog();
@@ -4555,18 +4466,33 @@ export function MonthlyExpensesTable({
           }}
           open={customUsdRateDialogState != null}
         >
-          <AlertDialogContent
+          <DialogContent
+            title="Cotización personalizada"
+            description={`Ingresá cuántos pesos vale 1 USD para ${customUsdRateDialogState?.expenseDescription ?? "este gasto"}.`}
             onOpenAutoFocus={(event) => {
               handleDialogInputAutoFocus(event, "custom-usd-rate-dialog-input");
             }}
-            size="sm"
+            footer={
+              <>
+                <Button
+                  onClick={handleCloseCustomUsdRateDialog}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={actionDisabled}
+                  onClick={() => {
+                    void handleSaveCustomUsdRate();
+                  }}
+                  type="button"
+                >
+                  Guardar
+                </Button>
+              </>
+            }
           >
-            <AlertDialogHeader>
-              <AlertDialogTitle>Cotización personalizada</AlertDialogTitle>
-              <AlertDialogDescription>
-                {`Ingresá cuántos pesos vale 1 USD para ${customUsdRateDialogState?.expenseDescription ?? "este gasto"}.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="custom-usd-rate-dialog-input">
@@ -4595,26 +4521,8 @@ export function MonthlyExpensesTable({
               ) : null}
             </div>
 
-            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
-              <Button
-                onClick={handleCloseCustomUsdRateDialog}
-                type="button"
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled}
-                onClick={() => {
-                  void handleSaveCustomUsdRate();
-                }}
-                type="button"
-              >
-                Guardar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );

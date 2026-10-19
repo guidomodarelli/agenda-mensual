@@ -2,15 +2,32 @@ import {
   Input,
   Label,
   RadioGroup,
-  RadioGroupItem,
   cn,
-} from "beez-ui";
+  type RadioGroupOption,
+} from "@astra-kit/ui";
 import { useId, useState, type ChangeEvent } from "react";
 
 import { OccurrenceDurationInput } from "./occurrence-duration-input";
 import styles from "./payment-frequency-field.module.scss";
 
 type PaymentFrequencyMode = "single" | "multiple";
+
+/** Legend of the frequency choice; the form already shows it as the field label. */
+const PAYMENT_FREQUENCY_LEGEND = "Frecuencia de pago";
+
+const PAYMENT_FREQUENCY_OPTIONS = [
+  {
+    description: "Ejemplos: alquiler, expensas, agua, energia electrica o internet.",
+    label: "Un único pago al mes",
+    value: "single",
+  },
+  {
+    description:
+      "Ejemplos: clases de ingles, psicologa o empleada domestica. Si el servicio es 2 veces por semana, en 4 semanas serian 8 pagos (2 x 4 = 8).",
+    label: "Se paga varias veces en el mes",
+    value: "multiple",
+  },
+] satisfies RadioGroupOption[];
 
 interface PaymentFrequencyFieldProps {
   hasError: boolean;
@@ -56,10 +73,6 @@ export function PaymentFrequencyField({
     getInitialMultipleOccurrences(occurrencesPerMonth),
   );
   const inputIdBase = useId();
-  const singleOptionId = `${inputIdBase}-single`;
-  const singleOptionLabelId = `${inputIdBase}-single-label`;
-  const multipleOptionId = `${inputIdBase}-multiple`;
-  const multipleOptionLabelId = `${inputIdBase}-multiple-label`;
   const occurrencesInputId = `${inputIdBase}-occurrences`;
   const showOccurrencesInput = mode === "multiple";
 
@@ -120,57 +133,11 @@ export function PaymentFrequencyField({
     <div className={styles.container}>
       <RadioGroup
         className={styles.options}
+        label={PAYMENT_FREQUENCY_LEGEND}
         onValueChange={handleModeChange}
+        options={PAYMENT_FREQUENCY_OPTIONS}
         value={mode}
-      >
-        {/* Toda la fila es un label del radio: cualquier click (descripción
-            incluida) selecciona la opción por semántica nativa. */}
-        <label
-          className={cn(
-            styles.option,
-            mode === "single" && styles.optionSelected,
-          )}
-          htmlFor={singleOptionId}
-        >
-          <div className={styles.optionHeader}>
-            <RadioGroupItem
-              aria-labelledby={singleOptionLabelId}
-              id={singleOptionId}
-              value="single"
-            />
-            <span className={styles.optionLabel} id={singleOptionLabelId}>
-              Un único pago al mes
-            </span>
-          </div>
-          <p className={styles.optionDescription}>
-            Ejemplos: alquiler, expensas, agua, energia electrica o internet.
-          </p>
-        </label>
-
-        <label
-          className={cn(
-            styles.option,
-            mode === "multiple" && styles.optionSelected,
-          )}
-          htmlFor={multipleOptionId}
-        >
-          <div className={styles.optionHeader}>
-            <RadioGroupItem
-              aria-labelledby={multipleOptionLabelId}
-              id={multipleOptionId}
-              value="multiple"
-            />
-            <span className={styles.optionLabel} id={multipleOptionLabelId}>
-              Se paga varias veces en el mes
-            </span>
-          </div>
-          <p className={styles.optionDescription}>
-            Ejemplos: clases de ingles, psicologa o empleada domestica. Si el
-            servicio es 2 veces por semana, en 4 semanas serian 8 pagos
-            (2 x 4 = 8).
-          </p>
-        </label>
-      </RadioGroup>
+      />
 
       {showOccurrencesInput ? (
         <>

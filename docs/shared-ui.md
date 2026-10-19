@@ -1,12 +1,12 @@
 # Shared UI
 
-Control Mensual consumes the published `beez-ui` package. Shared components and
-filter contracts use grouped named imports from `beez-ui`. The package owns the
+Control Mensual consumes the published `@astra-kit/ui` package. Shared components and
+filter contracts use grouped named imports from `@astra-kit/ui`. The package owns the
 former `src/components/ui` implementations; their existing behavioral tests now
 exercise the package from `src/tests/shared-ui`.
 
-`AppProviders` composes NextAuth's session provider with `BeezUIProvider` from
-`beez-ui/next`. The theme uses the library's default colors, radii and self-hosted
+`AppProviders` composes NextAuth's session provider with `AstraUIProvider` from
+`@astra-kit/ui/next`. The theme uses the library's default colors, radii and self-hosted
 fonts. The existing `theme` preference key, system default and light/dark choices
 remain intact. `ThemedToaster` shares that theme context. Next.js transpiles the
 published package, including for the real-component Vitest integration tests.
@@ -14,7 +14,7 @@ Application navigation uses the shared `Link` and its Next adapter, with prefetc
 disabled by default. The month query remains part of the expenses link.
 
 `globals.css` imports the library's browser-ready stylesheet once. Tailwind stays
-for existing product utilities; it does not scan beez-ui source. Product SCSS remains local. Do not copy library tokens back into
+for existing product utilities; it does not scan @astra-kit/ui source. Product SCSS remains local. Do not copy library tokens back into
 this application: theme updates must come from the package.
 
 `FinanceSidebarProvider` preserves the `control-mensual.sidebar.open` storage and
@@ -23,16 +23,29 @@ The shared provider also maintains its own `sidebar_state` cookie. The applicati
 continues reading its own cookie on the server; initial hydration remains stable.
 Storage restrictions must not prevent toggling the sidebar in memory.
 
-Since beez-ui 0.10 the sidebar is the animated sidebar from beui. Section
+The sidebar is the animated sidebar from beui. Section
 entries pass `href`, `icon` and `isActive` to `SidebarMenuButton`; the shared
-button routes through the `BeezUIProvider` Next link adapter, marks
+button routes through the `AstraUIProvider` Next link adapter, marks
 `aria-current` and closes the mobile sheet on selection. Product text that
 must disappear in the icon rail uses `group-data-[state=collapsed]/sidebar:hidden`.
 Navigation spacing, typography and the rail width come from the package unchanged,
 so the menu matches the beui design; only the brand and the account trigger keep
 product styles.
 
-The receipt uploader (`ReceiptFileUploader`) composes the beez-ui `FileUpload`
+The Arc components are closed and configured by props:
+`DialogContent` takes `title`, `description` and `footer` (`<Dialog alert>`
+replaces `AlertDialog`), `DropdownMenu` takes `label`, `items`, an optional
+`trigger` and a single `selection`, `Select` takes `label` and `options`
+(`hideLabel` when the layout already shows the label), `RadioGroup` takes
+`label` and `options`, and `Tooltip` wraps its trigger with `content`. Arc menus
+have no submenus, so former submenus are groups of rows separated with
+`separatorBefore`. `Button` only offers `primary`, `secondary`, `ghost` and
+`danger` in `sm`, `md` and `lg`, without `asChild`: links that look like
+buttons use the `action-link` mixin from `src/styles/_action-link.scss`, and
+legends already named by a visible title use the `visually-hidden` mixin.
+There is no app-level `TooltipProvider` anymore.
+
+The receipt uploader (`ReceiptFileUploader`) composes the @astra-kit/ui `FileUpload`
 primitives: file selection, drag and drop, type and size validation and the
 progress row come from the package, while the simulated progress, the accepted
 formats and the emerald outline stay in the application. NextAuth, application
@@ -40,7 +53,7 @@ use cases, database adapters and Google Drive flows are unaffected by this
 package boundary.
 
 Declare packages imported by application code as direct dependencies, even when
-beez-ui also installs them. The application no longer imports `motion`
+@astra-kit/ui also installs them. The application no longer imports `motion`
 directly, so it is not declared. By project decision, the Google Drive
 error adapter uses `GaxiosError` from the `gaxios` dependency supplied by
 `googleapis`; `gaxios` is intentionally not declared directly.
@@ -54,7 +67,7 @@ Behavioral tests use reduced motion in jsdom. Browser tests verify theme
 persistence, navigation and controls without asserting CSS values or dimensions.
 
 The application uses React and React DOM 19.3 with the matching 19.3 TypeScript
-types. The published beez-ui peer range supports this runtime.
+types. The published @astra-kit/ui peer range supports this runtime.
 
 Unit and integration tests run with Vitest 5. `tsconfig.test.json` owns test globals
 and is checked with `pnpm typecheck:tests`; application types remain separate.

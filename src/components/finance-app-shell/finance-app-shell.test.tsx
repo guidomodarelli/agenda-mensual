@@ -1,5 +1,4 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { TooltipProvider } from "beez-ui";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -54,14 +53,12 @@ describe("FinanceAppShell", () => {
 
   it("renders the shared sidebar variant with brand, navigation, and account footer", () => {
     render(
-      <TooltipProvider>
-        <FinanceAppShell
-          initialSidebarOpen
-          isOAuthConfigured
-        >
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell
+        initialSidebarOpen
+        isOAuthConfigured
+      >
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     const sidebar = document.querySelector("[data-slot='sidebar'][data-state]");
@@ -79,11 +76,9 @@ describe("FinanceAppShell", () => {
   it("should restore the collapsed sidebar when the existing preference is saved", async () => {
     window.localStorage.setItem("control-mensual.sidebar.open", "false");
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await waitFor(() => expect(document.querySelector("[data-slot='sidebar'][data-state]"))
@@ -93,11 +88,9 @@ describe("FinanceAppShell", () => {
   it("should persist the SSR cookie and local preference when the sidebar is toggled", async () => {
     const user = userEvent.setup();
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.keyboard("{Control>}b{/Control}");
@@ -112,14 +105,12 @@ describe("FinanceAppShell", () => {
     const user = userEvent.setup();
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell
-          initialSidebarOpen
-          isOAuthConfigured
-        >
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell
+        initialSidebarOpen
+        isOAuthConfigured
+      >
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.click(screen.getByRole("button", { name: "Cuenta activa" }));
@@ -141,14 +132,12 @@ describe("FinanceAppShell", () => {
     } as ReturnType<typeof useSession>);
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell
-          initialSidebarOpen
-          isOAuthConfigured
-        >
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell
+        initialSidebarOpen
+        isOAuthConfigured
+      >
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.click(screen.getByRole("button", { name: "Cuenta activa" }));
@@ -173,11 +162,9 @@ describe("FinanceAppShell", () => {
     } as ReturnType<typeof useSession>);
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.click(
@@ -194,11 +181,9 @@ describe("FinanceAppShell", () => {
     const user = userEvent.setup();
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.click(
@@ -215,11 +200,9 @@ describe("FinanceAppShell", () => {
     mockedUsePathname.mockReturnValue("/cotizaciones");
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     expect(
@@ -254,11 +237,9 @@ describe("FinanceAppShell", () => {
 
     try {
       render(
-        <TooltipProvider>
-          <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-            <h1>Page content</h1>
-          </FinanceAppShell>
-        </TooltipProvider>,
+        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+          <h1>Page content</h1>
+        </FinanceAppShell>,
       );
 
       await user.click(
@@ -296,11 +277,9 @@ describe("FinanceAppShell", () => {
     } as ReturnType<typeof useSession>);
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.click(screen.getByRole("button", { name: "Cuenta activa" }));
@@ -321,11 +300,9 @@ describe("FinanceAppShell", () => {
     } as ReturnType<typeof useSession>);
 
     render(
-      <TooltipProvider>
-        <FinanceAppShell initialSidebarOpen isOAuthConfigured={false}>
-          <h1>Page content</h1>
-        </FinanceAppShell>
-      </TooltipProvider>,
+      <FinanceAppShell initialSidebarOpen isOAuthConfigured={false}>
+        <h1>Page content</h1>
+      </FinanceAppShell>,
     );
 
     await user.click(screen.getByRole("button", { name: "Cuenta activa" }));

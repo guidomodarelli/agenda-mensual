@@ -5,10 +5,9 @@ import {
   Input,
   Label,
   RadioGroup,
-  RadioGroupItem,
   TypingAnimation,
   toast,
-} from "beez-ui";
+} from "@astra-kit/ui";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -692,18 +691,17 @@ export default function ReceiptShareTargetPage() {
 
               <RadioGroup
                 className={styles.coverageOptions}
+                label="Cobertura del comprobante"
                 onValueChange={(value) => setCoverageMode(value as CoverageMode)}
+                options={[
+                  {
+                    label: `Total (${remainingReceiptPayments} pagos)`,
+                    value: "full",
+                  },
+                  { label: "Parcial", value: "partial" },
+                ]}
                 value={coverageMode}
-              >
-                <div className={styles.coverageOptionRow}>
-                  <RadioGroupItem id="coverage-full" value="full" />
-                  <Label htmlFor="coverage-full">Total ({remainingReceiptPayments} pagos)</Label>
-                </div>
-                <div className={styles.coverageOptionRow}>
-                  <RadioGroupItem id="coverage-partial" value="partial" />
-                  <Label htmlFor="coverage-partial">Parcial</Label>
-                </div>
-              </RadioGroup>
+              />
 
               {coverageMode === "partial" ? (
                 <div className={styles.fieldGroup}>
@@ -747,7 +745,7 @@ export default function ReceiptShareTargetPage() {
               void handleDiscardSharedReceipt();
             }}
             type="button"
-            variant="outline"
+            variant="secondary"
           >
             Descartar comprobante
           </Button>

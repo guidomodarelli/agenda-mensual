@@ -5,15 +5,12 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useRef, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 
 import type { MonthlyExpenseCurrency } from "./monthly-expenses-table.types";
+import { QUICK_ADD_CURRENCY_OPTIONS } from "./select-options.constants";
 import styles from "./quick-add-expense-form.module.scss";
 
 interface QuickAddExpenseFormProps {
@@ -77,23 +74,16 @@ export function QuickAddExpenseForm({
       onSubmit={handleSubmit}
     >
       <Select
+        className={styles.quickAddCurrency}
+        disabled={actionDisabled}
+        hideLabel
+        label="Moneda del gasto nuevo"
         onValueChange={(nextCurrency) =>
           setCurrencyValue(nextCurrency as MonthlyExpenseCurrency)
         }
+        options={QUICK_ADD_CURRENCY_OPTIONS}
         value={currencyValue}
-      >
-        <SelectTrigger
-          aria-label="Moneda del gasto nuevo"
-          className={styles.quickAddCurrency}
-          disabled={actionDisabled}
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="ARS">ARS</SelectItem>
-          <SelectItem value="USD">USD</SelectItem>
-        </SelectContent>
-      </Select>
+      />
       <InputGroup className={styles.quickAddAmount}>
         <InputGroupAddon align="inline-start" aria-hidden="true">
           {currencyValue === "USD" ? "US$" : "$"}
@@ -135,7 +125,7 @@ export function QuickAddExpenseForm({
         disabled={actionDisabled}
         size="sm"
         type="submit"
-        variant="outline"
+        variant="secondary"
       >
         <Plus aria-hidden="true" />
         Agregar

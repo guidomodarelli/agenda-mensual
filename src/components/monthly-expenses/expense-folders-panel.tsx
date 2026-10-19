@@ -3,7 +3,7 @@ import {
   Input,
   Label,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useState } from "react";
 
 import { ConfirmDeleteButton } from "@/components/monthly-expenses/confirm-delete-button";
@@ -317,7 +317,7 @@ export function ExpenseFoldersPanel({
                       }
                       size="sm"
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                     >
                       {isEditing ? "Cerrar" : "Editar"}
                     </Button>

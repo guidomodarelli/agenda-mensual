@@ -1,8 +1,4 @@
-import {
-  Button,
-  DropdownMenuItem,
-  cn,
-} from "beez-ui";
+import { Button, cn } from "@astra-kit/ui";
 import { useMemo } from "react";
 import { Pencil } from "lucide-react";
 
@@ -63,7 +59,7 @@ export function LendersPanel({
       </p>
 
       <div className={styles.formActions}>
-        <Button onClick={onOpenCreateModal} type="button" variant="outline">
+        <Button onClick={onOpenCreateModal} type="button" variant="secondary">
           Agregar prestamista
         </Button>
       </div>
@@ -101,12 +97,14 @@ export function LendersPanel({
                   ) : null}
                 </div>
                 <ConfirmDeleteButton
-                  extraMenuItems={
-                    <DropdownMenuItem onSelect={() => onEdit(lender.id)}>
-                      <Pencil />
-                      Editar
-                    </DropdownMenuItem>
-                  }
+                  extraMenuItems={[
+                    {
+                      icon: <Pencil />,
+                      id: "edit",
+                      label: "Editar",
+                      onSelect: () => onEdit(lender.id),
+                    },
+                  ]}
                   message={`¿Querés eliminar a ${lender.name} del catálogo?`}
                   menuAriaLabel={`Abrir acciones para ${lender.name}`}
                   onConfirm={() => onDelete(lender.id)}

@@ -1,14 +1,4 @@
-import {
-  Link,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  TypingAnimation,
-} from "beez-ui";
+import { Link, Card, TypingAnimation } from "@astra-kit/ui";
 import type { Metadata } from "next";
 
 import { getAuthErrorMessage } from "@/modules/auth/application/queries/get-auth-error-message";
@@ -42,25 +32,22 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
       >
         Error de autenticación
       </TypingAnimation>
-      <Card className={styles.card}>
-        <CardHeader>
-          <CardTitle>No pudimos conectar tu cuenta</CardTitle>
-          <CardDescription>
-            La aplicación protege los detalles internos y muestra una respuesta
-            segura cuando la autenticación falla.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className={styles.warning}>{getAuthErrorMessage(errorCode)}</p>
-        </CardContent>
-        <CardFooter className={styles.actions}>
-          <Button asChild>
-            <Link href="/auth/signin">Intentar de nuevo</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/">Ir al inicio</Link>
-          </Button>
-        </CardFooter>
+      <Card
+        className={styles.card}
+        description="La aplicación protege los detalles internos y muestra una respuesta segura cuando la autenticación falla."
+        footer={
+          <div className={styles.actions}>
+            <Link className={styles.primaryLink} href="/auth/signin">
+              Intentar de nuevo
+            </Link>
+            <Link className={styles.secondaryLink} href="/">
+              Ir al inicio
+            </Link>
+          </div>
+        }
+        title="No pudimos conectar tu cuenta"
+      >
+        <p className={styles.warning}>{getAuthErrorMessage(errorCode)}</p>
       </Card>
     </section>
   );

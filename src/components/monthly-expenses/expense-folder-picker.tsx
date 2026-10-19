@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useMemo, useState } from "react";
 
 import {
@@ -100,7 +100,7 @@ export function ExpenseFolderPicker({
         <Button
           className={cn(styles.trigger, className)}
           type="button"
-          variant="outline"
+          variant="secondary"
         >
           <span className={styles.triggerLabel}>
             {selectedOption ? (
@@ -174,7 +174,7 @@ export function ExpenseFolderPicker({
           }}
           size="sm"
           type="button"
-          variant="outline"
+          variant="secondary"
         >
           Administrar carpetas
         </Button>

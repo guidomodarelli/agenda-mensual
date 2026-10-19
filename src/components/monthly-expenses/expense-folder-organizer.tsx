@@ -4,7 +4,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   draggable,
@@ -477,7 +477,7 @@ export function ExpenseFolderFilterBar({
           <Button
             aria-label="Administrar carpetas"
             onClick={onManageFolders}
-            size="icon-sm"
+            size="sm"
             type="button"
             variant="ghost"
           >

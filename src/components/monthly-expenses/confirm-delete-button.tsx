@@ -1,10 +1,4 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "beez-ui";
+import { Button, DropdownMenu, type DropdownItem } from "@astra-kit/ui";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical, Trash2 } from "lucide-react";
@@ -14,7 +8,7 @@ import styles from "./confirm-delete-button.module.scss";
 interface ConfirmDeleteButtonProps {
   confirmLabel?: string;
   /** Ítems extra del menú (p. ej. Editar), renderizados antes de Eliminar. */
-  extraMenuItems?: React.ReactNode;
+  extraMenuItems?: DropdownItem[];
   message: string;
   menuAriaLabel?: string;
   onConfirm: () => void;
@@ -22,7 +16,7 @@ interface ConfirmDeleteButtonProps {
 
 export function ConfirmDeleteButton({
   confirmLabel = "Confirmar",
-  extraMenuItems = null,
+  extraMenuItems = [],
   message,
   menuAriaLabel = "Abrir acciones",
   onConfirm,
@@ -107,32 +101,34 @@ export function ConfirmDeleteButton({
 
   return (
     <div className={styles.root}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <DropdownMenu
+        align="end"
+        items={[
+          ...extraMenuItems,
+          {
+            destructive: true,
+            icon: <Trash2 />,
+            id: "delete",
+            label: "Eliminar",
+            onSelect: () => {
+              updatePopoverPosition();
+              setIsOpen(true);
+            },
+          },
+        ]}
+        label={menuAriaLabel}
+        trigger={
           <Button
             aria-label={menuAriaLabel}
             ref={triggerRef}
-            size="icon-sm"
+            size="sm"
             type="button"
             variant="ghost"
           >
             <MoreVertical />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {extraMenuItems}
-          <DropdownMenuItem
-            onSelect={() => {
-              updatePopoverPosition();
-              setIsOpen(true);
-            }}
-            variant="destructive"
-          >
-            <Trash2 />
-            Eliminar
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }
+      />
 
       {isOpen && popoverStyle && typeof document !== "undefined"
         ? createPortal(
@@ -150,7 +146,7 @@ export function ConfirmDeleteButton({
                     onClick={() => setIsOpen(false)}
                     size="sm"
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                   >
                     Cancelar
                   </Button>
@@ -161,7 +157,7 @@ export function ConfirmDeleteButton({
                     }}
                     size="sm"
                     type="button"
-                    variant="destructive"
+                    variant="danger"
                   >
                     {confirmLabel}
                   </Button>

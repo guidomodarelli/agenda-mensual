@@ -2,15 +2,10 @@ import {
   Button,
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   Input,
   Label,
   RadioGroup,
-  RadioGroupItem,
-  cn,
-} from "beez-ui";
+} from "@astra-kit/ui";
 import {
   useEffect,
   useId,
@@ -55,8 +50,6 @@ export function ExpenseReceiptUploadDialog({
   const [partialCoveredPayments, setPartialCoveredPayments] = useState("1");
   const wasOpenRef = useRef(isOpen);
   const inputIdBase = useId();
-  const fullCoverageOptionId = `${inputIdBase}-full-coverage`;
-  const partialCoverageOptionId = `${inputIdBase}-partial-coverage`;
   const partialCoveredPaymentsInputId = `${inputIdBase}-partial-covered-payments`;
 
   const normalizedCoveredPaymentsMax = Math.max(coveredPaymentsMax, 1);
@@ -124,13 +117,11 @@ export function ExpenseReceiptUploadDialog({
 
   return (
     <Dialog onOpenChange={handleDialogOpenChange} open={isOpen}>
-      <DialogContent className={styles.dialogContent}>
-        <DialogHeader>
-          <DialogTitle>Subir comprobante</DialogTitle>
-          <DialogDescription>
-            Subí un archivo del comprobante y lo vamos a guardar en Google Drive.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        title="Subir comprobante"
+        description="Subí un archivo del comprobante y lo vamos a guardar en Google Drive."
+        className={styles.dialogContent}
+      >
 
         <div className={styles.content}>
           <ReceiptFileUploader
@@ -145,12 +136,8 @@ export function ExpenseReceiptUploadDialog({
 
           {shouldShowCoverageOptions ? (
             <div className={styles.coverageSection}>
-              <p className={styles.coverageTitle}>
-                Elegí cómo aplicar este comprobante:
-              </p>
-
               <RadioGroup
-                className={styles.coverageOptions}
+                label="Elegí cómo aplicar este comprobante:"
                 onValueChange={(value) => {
                   if (value === "partial") {
                     setCoverageMode("partial");
@@ -159,42 +146,21 @@ export function ExpenseReceiptUploadDialog({
 
                   setCoverageMode("full");
                 }}
+                options={[
+                  {
+                    description: `El comprobante cubre ${formatPaymentCount(normalizedCoveredPaymentsRemaining)} pendientes de un total de ${formatPaymentCount(normalizedCoveredPaymentsMax)} en este mes.`,
+                    label: "Todo el periodo",
+                    value: "full",
+                  },
+                  {
+                    description:
+                      "El comprobante cubre solo la cantidad de pagos que indiques manualmente.",
+                    label: "Cobertura parcial",
+                    value: "partial",
+                  },
+                ]}
                 value={coverageMode}
-              >
-                <div
-                  className={cn(
-                    styles.coverageOption,
-                    coverageMode === "full" && styles.coverageOptionSelected,
-                  )}
-                >
-                  <div className={styles.coverageOptionHeader}>
-                    <RadioGroupItem id={fullCoverageOptionId} value="full" />
-                    <Label className={styles.coverageOptionLabel} htmlFor={fullCoverageOptionId}>
-                      Todo el periodo
-                    </Label>
-                  </div>
-                  <p className={styles.coverageOptionDescription}>
-                    El comprobante cubre {formatPaymentCount(normalizedCoveredPaymentsRemaining)} pendientes de un total de {formatPaymentCount(normalizedCoveredPaymentsMax)} en este mes.
-                  </p>
-                </div>
-
-                <div
-                  className={cn(
-                    styles.coverageOption,
-                    coverageMode === "partial" && styles.coverageOptionSelected,
-                  )}
-                >
-                  <div className={styles.coverageOptionHeader}>
-                    <RadioGroupItem id={partialCoverageOptionId} value="partial" />
-                    <Label className={styles.coverageOptionLabel} htmlFor={partialCoverageOptionId}>
-                      Cobertura parcial
-                    </Label>
-                  </div>
-                  <p className={styles.coverageOptionDescription}>
-                    El comprobante cubre solo la cantidad de pagos que indiques manualmente.
-                  </p>
-                </div>
-              </RadioGroup>
+              />
 
               {coverageMode === "partial" ? (
                 <div className={styles.partialCoverageField}>
@@ -228,7 +194,7 @@ export function ExpenseReceiptUploadDialog({
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
-              variant="outline"
+              variant="secondary"
             >
               Cancelar
             </Button>

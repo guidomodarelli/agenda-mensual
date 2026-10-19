@@ -2,8 +2,6 @@ import { vi, describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import { ExpenseRowActions } from "./expense-row-actions";
 
 type ExpenseRowActionsProps = Parameters<typeof ExpenseRowActions>[0];
@@ -61,12 +59,14 @@ describe("ExpenseRowActions", () => {
     ).toBeInTheDocument();
   });
 
-  it("duplicates the expense in the current month from the submenu", async () => {
+  it("duplicates the expense in the current month from the menu", async () => {
     const onDuplicate = vi.fn();
     renderExpenseRowActions({ onDuplicate });
 
     const user = await openActionsMenu();
-    await selectDropdownSubmenuItem(user, "Duplicar", "En este mes");
+    await user.click(
+      screen.getByRole("menuitem", { name: "Duplicar en este mes" }),
+    );
 
     expect(onDuplicate).toHaveBeenCalledTimes(1);
   });
@@ -74,52 +74,43 @@ describe("ExpenseRowActions", () => {
   it("offers duplicating into the next month and picking a month", async () => {
     renderExpenseRowActions();
 
-    const user = await openActionsMenu();
-    await user.click(screen.getByRole("menuitem", { name: "Duplicar" }));
+    await openActionsMenu();
 
     expect(
-      await screen.findByRole("menuitem", { name: "En el mes siguiente" }),
+      screen.getByRole("menuitem", { name: "Duplicar en el mes siguiente" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("menuitem", { name: "Elegir mes…" }),
+      screen.getByRole("menuitem", { name: "Duplicar en otro mes…" }),
     ).toBeInTheDocument();
   });
 
-  it("does not offer a recurrence submenu for a non-recurring expense", async () => {
+  it("does not offer recurrence actions for a non-recurring expense", async () => {
     renderExpenseRowActions({ isRecurring: false });
     await openActionsMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: "Recurrencia" }),
+      screen.queryByRole("menuitem", { name: "Cancelar recurrencia" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Reactivar recurrencia" }),
     ).not.toBeInTheDocument();
   });
 
-  it("groups payment link actions in a submenu", async () => {
+  it("edits an existing payment link from the menu", async () => {
     const onManagePaymentLink = vi.fn();
     renderExpenseRowActions({ hasPaymentLink: true, onManagePaymentLink });
 
     const user = await openActionsMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: "Editar link de pago" }),
+      screen.queryByRole("menuitem", { name: "Agregar link de pago" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Eliminar link de pago" }),
+    ).toBeInTheDocument();
 
-    await selectDropdownSubmenuItem(user, "Link de pago", "Editar link de pago");
-
-    await waitFor(() => {
-      expect(onManagePaymentLink).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("offers adding a payment link from the submenu when there is none", async () => {
-    const onManagePaymentLink = vi.fn();
-    renderExpenseRowActions({ hasPaymentLink: false, onManagePaymentLink });
-
-    const user = await openActionsMenu();
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Agregar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Editar link de pago" }),
     );
 
     await waitFor(() => {
@@ -127,26 +118,44 @@ describe("ExpenseRowActions", () => {
     });
   });
 
-  it("does not offer a folders submenu without folder references", async () => {
+  it("offers adding a payment link from the menu when there is none", async () => {
+    const onManagePaymentLink = vi.fn();
+    renderExpenseRowActions({ hasPaymentLink: false, onManagePaymentLink });
+
+    const user = await openActionsMenu();
+    await user.click(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
+    );
+
+    await waitFor(() => {
+      expect(onManagePaymentLink).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("does not offer folder actions without folder references", async () => {
     renderExpenseRowActions();
     await openActionsMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: "Carpetas" }),
+      screen.queryByRole("menuitem", { name: "Comprobantes del mes" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", {
+        name: "Archivo histórico de comprobantes",
+      }),
     ).not.toBeInTheDocument();
   });
 
-  it("groups folder actions in a submenu", async () => {
+  it("links to the monthly receipts folder from the menu", async () => {
     renderExpenseRowActions({
       monthlyFolderViewUrl: "https://drive.google.com/folder/abc",
     });
 
-    const user = await openActionsMenu();
-    await user.click(screen.getByRole("menuitem", { name: "Carpetas" }));
+    await openActionsMenu();
 
     expect(
-      await screen.findByRole("menuitem", { name: "Comprobantes del mes" }),
-    ).toBeInTheDocument();
+      screen.getByRole("menuitem", { name: "Comprobantes del mes" }),
+    ).toHaveAttribute("href", "https://drive.google.com/folder/abc");
   });
 
   it("cancels an active recurrence after confirming", async () => {
@@ -158,7 +167,9 @@ describe("ExpenseRowActions", () => {
     });
 
     const user = await openActionsMenu();
-    await selectDropdownSubmenuItem(user, "Recurrencia", "Cancelar recurrencia");
+    await user.click(
+      screen.getByRole("menuitem", { name: "Cancelar recurrencia" }),
+    );
     await user.click(
       await screen.findByRole("button", {
         name: "Confirmar cancelación de la recurrencia para Alquiler",
@@ -177,10 +188,8 @@ describe("ExpenseRowActions", () => {
     });
 
     const user = await openActionsMenu();
-    await selectDropdownSubmenuItem(
-      user,
-      "Recurrencia",
-      "Reactivar recurrencia",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Reactivar recurrencia" }),
     );
 
     await waitFor(() => {

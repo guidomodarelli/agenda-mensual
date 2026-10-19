@@ -20,9 +20,9 @@ and whoever kills the runner with `TerminateProcess` does not kill its process
 tree. The cleanup below is a mitigation.
 
 The shared [`@astra-kit/cleaner`](https://github.com/guidomodarelli/astra-cleaner)
-package closes the leftovers. TuTribu and beez-ui use the same package, so the
+package closes the leftovers. TuTribu and @astra-kit/ui use the same package, so the
 three repositories no longer keep diverging copies of this cleanup. It is in
-`minimumReleaseAgeExclude` of `pnpm-workspace.yaml`, like `beez-ui`, so its
+`minimumReleaseAgeExclude` of `pnpm-workspace.yaml`, like `@astra-kit/ui`, so its
 releases can be taken as soon as they are published.
 
 - `@astra-kit/cleaner/playwright/global-setup` and
