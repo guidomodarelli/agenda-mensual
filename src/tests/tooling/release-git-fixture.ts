@@ -62,7 +62,7 @@ function cloneWithIdentity(remoteRoot: string, cloneRoot: string): void {
 }
 
 /**
- * Git reader with the `astra-rp create-version` hook contract, bound to a fixture.
+ * Git reader with the `golfo-rp create-version` hook contract, bound to a fixture.
  *
  * @param repositoryRoot - Fixture repository.
  * @returns Reader whose `tryGit` resolves `null` when Git fails.

@@ -19,14 +19,14 @@ directory of the Playwright worker and Playwright has no option to change it,
 and whoever kills the runner with `TerminateProcess` does not kill its process
 tree. The cleanup below is a mitigation.
 
-The shared [`@astra-kit/cleaner`](https://github.com/guidomodarelli/astra-cleaner)
-package closes the leftovers. TuTribu and @astra-kit/ui use the same package, so the
+The shared [`@golfo/cleaner`](https://github.com/guidomodarelli/golfo-cleaner)
+package closes the leftovers. TuTribu and @golfo/ui use the same package, so the
 three repositories no longer keep diverging copies of this cleanup. It is in
-`minimumReleaseAgeExclude` of `pnpm-workspace.yaml`, like `@astra-kit/ui`, so its
+`minimumReleaseAgeExclude` of `pnpm-workspace.yaml`, like `@golfo/ui`, so its
 releases can be taken as soon as they are published.
 
-- `@astra-kit/cleaner/playwright/global-setup` and
-  `@astra-kit/cleaner/playwright/global-teardown` are the `globalSetup` and
+- `@golfo/cleaner/playwright/global-setup` and
+  `@golfo/cleaner/playwright/global-teardown` are the `globalSetup` and
   `globalTeardown` of `playwright.config.ts`. The setup is the main case: it
   sweeps leftovers of earlier runs before the suite starts. The teardown frees
   the folder after a normal run, for example before removing a worktree.
@@ -56,7 +56,7 @@ releases can be taken as soon as they are published.
   expired. A process still present at the timeout is reported as still
   running: it may keep the folder locked until Windows restarts.
 - A failed process query, or a process that cannot be closed (for example, one
-  stuck while terminating), is logged as a `[@astra-kit/cleaner:playwright]`
+  stuck while terminating), is logged as a `[@golfo/cleaner:playwright]`
   warning and never fails the run.
 
 There is no `exit` or `SIGINT` handler: an `exit` handler can only run

@@ -3,7 +3,7 @@ import {
   Input,
   Label,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useState } from "react";
 
 import { ConfirmDeleteButton } from "@/components/monthly-expenses/confirm-delete-button";

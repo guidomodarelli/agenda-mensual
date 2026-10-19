@@ -88,23 +88,23 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 
 ### UI baseline
 
-- Use the published `@astra-kit/ui` package for shared UI components; group named imports from `@astra-kit/ui`.
-- Configure the Next.js adapter through `AstraUIProvider` from `@astra-kit/ui/next` in the application providers.
-- Import `@astra-kit/ui/styles.css` once from the global stylesheet and use the library's default theme, including fonts and color tokens.
+- Use the published `@golfo/ui` package for shared UI components; group named imports from `@golfo/ui`.
+- Configure the Next.js adapter through `GolfoUIProvider` from `@golfo/ui/next` in the application providers.
+- Import `@golfo/ui/styles.css` once from the global stylesheet and use the library's default theme, including fonts and color tokens.
 - Preserve the existing `theme` localStorage key and the sidebar preference contract through the application adapter.
-- Add or customize shared shadcn/ui primitives in the sibling `astra-ui` repository (package `@astra-kit/ui`) using the official CLI there. Do not reintroduce local `components/ui` copies or `components.json`.
+- Add or customize shared shadcn/ui primitives in the sibling `golfo-ui` repository (package `@golfo/ui`) using the official CLI there. Do not reintroduce local `components/ui` copies or `components.json`.
 - Keep product-specific composition, upload workflows and SCSS in this application. See `docs/shared-ui.md` for integration boundaries.
-- Do not copy what `@astra-kit/ui` already provides: links that look like buttons use `ButtonLink`, other elements take `buttonClassName(...)`, and legends already named by a visible title use the `hideLabel` prop of `RadioGroup` or `Select`.
+- Do not copy what `@golfo/ui` already provides: links that look like buttons use `ButtonLink`, other elements take `buttonClassName(...)`, and legends already named by a visible title use the `hideLabel` prop of `RadioGroup` or `Select`.
 
 ### Receipt upload baseline
 
-- Every new or updated **receipt upload flow** must use the `FileUpload`, `FileUploadDropZone`, `FileUploadList` and `FileUploadItem` components from `@astra-kit/ui` (or the project wrapper `ReceiptFileUploader` built on top of them) as the upload interaction baseline.
+- Every new or updated **receipt upload flow** must use the `FileUpload`, `FileUploadDropZone`, `FileUploadList` and `FileUploadItem` components from `@golfo/ui` (or the project wrapper `ReceiptFileUploader` built on top of them) as the upload interaction baseline.
 - Receipt uploads must support drag and drop plus click-to-select.
 - When the upload implementation exposes progress, the UI must render it with the `FileUploadItem` progress UI instead of custom ad-hoc indicators.
 
 ### Toast notifications baseline
 
-- Use `toast` and `ThemedToaster` from `@astra-kit/ui` as the standard notification system for user-facing events.
+- Use `toast` and `ThemedToaster` from `@golfo/ui` as the standard notification system for user-facing events.
 - Mount a global toaster once through `src/app/layout.tsx` providers and trigger notifications from page/container handlers.
 - Select toast type by event intent:
   - `default`: neutral messages that acknowledge a relevant user action.
@@ -125,7 +125,7 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
   - `*.module.scss` for component-scoped styles
   - `src/styles/*` for global styles, tokens, mixins, and layout primitives
 - Avoid inline styles except for rare runtime-only values.
-- Tailwind remains available for existing product utilities. Shared @astra-kit/ui styles are precompiled; do not scan its source or node_modules. Product styling should default to `SCSS`.
+- Tailwind remains available for existing product utilities. Shared @golfo/ui styles are precompiled; do not scan its source or node_modules. Product styling should default to `SCSS`.
 
 ## 4. SSR-First Data Flow
 
@@ -195,11 +195,11 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 
 ### Release command
 
-- Release with `pnpm create-version` (alias `pnpm cv`; `--bump patch|minor|major`, `--set-version X.Y.Z`, `--dry-run`). The command comes from the shared `@astra-kit/rp` package (`astra-rp create-version`); do not reintroduce a local release script.
-- Keep what is specific to this project in `astra-rp.config.mjs`: banner name, release type descriptions, CHANGELOG date time zone (`releaseTimeZone`), the Vercel deploy summary line and the migrations adapter.
+- Release with `pnpm create-version` (alias `pnpm cv`; `--bump patch|minor|major`, `--set-version X.Y.Z`, `--dry-run`). The command comes from the shared `@golfo/rp` package (`golfo-rp create-version`); do not reintroduce a local release script.
+- Keep what is specific to this project in `golfo-rp.config.mjs`: banner name, release type descriptions, CHANGELOG date time zone (`releaseTimeZone`), the Vercel deploy summary line and the migrations adapter.
 - Write the release entries in `CHANGELOG.md` inside `## [Unreleased]` ([Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) sections, in Spanish); never write the version or the date by hand: `pnpm create-version` closes that block as `## [X.Y.Z] - YYYY-MM-DD`. If the block has no entries, `changelogDraft: true` drafts them with Claude Code or, if it fails, with Codex, and writes them without confirmation: review them in the command output.
 - The migrations adapter lives in `scripts/release/pending-migrations.mjs`: it compares the Drizzle journal of `HEAD` and `origin/main` with the Turso/libSQL database that `pnpm run push-migrations` would change, and applies them through that same script.
-- The configuration must not import `@astra-kit/rp` at runtime; type it with `@type {import("@astra-kit/rp/create-version").CreateVersionConfig}`.
+- The configuration must not import `@golfo/rp` at runtime; type it with `@type {import("@golfo/rp/create-version").CreateVersionConfig}`.
 
 ## 7. Automation: Codex auto-fix loop
 
@@ -208,7 +208,7 @@ npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "
 ## 8. Implementation Checklist
 
 - Is App Router still the routing mechanism?
-- Are shared primitives imported from `@astra-kit/ui`, with no local shadcn/ui copies?
+- Are shared primitives imported from `@golfo/ui`, with no local shadcn/ui copies?
 - Are product styles implemented with `SCSS`?
 - Are Google tokens and secrets kept server-side only?
 - Does `pnpm run lint` pass with exit code `0`?

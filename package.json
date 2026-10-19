@@ -7,8 +7,8 @@
     "push-migrations": "node scripts/push-migrations.mjs",
     "build": "next build --turbopack",
     "start": "next start",
-    "create-version": "astra-rp create-version",
-    "cv": "astra-rp create-version",
+    "create-version": "golfo-rp create-version",
+    "cv": "golfo-rp create-version",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -22,8 +22,8 @@
     "ci": "pnpm run lint && pnpm run typecheck && pnpm run typecheck:tests && pnpm run test && pnpm run build"
   },
   "dependencies": {
-    "@astra-kit/ui": "^1.1.0",
     "@atlaskit/pragmatic-drag-and-drop": "^1.8.1",
+    "@golfo/ui": "^2.0.0",
     "@hookform/resolvers": "^5.2.2",
     "@libsql/client": "^0.17.3",
     "@tabler/icons-react": "^3.44.0",
@@ -45,8 +45,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@astra-kit/cleaner": "^0.2.0",
-    "@astra-kit/rp": "^1.0.0",
+    "@golfo/cleaner": "^1.0.0",
+    "@golfo/rp": "^2.0.0",
     "@playwright/test": "1.59.1",
     "@tailwindcss/postcss": "4.3.0",
     "@testing-library/dom": "10.4.1",

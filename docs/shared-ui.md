@@ -1,12 +1,12 @@
 # Shared UI
 
-Control Mensual consumes the published `@astra-kit/ui` package. Shared components and
-filter contracts use grouped named imports from `@astra-kit/ui`. The package owns the
+Control Mensual consumes the published `@golfo/ui` package. Shared components and
+filter contracts use grouped named imports from `@golfo/ui`. The package owns the
 former `src/components/ui` implementations; their existing behavioral tests now
 exercise the package from `src/tests/shared-ui`.
 
-`AppProviders` composes NextAuth's session provider with `AstraUIProvider` from
-`@astra-kit/ui/next`. The theme uses the library's default colors, radii and self-hosted
+`AppProviders` composes NextAuth's session provider with `GolfoUIProvider` from
+`@golfo/ui/next`. The theme uses the library's default colors, radii and self-hosted
 fonts. The existing `theme` preference key, system default and light/dark choices
 remain intact. `ThemedToaster` shares that theme context. Next.js transpiles the
 published package, including for the real-component Vitest integration tests.
@@ -14,7 +14,7 @@ Application navigation uses the shared `Link` and its Next adapter, with prefetc
 disabled by default. The month query remains part of the expenses link.
 
 `globals.css` imports the library's browser-ready stylesheet once. Tailwind stays
-for existing product utilities; it does not scan @astra-kit/ui source. Product SCSS remains local. Do not copy library tokens back into
+for existing product utilities; it does not scan @golfo/ui source. Product SCSS remains local. Do not copy library tokens back into
 this application: theme updates must come from the package.
 
 `FinanceSidebarProvider` preserves the `control-mensual.sidebar.open` storage and
@@ -25,7 +25,7 @@ Storage restrictions must not prevent toggling the sidebar in memory.
 
 The sidebar is the animated sidebar from beui. Section
 entries pass `href`, `icon` and `isActive` to `SidebarMenuButton`; the shared
-button routes through the `AstraUIProvider` Next link adapter, marks
+button routes through the `GolfoUIProvider` Next link adapter, marks
 `aria-current` and closes the mobile sheet on selection. Product text that
 must disappear in the icon rail uses `group-data-[state=collapsed]/sidebar:hidden`.
 Navigation spacing, typography and the rail width come from the package unchanged,
@@ -50,7 +50,7 @@ keeping only layout in their module class. Do not copy the button recipe or the
 visually hidden rule into `src/styles`. There is no app-level
 `TooltipProvider` anymore.
 
-The receipt uploader (`ReceiptFileUploader`) composes the @astra-kit/ui `FileUpload`
+The receipt uploader (`ReceiptFileUploader`) composes the @golfo/ui `FileUpload`
 primitives: file selection, drag and drop, type and size validation and the
 progress row come from the package, while the simulated progress, the accepted
 formats and the emerald outline stay in the application. NextAuth, application
@@ -58,7 +58,7 @@ use cases, database adapters and Google Drive flows are unaffected by this
 package boundary.
 
 Declare packages imported by application code as direct dependencies, even when
-@astra-kit/ui also installs them. The application no longer imports `motion`
+@golfo/ui also installs them. The application no longer imports `motion`
 directly, so it is not declared. By project decision, the Google Drive
 error adapter uses `GaxiosError` from the `gaxios` dependency supplied by
 `googleapis`; `gaxios` is intentionally not declared directly.
@@ -72,7 +72,7 @@ Behavioral tests use reduced motion in jsdom. Browser tests verify theme
 persistence, navigation and controls without asserting CSS values or dimensions.
 
 The application uses React and React DOM 19.3 with the matching 19.3 TypeScript
-types. The published @astra-kit/ui peer range supports this runtime.
+types. The published @golfo/ui peer range supports this runtime.
 
 Unit and integration tests run with Vitest 5. `tsconfig.test.json` owns test globals
 and is checked with `pnpm typecheck:tests`; application types remain separate.

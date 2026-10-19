@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactCompiler: true,
   reactStrictMode: true,
-  transpilePackages: ["@astra-kit/ui"],
+  transpilePackages: ["@golfo/ui"],
   experimental: {
     // Use Turbopack's native React Compiler in development and production.
     turbopackRustReactCompiler: true,

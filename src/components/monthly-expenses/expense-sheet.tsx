@@ -17,7 +17,7 @@ import {
   Select,
   Textarea,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 

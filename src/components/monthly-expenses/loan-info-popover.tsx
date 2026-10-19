@@ -1,4 +1,4 @@
-import { Button } from "@astra-kit/ui";
+import { Button } from "@golfo/ui";
 import { useRef, useState } from "react";
 import { Info, X } from "lucide-react";
 import { Tooltip as TooltipPrimitive } from "radix-ui";

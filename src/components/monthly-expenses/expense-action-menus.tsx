@@ -5,7 +5,7 @@ import {
   DialogContent,
   DropdownMenu,
   type DropdownItem,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useState } from "react";
 
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";

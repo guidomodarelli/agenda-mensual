@@ -1,4 +1,4 @@
-import { Button, cn } from "@astra-kit/ui";
+import { Button, cn } from "@golfo/ui";
 import { useMemo } from "react";
 import { Pencil } from "lucide-react";
 

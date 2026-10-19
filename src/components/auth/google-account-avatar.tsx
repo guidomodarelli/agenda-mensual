@@ -1,4 +1,4 @@
-import { AccountMenu, Avatar, Tooltip } from "@astra-kit/ui";
+import { AccountMenu, Avatar, Tooltip } from "@golfo/ui";
 import { PlusIcon } from "lucide-react";
 
 type GoogleAccountAvatarStatus = "authenticated" | "loading" | "unauthenticated";
@@ -30,7 +30,7 @@ function getUserInitials(name: string): string {
 
 /**
  * Top bar Google account control: a disabled avatar while the session is
- * resolving, then the shared @astra-kit/ui account menu with the Google copy.
+ * resolving, then the shared @golfo/ui account menu with the Google copy.
  */
 export function GoogleAccountAvatar({
   onConnect,

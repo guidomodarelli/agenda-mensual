@@ -1,4 +1,4 @@
-import { parseFilterPresets, type FilterPreset } from "@astra-kit/ui";
+import { parseFilterPresets, type FilterPreset } from "@golfo/ui";
 
 export const MONTHLY_EXPENSES_FILTER_PRESETS_STORAGE_KEY =
   "control-mensual.monthly-expenses.filter-presets";

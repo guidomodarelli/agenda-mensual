@@ -5,7 +5,7 @@ import {
   DialogContent,
   TypingAnimation,
   toast,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import type {
   GetServerSidePropsContext,

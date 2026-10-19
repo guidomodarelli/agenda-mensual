@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { FilterQueryBar, type FilterQualifierConfig } from "@astra-kit/ui";
+import { FilterQueryBar, type FilterQualifierConfig } from "@golfo/ui";
 import { useState } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

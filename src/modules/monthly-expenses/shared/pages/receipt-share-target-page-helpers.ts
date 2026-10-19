@@ -2,7 +2,7 @@ import {
   compareFuzzyMatchRank,
   getFuzzyMatchRank,
   normalizeSearchValue,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import type { SaveMonthlyExpensesCommand } from "@/modules/monthly-expenses/application/commands/save-monthly-expenses-command";
 import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
 

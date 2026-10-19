@@ -7,7 +7,7 @@ import {
   serializeFilterQuery,
   tokenizeFilterQuery,
   type FilterQualifierConfig,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 
 const CONFIGS: FilterQualifierConfig[] = [

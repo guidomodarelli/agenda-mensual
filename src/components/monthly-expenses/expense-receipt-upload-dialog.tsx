@@ -5,7 +5,7 @@ import {
   Input,
   Label,
   RadioGroup,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import {
   useEffect,
   useId,

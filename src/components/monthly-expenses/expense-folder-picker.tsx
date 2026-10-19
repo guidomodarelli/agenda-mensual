@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useMemo, useState } from "react";
 
 import {

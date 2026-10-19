@@ -10,7 +10,7 @@ import {
   Select,
   Tooltip,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useCallback, useState } from "react";
 
 import { ExternalLink, Mail, Paperclip, Plus } from "lucide-react";

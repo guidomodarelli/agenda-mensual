@@ -5,7 +5,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Select,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useRef, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 

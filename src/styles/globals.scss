@@ -8,12 +8,12 @@ body {
   margin: 0;
 }
 
-// The reset is unlayered, so it would beat the color utilities of @astra-kit/ui (layered): links styled as buttons
+// The reset is unlayered, so it would beat the color utilities of @golfo/ui (layered): links styled as buttons
 // keep the color of their variant.
 a:not([data-slot="button-link"]) {
   color: inherit;
   text-decoration: none;
 }
 
-// No unlayered `button { font: inherit; }` reset: the preflight of @astra-kit/ui/styles.css already applies it in
+// No unlayered `button { font: inherit; }` reset: the preflight of @golfo/ui/styles.css already applies it in
 // `@layer base`, and an unlayered copy would beat the typography utilities of `Button`.

@@ -4,7 +4,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   draggable,

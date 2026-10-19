@@ -6,7 +6,7 @@ import {
   DropdownMenu,
   type DropdownItem,
   type DropdownMenuSelection,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useState } from "react";
 import {
   CalendarX2,

@@ -5,7 +5,7 @@ import {
   DialogContent,
   DropdownMenu,
   Input,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useMemo, useState } from "react";
 import { ExternalLink, MoreVertical, Paperclip, Trash2 } from "lucide-react";
 

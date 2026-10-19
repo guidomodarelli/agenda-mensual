@@ -7,7 +7,7 @@ import {
   getFuzzyMatchRank,
   renderHighlightedText,
   type FuzzyMatchRank,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./lender-picker.module.scss";

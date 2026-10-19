@@ -8,7 +8,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Changed
 
-- La aplicación usa `@astra-kit/ui` 1.1.0 (antes `beez-ui` 0.10.0): botones, diálogos, menús, selects, opciones de radio, tooltips, tarjetas, avisos, insignias, avatares y placeholders de carga toman el diseño y la motion de Arc que trae la biblioteca.
+- La aplicación usa `@golfo/ui` 2.0.0 (antes `beez-ui` 0.10.0): botones, diálogos, menús, selects, opciones de radio, tooltips, tarjetas, avisos, insignias, avatares y placeholders de carga toman el diseño y la motion de Arc que trae la biblioteca.
 - El menú de acciones de cada gasto deja de tener submenús: duplicar ("Duplicar en este mes", "Duplicar en el mes siguiente", "Duplicar en otro mes…"), recurrencia, tipo de cambio, link de pago y carpetas aparecen como grupos de opciones separados dentro del mismo menú.
 - El menú «Ordenar por» de la tabla de gastos muestra los criterios de deuda (cuotas pagadas, restantes y total) como opciones propias, y la dirección del orden pasa a un menú «Dirección» al lado.
 - Las confirmaciones de eliminación y los diálogos de edición rápida de la tabla se anuncian como diálogos de alerta y abren con el foco en «Cancelar».
