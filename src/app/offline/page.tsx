@@ -1,4 +1,4 @@
-import { Link, Card, TypingAnimation } from "@astra-kit/ui";
+import { ButtonLink, Card, TypingAnimation } from "@astra-kit/ui";
 import type { Metadata } from "next";
 
 import styles from "./offline-page.module.scss";
@@ -24,12 +24,10 @@ export default function OfflinePage() {
         description="Guardamos una vista offline para que puedas abrir la aplicación aunque no tengas red temporalmente."
         footer={
           <div className={styles.actions}>
-            <Link className={styles.primaryLink} href="/gastos">
-              Intentar abrir la app
-            </Link>
-            <Link className={styles.secondaryLink} href="/">
+            <ButtonLink href="/gastos">Intentar abrir la app</ButtonLink>
+            <ButtonLink href="/" variant="secondary">
               Inicio
-            </Link>
+            </ButtonLink>
           </div>
         }
         title="No hay internet en este momento"

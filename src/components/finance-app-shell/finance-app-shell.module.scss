@@ -1,5 +1,3 @@
-@use "../../styles/action-link";
-
 .page {
   min-height: 100vh;
   padding: 0rem 1.25rem 3rem;
@@ -287,10 +285,9 @@
   }
 }
 
-// The theme toggler renders a bare button: it takes Arc's ghost button look as a square icon control.
+// The theme toggler renders a bare button that takes Arc's ghost button look through `buttonClassName`: this class
+// only makes it a square icon control.
 .themeToggle {
-  @include action-link.action-link(ghost, sm);
-
   width: var(--control-height-sm);
   padding-inline: 0;
 }
