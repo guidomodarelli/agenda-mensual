@@ -48,3 +48,24 @@ test("should preserve sidebar preferences and navigate using the shared sidebar"
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);
   expect(runtimeErrors).toEqual([]);
 });
+
+test("should render library buttons with their own typography while native buttons inherit it", async ({ page }) => {
+  await page.goto("/auth/signin");
+  const libraryButton = page.getByRole("button", { name: "Continuar con Google", exact: true });
+  await expect(libraryButton).toBeVisible();
+  await expect(libraryButton).toHaveCSS("font-size", "14px");
+  await expect(libraryButton).toHaveCSS("font-weight", "500");
+
+  const nativeButtonFont = await page.evaluate(() => {
+    const container = document.createElement("div");
+    container.style.font = "300 12px serif";
+    const nativeButton = document.createElement("button");
+    nativeButton.textContent = "Native";
+    container.append(nativeButton);
+    document.body.append(container);
+    const { fontFamily, fontSize, fontWeight } = getComputedStyle(nativeButton);
+    container.remove();
+    return { fontFamily, fontSize, fontWeight };
+  });
+  expect(nativeButtonFont).toEqual({ fontFamily: "serif", fontSize: "12px", fontWeight: "300" });
+});
