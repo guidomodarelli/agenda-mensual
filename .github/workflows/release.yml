@@ -31,6 +31,7 @@ jobs:
     env:
       HUSKY: '0'
       TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
     steps:
       - name: Checkout del release
         uses: actions/checkout@v4
