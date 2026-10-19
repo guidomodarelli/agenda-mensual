@@ -9,13 +9,13 @@ on:
 
 jobs:
   # Each quality check runs as its own parallel job so a slow step (build) no longer
-  # blocks the fast ones (lint). `fail-fast: false` keeps every check reporting even
-  # when one fails, so a single run surfaces all problems at once.
+  # blocks the fast ones (lint). `fail-fast: true` cancels the remaining checks as soon
+  # as one fails, for faster feedback and less wasted compute.
   checks:
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         task:
           - lint
@@ -54,7 +54,17 @@ jobs:
   quality-gate:
     name: quality-gate
     needs: checks
+    # `always()` forces this job to run even when a matrix check fails or is cancelled.
+    # Without it, `needs` skips the job, and a skipped required status counts as
+    # satisfied — letting a red check merge. Running always and failing unless every
+    # check succeeded makes `quality-gate` an actual blocking gate.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: All checks passed
-        run: echo "All quality-gate checks passed."
+      - name: Verify every check passed
+        run: |
+          if [ "${{ needs.checks.result }}" != "success" ]; then
+            echo "Quality checks did not all pass (result: ${{ needs.checks.result }})."
+            exit 1
+          fi
+          echo "All quality-gate checks passed."
