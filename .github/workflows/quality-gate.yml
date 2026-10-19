@@ -8,8 +8,21 @@ on:
   pull_request:
 
 jobs:
-  quality-gate:
+  # Each quality check runs as its own parallel job so a slow step (build) no longer
+  # blocks the fast ones (lint). `fail-fast: false` keeps every check reporting even
+  # when one fails, so a single run surfaces all problems at once.
+  checks:
+    name: ${{ matrix.task }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task:
+          - lint
+          - typecheck
+          - typecheck:tests
+          - test
+          - build
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -28,16 +41,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify toolchain
-        run: |
-          node --version
-          pnpm --version
-          pnpm exec tsc --version
-
-      - name: Run quality gate
+      - name: Run ${{ matrix.task }}
         env:
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: github-actions-build-secret-not-for-production
           GOOGLE_CLIENT_ID: github-actions-google-client-id
           GOOGLE_CLIENT_SECRET: github-actions-google-client-secret
-        run: pnpm run ci
+        run: pnpm run ${{ matrix.task }}
+
+  # Single required status that stays green only when every parallel check passed,
+  # so branch protection and the merge gate keep one stable context to depend on.
+  quality-gate:
+    name: quality-gate
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks passed
+        run: echo "All quality-gate checks passed."
