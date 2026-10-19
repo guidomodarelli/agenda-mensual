@@ -1,7 +1,10 @@
 name: Quality Gate
 
+# Pull requests validate the merge commit and pushes to main validate main; other branch pushes
+# are covered by their pull request, so the gate does not run twice for the same change.
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
