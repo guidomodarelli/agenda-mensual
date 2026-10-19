@@ -37,13 +37,18 @@ The Arc components are closed and configured by props:
 replaces `AlertDialog`), `DropdownMenu` takes `label`, `items`, an optional
 `trigger` and a single `selection`, `Select` takes `label` and `options`
 (`hideLabel` when the layout already shows the label), `RadioGroup` takes
-`label` and `options`, and `Tooltip` wraps its trigger with `content`. Arc menus
-have no submenus, so former submenus are groups of rows separated with
-`separatorBefore`. `Button` only offers `primary`, `secondary`, `ghost` and
-`danger` in `sm`, `md` and `lg`, without `asChild`: links that look like
-buttons use the `action-link` mixin from `src/styles/_action-link.scss`, and
-legends already named by a visible title use the `visually-hidden` mixin.
-There is no app-level `TooltipProvider` anymore.
+`label` and `options` (also `hideLabel` when a visible title already names the
+group), and `Tooltip` wraps its trigger with `content`. Arc menus have no
+submenus, so former submenus are groups of rows separated with
+`separatorBefore`. A `DropdownMenu` with a disabled custom `trigger` stays
+closed by itself, so the menu is rendered as is. `Button` only offers
+`primary`, `secondary`, `ghost` and `danger` in `sm`, `md` and `lg`, without
+`asChild`: internal links that look like buttons use `ButtonLink` with the same
+`variant` and `size`, and other elements, such as the bare button of
+`AnimatedThemeToggler`, take `buttonClassName({ variant, size, className })`,
+keeping only layout in their module class. Do not copy the button recipe or the
+visually hidden rule into `src/styles`. There is no app-level
+`TooltipProvider` anymore.
 
 The receipt uploader (`ReceiptFileUploader`) composes the @astra-kit/ui `FileUpload`
 primitives: file selection, drag and drop, type and size validation and the
