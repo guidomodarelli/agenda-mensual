@@ -31,7 +31,6 @@ jobs:
     env:
       HUSKY: '0'
       TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
     steps:
       - name: Checkout del release
         uses: actions/checkout@v4
@@ -75,6 +74,7 @@ jobs:
           GOLFO_RP_RELEASE_VERSION: ${{ inputs.version }}
           GOLFO_RP_RELEASE_SHA: ${{ inputs.sha }}
           RELEASE_TAG: ${{ inputs.tag }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: pnpm create-version --ci-release "$RELEASE_TAG"
       - name: Obtener entorno de producción
         env:
