@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { DataTable } from "beez-ui";
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -190,18 +190,24 @@ describe("DataTable", () => {
     );
 
     expect(screen.queryByText("− Agua")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Filtros de exclusión activos"),
-    ).not.toBeInTheDocument();
+    // The toggle's label crossfades, so the previous label leaves after its exit animation.
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Filtros de exclusión activos"),
+      ).not.toBeInTheDocument(),
+    );
 
     await user.type(exclusionInput, "Agua{enter}");
 
     await user.click(screen.getByRole("button", { name: "Quitar exclusión Agua" }));
 
     expect(screen.queryByText("− Agua")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Filtros de exclusión activos"),
-    ).not.toBeInTheDocument();
+    // The toggle's label crossfades, so the previous label leaves after its exit animation.
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Filtros de exclusión activos"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("adds a new exclusion when pressing Enter on the main filter with spaces before the leading minus", async () => {

@@ -1,13 +1,8 @@
 import {
   Alert,
-  AlertDescription,
   Button,
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Form,
   FormControl,
   FormField,
@@ -20,15 +15,10 @@ import {
   InputGroupInput,
   Label,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Textarea,
   cn,
 } from "beez-ui";
 import { useEffect, useMemo, useState } from "react";
-import { Info, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import {
@@ -62,6 +52,7 @@ import type {
 } from "./monthly-expenses-table";
 import { formatCurrencyAmount } from "./monthly-expenses-currency";
 import { getUsdRateBadgeLabel } from "./usd-rate-type-labels";
+import { EXPENSE_CURRENCY_OPTIONS, EXPENSE_SUBTOTAL_UNIT_OPTIONS } from "./select-options.constants";
 import styles from "./expense-sheet.module.scss";
 
 export type ExpenseEditableFieldName =
@@ -402,26 +393,33 @@ function ExpenseSheetContent({
               onRequestClose();
             }
           }}
-          showCloseButton={false}
-        >
-          <DialogHeader className={styles.header}>
-            <div className={styles.headerTopRow}>
-              <div>
-                <DialogTitle>{title}</DialogTitle>
-                <DialogDescription>{description}</DialogDescription>
+          closeLabel="Cerrar formulario de gasto"
+          description={description}
+          footer={
+            <>
+              {hasPendingChanges ? (
+                <p className={styles.changesLegend} role="status">
+                  El punto junto al label marca cambios sin guardar.
+                </p>
+              ) : null}
+              <div className={styles.footerActions}>
+                <Button onClick={onRequestClose} type="button" variant="secondary">
+                  Cancelar
+                </Button>
+                <Button
+                  disabled={actionDisabled}
+                  onClick={handleSaveAttempt}
+                  type="button"
+                >
+                  {isSubmitting ? "Guardando..." : "Guardar"}
+                </Button>
               </div>
-              <Button
-                aria-label="Cerrar formulario de gasto"
-                className={styles.closeButton}
-                onClick={onRequestClose}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </div>
-          </DialogHeader>
+            </>
+          }
+          footerClassName={styles.footer}
+          headerClassName={styles.header}
+          title={title}
+        >
 
           <Form {...form}>
             <form
@@ -526,7 +524,7 @@ function ExpenseSheetContent({
                         onClick={onOpenExpenseDetails}
                         size="sm"
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                       >
                         Editar subtotal y cantidad
                       </Button>
@@ -545,27 +543,16 @@ function ExpenseSheetContent({
                         </FormLabel>
                         <div className={styles.fieldControlWrapper}>
                           <Select
+                            hideLabel
+                            label="Moneda"
                             onValueChange={(value) => onFieldChange("currency", value)}
+                            options={EXPENSE_CURRENCY_OPTIONS}
+                            placeholder="Moneda"
+                            triggerClassName={cn(
+                              changedFields.has("currency") && styles.changedField,
+                            )}
                             value={draft.currency}
-                          >
-                            <FormControl>
-                              <SelectTrigger
-                                aria-label="Moneda"
-                                className={cn(
-                                  changedFields.has("currency") && styles.changedField,
-                                )}
-                                data-changed={
-                                  changedFields.has("currency") ? "true" : "false"
-                                }
-                              >
-                                <SelectValue placeholder="Moneda" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="ARS">Peso argentino (ARS)</SelectItem>
-                              <SelectItem value="USD">Dolar estadounidense (USD)</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          />
                           <FormMessage className={styles.fieldErrorText} />
                         </div>
                       </FormItem>
@@ -637,7 +624,7 @@ function ExpenseSheetContent({
                   />
 
                   <div className={styles.fieldGroup}>
-                    <Label htmlFor="expense-subtotal-unit">
+                    <Label>
                       {getFieldLabel(
                         "Unidad del subtotal",
                         changedFields.has("subtotalUnit"),
@@ -645,28 +632,19 @@ function ExpenseSheetContent({
                     </Label>
                     <div className={styles.fieldControlWrapper}>
                       <Select
+                        hideLabel
+                        id="expense-subtotal-unit"
+                        label="Unidad del subtotal"
                         onValueChange={(value) =>
                           onFieldChange("subtotalUnit", value)
                         }
+                        options={EXPENSE_SUBTOTAL_UNIT_OPTIONS}
+                        triggerClassName={cn(
+                          changedFields.has("subtotalUnit") &&
+                            styles.changedField,
+                        )}
                         value={subtotalUnit}
-                      >
-                        <SelectTrigger
-                          aria-label="Unidad del subtotal"
-                          className={cn(
-                            changedFields.has("subtotalUnit") &&
-                              styles.changedField,
-                          )}
-                          id="expense-subtotal-unit"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="occurrence">
-                            Por ocurrencia
-                          </SelectItem>
-                          <SelectItem value="hour">Por hora</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
                   </div>
 
@@ -946,9 +924,9 @@ function ExpenseSheetContent({
                                     onClick={() =>
                                       onFieldChange("installmentCount", installment)
                                     }
-                                    size="xs"
+                                    size="sm"
                                     type="button"
-                                    variant="outline"
+                                    variant="secondary"
                                   >
                                     {installment}
                                   </Button>
@@ -974,15 +952,12 @@ function ExpenseSheetContent({
                       </div>
                     </div>
 
-                    <Alert className={styles.loanStatus}>
-                      <Info aria-hidden="true" className={styles.loanStatusIcon} />
-                      <AlertDescription className={styles.loanStatusText}>
-                        <p>
-                          {draft.loanProgress ||
-                            "Completá inicio y cuotas para ver el avance."}
-                        </p>
-                      </AlertDescription>
-                    </Alert>
+                    <Alert
+                      title={
+                        draft.loanProgress ||
+                        "Completá inicio y cuotas para ver el avance."
+                      }
+                    />
                     </>
                   ) : null}
                 </div>
@@ -1096,19 +1071,13 @@ function ExpenseSheetContent({
                         </div>
                       </div>
 
-                      <Alert className={styles.loanStatus}>
-                        <Info
-                          aria-hidden="true"
-                          className={styles.loanStatusIcon}
-                        />
-                        <AlertDescription className={styles.loanStatusText}>
-                          <p>
-                            {draft.recurrenceEndMonth
-                              ? `Se deja de repetir después de ${draft.recurrenceEndMonth}.`
-                              : "Se repite todos los meses hasta que la canceles."}
-                          </p>
-                        </AlertDescription>
-                      </Alert>
+                      <Alert
+                        title={
+                          draft.recurrenceEndMonth
+                            ? `Se deja de repetir después de ${draft.recurrenceEndMonth}.`
+                            : "Se repite todos los meses hasta que la canceles."
+                        }
+                      />
                     </>
                   ) : null}
                 </div>
@@ -1230,26 +1199,6 @@ function ExpenseSheetContent({
               )}
             </form>
           </Form>
-
-          <DialogFooter className={styles.footer}>
-            {hasPendingChanges ? (
-              <p className={styles.changesLegend} role="status">
-                El punto junto al label marca cambios sin guardar.
-              </p>
-            ) : null}
-            <div className={styles.footerActions}>
-              <Button onClick={onRequestClose} type="button" variant="outline">
-                Cancelar
-              </Button>
-              <Button
-                disabled={actionDisabled}
-                onClick={handleSaveAttempt}
-                type="button"
-              >
-                {isSubmitting ? "Guardando..." : "Guardar"}
-              </Button>
-            </div>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1263,44 +1212,31 @@ function ExpenseSheetContent({
       >
         <DialogContent
           className={styles.unsavedChangesContent}
-          showCloseButton={false}
-        >
-          <DialogHeader className={styles.unsavedChangesHeader}>
-            <div className={styles.unsavedChangesHeaderTopRow}>
-              <DialogTitle>Cambios sin guardar</DialogTitle>
+          closeLabel="Cerrar aviso de cambios sin guardar"
+          description="Tenés cambios sin guardar en este gasto."
+          footer={
+            <>
               <Button
-                aria-label="Cerrar aviso de cambios sin guardar"
-                className={styles.unsavedChangesCloseButton}
-                onClick={onUnsavedChangesClose}
-                size="icon-sm"
+                className={styles.unsavedChangesButton}
+                onClick={onUnsavedChangesDiscard}
                 type="button"
-                variant="ghost"
+                variant="secondary"
               >
-                <X aria-hidden="true" />
+                Descartar los cambios
               </Button>
-            </div>
-            <DialogDescription>
-              Tenés cambios sin guardar en este gasto.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className={styles.unsavedChangesFooter}>
-            <Button
-              className={styles.unsavedChangesButton}
-              onClick={onUnsavedChangesDiscard}
-              type="button"
-              variant="outline"
-            >
-              Descartar los cambios
-            </Button>
-            <Button
-              className={styles.unsavedChangesButton}
-              onClick={onUnsavedChangesSave}
-              type="button"
-            >
-              Guardar los cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+              <Button
+                className={styles.unsavedChangesButton}
+                onClick={onUnsavedChangesSave}
+                type="button"
+              >
+                Guardar los cambios
+              </Button>
+            </>
+          }
+          footerClassName={styles.unsavedChangesFooter}
+          headerClassName={styles.unsavedChangesHeader}
+          title="Cambios sin guardar"
+        />
       </Dialog>
     </>
   );

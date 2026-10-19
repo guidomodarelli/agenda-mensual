@@ -1,22 +1,15 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  type DropdownItem,
 } from "beez-ui";
 import { useState } from "react";
 
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 
+import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./monthly-expenses-table.module.scss";
 
 interface PaymentRecordActionsMenuProps {
@@ -66,82 +59,94 @@ export function QuickEditActionsMenu({
     expenseDescription.trim() || "gasto";
   const shouldConfirmDelete =
     Boolean(confirmDeleteActionTitle) && Boolean(confirmDeleteActionDescription);
+  const triggerLabel = `${triggerAriaLabel} para ${normalizedExpenseDescription}`;
+  const menuItems: DropdownItem[] = [
+    {
+      icon: <Pencil aria-hidden="true" />,
+      id: "edit",
+      label: editActionLabel,
+      onSelect: () => {
+        setIsMenuOpen(false);
+        window.setTimeout(() => {
+          onEdit();
+        }, 0);
+      },
+    },
+  ];
+
+  if (onDelete) {
+    menuItems.push({
+      destructive: true,
+      icon: <Trash2 aria-hidden="true" />,
+      id: "delete",
+      label: deleteActionLabel ?? "Eliminar",
+      onSelect: () => {
+        setIsMenuOpen(false);
+        window.setTimeout(() => {
+          if (shouldConfirmDelete) {
+            setIsConfirmDialogOpen(true);
+            return;
+          }
+
+          void onDelete();
+        }, 0);
+      },
+    });
+  }
 
   return (
-    <AlertDialog onOpenChange={setIsConfirmDialogOpen} open={isConfirmDialogOpen}>
-      <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
-        <DropdownMenuTrigger asChild>
+    <Dialog
+      alert
+      onOpenChange={setIsConfirmDialogOpen}
+      open={isConfirmDialogOpen}
+    >
+      <GuardedDropdownMenu
+        disabled={actionDisabled}
+        align="end"
+        items={menuItems}
+        label={triggerLabel}
+        onOpenChange={setIsMenuOpen}
+        open={isMenuOpen}
+        trigger={
           <Button
-            aria-label={`${triggerAriaLabel} para ${normalizedExpenseDescription}`}
+            aria-label={triggerLabel}
             className={styles.paymentLinkActionButton}
             disabled={actionDisabled}
-            size="icon-sm"
+            size="sm"
             type="button"
             variant="ghost"
           >
             <MoreVertical aria-hidden="true" className={styles.paymentLinkIcon} />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              window.setTimeout(() => {
-                onEdit();
-              }, 0);
-            }}
-          >
-            <Pencil aria-hidden="true" />
-            {editActionLabel}
-          </DropdownMenuItem>
-          {onDelete ? (
-            <DropdownMenuItem
-              onSelect={() => {
-                setIsMenuOpen(false);
-                window.setTimeout(() => {
-                  if (shouldConfirmDelete) {
-                    setIsConfirmDialogOpen(true);
-                    return;
-                  }
-
-                  void onDelete();
-                }, 0);
-              }}
-              variant="destructive"
-            >
-              <Trash2 aria-hidden="true" />
-              {deleteActionLabel ?? "Eliminar"}
-            </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }
+      />
       {onDelete && shouldConfirmDelete ? (
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDeleteActionTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDeleteActionDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              aria-label={
-                confirmDeleteActionAriaLabel ??
-                `Confirmar eliminación para ${normalizedExpenseDescription}`
-              }
-              onClick={() => {
-                setIsConfirmDialogOpen(false);
-                void onDelete();
-              }}
-              variant="destructive"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <DialogContent
+          description={confirmDeleteActionDescription}
+          footer={
+            <>
+              <DialogClose asChild>
+                <Button variant="secondary">Cancelar</Button>
+              </DialogClose>
+              <Button
+                aria-label={
+                  confirmDeleteActionAriaLabel ??
+                  `Confirmar eliminación para ${normalizedExpenseDescription}`
+                }
+                onClick={() => {
+                  setIsConfirmDialogOpen(false);
+                  void onDelete();
+                }}
+                variant="danger"
+              >
+                Eliminar
+              </Button>
+            </>
+          }
+          title={confirmDeleteActionTitle}
+        />
       ) : null}
-    </AlertDialog>
+    </Dialog>
   );
 }
 
@@ -164,67 +169,76 @@ export function PaymentRecordActionsMenu({
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   return (
-    <AlertDialog onOpenChange={setIsConfirmDialogOpen} open={isConfirmDialogOpen}>
-      <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
-        <DropdownMenuTrigger asChild>
+    <Dialog
+      alert
+      onOpenChange={setIsConfirmDialogOpen}
+      open={isConfirmDialogOpen}
+    >
+      <GuardedDropdownMenu
+        disabled={actionDisabled}
+        align="end"
+        items={[
+          {
+            icon: <Pencil aria-hidden="true" />,
+            id: "edit",
+            label: editActionLabel,
+            onSelect: () => {
+              setIsMenuOpen(false);
+              window.setTimeout(() => {
+                onEdit();
+              }, 0);
+            },
+          },
+          {
+            destructive: true,
+            icon: <Trash2 aria-hidden="true" />,
+            id: "delete",
+            label: deleteActionLabel,
+            onSelect: () => {
+              setIsMenuOpen(false);
+              window.setTimeout(() => {
+                setIsConfirmDialogOpen(true);
+              }, 0);
+            },
+          },
+        ]}
+        label={triggerAriaLabel}
+        onOpenChange={setIsMenuOpen}
+        open={isMenuOpen}
+        trigger={
           <Button
             aria-label={triggerAriaLabel}
             className={styles.paymentLinkActionButton}
             disabled={actionDisabled}
-            size="icon-sm"
+            size="sm"
             type="button"
             variant="ghost"
           >
             <MoreVertical aria-hidden="true" className={styles.paymentLinkIcon} />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              window.setTimeout(() => {
-                onEdit();
-              }, 0);
-            }}
-          >
-            <Pencil aria-hidden="true" />
-            {editActionLabel}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              window.setTimeout(() => {
-                setIsConfirmDialogOpen(true);
-              }, 0);
-            }}
-            variant="destructive"
-          >
-            <Trash2 aria-hidden="true" />
-            {deleteActionLabel}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{confirmDeleteActionTitle}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {confirmDeleteActionDescription}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            aria-label={confirmDeleteActionAriaLabel}
-            onClick={() => {
-              setIsConfirmDialogOpen(false);
-              void onDelete();
-            }}
-            variant="destructive"
-          >
-            Eliminar
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        }
+      />
+      <DialogContent
+        description={confirmDeleteActionDescription}
+        footer={
+          <>
+            <DialogClose asChild>
+              <Button variant="secondary">Cancelar</Button>
+            </DialogClose>
+            <Button
+              aria-label={confirmDeleteActionAriaLabel}
+              onClick={() => {
+                setIsConfirmDialogOpen(false);
+                void onDelete();
+              }}
+              variant="danger"
+            >
+              Eliminar
+            </Button>
+          </>
+        }
+        title={confirmDeleteActionTitle}
+      />
+    </Dialog>
   );
 }

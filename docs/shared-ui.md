@@ -32,6 +32,19 @@ Navigation spacing, typography and the rail width come from the package unchange
 so the menu matches the beui design; only the brand and the account trigger keep
 product styles.
 
+Since beez-ui 3 the Arc components are closed and configured by props:
+`DialogContent` takes `title`, `description` and `footer` (`<Dialog alert>`
+replaces `AlertDialog`), `DropdownMenu` takes `label`, `items`, an optional
+`trigger` and a single `selection`, `Select` takes `label` and `options`
+(`hideLabel` when the layout already shows the label), `RadioGroup` takes
+`label` and `options`, and `Tooltip` wraps its trigger with `content`. Arc menus
+have no submenus, so former submenus are groups of rows separated with
+`separatorBefore`. `Button` only offers `primary`, `secondary`, `ghost` and
+`danger` in `sm`, `md` and `lg`, without `asChild`: links that look like
+buttons use the `action-link` mixin from `src/styles/_action-link.scss`, and
+legends already named by a visible title use the `visually-hidden` mixin.
+There is no app-level `TooltipProvider` anymore.
+
 The receipt uploader (`ReceiptFileUploader`) composes the beez-ui `FileUpload`
 primitives: file selection, drag and drop, type and size validation and the
 progress row come from the package, while the simulated progress, the accepted

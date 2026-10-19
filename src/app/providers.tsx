@@ -1,6 +1,6 @@
 "use client";
 
-import { ThemedToaster as Toaster, TooltipProvider } from "beez-ui";
+import { ThemedToaster as Toaster } from "beez-ui";
 import { BeezUIProvider } from "beez-ui/next";
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
@@ -32,10 +32,8 @@ export function AppProviders({ children, session }: AppProvidersProps) {
   return (
     <SessionProvider session={session}>
       <BeezUIProvider themeOptions={APP_THEME_OPTIONS}>
-        <TooltipProvider>
-          {children}
-          <Toaster closeButton position="top-center" richColors />
-        </TooltipProvider>
+        {children}
+        <Toaster closeButton position="top-center" richColors />
       </BeezUIProvider>
     </SessionProvider>
   );

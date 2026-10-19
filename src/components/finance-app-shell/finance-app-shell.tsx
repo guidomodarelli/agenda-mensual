@@ -14,7 +14,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-  buttonVariants,
   AccountMenu,
 } from "beez-ui";
 
@@ -357,10 +356,7 @@ export function FinanceAppShell({
                 <PwaUpdateControl />
                 <AnimatedThemeToggler
                   aria-label="Alternar tema"
-                  className={buttonVariants({
-                    size: "icon-sm",
-                    variant: "ghost",
-                  })}
+                  className={styles.themeToggle}
                 />
                 <GoogleAccountAvatar
                   onConnect={handleGoogleAccountConnect}

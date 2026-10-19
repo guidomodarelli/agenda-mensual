@@ -3,9 +3,6 @@
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   TypingAnimation,
   toast,
 } from "beez-ui";
@@ -6023,13 +6020,10 @@ export default function MonthlyExpensesPage({
       ) : null}
 
       <Dialog onOpenChange={setIsFoldersManagerOpen} open={isFoldersManagerOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Administrar carpetas</DialogTitle>
-            <DialogDescription>
-              Creá, editá o eliminá carpetas para organizar tus gastos.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent
+          title="Administrar carpetas"
+          description="Creá, editá o eliminá carpetas para organizar tus gastos."
+        >
           <ExpenseFoldersPanel
             feedbackErrorCode={expenseFoldersFeedbackErrorCode}
             feedbackMessage={expenseFoldersFeedbackMessage}

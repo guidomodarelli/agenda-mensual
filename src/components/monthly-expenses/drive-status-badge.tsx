@@ -1,8 +1,4 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "beez-ui";
+import { Tooltip } from "beez-ui";
 import { AlertTriangle, CircleX } from "lucide-react";
 
 import styles from "./drive-status-badge.module.scss";
@@ -48,11 +44,8 @@ export function DriveStatusBadge({
     );
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className={styles.driveStatusBadge}>{icon}</span>
-      </TooltipTrigger>
-      <TooltipContent>{message}</TooltipContent>
+    <Tooltip content={message}>
+      <span className={styles.driveStatusBadge}>{icon}</span>
     </Tooltip>
   );
 }

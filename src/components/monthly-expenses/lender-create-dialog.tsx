@@ -2,25 +2,17 @@ import {
   Button,
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Label,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   cn,
 } from "beez-ui";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
 
 import type { LenderOption } from "@/components/monthly-expenses/lender-picker";
 
+import { LENDER_TYPE_OPTIONS } from "./select-options.constants";
 import styles from "./lenders-panel.module.scss";
 
 type TechnicalErrorCode = `E${number}${number}${number}${number}`;
@@ -140,17 +132,15 @@ export function LenderCreateDialog({
   return (
     <>
       <Dialog onOpenChange={handleCreateModalOpenChange} open={isOpen}>
-        <DialogContent className={styles.dialogContent}>
-          <DialogHeader>
-            <DialogTitle>
-              {mode === "edit" ? "Editar prestamista" : "Nuevo prestamista"}
-            </DialogTitle>
-            <DialogDescription>
-              {mode === "edit"
-                ? "Actualizá los datos de este prestamista."
-                : "Completá y guardá este prestamista para reutilizarlo en tus deudas."}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent
+          className={styles.dialogContent}
+          description={
+            mode === "edit"
+              ? "Actualizá los datos de este prestamista."
+              : "Completá y guardá este prestamista para reutilizarlo en tus deudas."
+          }
+          title={mode === "edit" ? "Editar prestamista" : "Nuevo prestamista"}
+        >
 
           <form className={styles.form} onSubmit={handleSubmit}>
             {feedbackTone === "error" ? (
@@ -180,23 +170,14 @@ export function LenderCreateDialog({
             </div>
 
             <div className={styles.formField}>
-              <Label htmlFor="lender-type">Tipo</Label>
               <Select
+                id="lender-type"
+                label="Tipo"
                 onValueChange={(value) => onFieldChange("type", value)}
+                options={LENDER_TYPE_OPTIONS}
+                placeholder="Tipo de prestamista"
                 value={formValues.type}
-              >
-                <SelectTrigger aria-label="Tipo de prestamista" id="lender-type">
-                  <SelectValue placeholder="Tipo de prestamista" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bank">Banco</SelectItem>
-                  <SelectItem value="family">Familiar</SelectItem>
-                  <SelectItem value="friend">Amigo</SelectItem>
-                  <SelectItem value="fintech">Fintech / Billetera</SelectItem>
-                  <SelectItem value="partner">Pareja</SelectItem>
-                  <SelectItem value="other">Otro</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             <div className={styles.formField}>
@@ -210,12 +191,13 @@ export function LenderCreateDialog({
               />
             </div>
 
-            <DialogFooter className={styles.dialogFooter}>
+            {/* The submit button must stay inside the form, so the actions are not the panel footer. */}
+            <div className={styles.dialogFooter}>
               <Button
                 disabled={isSubmitting}
                 onClick={() => handleCreateModalOpenChange(false)}
                 type="button"
-                variant="outline"
+                variant="secondary"
               >
                 Cancelar
               </Button>
@@ -226,7 +208,7 @@ export function LenderCreateDialog({
                     ? "Guardar cambios"
                     : "Guardar prestamista"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
@@ -239,43 +221,33 @@ export function LenderCreateDialog({
         }}
         open={showDiscardDialog}
       >
-        <DialogContent className={styles.unsavedChangesContent} showCloseButton={false}>
-          <DialogHeader className={styles.unsavedChangesHeader}>
-            <div className={styles.unsavedChangesHeaderTopRow}>
-              <DialogTitle>Cambios sin guardar</DialogTitle>
+        <DialogContent
+          className={styles.unsavedChangesContent}
+          closeLabel="Cerrar aviso de cambios sin guardar"
+          description="Tenés cambios sin guardar en este prestamista."
+          footer={
+            <>
               <Button
-                aria-label="Cerrar aviso de cambios sin guardar"
-                className={styles.unsavedChangesCloseButton}
-                onClick={() => setShowDiscardDialog(false)}
-                size="icon-sm"
+                className={styles.unsavedChangesButton}
+                onClick={handleDiscardChanges}
                 type="button"
-                variant="ghost"
+                variant="secondary"
               >
-                <X aria-hidden="true" />
+                Descartar los cambios
               </Button>
-            </div>
-            <DialogDescription>
-              Tenés cambios sin guardar en este prestamista.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className={styles.unsavedChangesFooter}>
-            <Button
-              className={styles.unsavedChangesButton}
-              onClick={handleDiscardChanges}
-              type="button"
-              variant="outline"
-            >
-              Descartar los cambios
-            </Button>
-            <Button
-              className={styles.unsavedChangesButton}
-              onClick={handleSaveFromUnsavedChangesDialog}
-              type="button"
-            >
-              Guardar los cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+              <Button
+                className={styles.unsavedChangesButton}
+                onClick={handleSaveFromUnsavedChangesDialog}
+                type="button"
+              >
+                Guardar los cambios
+              </Button>
+            </>
+          }
+          footerClassName={styles.unsavedChangesFooter}
+          headerClassName={styles.unsavedChangesHeader}
+          title="Cambios sin guardar"
+        />
       </Dialog>
     </>
   );

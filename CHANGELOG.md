@@ -6,6 +6,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Changed
+
+- La aplicación usa `beez-ui` 4.0.1 (antes 0.10.0): botones, diálogos, menús, selects, opciones de radio, tooltips, tarjetas, avisos, insignias, avatares y placeholders de carga toman el diseño y la motion de Arc que trae la biblioteca.
+- El menú de acciones de cada gasto deja de tener submenús: duplicar ("Duplicar en este mes", "Duplicar en el mes siguiente", "Duplicar en otro mes…"), recurrencia, tipo de cambio, link de pago y carpetas aparecen como grupos de opciones separados dentro del mismo menú.
+- El menú «Ordenar por» de la tabla de gastos muestra los criterios de deuda (cuotas pagadas, restantes y total) como opciones propias, y la dirección del orden pasa a un menú «Dirección» al lado.
+- Las confirmaciones de eliminación y los diálogos de edición rápida de la tabla se anuncian como diálogos de alerta y abren con el foco en «Cancelar».
+- Los enlaces con aspecto de botón (inicio de sesión, error de autenticación y vista sin conexión) se dibujan como enlaces con el estilo de botón de Arc.
+- El selector de estado de envío de un comprobante muestra solo el texto ("Pendiente" o "Enviado"), sin el ícono.
+
 ## [0.1.4] - 2026-10-03
 
 - 054b7ac agrega reglas para el agente de Next.js

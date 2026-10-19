@@ -317,7 +317,7 @@ export function ExpenseFoldersPanel({
                       }
                       size="sm"
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                     >
                       {isEditing ? "Cerrar" : "Editar"}
                     </Button>

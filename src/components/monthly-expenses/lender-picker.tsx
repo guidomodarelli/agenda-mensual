@@ -204,7 +204,7 @@ export function LenderPicker({
         className={styles.trigger}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         type="button"
-        variant="outline"
+        variant="secondary"
       >
         {selectedOption?.name || selectedLenderName || placeholder}
       </Button>
@@ -292,7 +292,7 @@ export function LenderPicker({
             }}
             size="sm"
             type="button"
-            variant="outline"
+            variant="secondary"
           >
             Agregar prestamista
           </Button>

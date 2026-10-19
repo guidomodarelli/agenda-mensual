@@ -4,11 +4,6 @@ import {
   Link,
   Button,
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
   TypingAnimation,
 } from "beez-ui";
 
@@ -53,45 +48,42 @@ export function SignInPageClient({
       >
         Ingreso a tu cuenta
       </TypingAnimation>
-      <Card className={styles.card}>
-        <CardHeader>
-          <CardTitle>Conectar Google</CardTitle>
-          <CardDescription>
-            Esta base usa App Router, SSR y adapters de infraestructura para
-            integrar servicios externos sin mezclar reglas de negocio.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {googleProvider ? (
-            <p className={styles.warning}>
-              El login usa el proveedor oficial de Google con permisos mínimos
-              para las operaciones de almacenamiento necesarias.
-            </p>
-          ) : (
-            <p className={styles.warning}>
-              La autenticación con Google todavía no está lista en este entorno.
-              Completá las variables del servidor y reintentá.
-            </p>
-          )}
-          {hasProviderError ? (
-            <p className={styles.warning}>
-              No pudimos consultar los proveedores de autenticación. Reintentá
-              más tarde.
-            </p>
-          ) : null}
-        </CardContent>
-        <CardFooter className={styles.actions}>
-          <Button
-            disabled={!googleProvider || hasProviderError}
-            onClick={handleGoogleSignIn}
-            type="button"
-          >
-            Continuar con Google
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/">Volver al inicio</Link>
-          </Button>
-        </CardFooter>
+      <Card
+        className={styles.card}
+        description="Esta base usa App Router, SSR y adapters de infraestructura para integrar servicios externos sin mezclar reglas de negocio."
+        footer={
+          <div className={styles.actions}>
+            <Button
+              disabled={!googleProvider || hasProviderError}
+              onClick={handleGoogleSignIn}
+              type="button"
+            >
+              Continuar con Google
+            </Button>
+            <Link className={styles.secondaryLink} href="/">
+              Volver al inicio
+            </Link>
+          </div>
+        }
+        title="Conectar Google"
+      >
+        {googleProvider ? (
+          <p className={styles.warning}>
+            El login usa el proveedor oficial de Google con permisos mínimos
+            para las operaciones de almacenamiento necesarias.
+          </p>
+        ) : (
+          <p className={styles.warning}>
+            La autenticación con Google todavía no está lista en este entorno.
+            Completá las variables del servidor y reintentá.
+          </p>
+        )}
+        {hasProviderError ? (
+          <p className={styles.warning}>
+            No pudimos consultar los proveedores de autenticación. Reintentá
+            más tarde.
+          </p>
+        ) : null}
       </Card>
     </section>
   );

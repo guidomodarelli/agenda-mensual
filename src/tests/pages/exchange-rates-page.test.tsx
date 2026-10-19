@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterAll, type Mock } from "vitest";
-import { TooltipProvider, toast } from "beez-ui";
+import { toast } from "beez-ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
@@ -51,7 +51,7 @@ const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
 
 function renderWithProviders(ui: ReactElement) {
-  return render(<TooltipProvider>{ui}</TooltipProvider>);
+  return render(ui);
 }
 
 const bootstrap: StorageBootstrapResult = {
@@ -223,17 +223,15 @@ describe("ExchangeRatesPage", () => {
     await user.type(iibbInput, "0.07");
 
     rerender(
-      <TooltipProvider>
-        <ExchangeRatesPage
-          {...basePageProps}
-          result={{
-            ...basePageProps.result,
-            iibbRateDecimal: 0.03,
-            loadError: "No pudimos cargar las cotizaciones del dólar en este momento.",
-            selectedMonth: "2026-02",
-          }}
-        />
-      </TooltipProvider>,
+      <ExchangeRatesPage
+        {...basePageProps}
+        result={{
+          ...basePageProps.result,
+          iibbRateDecimal: 0.03,
+          loadError: "No pudimos cargar las cotizaciones del dólar en este momento.",
+          selectedMonth: "2026-02",
+        }}
+      />,
     );
 
     expect(screen.getByLabelText("IIBB en formato decimal")).toHaveValue(0.03);

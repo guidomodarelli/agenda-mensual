@@ -1,13 +1,4 @@
-import {
-  AccountMenu,
-  Avatar,
-  AvatarBadge,
-  AvatarFallback,
-  AvatarImage,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "beez-ui";
+import { AccountMenu, Avatar, Tooltip } from "beez-ui";
 import { PlusIcon } from "lucide-react";
 
 type GoogleAccountAvatarStatus = "authenticated" | "loading" | "unauthenticated";
@@ -61,25 +52,25 @@ export function GoogleAccountAvatar({
 
   if (status === "loading") {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            aria-label="Verificando sesión de Google"
-            disabled
-            type="button"
-          >
-            <Avatar className="grayscale">
-              {userImage ? <AvatarImage alt={accountName} src={userImage} /> : null}
-              <AvatarFallback>{initials}</AvatarFallback>
-              <AvatarBadge>
-                <PlusIcon />
-              </AvatarBadge>
-            </Avatar>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className="mr-2" side="bottom" sideOffset={8}>
-          {tooltipStatusLabel}
-        </TooltipContent>
+      <Tooltip
+        content={tooltipStatusLabel}
+        contentClassName="mr-2"
+        side="bottom"
+        sideOffset={8}
+      >
+        <button
+          aria-label="Verificando sesión de Google"
+          disabled
+          type="button"
+        >
+          <Avatar
+            badge={<PlusIcon />}
+            className="grayscale"
+            fallback={initials}
+            name={accountName}
+            src={userImage}
+          />
+        </button>
       </Tooltip>
     );
   }

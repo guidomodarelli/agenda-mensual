@@ -7,8 +7,6 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 
 import MonthlyExpensesPage from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import {
   basePageProps,
   createMockRouter,
@@ -113,12 +111,7 @@ async function selectUsdRateFromRowMenu(
   await user.click(
     screen.getByRole("button", { name: "Abrir acciones para Netflix" }),
   );
-  await selectDropdownSubmenuItem(
-    user,
-    "Tipo de cambio",
-    optionName,
-    "menuitemradio",
-  );
+  await user.click(screen.getByRole("menuitemradio", { name: optionName }));
   await user.keyboard("{Escape}");
 }
 

@@ -477,7 +477,7 @@ export function ExpenseFolderFilterBar({
           <Button
             aria-label="Administrar carpetas"
             onClick={onManageFolders}
-            size="icon-sm"
+            size="sm"
             type="button"
             variant="ghost"
           >

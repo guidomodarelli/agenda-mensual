@@ -1,3 +1,5 @@
+@use "../../styles/visually-hidden";
+
 .section {
   width: 100%;
 }
@@ -560,19 +562,10 @@
 }
 
 .loanSortOptions {
-  gap: 0.5rem;
-}
-
-.loanSortOption {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.loanSortOptionLabel {
-  font-size: 0.875rem;
-  color: var(--foreground);
-  cursor: pointer;
+  // The visual title above names the group: the legend stays for assistive technology only.
+  & > [data-slot="radio-group-label"] {
+    @include visually-hidden.visually-hidden;
+  }
 }
 
 .loanSortHint {
@@ -673,12 +666,17 @@
   }
 }
 
-.descriptionPaymentLinkChip {
+// The anchor is the focusable tooltip trigger; the badge inside only draws the chip.
+.descriptionPaymentLinkAnchor {
+  display: inline-flex;
   flex-shrink: 0;
-  gap: 0.25rem;
-  color: var(--primary);
   text-decoration: none;
   cursor: pointer;
+}
+
+.descriptionPaymentLinkChip {
+  gap: 0.25rem;
+  color: var(--primary);
 }
 
 .descriptionHighlight {
@@ -1122,12 +1120,6 @@
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   text-align: left;
-}
-
-.receiptShareStatusValue {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 
 .receiptShareStatusControl {

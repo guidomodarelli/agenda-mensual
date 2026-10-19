@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from "vitest";
-import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
@@ -9,11 +8,7 @@ import { GoogleAccountAvatar } from "./google-account-avatar";
 function renderGoogleAccountAvatar(
   props: ComponentProps<typeof GoogleAccountAvatar>,
 ) {
-  return render(
-    <TooltipProvider>
-      <GoogleAccountAvatar {...props} />
-    </TooltipProvider>,
-  );
+  return render(<GoogleAccountAvatar {...props} />);
 }
 
 describe("GoogleAccountAvatar", () => {

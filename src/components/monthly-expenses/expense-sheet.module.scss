@@ -12,17 +12,6 @@
   padding: 1.25rem 1.25rem;
 }
 
-.headerTopRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.closeButton {
-  flex-shrink: 0;
-}
-
 .form {
   display: grid;
   gap: 1rem;
@@ -248,22 +237,6 @@
   align-items: flex-start;
 }
 
-.loanStatus {
-  border: 1px solid color-mix(in srgb, #60a5fa 35%, transparent);
-  background: color-mix(in srgb, #60a5fa 12%, transparent);
-  color: #1d4ed8;
-}
-
-.loanStatusIcon {
-  color: inherit;
-}
-
-.loanStatusText {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: inherit;
-}
-
 .footer {
   display: flex;
   flex-direction: column;
@@ -306,18 +279,6 @@
 
 .unsavedChangesHeader {
   gap: 0.4rem;
-}
-
-.unsavedChangesHeaderTopRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-}
-
-.unsavedChangesCloseButton {
-  flex-shrink: 0;
 }
 
 .unsavedChangesFooter {

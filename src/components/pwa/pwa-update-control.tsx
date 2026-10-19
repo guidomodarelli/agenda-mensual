@@ -168,7 +168,7 @@ export function PwaUpdateControl() {
         }}
         size="sm"
         type="button"
-        variant="default"
+        variant="primary"
       >
         <RefreshCw
           aria-hidden="true"

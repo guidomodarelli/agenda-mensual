@@ -1,22 +1,8 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Input,
 } from "beez-ui";
 import { useMemo, useState } from "react";
@@ -24,6 +10,7 @@ import { ExternalLink, MoreVertical, Paperclip, Trash2 } from "lucide-react";
 
 import { ReceiptFileUploader } from "@/components/monthly-expenses/receipt-file-uploader";
 
+import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./expense-receipt-coverage-edit-dialog.module.scss";
 
 interface ExpenseReceiptCoverageEditDialogProps {
@@ -127,16 +114,19 @@ export function ExpenseReceiptCoverageEditDialog({
     });
   };
 
+  const receiptActionsLabel = `Abrir acciones de comprobante ${normalizedReceiptFileName}`;
+
   return (
-    <AlertDialog onOpenChange={setIsDeleteReceiptConfirmOpen} open={isDeleteReceiptConfirmOpen}>
+    <Dialog
+      alert
+      onOpenChange={setIsDeleteReceiptConfirmOpen}
+      open={isDeleteReceiptConfirmOpen}
+    >
       <Dialog onOpenChange={handleDialogOpenChange} open={isOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar registro de pago</DialogTitle>
-            <DialogDescription>
-              Ajusta cuántos pagos desea cubrir para {expenseDescription || "el gasto seleccionado"}.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent
+          title="Editar registro de pago"
+          description={<>Ajusta cuántos pagos desea cubrir para {expenseDescription || "el gasto seleccionado"}.</>}
+        >
 
           <div className={styles.content}>
             <div className={styles.fieldGroup}>
@@ -171,34 +161,39 @@ export function ExpenseReceiptCoverageEditDialog({
                 ) : (
                   <span className={styles.fileName}>{normalizedReceiptFileName}</span>
                 )}
-                <DropdownMenu onOpenChange={setIsReceiptActionsMenuOpen} open={isReceiptActionsMenuOpen}>
-                  <DropdownMenuTrigger asChild>
+                <GuardedDropdownMenu
+                  disabled={isSubmitting}
+                  align="end"
+                  items={[
+                    {
+                      destructive: true,
+                      icon: <Trash2 aria-hidden="true" />,
+                      id: "delete-receipt",
+                      label: "Eliminar comprobante",
+                      onSelect: () => {
+                        setIsReceiptActionsMenuOpen(false);
+                        window.setTimeout(() => {
+                          setIsDeleteReceiptConfirmOpen(true);
+                        }, 0);
+                      },
+                    },
+                  ]}
+                  label={receiptActionsLabel}
+                  onOpenChange={setIsReceiptActionsMenuOpen}
+                  open={isReceiptActionsMenuOpen}
+                  trigger={
                     <Button
-                      aria-label={`Abrir acciones de comprobante ${normalizedReceiptFileName}`}
+                      aria-label={receiptActionsLabel}
                       className={styles.fileActionsButton}
                       disabled={isSubmitting}
-                      size="icon-sm"
+                      size="sm"
                       type="button"
                       variant="ghost"
                     >
                       <MoreVertical aria-hidden="true" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setIsReceiptActionsMenuOpen(false);
-                        window.setTimeout(() => {
-                          setIsDeleteReceiptConfirmOpen(true);
-                        }, 0);
-                      }}
-                      variant="destructive"
-                    >
-                      <Trash2 aria-hidden="true" />
-                      Eliminar comprobante
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  }
+                />
               </div>
             ) : null}
 
@@ -236,7 +231,7 @@ export function ExpenseReceiptCoverageEditDialog({
                 disabled={isSubmitting}
                 onClick={onClose}
                 type="button"
-                variant="outline"
+                variant="secondary"
               >
                 Cancelar
               </Button>
@@ -253,26 +248,28 @@ export function ExpenseReceiptCoverageEditDialog({
           </div>
         </DialogContent>
       </Dialog>
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Querés eliminar este comprobante?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta acción quita el archivo adjunto para {normalizedExpenseDescription}.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            aria-label={`Confirmar eliminación de comprobante ${normalizedReceiptFileName}`}
-            onClick={() => {
-              void handleDeleteReceipt();
-            }}
-            variant="destructive"
-          >
-            Eliminar
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <DialogContent
+        title="¿Querés eliminar este comprobante?"
+        description={<>Esta acción quita el archivo adjunto para {normalizedExpenseDescription}.</>}
+        footer={
+          <>
+            <DialogClose asChild>
+              <Button variant="secondary">Cancelar</Button>
+            </DialogClose>
+            <DialogClose asChild>
+              <Button
+                aria-label={`Confirmar eliminación de comprobante ${normalizedReceiptFileName}`}
+                onClick={() => {
+                  void handleDeleteReceipt();
+                }}
+                variant="danger"
+              >
+                Eliminar
+              </Button>
+            </DialogClose>
+          </>
+        }
+      />
+    </Dialog>
   );
 }

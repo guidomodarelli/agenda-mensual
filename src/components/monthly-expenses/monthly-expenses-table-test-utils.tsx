@@ -1,5 +1,4 @@
 import { vi } from "vitest";
-import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import { StrictMode, type ComponentProps } from "react";
 
@@ -165,9 +164,7 @@ export function renderMonthlyExpensesTable(
   };
 
   const tree = (
-    <TooltipProvider>
-      <MonthlyExpensesTable {...props} />
-    </TooltipProvider>
+    <MonthlyExpensesTable {...props} />
   );
 
   return {

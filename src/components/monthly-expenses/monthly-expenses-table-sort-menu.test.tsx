@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import {
   createRow,
   getTableTextOrder,
@@ -55,7 +53,7 @@ async function selectSortDirection(
   user: ReturnType<typeof userEvent.setup>,
   directionName: string,
 ) {
-  await user.click(screen.getByRole("button", { name: /^Ordenar por/ }));
+  await user.click(screen.getByRole("button", { name: /^Dirección/ }));
   await user.click(
     screen.getByRole("menuitemradio", { name: directionName }),
   );
@@ -74,7 +72,7 @@ describe("MonthlyExpensesTable sort menu", () => {
 
     renderMonthlyExpensesTable(ROWS, { expenseFolders: FOLDERS });
 
-    await selectSortBy(user, /Total/);
+    await selectSortBy(user, "Total");
     await selectSortDirection(user, "Descendente");
 
     await waitFor(() => {
@@ -97,7 +95,7 @@ describe("MonthlyExpensesTable sort menu", () => {
     await user.click(screen.getByRole("menuitemradio", { name: /Carpeta/ }));
     await user.keyboard("{Escape}");
 
-    await selectSortBy(user, /Total/);
+    await selectSortBy(user, "Total");
     await selectSortDirection(user, "Descendente");
 
     // El agrupado manda: Hogar → Servicios → Sin carpeta; adentro, total desc.
@@ -165,23 +163,19 @@ describe("MonthlyExpensesTable sort menu", () => {
       screen.queryByRole("menuitemradio", { name: "Registros" }),
     ).not.toBeInTheDocument();
 
-    // Deuda / cuotas es un submenú con sus tres criterios reales.
-    await user.click(
-      screen.getByRole("menuitem", { name: "Deuda / cuotas" }),
-    );
-
+    // Deuda / cuotas ofrece sus tres criterios reales como opciones propias.
     for (const loanOptionName of [
       "Cuotas pagadas",
       "Cuotas restantes",
       "Total de cuotas",
     ]) {
       expect(
-        await screen.findByRole("menuitemradio", { name: loanOptionName }),
+        screen.getByRole("menuitemradio", { name: loanOptionName }),
       ).toBeInTheDocument();
     }
   });
 
-  it("sorts by remaining installments from the loan submenu", async () => {
+  it("sorts by remaining installments from the loan options", async () => {
     const user = userEvent.setup();
 
     renderMonthlyExpensesTable(
@@ -208,11 +202,8 @@ describe("MonthlyExpensesTable sort menu", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /^Ordenar por/ }));
-    await selectDropdownSubmenuItem(
-      user,
-      "Deuda / cuotas",
-      "Cuotas restantes",
-      "menuitemradio",
+    await user.click(
+      screen.getByRole("menuitemradio", { name: "Cuotas restantes" }),
     );
     await user.keyboard("{Escape}");
 
@@ -323,6 +314,12 @@ describe("MonthlyExpensesTable sort menu", () => {
     expect(
       screen.getByRole("menuitemradio", { name: "Total" }),
     ).toHaveAttribute("aria-checked", "true");
+
+    await user.keyboard("{Escape}");
+    await user.click(
+      screen.getByRole("button", { name: "Dirección: Ascendente" }),
+    );
+
     expect(
       screen.getByRole("menuitemradio", { name: "Ascendente" }),
     ).toHaveAttribute("aria-checked", "true");

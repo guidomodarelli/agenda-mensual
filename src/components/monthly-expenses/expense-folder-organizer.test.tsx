@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from "vitest";
-import { TooltipProvider } from "beez-ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -17,19 +16,17 @@ function renderFilterBar(
   overrides: Partial<Parameters<typeof ExpenseFolderFilterBar>[0]> = {},
 ) {
   return render(
-    <TooltipProvider>
-      <ExpenseFolderFilterBar
-        countsByFolderId={{ "folder-1": 3, "folder-2": 5 }}
-        folders={SAMPLE_FOLDERS}
-        onManageFolders={vi.fn()}
-        onMoveExpenseToFolder={vi.fn()}
-        onReorderFolders={vi.fn()}
-        onSelectFilter={vi.fn()}
-        totalCount={8}
-        unassignedCount={2}
-        {...overrides}
-      />
-    </TooltipProvider>,
+    <ExpenseFolderFilterBar
+      countsByFolderId={{ "folder-1": 3, "folder-2": 5 }}
+      folders={SAMPLE_FOLDERS}
+      onManageFolders={vi.fn()}
+      onMoveExpenseToFolder={vi.fn()}
+      onReorderFolders={vi.fn()}
+      onSelectFilter={vi.fn()}
+      totalCount={8}
+      unassignedCount={2}
+      {...overrides}
+    />,
   );
 }
 

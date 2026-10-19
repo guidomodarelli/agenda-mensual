@@ -50,7 +50,7 @@ export function LoanInfoPopover({
         aria-label={closeLabel}
         className={styles.closeButton}
         onClick={() => setIsOpen(false)}
-        size="icon-xs"
+        size="sm"
         type="button"
         variant="ghost"
       >
@@ -60,28 +60,32 @@ export function LoanInfoPopover({
     </TooltipPrimitive.Content>
   );
 
+  // beez-ui 3 dropped the app-level `TooltipProvider`: this click-driven
+  // tooltip brings the Radix provider its root requires.
   return (
-    <TooltipPrimitive.Root open={isOpen}>
-      <TooltipPrimitive.Trigger asChild>
-        <Button
-          aria-expanded={isOpen}
-          aria-label={triggerLabel}
-          className={styles.trigger}
-          onClick={() => setIsOpen((currentOpen) => !currentOpen)}
-          ref={triggerRef}
-          size="icon-xs"
-          type="button"
-          variant="ghost"
-        >
-          <Info aria-hidden="true" className={styles.triggerIcon} />
-        </Button>
-      </TooltipPrimitive.Trigger>
+    <TooltipPrimitive.Provider>
+      <TooltipPrimitive.Root open={isOpen}>
+        <TooltipPrimitive.Trigger asChild>
+          <Button
+            aria-expanded={isOpen}
+            aria-label={triggerLabel}
+            className={styles.trigger}
+            onClick={() => setIsOpen((currentOpen) => !currentOpen)}
+            ref={triggerRef}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            <Info aria-hidden="true" className={styles.triggerIcon} />
+          </Button>
+        </TooltipPrimitive.Trigger>
 
-      {usePortal ? (
-        <TooltipPrimitive.Portal>{tooltipContent}</TooltipPrimitive.Portal>
-      ) : (
-        tooltipContent
-      )}
-    </TooltipPrimitive.Root>
+        {usePortal ? (
+          <TooltipPrimitive.Portal>{tooltipContent}</TooltipPrimitive.Portal>
+        ) : (
+          tooltipContent
+        )}
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
   );
 }

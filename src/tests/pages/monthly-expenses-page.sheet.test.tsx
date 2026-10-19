@@ -7,8 +7,6 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 
 import MonthlyExpensesPage from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
-import { selectDropdownSubmenuItem } from "@/tests/utils/radix-menu-test-helpers";
-
 import {
   basePageProps,
   createMockRouter,
@@ -272,7 +270,9 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Electricidad" }),
     );
-    await selectDropdownSubmenuItem(user, "Duplicar", "En este mes");
+    await user.click(
+      screen.getByRole("menuitem", { name: "Duplicar en este mes" }),
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Nuevo gasto" }),
@@ -622,10 +622,8 @@ registerMonthlyExpensesPageDefaultHooks({
         name: "Abrir acciones para Electricidad",
       }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Agregar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
     );
     await user.type(
       await screen.findByLabelText("Link de pago de Electricidad"),
@@ -696,10 +694,8 @@ registerMonthlyExpensesPageDefaultHooks({
         name: "Abrir acciones para Electricidad",
       }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Editar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Editar link de pago" }),
     );
     expect(
       (await screen.findByLabelText("Link de pago de Electricidad")).tagName,
@@ -770,10 +766,8 @@ registerMonthlyExpensesPageDefaultHooks({
         name: "Abrir acciones para Electricidad",
       }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Eliminar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Eliminar link de pago" }),
     );
 
     expect(
@@ -819,8 +813,6 @@ registerMonthlyExpensesPageDefaultHooks({
         name: "Abrir acciones para Electricidad",
       }),
     );
-
-    await user.click(screen.getByRole("menuitem", { name: "Link de pago" }));
 
     expect(
       await screen.findByRole("menuitem", { name: "Agregar link de pago" }),
@@ -869,10 +861,8 @@ registerMonthlyExpensesPageDefaultHooks({
         name: "Abrir acciones para Electricidad",
       }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Eliminar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Eliminar link de pago" }),
     );
 
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
@@ -932,10 +922,8 @@ registerMonthlyExpensesPageDefaultHooks({
         name: "Abrir acciones para Electricidad",
       }),
     );
-    await selectDropdownSubmenuItem(
-      user,
-      "Link de pago",
-      "Agregar link de pago",
+    await user.click(
+      screen.getByRole("menuitem", { name: "Agregar link de pago" }),
     );
     await user.type(
       await screen.findByLabelText("Link de pago de Electricidad"),

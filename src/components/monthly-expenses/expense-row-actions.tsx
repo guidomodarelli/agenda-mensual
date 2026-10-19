@@ -1,24 +1,10 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  type DropdownItem,
+  type DropdownMenuSelection,
 } from "beez-ui";
 import { useState } from "react";
 import {
@@ -31,7 +17,6 @@ import {
   MoreVertical,
   Pencil,
   Plus,
-  Repeat,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -46,6 +31,7 @@ import {
   USD_RATE_IIBB_SURCHARGE_LABEL,
   USD_RATE_IVA_SURCHARGE_LABEL,
 } from "./usd-rate-type-labels";
+import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./expense-row-actions.module.scss";
 
 interface ExpenseRowActionsProps {
@@ -131,7 +117,7 @@ export function ExpenseRowActions({
       ? {
           actionLabel: "Confirmar",
           ariaLabel: undefined,
-          actionVariant: "destructive" as const,
+          actionVariant: "danger" as const,
           description:
             "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
           onConfirm: onDelete,
@@ -141,7 +127,7 @@ export function ExpenseRowActions({
         ? {
             actionLabel: "Quitar",
             ariaLabel: "Confirmar quitar referencia de carpeta del mes actual",
-            actionVariant: "destructive" as const,
+            actionVariant: "danger" as const,
             description:
               "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
             onConfirm: onDeleteMonthlyFolderReference,
@@ -151,7 +137,7 @@ export function ExpenseRowActions({
           ? {
               actionLabel: "Quitar",
               ariaLabel: "Confirmar quitar referencia de carpeta de comprobantes",
-              actionVariant: "destructive" as const,
+              actionVariant: "danger" as const,
               description:
                 "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
               onConfirm: onDeleteAllReceiptsFolderReference,
@@ -161,7 +147,7 @@ export function ExpenseRowActions({
             ? {
                 actionLabel: "Eliminar",
                 ariaLabel: `Confirmar eliminación de link de pago para ${normalizedDescription}`,
-                actionVariant: "destructive" as const,
+                actionVariant: "danger" as const,
                 description:
                   "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
                 onConfirm: onDeletePaymentLink,
@@ -171,7 +157,7 @@ export function ExpenseRowActions({
               ? {
                   actionLabel: "Cancelar recurrencia",
                   ariaLabel: `Confirmar cancelación de la recurrencia para ${normalizedDescription}`,
-                  actionVariant: "default" as const,
+                  actionVariant: "primary" as const,
                   description:
                     "El gasto se sigue contando este mes y deja de repetirse en los meses siguientes. Para reactivarlo, abrí sus acciones desde el mes de la cancelación (o uno anterior) y elegí «Reactivar recurrencia».",
                   onConfirm: onCancelRecurrence,
@@ -179,8 +165,215 @@ export function ExpenseRowActions({
                 }
               : null;
 
+  const menuLabel = `Abrir acciones para ${normalizedDescription}`;
+  const closeMenuThen = (action: () => void) => () => {
+    setIsMenuOpen(false);
+    window.setTimeout(action, 0);
+  };
+  const confirmFromMenu =
+    (nextConfirmActionType: NonNullable<typeof confirmActionType>) => () => {
+      setIsMenuOpen(false);
+      setConfirmActionType(nextConfirmActionType);
+    };
+  const hasUsdRateActions = Boolean(
+    onSelectUsdRateBase && onToggleUsdRateSurcharge && usdRate,
+  );
+  // Arc's menu has no submenus: each former submenu becomes a group of rows
+  // that opens with a separator and keeps its context in the row labels.
+  const menuItems: DropdownItem[] = [
+    {
+      icon: <Pencil aria-hidden="true" />,
+      id: "edit",
+      label: "Editar",
+      onSelect: () => {
+        setIsMenuOpen(false);
+        onEdit();
+      },
+    },
+    {
+      icon: <Copy aria-hidden="true" />,
+      id: "duplicate-current-month",
+      label: "Duplicar en este mes",
+      onSelect: () => {
+        setIsMenuOpen(false);
+        onDuplicate();
+      },
+      separatorBefore: true,
+    },
+    {
+      id: "duplicate-next-month",
+      label: "Duplicar en el mes siguiente",
+      onSelect: closeMenuThen(onDuplicateToNextMonth),
+    },
+    {
+      id: "duplicate-picked-month",
+      label: "Duplicar en otro mes…",
+      onSelect: closeMenuThen(onDuplicateToPickedMonth),
+    },
+    {
+      destructive: true,
+      icon: <Trash2 aria-hidden="true" />,
+      id: "delete",
+      label: "Eliminar",
+      onSelect: confirmFromMenu("deleteExpense"),
+      separatorBefore: true,
+    },
+  ];
+
+  if (isRecurring) {
+    menuItems.push(
+      isRecurrenceCancelled
+        ? {
+            icon: <RotateCcw aria-hidden="true" />,
+            id: "reactivate-recurrence",
+            label: "Reactivar recurrencia",
+            onSelect: closeMenuThen(onReactivateRecurrence),
+            separatorBefore: true,
+          }
+        : {
+            icon: <CalendarX2 aria-hidden="true" />,
+            id: "cancel-recurrence",
+            label: "Cancelar recurrencia",
+            onSelect: confirmFromMenu("cancelRecurrence"),
+            separatorBefore: true,
+          },
+    );
+  }
+
+  if (hasUsdRateActions && usdRate && onToggleUsdRateSurcharge) {
+    menuItems.push(
+      ...USD_RATE_BASE_MENU_ORDER.map((usdRateBase, usdRateBaseIndex) => ({
+        icon: usdRateBaseIndex === 0 ? <DollarSign aria-hidden="true" /> : undefined,
+        id: `usd-rate-base-${usdRateBase}`,
+        label:
+          usdRateBase === "custom"
+            ? `${USD_RATE_BASE_LABELS.custom}…`
+            : USD_RATE_BASE_LABELS[usdRateBase],
+        separatorBefore: usdRateBaseIndex === 0,
+        value: usdRateBase,
+      })),
+      {
+        checked: usdRate.appliesIibb,
+        id: "usd-rate-iibb",
+        label: USD_RATE_IIBB_SURCHARGE_LABEL,
+        // Keep the menu open so both surcharges can be toggled in one visit.
+        onSelect: (event: Event) => {
+          event.preventDefault();
+          onToggleUsdRateSurcharge("iibb");
+        },
+      },
+      {
+        checked: usdRate.appliesIva,
+        id: "usd-rate-iva",
+        label: USD_RATE_IVA_SURCHARGE_LABEL,
+        onSelect: (event: Event) => {
+          event.preventDefault();
+          onToggleUsdRateSurcharge("iva");
+        },
+      },
+    );
+  }
+
+  menuItems.push(
+    ...(hasPaymentLink
+      ? [
+          {
+            icon: <Link2 aria-hidden="true" />,
+            id: "edit-payment-link",
+            label: "Editar link de pago",
+            onSelect: closeMenuThen(onManagePaymentLink),
+            separatorBefore: true,
+          },
+          {
+            destructive: true,
+            icon: <Trash2 aria-hidden="true" />,
+            id: "delete-payment-link",
+            label: "Eliminar link de pago",
+            onSelect: confirmFromMenu("deletePaymentLink"),
+          },
+        ]
+      : [
+          {
+            icon: <Plus aria-hidden="true" />,
+            id: "add-payment-link",
+            label: "Agregar link de pago",
+            onSelect: closeMenuThen(onManagePaymentLink),
+            separatorBefore: true,
+          },
+        ]),
+  );
+
+  if (shouldRenderFoldersSection) {
+    const folderItems: DropdownItem[] = [];
+
+    if (monthlyFolderViewUrl) {
+      folderItems.push({
+        href: monthlyFolderViewUrl,
+        icon: <Folder aria-hidden="true" />,
+        id: "monthly-folder",
+        label: "Comprobantes del mes",
+        rel: "noopener noreferrer",
+        target: "_blank",
+      });
+    }
+
+    if (allReceiptsFolderViewUrl) {
+      folderItems.push({
+        href: allReceiptsFolderViewUrl,
+        icon: <Folder aria-hidden="true" />,
+        id: "all-receipts-folder",
+        label: "Archivo histórico de comprobantes",
+        rel: "noopener noreferrer",
+        target: "_blank",
+      });
+    }
+
+    if (canDeleteMonthlyFolderReference) {
+      folderItems.push({
+        destructive: true,
+        icon: <FolderX aria-hidden="true" />,
+        id: "delete-monthly-folder-reference",
+        label: "Quitar referencia de carpeta del mes actual",
+        onSelect: confirmFromMenu("deleteMonthlyFolderReference"),
+      });
+    }
+
+    if (canDeleteAllReceiptsFolderReference) {
+      folderItems.push({
+        destructive: true,
+        icon: <FolderX aria-hidden="true" />,
+        id: "delete-all-receipts-folder-reference",
+        label: "Quitar referencia de carpeta de comprobantes",
+        onSelect: confirmFromMenu("deleteAllReceiptsFolderReference"),
+      });
+    }
+
+    const [firstFolderItem, ...remainingFolderItems] = folderItems;
+
+    if (firstFolderItem) {
+      menuItems.push(
+        { ...firstFolderItem, separatorBefore: true },
+        ...remainingFolderItems,
+      );
+    }
+  }
+
+  const usdRateSelection: DropdownMenuSelection | undefined =
+    hasUsdRateActions && usdRate && onSelectUsdRateBase
+      ? {
+          onValueChange: (nextUsdRateBase) => {
+            setIsMenuOpen(false);
+            window.setTimeout(() => {
+              onSelectUsdRateBase(nextUsdRateBase as MonthlyExpenseUsdRateBase);
+            }, 0);
+          },
+          value: usdRate.base,
+        }
+      : undefined;
+
   return (
-    <AlertDialog
+    <Dialog
+      alert
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
           setConfirmActionType(null);
@@ -188,322 +381,53 @@ export function ExpenseRowActions({
       }}
       open={confirmActionType !== null}
     >
-      <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
-        <DropdownMenuTrigger asChild>
+      <GuardedDropdownMenu
+        disabled={actionDisabled}
+        align="end"
+        items={menuItems}
+        label={menuLabel}
+        onOpenChange={setIsMenuOpen}
+        open={isMenuOpen}
+        selection={usdRateSelection}
+        trigger={
           <Button
-            aria-label={`Abrir acciones para ${normalizedDescription}`}
+            aria-label={menuLabel}
             className={styles.trigger}
             disabled={actionDisabled}
-            size="icon-sm"
+            size="sm"
             type="button"
             variant="ghost"
           >
             <MoreVertical aria-hidden="true" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              onEdit();
-            }}
-          >
-            <span className={styles.menuItem}>
-              <Pencil aria-hidden="true" />
-              Editar
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <span className={styles.menuItem}>
-                <Copy aria-hidden="true" />
-                Duplicar
-              </span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem
-                onSelect={() => {
-                  setIsMenuOpen(false);
-                  onDuplicate();
-                }}
-              >
-                En este mes
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => {
-                  setIsMenuOpen(false);
-                  window.setTimeout(() => {
-                    onDuplicateToNextMonth();
-                  }, 0);
-                }}
-              >
-                En el mes siguiente
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => {
-                  setIsMenuOpen(false);
-                  window.setTimeout(() => {
-                    onDuplicateToPickedMonth();
-                  }, 0);
-                }}
-              >
-                Elegir mes…
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsMenuOpen(false);
-              setConfirmActionType("deleteExpense");
-            }}
-            variant="destructive"
-          >
-            <span className={styles.menuItem}>
-              <Trash2 aria-hidden="true" className={styles.destructiveIcon} />
-              Eliminar
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {isRecurring ? (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <span className={styles.menuItem}>
-                  <Repeat aria-hidden="true" />
-                  Recurrencia
-                </span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {isRecurrenceCancelled ? (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      window.setTimeout(() => {
-                        onReactivateRecurrence();
-                      }, 0);
-                    }}
-                  >
-                    <span className={styles.menuItem}>
-                      <RotateCcw aria-hidden="true" />
-                      Reactivar recurrencia
-                    </span>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      setConfirmActionType("cancelRecurrence");
-                    }}
-                  >
-                    <span className={styles.menuItem}>
-                      <CalendarX2 aria-hidden="true" />
-                      Cancelar recurrencia
-                    </span>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          ) : null}
-          {onSelectUsdRateBase && onToggleUsdRateSurcharge && usdRate ? (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <span className={styles.menuItem}>
-                  <DollarSign aria-hidden="true" />
-                  Tipo de cambio
-                </span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup
-                  onValueChange={(nextUsdRateBase) => {
-                    setIsMenuOpen(false);
-                    window.setTimeout(() => {
-                      onSelectUsdRateBase(
-                        nextUsdRateBase as MonthlyExpenseUsdRateBase,
-                      );
-                    }, 0);
-                  }}
-                  value={usdRate.base}
-                >
-                  {USD_RATE_BASE_MENU_ORDER.map((usdRateBase) => (
-                    <DropdownMenuRadioItem key={usdRateBase} value={usdRateBase}>
-                      {usdRateBase === "custom"
-                        ? `${USD_RATE_BASE_LABELS.custom}…`
-                        : USD_RATE_BASE_LABELS[usdRateBase]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem
-                  checked={usdRate.appliesIibb}
-                  onSelect={(event) => {
-                    // Keep the submenu open so both surcharges can be toggled
-                    // in one visit.
-                    event.preventDefault();
-                    onToggleUsdRateSurcharge("iibb");
-                  }}
-                >
-                  {USD_RATE_IIBB_SURCHARGE_LABEL}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={usdRate.appliesIva}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    onToggleUsdRateSurcharge("iva");
-                  }}
-                >
-                  {USD_RATE_IVA_SURCHARGE_LABEL}
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          ) : null}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <span className={styles.menuItem}>
-                <Link2 aria-hidden="true" />
-                Link de pago
-              </span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {hasPaymentLink ? (
-                <>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      window.setTimeout(() => {
-                        onManagePaymentLink();
-                      }, 0);
-                    }}
-                  >
-                    <span className={styles.menuItem}>
-                      <Pencil aria-hidden="true" />
-                      Editar link de pago
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      setConfirmActionType("deletePaymentLink");
-                    }}
-                    variant="destructive"
-                  >
-                    <span className={styles.menuItem}>
-                      <Trash2 aria-hidden="true" className={styles.destructiveIcon} />
-                      Eliminar link de pago
-                    </span>
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setIsMenuOpen(false);
-                    window.setTimeout(() => {
-                      onManagePaymentLink();
-                    }, 0);
-                  }}
-                >
-                  <span className={styles.menuItem}>
-                    <Plus aria-hidden="true" />
-                    Agregar link de pago
-                  </span>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          {shouldRenderFoldersSection ? (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <span className={styles.menuItem}>
-                  <Folder aria-hidden="true" />
-                  Carpetas
-                </span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {monthlyFolderViewUrl ? (
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={monthlyFolderViewUrl}
-                      onClick={() => setIsMenuOpen(false)}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <span className={styles.menuItem}>
-                        <Folder aria-hidden="true" />
-                        Comprobantes del mes
-                      </span>
-                    </a>
-                  </DropdownMenuItem>
-                ) : null}
-                {allReceiptsFolderViewUrl ? (
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={allReceiptsFolderViewUrl}
-                      onClick={() => setIsMenuOpen(false)}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <span className={styles.menuItem}>
-                        <Folder aria-hidden="true" />
-                        Archivo histórico de comprobantes
-                      </span>
-                    </a>
-                  </DropdownMenuItem>
-                ) : null}
-                {canDeleteMonthlyFolderReference ? (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      setConfirmActionType("deleteMonthlyFolderReference");
-                    }}
-                    variant="destructive"
-                  >
-                    <span className={styles.menuItem}>
-                      <FolderX aria-hidden="true" className={styles.destructiveIcon} />
-                      Quitar referencia de carpeta del mes actual
-                    </span>
-                  </DropdownMenuItem>
-                ) : null}
-                {canDeleteAllReceiptsFolderReference ? (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      setConfirmActionType("deleteAllReceiptsFolderReference");
-                    }}
-                    variant="destructive"
-                  >
-                    <span className={styles.menuItem}>
-                      <FolderX aria-hidden="true" className={styles.destructiveIcon} />
-                      Quitar referencia de carpeta de comprobantes
-                    </span>
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }
+      />
 
       {confirmDialogConfig ? (
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDialogConfig.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialogConfig.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              aria-label={confirmDialogConfig.ariaLabel}
-              onClick={() => {
-                setConfirmActionType(null);
-                confirmDialogConfig.onConfirm();
-              }}
-              variant={confirmDialogConfig.actionVariant}
-            >
-              {confirmDialogConfig.actionLabel}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <DialogContent
+          title={confirmDialogConfig.title}
+          description={confirmDialogConfig.description}
+          footer={
+            <>
+              <DialogClose asChild>
+                <Button variant="secondary">Cancelar</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button
+                  aria-label={confirmDialogConfig.ariaLabel}
+                  onClick={() => {
+                    setConfirmActionType(null);
+                    confirmDialogConfig.onConfirm();
+                  }}
+                  variant={confirmDialogConfig.actionVariant}
+                >
+                  {confirmDialogConfig.actionLabel}
+                </Button>
+              </DialogClose>
+            </>
+          }
+        />
       ) : null}
-    </AlertDialog>
+    </Dialog>
   );
 }
