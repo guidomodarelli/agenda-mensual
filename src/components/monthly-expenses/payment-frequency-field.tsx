@@ -131,8 +131,9 @@ export function PaymentFrequencyField({
 
   return (
     <div className={styles.container}>
+      {/* The form field label already names the choice: the legend stays for assistive technology only. */}
       <RadioGroup
-        className={styles.options}
+        hideLabel
         label={PAYMENT_FREQUENCY_LEGEND}
         onValueChange={handleModeChange}
         options={PAYMENT_FREQUENCY_OPTIONS}

@@ -3,13 +3,13 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DropdownMenu,
   type DropdownItem,
 } from "@astra-kit/ui";
 import { useState } from "react";
 
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 
-import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./monthly-expenses-table.module.scss";
 
 interface PaymentRecordActionsMenuProps {
@@ -100,8 +100,7 @@ export function QuickEditActionsMenu({
       onOpenChange={setIsConfirmDialogOpen}
       open={isConfirmDialogOpen}
     >
-      <GuardedDropdownMenu
-        disabled={actionDisabled}
+      <DropdownMenu
         align="end"
         items={menuItems}
         label={triggerLabel}
@@ -174,8 +173,7 @@ export function PaymentRecordActionsMenu({
       onOpenChange={setIsConfirmDialogOpen}
       open={isConfirmDialogOpen}
     >
-      <GuardedDropdownMenu
-        disabled={actionDisabled}
+      <DropdownMenu
         align="end"
         items={[
           {

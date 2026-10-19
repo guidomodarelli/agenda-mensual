@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DropdownMenu,
   Input,
 } from "@astra-kit/ui";
 import { useMemo, useState } from "react";
@@ -10,7 +11,6 @@ import { ExternalLink, MoreVertical, Paperclip, Trash2 } from "lucide-react";
 
 import { ReceiptFileUploader } from "@/components/monthly-expenses/receipt-file-uploader";
 
-import { GuardedDropdownMenu } from "./guarded-dropdown-menu";
 import styles from "./expense-receipt-coverage-edit-dialog.module.scss";
 
 interface ExpenseReceiptCoverageEditDialogProps {
@@ -161,8 +161,7 @@ export function ExpenseReceiptCoverageEditDialog({
                 ) : (
                   <span className={styles.fileName}>{normalizedReceiptFileName}</span>
                 )}
-                <GuardedDropdownMenu
-                  disabled={isSubmitting}
+                <DropdownMenu
                   align="end"
                   items={[
                     {

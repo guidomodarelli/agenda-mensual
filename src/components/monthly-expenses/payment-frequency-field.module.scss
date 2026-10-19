@@ -1,15 +1,6 @@
-@use "../../styles/visually-hidden";
-
 .container {
   display: grid;
   gap: 0.6rem;
-}
-
-.options {
-  // The form field label already names the choice: the legend stays for assistive technology only.
-  & > [data-slot="radio-group-label"] {
-    @include visually-hidden.visually-hidden;
-  }
 }
 
 .occurrencesField {
