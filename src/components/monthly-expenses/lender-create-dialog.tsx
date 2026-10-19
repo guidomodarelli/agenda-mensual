@@ -6,7 +6,7 @@ import {
   Label,
   Select,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 

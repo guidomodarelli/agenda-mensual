@@ -1,16 +1,16 @@
 /**
- * Configuration of `pnpm create-version` (`astra-rp create-version`): what is
+ * Configuration of `pnpm create-version` (`golfo-rp create-version`): what is
  * specific to Control Mensual on top of the release process shared through
- * `astra-rp`. Releases ship from `main`; the version change makes Vercel build
+ * `golfo-rp`. Releases ship from `main`; the version change makes Vercel build
  * and deploy production (`scripts/ignore-build.sh`).
  *
  * Pending migrations are checked against the Turso/libSQL database that
  * `pnpm run push-migrations` would change, reading the Drizzle journal of the
  * current branch and of `origin/main`.
  *
- * Only types come from `@astra-kit/rp`; every helper arrives through the hook context.
+ * Only types come from `@golfo/rp`; every helper arrives through the hook context.
  *
- * @module astra-rp.config
+ * @module golfo-rp.config
  */
 
 import { checkPendingMigrations, readMigrationJournalAt } from "./scripts/release/pending-migrations.mjs";
@@ -27,7 +27,7 @@ const RELEASE_CHECKS_COMMAND = "pnpm run ci";
  */
 const PUSH_MIGRATIONS_COMMAND = `"${process.execPath}" scripts/push-migrations.mjs`;
 
-/** @type {import("@astra-kit/rp/create-version").CreateVersionConfig} */
+/** @type {import("@golfo/rp/create-version").CreateVersionConfig} */
 const createVersionConfig = {
   projectName: "Control Mensual",
   releaseTypeDescriptions: {

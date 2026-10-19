@@ -6,7 +6,7 @@ import { rmSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import createVersionConfig from "../../../astra-rp.config.mjs";
+import createVersionConfig from "../../../golfo-rp.config.mjs";
 import { MIGRATION_STATUS } from "../../../scripts/release/pending-migrations.mjs";
 import {
   GIT_FIXTURE_TEST_TIMEOUT_MS,
@@ -14,12 +14,12 @@ import {
   createRepositoryWithIncomingMigration,
 } from "./release-git-fixture";
 
-/** `astra-rp create-version` configuration exercised by the child process. */
-const CONFIG_MODULE_PATH = path.resolve("astra-rp.config.mjs");
+/** `golfo-rp create-version` configuration exercised by the child process. */
+const CONFIG_MODULE_PATH = path.resolve("golfo-rp.config.mjs");
 
 /**
  * Child process that runs the configured `migrations.check` with a Git reader
- * bound to the fixture, like `astra-rp create-version` does. libSQL keeps a file
+ * bound to the fixture, like `golfo-rp create-version` does. libSQL keeps a file
  * database locked on Windows until the process exits, so the check runs outside
  * the Vitest worker to let the fixture directory be removed.
  */
@@ -46,7 +46,7 @@ class HookFailure extends Error {
 }
 
 /**
- * Hook context with the `astra-rp create-version` contract whose `run` records
+ * Hook context with the `golfo-rp create-version` contract whose `run` records
  * the command lines and answers with the given exit code.
  */
 function createHookContext(repositoryRoot: string, exitCode: number) {

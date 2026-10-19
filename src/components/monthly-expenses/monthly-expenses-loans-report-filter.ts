@@ -4,7 +4,7 @@ import {
   type FilterQualifierConfig,
   type FilterQualifierOption,
   type ParsedFilterQuery,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 
 import { buildLenderQualifierOptions } from "./monthly-expenses-filter-qualifiers";

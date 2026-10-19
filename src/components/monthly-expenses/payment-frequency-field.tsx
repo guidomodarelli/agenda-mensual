@@ -4,7 +4,7 @@ import {
   RadioGroup,
   cn,
   type RadioGroupOption,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useId, useState, type ChangeEvent } from "react";
 
 import { OccurrenceDurationInput } from "./occurrence-duration-input";

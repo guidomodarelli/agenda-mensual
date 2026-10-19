@@ -8,7 +8,7 @@ import {
   Skeleton,
   Tooltip,
   parseFilterQuery,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Flag } from "lucide-react";

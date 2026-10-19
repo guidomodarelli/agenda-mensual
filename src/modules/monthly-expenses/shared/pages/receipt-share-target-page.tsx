@@ -7,7 +7,7 @@ import {
   RadioGroup,
   TypingAnimation,
   toast,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";

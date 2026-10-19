@@ -1,4 +1,4 @@
-import { ButtonLink, Card, TypingAnimation } from "@astra-kit/ui";
+import { ButtonLink, Card, TypingAnimation } from "@golfo/ui";
 import type { Metadata } from "next";
 
 import { getAuthErrorMessage } from "@/modules/auth/application/queries/get-auth-error-message";

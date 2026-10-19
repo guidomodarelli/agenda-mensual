@@ -1,7 +1,7 @@
 "use client";
 
-import { ThemedToaster as Toaster } from "@astra-kit/ui";
-import { AstraUIProvider } from "@astra-kit/ui/next";
+import { ThemedToaster as Toaster } from "@golfo/ui";
+import { GolfoUIProvider } from "@golfo/ui/next";
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { useEffect, type ReactNode } from "react";
@@ -31,10 +31,10 @@ export function AppProviders({ children, session }: AppProvidersProps) {
 
   return (
     <SessionProvider session={session}>
-      <AstraUIProvider themeOptions={APP_THEME_OPTIONS}>
+      <GolfoUIProvider themeOptions={APP_THEME_OPTIONS}>
         {children}
         <Toaster closeButton position="top-center" richColors />
-      </AstraUIProvider>
+      </GolfoUIProvider>
     </SessionProvider>
   );
 }

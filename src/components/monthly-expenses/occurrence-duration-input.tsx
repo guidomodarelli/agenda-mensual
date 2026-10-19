@@ -2,7 +2,7 @@ import {
   Input,
   Label,
   cn,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useId, useState } from "react";
 
 import {

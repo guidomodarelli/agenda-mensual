@@ -7,7 +7,7 @@ import {
   type AppliedFilterValue,
   type FolderFilterValue,
   type TextMatchFilterValue,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import {
   matchesAdvancedEnumFilter,

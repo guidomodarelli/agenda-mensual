@@ -3,7 +3,7 @@ import {
   normalizeFilterSlug,
   type FilterQualifierConfig,
   type FilterQualifierOption,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 
 import type { ExpenseFolderOption } from "./expense-folder-picker";

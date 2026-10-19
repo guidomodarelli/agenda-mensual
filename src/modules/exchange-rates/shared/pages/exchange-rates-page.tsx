@@ -6,7 +6,7 @@ import {
   Label,
   TypingAnimation,
   toast,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import type { FormEvent } from "react";
 import { useState } from "react";

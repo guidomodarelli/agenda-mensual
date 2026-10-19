@@ -16,7 +16,7 @@ import {
   SidebarTrigger,
   AccountMenu,
   buttonClassName,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import Image from "next/image";
 import {
@@ -169,7 +169,7 @@ const SIDEBAR_COLLAPSED_HIDDEN_CLASS = "group-data-[state=collapsed]/sidebar:hid
 
 /**
  * Section links of the sidebar. The shared menu buttons route through the
- * AstraUIProvider link adapter and close the mobile sheet once selected.
+ * GolfoUIProvider link adapter and close the mobile sheet once selected.
  */
 function FinanceAppShellSidebarNavigation({
   activeSection,

@@ -5,7 +5,7 @@ import {
   ButtonLink,
   Card,
   TypingAnimation,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 
 import { useSearchParams } from "next/navigation";
 import { signIn, type ClientSafeProvider } from "next-auth/react";

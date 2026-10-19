@@ -34,7 +34,7 @@ import {
   matchesAdvancedYearMonthRangeFilter,
   normalizeSearchValue,
   renderHighlightedText,
-} from "@astra-kit/ui";
+} from "@golfo/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ColumnDef,

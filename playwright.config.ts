@@ -5,10 +5,10 @@ const isCI = Boolean(process.env.CI);
 export default defineConfig({
   testDir: "./e2e",
   // Closes WebKit processes orphaned by Playwright runs that died abruptly on
-  // Windows (see @astra-kit/cleaner); a no-op on other platforms. It runs
+  // Windows (see @golfo/cleaner); a no-op on other platforms. It runs
   // before the suite (the main case: leftovers from earlier runs) and after it.
-  globalSetup: "@astra-kit/cleaner/playwright/global-setup",
-  globalTeardown: "@astra-kit/cleaner/playwright/global-teardown",
+  globalSetup: "@golfo/cleaner/playwright/global-setup",
+  globalTeardown: "@golfo/cleaner/playwright/global-teardown",
   fullyParallel: true,
   retries: isCI ? 2 : 0,
   reporter: isCI ? [["list"], ["html", { open: "never" }]] : [["line"]],

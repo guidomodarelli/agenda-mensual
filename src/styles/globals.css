@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@astra-kit/ui/styles.css";
+@import "@golfo/ui/styles.css";
 
 @custom-variant dark (&:where(html.dark, html.dark *));
 

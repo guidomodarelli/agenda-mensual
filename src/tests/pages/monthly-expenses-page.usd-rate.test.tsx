@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, type Mock } from "vitest";
-import { toast } from "@astra-kit/ui";
+import { toast } from "@golfo/ui";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";

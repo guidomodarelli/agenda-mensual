@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { type AppliedFilter } from "@astra-kit/ui";
+import { type AppliedFilter } from "@golfo/ui";
 
 
 import {
