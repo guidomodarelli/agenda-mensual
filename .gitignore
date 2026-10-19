@@ -48,3 +48,5 @@ next-env.d.ts
 
 # Codex auto-fix local loop state
 .codex-autofix/
+.vercel/
+.env

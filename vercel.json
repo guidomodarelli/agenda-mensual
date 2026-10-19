@@ -1,3 +1,3 @@
 {
-  "ignoreCommand": "bash scripts/ignore-build.sh"
+  "ignoreCommand": "node .golfo-rp/vercel-ignore-build.mjs"
 }

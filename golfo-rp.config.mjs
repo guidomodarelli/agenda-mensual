@@ -57,3 +57,6 @@ const createVersionConfig = {
 };
 
 export default createVersionConfig;
+
+/** GitHub Actions workflow used by create-version. */
+export const ci = {"workflow":"release.yml","secrets":["TURSO_DATABASE_URL"],"variables":[],"deployment":"vercel"};

@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-19
+
 ### Changed
 
 - La aplicación usa `@golfo/ui` 2.0.0 (antes `beez-ui` 0.10.0): botones, diálogos, menús, selects, opciones de radio, tooltips, tarjetas, avisos, insignias, avatares y placeholders de carga toman el diseño y la motion de Arc que trae la biblioteca.
