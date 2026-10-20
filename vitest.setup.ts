@@ -55,4 +55,22 @@ if (typeof window !== "undefined") {
 	window.HTMLElement.prototype.hasPointerCapture = vi.fn();
 	window.HTMLElement.prototype.releasePointerCapture = vi.fn();
 	window.HTMLElement.prototype.scrollIntoView = vi.fn();
+	window.HTMLElement.prototype.scrollTo = vi.fn();
+	window.scrollTo = vi.fn() as typeof window.scrollTo;
+}
+
+// jsdom cannot perform full-document navigations and logs
+// "Not implemented: navigation to another Document" whenever a test clicks an
+// in-app link. Cancel the default navigation in the bubble phase (after the
+// element's own click handlers have run) so link-click tests stay quiet without
+// changing the behavior they assert.
+if (typeof document !== "undefined") {
+	document.addEventListener("click", (clickEvent) => {
+		const eventTarget = clickEvent.target;
+		const navigableAnchor = eventTarget instanceof Element ? eventTarget.closest("a[href]") : null;
+
+		if (navigableAnchor) {
+			clickEvent.preventDefault();
+		}
+	});
 }
