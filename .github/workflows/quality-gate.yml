@@ -8,9 +8,9 @@ on:
   pull_request:
 
 jobs:
-  # Each quality check runs as its own parallel job so a slow step (build) no longer
-  # blocks the fast ones (lint). `fail-fast: true` cancels the remaining checks as soon
-  # as one fails, for faster feedback and less wasted compute.
+  # Fast checks (lint, typecheck, build) run as their own parallel jobs so a slow one
+  # no longer blocks the others. `fail-fast: true` cancels the rest on the first failure,
+  # for faster feedback and less wasted compute.
   checks:
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
@@ -21,7 +21,6 @@ jobs:
           - lint
           - typecheck
           - typecheck:tests
-          - test
           - build
     steps:
       - name: Checkout
@@ -49,22 +48,58 @@ jobs:
           GOOGLE_CLIENT_SECRET: github-actions-google-client-secret
         run: pnpm run ${{ matrix.task }}
 
-  # Single required status that stays green only when every parallel check passed,
-  # so branch protection and the merge gate keep one stable context to depend on.
+  # The test suite is the slowest check, so it is split across parallel shards. Vitest
+  # partitions the files deterministically with --shard=i/N, cutting wall-clock to roughly
+  # the total runtime divided by the shard count.
+  test:
+    name: test (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests (shard ${{ matrix.shard }}/4)
+        env:
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: github-actions-build-secret-not-for-production
+          GOOGLE_CLIENT_ID: github-actions-google-client-id
+          GOOGLE_CLIENT_SECRET: github-actions-google-client-secret
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/4
+
+  # Single required status that stays green only when every parallel check and test shard
+  # passed, so branch protection and the merge gate keep one stable context to depend on.
   quality-gate:
     name: quality-gate
-    needs: checks
-    # `always()` forces this job to run even when a matrix check fails or is cancelled.
+    needs: [checks, test]
+    # `always()` forces this job to run even when a dependency fails or is cancelled.
     # Without it, `needs` skips the job, and a skipped required status counts as
     # satisfied — letting a red check merge. Running always and failing unless every
-    # check succeeded makes `quality-gate` an actual blocking gate.
+    # dependency succeeded makes `quality-gate` an actual blocking gate.
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify every check passed
         run: |
-          if [ "${{ needs.checks.result }}" != "success" ]; then
-            echo "Quality checks did not all pass (result: ${{ needs.checks.result }})."
+          if [ "${{ needs.checks.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Quality checks did not all pass (checks: ${{ needs.checks.result }}, test: ${{ needs.test.result }})."
             exit 1
           fi
           echo "All quality-gate checks passed."
