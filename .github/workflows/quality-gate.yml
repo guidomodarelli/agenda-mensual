@@ -7,6 +7,12 @@ on:
     branches: [main]
   pull_request:
 
+# A new run cancels the previous run on the same ref (a pull request or main). The Release
+# workflow runs its own checks on the release commit, so cancelling a run on main never blocks it.
+concurrency:
+  group: quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Fast checks (lint, typecheck, build) run as their own parallel jobs so a slow one
   # no longer blocks the others. `fail-fast: true` cancels the rest on the first failure,
@@ -14,6 +20,9 @@ jobs:
   checks:
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
+    # A normal run takes a few minutes; the limit stops a hung step (like the dependency install)
+    # instead of letting it run for hours.
+    timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
@@ -54,6 +63,7 @@ jobs:
   test:
     name: test (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
@@ -95,6 +105,7 @@ jobs:
     # dependency succeeded makes `quality-gate` an actual blocking gate.
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify every check passed
         run: |
